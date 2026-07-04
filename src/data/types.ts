@@ -1,8 +1,9 @@
-// Mini Akıl - Ortak içerik tipleri ve veri katmanı
+// Elifbâ – Ortak içerik tipleri ve veri katmanı
 
-export type Lang = "tr" | "en";
+export type Lang = "tr" | "en" | "ar";
 
-// MEB okul öncesi + 1. sınıfa hazırlık (24-84 ay)
+// Eski Age tipi bazı komponentlerde hâlâ kullanılıyor (AgePicker). Elifbâda
+// yaş filtresi kullanılmıyor ama tipi kırmıyoruz.
 export type Age = 2 | 3 | 4 | 5 | 6 | 7;
 export const ALL_AGES: Age[] = [2, 3, 4, 5, 6, 7];
 
@@ -10,9 +11,11 @@ export interface ContentItem {
   id: string;
   label: string;
   subLabel?: string;
-  speech: string;
+  speech: string;          // TTS için okunuş (Türkçe)
   lang: Lang;
-  emoji?: string;
+  emoji?: string;          // Arapça harf/kelime buraya konur (oyunlar bu alanı gösterir)
+  translit?: string;       // Kart arka yüzü için Türkçe transliterasyon
+  audio?: string;          // /audio/elifba/... URL'i varsa doğrudan çalınır
   image?: string;
   value?: number;
   colorKey?: string;
@@ -29,9 +32,13 @@ export interface ContentTopic {
   practiceMode?: "visual" | "audio" | "math";
   ages?: Age[];
   interactiveGame?: "neck" | "size" | "position" | "opposite" | "emotion";
+  // Alıştırma yoksa (sadece konu içeriği) — kilit için de item sayılmaz
+  noPractice?: boolean;
+  // Konu sayfasında grid kaç kolon olsun (varsayılan 4)
+  gridCols?: 2 | 3 | 4;
 }
 
-export type SubjectId = "turkce" | "ingilizce" | "matematik" | "doga" | "kavramlar";
+export type SubjectId = "elifba";
 
 export interface Subject {
   id: SubjectId;

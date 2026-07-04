@@ -1,5 +1,5 @@
 import { flattenItems } from "@/data/subjects";
-import { freeItemIds } from "@/lib/premium";
+import { getUnlockedTopicIds, isItemInUnlockedTopic } from "@/lib/unlock";
 import type { ContentItem, Lang } from "@/data/types";
 
 export function shuffle<T>(a: T[]): T[] {
@@ -16,7 +16,7 @@ const LANG_KEY = "games-lang";
 export function getGameLang(): Lang {
   try {
     const v = localStorage.getItem(LANG_KEY);
-    if (v === "en" || v === "tr") return v;
+    if (v === "en" || v === "tr" || v === "ar") return v;
   } catch { /* ignore */ }
   return "tr";
 }
@@ -26,32 +26,17 @@ export function setGameLang(l: Lang) {
   try { window.dispatchEvent(new Event("games-lang-change")); } catch { /* ignore */ }
 }
 
-// Premium durumunu modül seviyesinde tut — gamePool çağrıldığında filtre uygular
-let _isPremium = false;
-export function setGamePremium(v: boolean) {
-  if (_isPremium !== v) {
-    _isPremium = v;
-    try { window.dispatchEvent(new Event("games-lang-change")); } catch { /* ignore */ }
-  }
+export function setGamePremium(_v: boolean) {
+  // Premium ayrımı kaldırıldı — no-op (geriye uyum).
 }
 
-// Görsel-olarak oyunda kullanılabilecek itemlar (emojili, harf/hece/alfabe değil)
-// Premium değilse: sadece ücretsiz konuların itemları.
-export function gamePool(lang?: Lang): ContentItem[] {
-  const target = lang ?? getGameLang();
-  const free = _isPremium ? null : freeItemIds();
+// Elifbâ oyunları için havuz: yalnızca AÇILMIŞ konulardaki, emoji (Arapça
+// glif) alanı dolu olan itemlar. `lang` parametresi tutuluyor ama Elifbâda
+// tüm içerik Türkçe okunuş etiketiyle geliyor (item.lang === "tr").
+export function gamePool(_lang?: Lang): ContentItem[] {
+  const unlocked = getUnlockedTopicIds();
   return flattenItems().filter(
-    (it) =>
-      it.lang === target &&
-      !!it.emoji &&
-      !it.id.startsWith("harf-") &&
-      !it.id.startsWith("ilkses-") &&
-      !it.id.startsWith("hece-") &&
-      !it.id.startsWith("en-letter-") &&
-      !it.id.startsWith("top-") &&
-      !it.id.startsWith("cik-") &&
-      !it.id.startsWith("karsi-") &&
-      (free === null || free.has(it.id))
+    (it) => !!it.emoji && isItemInUnlockedTopic(it.id, unlocked),
   );
 }
 

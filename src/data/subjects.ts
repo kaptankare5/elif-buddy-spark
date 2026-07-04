@@ -1,50 +1,14 @@
 import type { ContentItem, ContentTopic, Subject, SubjectId } from "./types";
-import { turkceTopics } from "./topics/turkce";
-import { ingilizceTopics } from "./topics/ingilizce";
-import { matematikTopics } from "./topics/matematik";
-import { dogaTopics } from "./topics/doga";
-import { kavramlarTopics } from "./topics/kavramlar";
+import { elifbaTopics } from "./topics/elifba";
 
 export const SUBJECTS: Subject[] = [
   {
-    id: "turkce",
-    title: "Türkçe",
-    emoji: "📖",
-    description: "Harfler, sesler ve heceler",
-    bgVar: "bg-[image:var(--bg-turkce)]",
-    topics: turkceTopics,
-  },
-  {
-    id: "ingilizce",
-    title: "English",
-    emoji: "🇬🇧",
-    description: "Alphabet, colors & animals",
-    bgVar: "bg-[image:var(--bg-ingilizce)]",
-    topics: ingilizceTopics,
-  },
-  {
-    id: "matematik",
-    title: "Matematik",
-    emoji: "🔢",
-    description: "Sayılar, şekiller, toplama",
-    bgVar: "bg-[image:var(--bg-matematik)]",
-    topics: matematikTopics,
-  },
-  {
-    id: "doga",
-    title: "Doğa & Hayat",
-    emoji: "🌳",
-    description: "Hayvanlar, meslekler, mevsimler",
-    bgVar: "bg-[image:var(--bg-doga)]",
-    topics: dogaTopics,
-  },
-  {
-    id: "kavramlar",
-    title: "Kavramlar",
-    emoji: "🧠",
-    description: "Boyut, konum, duygu, zıt",
-    bgVar: "bg-[image:var(--bg-kavramlar)]",
-    topics: kavramlarTopics,
+    id: "elifba",
+    title: "Elifbâ",
+    emoji: "ﺍ",
+    description: "Kur'an-ı Kerim'i okumaya hazırlık",
+    bgVar: "bg-[image:var(--bg-elifba)]",
+    topics: elifbaTopics,
   },
 ];
 
@@ -75,4 +39,9 @@ export function findTopicOfItem(itemId: string): { subjectId: SubjectId; topicId
     }
   }
   return undefined;
+}
+
+// Sıralı konu listesi + kilit sistemine yardım
+export function getAllTopics(): ContentTopic[] {
+  return SUBJECTS.flatMap((s) => s.topics);
 }
