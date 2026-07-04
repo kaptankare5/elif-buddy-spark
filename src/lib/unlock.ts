@@ -5,6 +5,7 @@
 import { SUBJECTS, findTopicOfItem } from "@/data/subjects";
 import { getTopicSrs, type Level, type Namespace } from "@/data/srs";
 import type { ContentTopic } from "@/data/types";
+import { isTestUnlockActive } from "@/lib/testUnlock";
 
 const NS: Namespace = "quiz";
 
@@ -21,6 +22,10 @@ export function isTopicCompleted(topic: ContentTopic): boolean {
 
 export function getUnlockedTopicIds(): Set<string> {
   const out = new Set<string>();
+  if (isTestUnlockActive()) {
+    for (const s of SUBJECTS) for (const t of s.topics) out.add(t.id);
+    return out;
+  }
   for (const s of SUBJECTS) {
     let allowNext = true;
     for (const t of s.topics) {
