@@ -5,8 +5,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
-import Subject from "./pages/Subject.tsx";
 import Topic from "./pages/Topic.tsx";
+import Flashcard from "./pages/Flashcard.tsx";
 import Games from "./pages/Games.tsx";
 import Game from "./pages/Game.tsx";
 import Progress from "./pages/Progress.tsx";
@@ -45,8 +45,8 @@ const AppShell = () => {
               <Route path="/giris" element={<Auth />} />
               <Route path="/sifre-sifirla" element={<ResetPassword />} />
               <Route path="/abonelik" element={<Paywall />} />
-              <Route path="/konu/:subjectId" element={<Subject />} />
               <Route path="/konu/:subjectId/:topicId" element={<Topic />} />
+              <Route path="/konu/:subjectId/:topicId/flashcard" element={<Flashcard />} />
               <Route path="/oyunlar" element={<Games />} />
               <Route path="/oyunlar/:gameId" element={<Game />} />
               <Route path="/ilerleme" element={<Progress />} />
@@ -54,7 +54,7 @@ const AppShell = () => {
               <Route path="/admin" element={<Admin />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/gizlilik" element={<PrivacyPolicy />} />
-              
+
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
