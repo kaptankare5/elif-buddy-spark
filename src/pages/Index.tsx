@@ -60,7 +60,7 @@ const Index = () => {
         <div className="space-y-2 mb-6">
           {topics.map((t, i) => {
             const isUnlocked = unlocked.has(t.id);
-            const done = isTopicCompleted(t);
+            const done = isUnlocked && isTopicCompleted(t);
             return (
               <Link
                 key={t.id}
