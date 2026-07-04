@@ -188,7 +188,65 @@ export function playSpeech(text: string, lang?: Lang, opts?: { gain?: number }):
 }
 
 export function playItem(item: ContentItem): Promise<void> {
+  // Item'a özel bir ses dosyası varsa (Elifbâ mp3'leri) doğrudan onu çal.
+  if (item.audio) {
+    return playUrl(item.audio, { fallbackText: item.speech, fallbackLang: item.lang, gain: item.audioGain });
+  }
   return playSpeech(item.speech, item.lang, { gain: item.audioGain });
+}
+
+function playUrl(url: string, opts: { fallbackText?: string; fallbackLang?: Lang; gain?: number }): Promise<void> {
+  stopCurrent(true);
+  const token = playToken;
+  const gain = opts.gain && opts.gain > 1 ? opts.gain : 1;
+  return new Promise<void>((resolve) => {
+    try {
+      const audio = new Audio(url);
+      audio.preload = "auto";
+      audio.setAttribute("playsinline", "true");
+      activeAudio = audio;
+      let ctxNodes: { src: MediaElementAudioSourceNode; g: GainNode } | null = null;
+      if (gain > 1) {
+        const ctx = getCtx();
+        if (ctx) {
+          try {
+            const src = ctx.createMediaElementSource(audio);
+            const g = ctx.createGain();
+            g.gain.value = gain;
+            src.connect(g).connect(ctx.destination);
+            ctxNodes = { src, g };
+          } catch { /* fallback */ }
+        }
+      }
+      currentResolve = resolve;
+      currentCleanup = () => {
+        cleanupActiveAudio(audio);
+        if (ctxNodes) { try { ctxNodes.src.disconnect(); ctxNodes.g.disconnect(); } catch { /* */ } }
+      };
+      const settle = () => {
+        if (token !== playToken) { resolve(); return; }
+        stopCurrent(false);
+      };
+      audio.addEventListener("ended", settle, { once: true });
+      audio.addEventListener("error", () => {
+        if (token !== playToken) { resolve(); return; }
+        if (opts.fallbackText) void speakWithSynthesis(opts.fallbackText, opts.fallbackLang, token);
+        else settle();
+      }, { once: true });
+      setPlaybackTimeout(token);
+      const p = audio.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          if (token !== playToken) return;
+          if (opts.fallbackText) void speakWithSynthesis(opts.fallbackText, opts.fallbackLang, token);
+          else stopCurrent(false);
+        });
+      }
+    } catch {
+      if (opts.fallbackText) void speakWithSynthesis(opts.fallbackText, opts.fallbackLang, token);
+      else resolve();
+    }
+  });
 }
 
 // İlk kullanıcı etkileşiminde ses katmanını aç.
