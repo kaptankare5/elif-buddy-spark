@@ -131,9 +131,11 @@ const Flashcard = () => {
                 transition: dragStartRef.current === null ? "transform 0.35s ease" : "none",
               }}
             >
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setFlipped((f) => !f)}
+                onKeyDown={(e) => { if (e.key === "Enter") setFlipped((f) => !f); }}
                 className={cn(
                   "relative w-full h-full transform-3d transition-transform duration-500 cursor-pointer",
                   flipped && "rotate-y-180",
@@ -142,7 +144,7 @@ const Flashcard = () => {
               >
                 {/* Ön yüz */}
                 <div className="absolute inset-0 backface-hidden rounded-3xl bg-card border-4 border-primary/30 shadow-elegant flex flex-col items-center justify-center p-6">
-                  <div className="text-9xl font-arabic text-emerald-800 leading-none">
+                  <div className="text-[10rem] font-arabic text-emerald-800 leading-none">
                     {current.emoji}
                   </div>
                   <p className="mt-6 text-xs font-bold text-muted-foreground">Karta dokun • cevabı gör</p>
@@ -151,15 +153,18 @@ const Flashcard = () => {
                 <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-3xl bg-gradient-to-br from-emerald-100 to-teal-50 border-4 border-emerald-300 shadow-elegant flex flex-col items-center justify-center p-6">
                   <div className="text-6xl font-arabic text-emerald-800 mb-4">{current.emoji}</div>
                   <div className="text-3xl font-extrabold text-foreground mb-2">{current.translit || current.label}</div>
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => { e.stopPropagation(); playItem(current); }}
-                    className="mt-2 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-white font-extrabold shadow-soft hover:scale-105 transition-bouncy"
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); playItem(current); } }}
+                    className="mt-2 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-white font-extrabold shadow-soft hover:scale-105 transition-bouncy cursor-pointer"
                   >
                     <Volume2 className="h-5 w-5" /> Dinle
-                  </button>
+                  </div>
                   <p className="mt-6 text-[10px] font-bold text-muted-foreground">← Bilmiyorum • Biliyorum →</p>
                 </div>
-              </button>
+              </div>
             </div>
 
             {flipped && (
