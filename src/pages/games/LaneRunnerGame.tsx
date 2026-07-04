@@ -141,7 +141,7 @@ const LaneRunnerGame = () => {
 
         if (hitTarget) {
           recordGameAnswer(hitTarget.item, true);
-          playSpeech(hitTarget.item.speech, hitTarget.item.lang);
+          playFeedback(true);
           setScore((s) => s + 1); setCombo((c) => c + 1);
           addPop(hitTarget.lane, "+1", true);
           flashFx("good");

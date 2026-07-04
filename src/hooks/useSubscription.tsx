@@ -69,7 +69,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const isPremium = isRcPro || isLegacySub || isAdmin;
-  const hasSuperMode = isPremium; // Tek plan: pro her şeyi açar
+  const hasSuperMode = true; // Süper Öğrenme şimdilik ücretsiz — para kazanma planı yok
   const tier: PlanTier = isPremium ? "pro" : "free";
 
   useEffect(() => { setGamePremium(isPremium); }, [isPremium]);

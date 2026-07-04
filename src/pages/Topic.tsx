@@ -90,7 +90,7 @@ const Topic = () => {
           <PageHeader title={topic.title} backTo="/" centered />
 
           <div className="mb-4 rounded-2xl bg-card border-2 border-primary/20 p-4 text-center shadow-card">
-            <div className="text-6xl font-arabic mb-1 text-emerald-700">{topic.emoji}</div>
+            <div className="text-6xl font-arabic leading-[1.4] mb-1 text-emerald-700">{topic.emoji}</div>
             <p className="text-sm text-muted-foreground">{topic.description}</p>
             <p className="text-xs text-muted-foreground mt-1">🔊 Bir harfe/kelimeye dokun</p>
           </div>
@@ -100,16 +100,23 @@ const Topic = () => {
               <button
                 key={it.id}
                 onClick={() => playItem(it)}
-                className="aspect-square rounded-2xl bg-card border-2 border-primary/20 flex flex-col items-center justify-center shadow-soft transition-bouncy hover:-translate-y-1 hover:shadow-card active:scale-95"
+                className="aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
               >
-                <span className={cn(
-                  "font-arabic text-emerald-800 leading-none",
-                  cols === 4 ? "text-4xl" : cols === 3 ? "text-5xl" : "text-6xl",
-                )}>
-                  {it.emoji}
+                {/* Glif bölgesi — hareke işaretleri taşsa bile alttaki etiket bandına binemez */}
+                <span className="flex-1 min-h-0 flex w-full items-center justify-center px-1">
+                  <span className={cn(
+                    "font-arabic text-emerald-800",
+                    cols === 4 ? "text-3xl sm:text-4xl" : cols === 3 ? "text-[2.5rem] sm:text-5xl" : "text-6xl",
+                    "leading-[1.55]",
+                  )}>
+                    {it.emoji}
+                  </span>
                 </span>
-                {it.translit && cols <= 3 && (
-                  <span className="mt-1 text-[10px] text-muted-foreground font-bold truncate max-w-full px-1">
+                {it.translit && (
+                  <span className={cn(
+                    "relative z-10 w-full shrink-0 truncate border-t border-emerald-100 bg-emerald-50 px-1 py-1 text-center font-extrabold text-emerald-900",
+                    cols === 4 ? "text-[10px]" : "text-[11px]",
+                  )}>
                     {it.translit}
                   </span>
                 )}
@@ -212,11 +219,16 @@ const Topic = () => {
                     )}
                   >
                     <span className={cn(
-                      "font-arabic leading-none text-5xl",
+                      "font-arabic text-5xl leading-[1.5]",
                       (isCorrect || isWrong) ? "text-white" : "text-emerald-800",
                     )}>
                       {opt.emoji}
                     </span>
+                    {isCorrect && (
+                      <span className="text-sm font-extrabold text-white animate-fade-in">
+                        {opt.translit || opt.label}
+                      </span>
+                    )}
                   </button>
                 );
               })}

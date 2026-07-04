@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
-import { playItem, playFeedback, playSpeech } from "@/lib/audio";
+import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle, pickN } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
@@ -202,7 +202,7 @@ const FlappyGame = () => {
         if (collidedTarget) {
           recordLetterMastery(collidedTarget.item.id, true);
           recordGameAnswer(collidedTarget.item, true);
-          playSpeech(collidedTarget.item.speech);
+          playFeedback(true);
           setScore((s) => s + 1);
           next = next.filter((l) => {
             if (l.missed) return true;

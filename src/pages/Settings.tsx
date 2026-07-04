@@ -1,39 +1,46 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Switch } from "@/components/ui/switch";
 import { useSettings } from "@/lib/settings";
 import { playFeedback } from "@/lib/audio";
-import { Volume2, Vibrate, GraduationCap, Shield, Trash2, Lock, Smartphone } from "lucide-react";
+import { Volume2, Vibrate, GraduationCap, Shield, Trash2, Smartphone } from "lucide-react";
 import { useGameMode } from "@/lib/gameMode";
 import { cn } from "@/lib/utils";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
-import { useSubscription } from "@/hooks/useSubscription";
 import { AccountCard } from "@/components/AccountCard";
 import { clearLocalProgress, hydrateSrsFromCloud } from "@/data/srs";
 import { ConfirmDestructive } from "@/components/ConfirmDestructive";
 import { toast } from "sonner";
+import { useTestUnlock, tryUnlockWithCode } from "@/lib/testUnlock";
+import { KeyRound } from "lucide-react";
 
 
 const Settings = () => {
   const [s, set] = useSettings();
   const [mode, setMode] = useGameMode();
   const { session } = useAuth();
-  const { hasSuperMode } = useSubscription();
   const [consent, setConsentState] = useState(consentGiven());
   const [confirmCloudDel, setConfirmCloudDel] = useState(false);
   const [confirmDeviceDel, setConfirmDeviceDel] = useState(false);
   const [deviceScope, setDeviceScope] = useState<"active" | "guest" | "all">(session ? "active" : "guest");
+  const [testUnlock, setTestUnlock] = useTestUnlock();
+  const [unlockCode, setUnlockCode] = useState("");
+
+  const submitUnlockCode = () => {
+    if (tryUnlockWithCode(unlockCode)) {
+      toast.success("Test modu açıldı: kilitli tüm konular açık.");
+      setUnlockCode("");
+    } else {
+      toast.error("Kod yanlış.");
+    }
+  };
 
   useEffect(() => {
     const fn = () => setConsentState(consentGiven());
     window.addEventListener("miniakil:consent-changed", fn);
     return () => window.removeEventListener("miniakil:consent-changed", fn);
   }, []);
-  useEffect(() => {
-    if (!hasSuperMode && mode === "super") setMode("normal");
-  }, [hasSuperMode, mode, setMode]);
   const toggleConsent = async (v: boolean) => {
     setConsent(v); setConsentState(v);
     if (session) await updateMyProfile({ analytics_consent: v });
@@ -106,36 +113,61 @@ const Settings = () => {
                 <div className="text-[10px] font-bold opacity-80 mt-1">Arada test sorusu</div>
               </button>
               <button
-                onClick={() => { if (hasSuperMode) setMode("super"); }}
-                disabled={!hasSuperMode}
+                onClick={() => setMode("super")}
                 className={cn(
                   "rounded-2xl p-3 border-2 font-extrabold text-sm text-left transition-bouncy relative",
-                  mode === "super" && hasSuperMode
+                  mode === "super"
                     ? "bg-warning text-warning-foreground border-warning shadow-soft"
-                    : "bg-muted/40 border-border text-foreground",
-                  !hasSuperMode && "opacity-70"
+                    : "bg-muted/40 border-border text-foreground"
                 )}
               >
                 ⚡ Süper Öğrenme
                 <div className="text-[10px] font-bold opacity-80 mt-1">Her zaman test, hep ilerleme</div>
-                {!hasSuperMode && (
-                  <span className="absolute top-1 right-1 inline-flex items-center gap-0.5 rounded-full bg-warning/90 text-warning-foreground px-1.5 py-0.5 text-[9px] font-extrabold">
-                    <Lock className="h-2.5 w-2.5" /> 249₺
-                  </span>
-                )}
               </button>
             </div>
-            {!hasSuperMode && (
-              <Link
-                to="/abonelik"
-                className="mt-2 block text-center text-[11px] font-extrabold text-warning underline"
-              >
-                Süper Öğrenme'yi açmak için 249₺ paketine geç →
-              </Link>
-            )}
             <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
               Süper modda sadece şu oyunlar gösterilir: Yılan, Uzay, Balon, Kutu Boşalt, Hızlı Quiz. İpucu halkası yalnız seviye 1'de görünür.
             </p>
+          </div>
+
+          {/* Test kilidi */}
+          <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">
+            <div className="flex items-center gap-3 mb-3">
+              <KeyRound className="h-7 w-7 text-primary" />
+              <div className="flex-1">
+                <h3 className="text-base font-extrabold text-foreground">Test Kilidi</h3>
+                <p className="text-xs text-muted-foreground">Kod gir, kilitli tüm konular açılsın</p>
+              </div>
+            </div>
+            {testUnlock ? (
+              <div className="flex items-center justify-between rounded-xl bg-success/15 border-2 border-success/40 px-3 py-2">
+                <span className="text-xs font-extrabold text-success">✓ Test modu aktif — kilitli konular açık</span>
+                <button
+                  onClick={() => setTestUnlock(false)}
+                  className="text-[11px] font-extrabold text-destructive underline"
+                >
+                  Kapat
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  value={unlockCode}
+                  onChange={(e) => setUnlockCode(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") submitUnlockCode(); }}
+                  placeholder="Kod"
+                  className="flex-1 rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={submitUnlockCode}
+                  className="rounded-xl bg-primary text-primary-foreground px-4 py-2 font-extrabold text-sm active:scale-95"
+                >
+                  Aç
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
