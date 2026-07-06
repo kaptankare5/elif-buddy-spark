@@ -20,6 +20,8 @@ export interface ContentItem {
   value?: number;
   colorKey?: string;
   audioGain?: number;
+  // Konu sayfasında ayrı başlık altında gösterilecek grup (örn. "Ekstralar")
+  section?: string;
 }
 
 export interface ContentTopic {
@@ -36,6 +38,8 @@ export interface ContentTopic {
   noPractice?: boolean;
   // Konu sayfasında grid kaç kolon olsun (varsayılan 4)
   gridCols?: 2 | 3 | 4;
+  // Konu videosu (YouTube izleme linki) — konu sayfasında gömülü oynatılır
+  video?: string;
 }
 
 export type SubjectId = "elifba";
