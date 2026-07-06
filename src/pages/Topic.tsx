@@ -33,6 +33,12 @@ function buildQuestion(items: ContentItem[], targetId: string) {
   return { target, options: shuffle([target, ...wrongs]) };
 }
 
+// YouTube izleme linkini gömülü oynatıcı linkine çevirir
+function ytEmbedUrl(url: string): string | null {
+  const m = url.match(/[?&]v=([\w-]+)/) || url.match(/youtu\.be\/([\w-]+)/);
+  return m ? `https://www.youtube.com/embed/${m[1]}` : null;
+}
+
 const NS = "quiz" as const;
 
 const Topic = () => {
@@ -81,6 +87,36 @@ const Topic = () => {
 
   const cols = topic.gridCols ?? 4;
   const colClass = cols === 2 ? "grid-cols-2" : cols === 3 ? "grid-cols-3" : "grid-cols-4";
+  const baseItems = items.filter((it) => !it.section);
+  const extraItems = items.filter((it) => it.section);
+  const videoEmbed = topic.video ? ytEmbedUrl(topic.video) : null;
+
+  const renderTile = (it: ContentItem) => (
+    <button
+      key={it.id}
+      onClick={() => playItem(it)}
+      className="aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
+    >
+      {/* Glif bölgesi — hareke işaretleri taşsa bile alttaki etiket bandına binemez */}
+      <span className="flex-1 min-h-0 flex w-full items-center justify-center px-1">
+        <span className={cn(
+          "font-arabic text-emerald-800",
+          cols === 4 ? "text-3xl sm:text-4xl" : cols === 3 ? "text-[2.5rem] sm:text-5xl" : "text-6xl",
+          "leading-[1.55]",
+        )}>
+          {it.emoji}
+        </span>
+      </span>
+      {it.translit && (
+        <span className={cn(
+          "relative z-10 w-full shrink-0 truncate border-t border-emerald-100 bg-emerald-50 px-1 py-1 text-center font-extrabold text-emerald-900",
+          cols === 4 ? "text-[10px]" : "text-[11px]",
+        )} dir="ltr">
+          {it.translit}
+        </span>
+      )}
+    </button>
+  );
 
   // === BROWSE (harflere tıkla → sesini çal) ===
   if (mode === "browse") {
@@ -92,37 +128,46 @@ const Topic = () => {
           <div className="mb-4 rounded-2xl bg-card border-2 border-primary/20 p-4 text-center shadow-card">
             <div className="text-6xl font-arabic leading-[1.4] mb-1 text-emerald-700">{topic.emoji}</div>
             <p className="text-sm text-muted-foreground">{topic.description}</p>
-            <p className="text-xs text-muted-foreground mt-1">🔊 Bir harfe/kelimeye dokun</p>
+            {items.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">🔊 Bir harfe/kelimeye dokun</p>
+            )}
           </div>
 
-          <div className={cn("grid gap-2 mb-6", colClass)}>
-            {items.map((it) => (
-              <button
-                key={it.id}
-                onClick={() => playItem(it)}
-                className="aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
-              >
-                {/* Glif bölgesi — hareke işaretleri taşsa bile alttaki etiket bandına binemez */}
-                <span className="flex-1 min-h-0 flex w-full items-center justify-center px-1">
-                  <span className={cn(
-                    "font-arabic text-emerald-800",
-                    cols === 4 ? "text-3xl sm:text-4xl" : cols === 3 ? "text-[2.5rem] sm:text-5xl" : "text-6xl",
-                    "leading-[1.55]",
-                  )}>
-                    {it.emoji}
-                  </span>
+          {/* Konu videosu (Diyanet karekod videosu) */}
+          {videoEmbed && (
+            <div className="mb-4 overflow-hidden rounded-2xl border-2 border-primary/20 shadow-card bg-black">
+              <div className="aspect-video">
+                <iframe
+                  src={videoEmbed}
+                  title={`${topic.title} videosu`}
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Arapça sağdan sola okunur — grid sağdan başlar */}
+          {baseItems.length > 0 && (
+            <div dir="rtl" className={cn("grid gap-2 mb-6", colClass)}>
+              {baseItems.map(renderTile)}
+            </div>
+          )}
+
+          {extraItems.length > 0 && (
+            <>
+              <h3 className="mb-2 text-center font-extrabold text-foreground">
+                ✨ Ekstralar
+                <span className="block text-[11px] font-bold text-muted-foreground">
+                  Kitaptaki alıştırmalardan
                 </span>
-                {it.translit && (
-                  <span className={cn(
-                    "relative z-10 w-full shrink-0 truncate border-t border-emerald-100 bg-emerald-50 px-1 py-1 text-center font-extrabold text-emerald-900",
-                    cols === 4 ? "text-[10px]" : "text-[11px]",
-                  )}>
-                    {it.translit}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+              </h3>
+              <div dir="rtl" className={cn("grid gap-2 mb-6", colClass)}>
+                {extraItems.map(renderTile)}
+              </div>
+            </>
+          )}
 
           {!topic.noPractice && (
             <div className="rounded-2xl bg-card border-2 border-primary/20 p-4 shadow-card">
