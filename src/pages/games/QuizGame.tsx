@@ -6,14 +6,14 @@ import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { Volume2 } from "lucide-react";
 import { gamePool, shuffle } from "./_shared";
-import { recordGameAnswer } from "@/lib/gameProgress";
+import { recordGameAnswer, enqueueRetryItem, pickNextGameItem, clearRetryQueue } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 
 interface Q { target: ContentItem; options: ContentItem[]; }
 
 function makeQ(): Q {
   const pool = gamePool();
-  const target = pool[Math.floor(Math.random() * pool.length)];
+  const target = pickNextGameItem(pool) ?? pool[Math.floor(Math.random() * pool.length)];
   const wrongs = shuffle(pool.filter((p) => p.id !== target.id)).slice(0, 3);
   return { target, options: shuffle([target, ...wrongs]) };
 }
