@@ -1304,7 +1304,7 @@ const SubwayGame = () => {
               <div className="text-sm font-bold text-muted-foreground text-center px-6 leading-relaxed">
                 Sesi dinle, doğru harfin panosundan geç!<br />
                 ⬅➡ şerit • ⬆ zıpla • ⬇ kay<br />
-                Engellerin üstünde koşabilirsin 🏃‍♂️<br />
+                Engellerin üstünde koşabilirsin<br />
                 <span className="text-info">Başlamak için dokun</span>
               </div>
             </div>
