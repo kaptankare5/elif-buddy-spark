@@ -204,8 +204,10 @@ const Topic = () => {
     setPicked(opt.id);
     const correct = opt.id === q.target.id;
     const responseMs = questionStartRef.current ? Date.now() - questionStartRef.current : undefined;
-    await recordSrsAnswer(NS, topic.id, q.target.id, correct, { responseMs });
+    const targetId = q.target.id;
+    await recordSrsAnswer(NS, topic.id, targetId, correct, { responseMs });
     await playFeedback(correct);
+    if (!correct) retryIdRef.current = targetId;
     setTimeout(() => setQ(null), correct ? 700 : 2000);
   };
 
