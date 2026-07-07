@@ -249,7 +249,8 @@ function recordLocalSrsAnswer(
     e.correct += 1;
     if (e.level < 4) e.level = ((e.level + 1) as Level);
   } else {
-    if (e.level > 1) e.level = ((e.level - 1) as Level);
+    // Yanlış cevapta 2 seviye düş (alt sınır 1)
+    e.level = (Math.max(1, e.level - 2) as Level);
   }
 
   // "Biliyordu" tespiti (Firebase mantığıyla)
