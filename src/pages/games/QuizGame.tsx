@@ -48,12 +48,13 @@ const QuizGame = () => {
     if (correct) setScore((s) => s + 1);
     const responseMs = Date.now() - questionStartRef.current;
     recordGameAnswer(q.target, correct, { responseMs, gameId: "quiz" });
+    if (!correct) enqueueRetryItem(q.target);
     await playFeedback(correct);
     setTimeout(() => { setQ(makeQ()); setPicked(null); }, correct ? 700 : 1800);
   };
 
   const ended = time <= 0;
-  const reset = () => { setScore(0); setTime(60); setQ(makeQ()); setPicked(null); };
+  const reset = () => { clearRetryQueue(); setScore(0); setTime(60); setQ(makeQ()); setPicked(null); };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary/40 to-background">
