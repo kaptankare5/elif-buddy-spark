@@ -1,32 +1,24 @@
-# Tren Sörfü — Tasarım Dokümanı (v2)
+# ElifBâ Koşusu — Tasarım Dokümanı (v2)
 
-Subway Surfers tarzı, gerçek 3D, eğitici sonsuz koşu oyunu. Elifbâ harf öğrenimini
-Subway Surfers'ın kanıtlanmış akış (flow) mekanikleriyle birleştirir.
+3D eğitici sonsuz koşu oyunu. Elifbâ harf öğrenimini, refleks ve akış (flow)
+mekanikleriyle birleştirir. Karakter olarak koşan çocuk resmi kullanılır.
 
-## 1. Araştırma: Subway Surfers nasıl oynanır?
-
-Kaynaklardan derlenen çekirdek mekanikler:
+## 1. Çekirdek mekanikler
 
 - **3 şerit, otomatik ileri koşu.** Karakter durmaz; oyuncu yalnızca tepki verir.
 - **Dört yön kontrol:** sola/sağa kaydır = şerit değiştir, yukarı kaydır = zıpla,
   aşağı kaydır = eğilerek kay (roll).
-- **Trenler iki tiptir:** çoğu **sabit (park halinde)** durur; bazıları **karşıdan
-  gelir** (oyuncuya doğru hareket eder). Trenlerin içinden geçilmez, üstlerinden
-  normal zıplamayla aşılmaz.
-- **Tren üstünde koşulur:** bazı trenlerin **rampası** vardır; rampadan çıkıp tren
-  üstünde koşulur, üstte altın/güç toplanır ve **trenden trene zıplanır**.
+- **Engeller iki tiptir:** çoğu **sabit (park halinde)** durur; bazıları **oyuncuya
+  doğru hareket eder**. Engel içinden geçilmez, üstünden zıplamayla aşılır.
+- **Yüksek platformda koşma:** bazı engellerin **rampası** vardır; rampadan çıkıp
+  üstte koşulur, üstte altın/güç toplanır ve **platformdan platforma zıplanır**.
 - **Bariyer çeşitleri:** alçak bariyer (üstünden zıpla), üst bariyer/tabela
   (altından kayarak geç). Her bariyer tipi farklı aksiyon ister — çeşitlilik
   akışın kalbidir.
 - **Güçler:** Jetpack (her şeyin üstünden uç), Süper Ayakkabı (yüksek zıpla),
-  Mıknatıs (altınları çek), 2x Çarpan. Hoverboard bir çarpışmadan korur.
-- **Altınlar** çizgi ve kavis halinde dizilir; tren üstlerinde de bulunur.
-- **Hız zamanla artar**; çarpışma = yakalanma. (Bizde çocuk dostu: kalp sistemi.)
-
-Kaynaklar: [Subway Surfers Wiki — Trains](https://subwaysurf.fandom.com/wiki/Trains),
-[Subway Surfers Wiki — Obstacles](https://subwaysurf.fandom.com/wiki/Obstacles),
-[How to Play Subway Surfers](https://subwayrunner.com/blogs/how-to-play-subway-surfers),
-[Beginner Guide](https://www.subwaysrf.com/how-to-play-subway-surfers/).
+  Mıknatıs (altınları çek), 2x Çarpan.
+- **Altınlar** çizgi ve kavis halinde dizilir; yüksek platformlarda da bulunur.
+- **Hız zamanla artar**; çarpışma = kalp kaybı. Çocuk dostu: kalp sistemi.
 
 ## 2. Eğitim döngüsü (oyunun "neden"i)
 
@@ -42,32 +34,31 @@ Kaynaklar: [Subway Surfers Wiki — Trains](https://subwaysurf.fandom.com/wiki/T
    kuyruğuna girer; ipucu halkası normal modda hep, süper modda yalnız seviye
    1'de görünür.
 
-Pano dalgaları arasındaki bölge **saf Subway Surfers**tır: trenler, bariyerler,
+Pano dalgaları arasındaki bölge **saf sonsuz koşudur**: engeller, bariyerler,
 altınlar. Böylece soru-cevap ritmi (öğrenme) ile refleks koşusu (eğlence/flow)
 nöbetleşe akar; oyuncu ne sıkılır ne bunalır.
 
 ## 3. Mekanikler
 
 ### Hareket
-- 3 şerit (x = −2.3 / 0 / +2.3), şeritler arası yumuşak geçiş.
-- **Zıplama:** balistik (v₀≈11, g≈−30) → tepe ~2.0 birim; tren üstüne (1.7) çıkar.
+- 3 şerit (x = −3.3 / 0 / +3.3), şeritler arası yumuşak geçiş.
+- **Zıplama:** balistik (v₀≈11, g≈−30) → tepe ~2.0 birim; yüksek platform (1.7) çıkar.
 - **Kayma:** 0.8 sn eğilme; üst bariyerin altından geçirir; görsel squash.
-- **Tren üstü koşma:** park treni üstü koşulabilir zemindir (destek yüksekliği
-  1.7). Trenden trene şerit değiştirilebilir, tren bitince düşülür.
-- **Rampalı vagon:** trenin oyuncuya bakan ucunda rampa varsa koşarak çıkılır
+- **Yüksek platformda koşma:** rampa ile çıkılan platform üstü koşulabilir zemindir.
+- **Rampalı vagon:** engelin oyuncuya bakan ucunda rampa varsa koşarak çıkılır
   (çarpma yok, destek yüksekliği rampa boyunca 0→1.7 tırmanır).
 
 ### Engeller (pano dalgaları arasında)
 | Engel | Doğru aksiyon | Yanlışsa |
 |---|---|---|
-| Park treni (rampasız) | Şerit değiştir **veya** üstüne zıpla | Tökezleme |
-| Park treni (rampalı) | Rampadan çık, üstte altın topla | — |
-| Karşıdan gelen tren (farlı, hızlı) | Şeridi boşalt | Tökezleme |
+| Sabit engel (rampasız) | Şerit değiştir **veya** üstüne zıpla | Tökezleme |
+| Sabit engel (rampalı) | Rampadan çık, üstte altın topla | — |
+| Hareketli engel | Şeridi boşalt | Tökezleme |
 | Alçak bariyer | Üstünden **zıpla** | Tökezleme |
 | Üst tabela | Altından **kay** | Tökezleme |
 
 Kurallar: her engel sırasında **en az bir şerit boş**; pano dalgasının 15 birim
-önü engelsiz (cevap manevrasına alan); aynı anda en fazla 1 karşıdan gelen tren.
+önü engelsiz (cevap manevrasına alan); aynı anda en fazla 1 hareketli engel.
 
 ### Tökezleme (çocuk dostu çarpışma)
 Anında ölüm yok: çarpınca kalp −1, yanlış sesi, kamera sarsıntısı, 1.4 sn
@@ -75,8 +66,8 @@ Anında ölüm yok: çarpınca kalp −1, yanlış sesi, kamera sarsıntısı, 1
 
 ### Pano dalgaları
 - **Yer panosu (varsayılan):** direkli tabelalar zeminde.
-- **Tren üstü panosu (skor>30, ~%25):** 3 şeritte de rampalı trenler; panolar
-  tren üstü hizasında — Subway Surfers'ın "üstte koşu" anı. Cevap yine şeritle.
+- **Yüksek pano (skor>30, ~%25):** 3 şeritte de rampalı engeller; panolar
+  yüksek platform hizasında — üstte koşu anı. Cevap yine şeritle.
 
 ### Güçler (doğru cevapta şansla, tek seferde bir güç)
 - 🚀 **Jetpack** (4.5 sn): her şeyin üstünden uçar, havada altın dizileri.
@@ -92,8 +83,10 @@ Anında ölüm yok: çarpınca kalp −1, yanlış sesi, kamera sarsıntısı, 1
 - **React Three Fiber** (`three` zaten bağımlılıkta), tek `<Canvas>`.
 - **Arapça harfler canvas dokusuyla** (512px, beyaz pano + koyu harf): tarayıcı
   metin şekillendirmesi kullanıldığından harekeler kusursuz; troika'ya gerek yok.
+- **Koşan çocuk karakteri** şeffaf PNG olarak yüklenir ve sprite/levha olarak
+  sahneye yerleştirilir.
 - **Tek dünya grubu** ileri kayar (`group.position.z = D`); tüm engel/pano/altın
-  sabit yerel z'de durur → hareket tek yerde. Karşıdan gelen trenler ek yerel
+  sabit yerel z'de durur → hareket tek yerde. Hareketli engeller ek yerel
   hızla ilerler.
 - **Tek simülasyon döngüsü** (Director `useFrame`): fizik (y/vy/destek), çarpışma,
   spawn zamanlaması, kamera. React state yalnızca olaylarla değişir (spawn,
