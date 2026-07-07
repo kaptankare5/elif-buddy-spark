@@ -5,7 +5,7 @@ import { useGameMode, SUPER_MODE_GAMES } from "@/lib/gameMode";
 
 
 const GAMES = [
-  { id: "subway", title: "ElifBâ Koşusu", emoji: "🏃", color: "from-sky-500 to-emerald-500", desc: "3D koşu! Doğru harfin şeridine geç" },
+  { id: "subway", title: "Tren Sörfü", emoji: "🚄", color: "from-sky-500 to-emerald-500", desc: "3D koşu! Doğru harfin rayına geç" },
   { id: "puzzle", title: "Yapboz", emoji: "🧩", color: "from-warning to-topic-pink", desc: "Parçaları birleştir, sesi duy" },
   { id: "runner", title: "Uzay Savaşı", emoji: "🚀", color: "from-indigo-500 to-fuchsia-500", desc: "Doğru hedefi vur, yanlışı vurma" },
   

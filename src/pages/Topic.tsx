@@ -51,7 +51,6 @@ const Topic = () => {
   const [q, setQ] = useState<{ target: ContentItem; options: ContentItem[] } | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const questionStartRef = useRef<number>(0);
-  const retryIdRef = useRef<string | null>(null);
 
   const items = topic?.items || [];
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
@@ -59,19 +58,12 @@ const Topic = () => {
   useEffect(() => {
     setQ(null);
     setPicked(null);
-    retryIdRef.current = null;
   }, [topicId, mode]);
 
   useEffect(() => {
     if (mode !== "test" || !topic || itemIds.length === 0 || q) return;
     if (topic.noPractice) return;
-    let tid: string;
-    if (retryIdRef.current && itemIds.includes(retryIdRef.current)) {
-      tid = retryIdRef.current;
-      retryIdRef.current = null;
-    } else {
-      tid = pickNextLetter(NS, topic.id, itemIds);
-    }
+    const tid = pickNextLetter(NS, topic.id, itemIds);
     setQ(buildQuestion(items, tid));
     setPicked(null);
     questionStartRef.current = Date.now();
@@ -96,7 +88,11 @@ const Topic = () => {
   const cols = topic.gridCols ?? 4;
   const colClass = cols === 2 ? "grid-cols-2" : cols === 3 ? "grid-cols-3" : "grid-cols-4";
   const baseItems = items.filter((it) => !it.section);
-  const extraItems = items.filter((it) => it.section);
+  // Bölümler ilk görülme sırasına göre (Harfler'de "1. Bölüm…", diğer konularda "Ekstralar")
+  const sectionOrder: string[] = [];
+  for (const it of items) {
+    if (it.section && !sectionOrder.includes(it.section)) sectionOrder.push(it.section);
+  }
   const videoEmbed = topic.video ? ytEmbedUrl(topic.video) : null;
 
   const renderTile = (it: ContentItem) => (
@@ -163,19 +159,21 @@ const Topic = () => {
             </div>
           )}
 
-          {extraItems.length > 0 && (
-            <>
+          {sectionOrder.map((sec) => (
+            <div key={sec}>
               <h3 className="mb-2 text-center font-extrabold text-foreground">
-                ✨ Ekstralar
-                <span className="block text-[11px] font-bold text-muted-foreground">
-                  Kitaptaki alıştırmalardan
-                </span>
+                {sec === "Ekstralar" ? "✨ Ekstralar" : sec}
+                {sec === "Ekstralar" && (
+                  <span className="block text-[11px] font-bold text-muted-foreground">
+                    Kitaptaki alıştırmalardan
+                  </span>
+                )}
               </h3>
               <div dir="rtl" className={cn("grid gap-2 mb-6", colClass)}>
-                {extraItems.map(renderTile)}
+                {items.filter((it) => it.section === sec).map(renderTile)}
               </div>
-            </>
-          )}
+            </div>
+          ))}
 
           {!topic.noPractice && (
             <div className="rounded-2xl bg-card border-2 border-primary/20 p-4 shadow-card">
@@ -204,10 +202,8 @@ const Topic = () => {
     setPicked(opt.id);
     const correct = opt.id === q.target.id;
     const responseMs = questionStartRef.current ? Date.now() - questionStartRef.current : undefined;
-    const targetId = q.target.id;
-    await recordSrsAnswer(NS, topic.id, targetId, correct, { responseMs });
+    await recordSrsAnswer(NS, topic.id, q.target.id, correct, { responseMs });
     await playFeedback(correct);
-    if (!correct) retryIdRef.current = targetId;
     setTimeout(() => setQ(null), correct ? 700 : 2000);
   };
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
-import { playFeedback, playSpeech } from "@/lib/audio";
+import { playFeedback, playItem } from "@/lib/audio";
 import { gamePool, pickN } from "./_shared";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
@@ -54,7 +54,9 @@ const LaneRunnerGame = () => {
     const item = pickNextGameItem(pool) || pool[0];
     setTarget(item);
     if (!silent && !pausedRef.current) {
-      setTimeout(() => playSpeech(`Hangisi ${item.speech}?`, item.lang), 80);
+      // Gerçek hoca sesi: harfin mp3'ünü çal (kompozit "Hangisi X?" cümlesi
+      // manifest'te olmadığından robotik TTS'e düşürüyordu).
+      setTimeout(() => playItem(item), 80);
     }
   }, []);
 
@@ -64,7 +66,7 @@ const LaneRunnerGame = () => {
     if (gameOver) return;
     if (paused) {
       setPaused(false);
-      if (target) setTimeout(() => playSpeech(`Hangisi ${target.speech}?`, target.lang), 120);
+      if (target) setTimeout(() => playItem(target), 120);
       return;
     }
     setLane((l) => {
@@ -209,7 +211,7 @@ const LaneRunnerGame = () => {
             </div>
           </div>
           <button
-            onClick={() => target && playSpeech(`Hangisi ${target.speech}?`, target.lang)}
+            onClick={() => target && playItem(target)}
             disabled={!target}
             className="rounded-xl bg-primary text-primary-foreground p-2 shadow-soft border-2 border-primary font-bold flex items-center justify-center gap-1 disabled:opacity-40"
           >
