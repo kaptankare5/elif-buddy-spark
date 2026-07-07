@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { playItem, playFeedback, playSpeech } from "@/lib/audio";
+import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle } from "./_shared";
 import { useAge } from "@/lib/age";
 import type { ContentItem } from "@/data/types";
@@ -68,12 +68,9 @@ const PuzzleGame = () => {
       setSolved(true);
       setScore((s) => s + 1);
       if (item) {
-        // Olumlu ses → "Tebrikler!" → nesnenin adı
+        // Doğru cevap sesi → sonra harfin gerçek okunuşu
         playFeedback(true);
-        setTimeout(async () => {
-          await playSpeech("Tebrikler!", "tr");
-          void playItem(item);
-        }, 300);
+        setTimeout(() => { void playItem(item); }, 300);
       }
     }
   };

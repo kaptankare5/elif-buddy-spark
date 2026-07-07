@@ -23,6 +23,7 @@ export interface LetterSrsEntry {
   msToLearn?: number;      // Seviye 3'e ulaştığı andaki toplam süre (ms)
   knewBefore?: boolean;    // Daha önce biliyordu mu?
   learnedAt?: number;      // Seviye 3'e ilk ulaştığı epoch ms
+  consecutiveCorrect?: number; // Aynı harfte üst üste doğru sayısı (yanlışta sıfırlanır) — L4 mandalı için
 }
 
 export type TopicSrs = Record<string, LetterSrsEntry>;
@@ -247,9 +248,19 @@ function recordLocalSrsAnswer(
   }
   if (correct) {
     e.correct += 1;
-    if (e.level < 4) e.level = ((e.level + 1) as Level);
+    e.consecutiveCorrect = (e.consecutiveCorrect || 0) + 1;
+    if (e.level < 3) {
+      // L1→L2, L2→L3: tek doğru yeterli
+      e.level = ((e.level + 1) as Level);
+    } else if (e.level === 3) {
+      // L3→L4 (en üst): mandal etkisini kır — aynı harfte üst üste 2 doğru gerekir,
+      // böylece harf tek şanslık bir doğruyla en üste zıplayamaz.
+      if (e.consecutiveCorrect >= 2) e.level = 4;
+    }
   } else {
-    if (e.level > 1) e.level = ((e.level - 1) as Level);
+    // Yanlışta 2 seviye düş (kullanıcı isteği — sabit kalacak).
+    e.consecutiveCorrect = 0;
+    e.level = (Math.max(1, e.level - 2) as Level);
   }
 
   // "Biliyordu" tespiti (Firebase mantığıyla)

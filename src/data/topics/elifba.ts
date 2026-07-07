@@ -71,6 +71,8 @@ const byName = new Map(LETTERS.map((l) => [l.name, l]));
 const P = "elifba" as const;
 
 // 1. KONU — HARFLER: 28 temel harf
+// Çocuk aşırı yüklenmesin diye 4'erli bölümlere ayrılır (7 bölüm). Bölümler
+// yalnızca görsel gruplamadır — hepsi aynı konudadır, aralarında kilit yoktur.
 const t1_harfler: ContentTopic = {
   id: "harfler",
   parent: P,
@@ -87,6 +89,7 @@ const t1_harfler: ContentTopic = {
     emoji: l.iso,
     translit: l.name,
     audio: audioPath(`basic-${pad2(l.n)}.mp3`),
+    section: `${Math.floor((l.n - 1) / 4) + 1}. Bölüm`,
   })),
 };
 

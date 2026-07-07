@@ -27,7 +27,7 @@ const ShipSvg = memo(() => (
 ));
 ShipSvg.displayName = "ShipSvg";
 import { PageHeader } from "@/components/PageHeader";
-import { playFeedback, playSpeech } from "@/lib/audio";
+import { playFeedback, playItem } from "@/lib/audio";
 import { gamePool, pickN, shuffle } from "./_shared";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
@@ -59,8 +59,10 @@ let UID = 1;
 let POP_UID = 1;
 
 function askTarget(item: ContentItem): Promise<void> {
-  // Önce nesnenin adını seslendir (MP3 varsa onu kullanır)
-  return playSpeech(item.speech, item.lang);
+  // item.audio varsa doğrudan onu çalar; yoksa TTS'e düşer. Doğrudan
+  // playSpeech çağırmak item.audio'yu atlayıp her zaman robotik sese
+  // (TTS) düşmesine sebep oluyordu.
+  return playItem(item);
 }
 
 const RunnerGame = () => {

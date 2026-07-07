@@ -8,12 +8,14 @@ export type GameMode = "normal" | "super";
 const KEY = "elifba-game-mode-v1";
 const EVENT = "elifba-game-mode-updated";
 
+// Varsayılan mod artık Süper Öğrenme — kullanıcı isterse Ayarlar'dan
+// kendisi Normal'e geçebilir (bu tercih localStorage'a yazılır).
 export function getGameMode(): GameMode {
-  if (typeof window === "undefined") return "normal";
+  if (typeof window === "undefined") return "super";
   try {
     const v = localStorage.getItem(KEY);
-    return v === "super" ? "super" : "normal";
-  } catch { return "normal"; }
+    return v === "normal" ? "normal" : "super";
+  } catch { return "super"; }
 }
 
 export function setGameMode(m: GameMode) {

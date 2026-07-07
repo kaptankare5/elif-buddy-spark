@@ -122,6 +122,10 @@ function boardTexture(text: string): THREE.CanvasTexture {
   const c = document.createElement("canvas");
   c.width = cW; c.height = cH;
   const g = c.getContext("2d")!;
+  // RTL yönü şart: harfler artık tatweel (ـ) ile sarılı geliyor, doğru
+  // bitişik şekli (init/med/fin) fontun kendi Arapça biçimlendirmesi
+  // seçsin diye — LTR'de tatweel bağlamı doğru kurulmuyor.
+  g.direction = "rtl";
   // beyaz yuvarlak köşeli pano
   g.clearRect(0, 0, cW, cH);
   const r = 56;
@@ -1092,7 +1096,8 @@ const SubwayGame = () => {
       setStreak(0);
       setScore((sc) => Math.max(0, sc - 5));
       s.shake = 0.5;
-      if (isSuper) enqueueRetryItem(gate.target!);
+      // Yanlış cevaplanan harf, moddan bağımsız olarak tekrar sorulsun.
+      enqueueRetryItem(gate.target!);
       showBanner(`Doğrusu: ${gate.target!.translit || gate.target!.label}`, "bad", 1800);
       setLives((l) => {
         const nl = l - 1;
@@ -1100,7 +1105,7 @@ const SubwayGame = () => {
         return nl;
       });
     }
-  }, [isSuper, showBanner]);
+  }, [showBanner]);
 
   const stumble = useCallback(() => {
     playFeedback(false);

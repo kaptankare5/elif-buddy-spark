@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { LangToggle } from "@/components/LangToggle";
-import { playItem, playSpeech, playFeedback } from "@/lib/audio";
+import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { gamePool, getGameLang, pickN, shuffle } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
@@ -251,7 +251,7 @@ const Match3Game = () => {
           const opts = shuffle([target, ...distractors]);
           setTimeout(() => {
             setQuiz({ target, options: opts });
-            playSpeech(target.speech);
+            playItem(target);
           }, 200);
         }
         return curr;
@@ -321,7 +321,7 @@ const Match3Game = () => {
               <div className="text-xs font-bold text-muted-foreground">🎯 Sınav</div>
               <p className="text-base font-extrabold text-center">Sesi dinle, doğru harfi seç</p>
               <button
-                onClick={() => playSpeech(quiz.target.speech)}
+                onClick={() => playItem(quiz.target)}
                 className="rounded-full bg-primary text-primary-foreground px-4 py-2 font-bold shadow-soft text-sm"
               >
                 🔊 Tekrar dinle

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
-import { playItem, playFeedback, playSpeech } from "@/lib/audio";
+import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle, pickN } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
@@ -179,7 +179,9 @@ const SnakeGame = () => {
         } else if (food && food.pos.x === next.x && food.pos.y === next.y) {
           grew = true;
           setScore((s) => s + 1);
-          playSpeech(food.item.speech);
+          // Gerçek hoca sesi: item.audio mp3'ünü çal (playSpeech metni manifest'te
+          // aramayıp robotik TTS'e düşürüyordu).
+          playItem(food.item);
           const newEaten = eaten + 1;
           setEaten(newEaten);
           if (newEaten >= 4) {
