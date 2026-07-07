@@ -51,6 +51,7 @@ const Topic = () => {
   const [q, setQ] = useState<{ target: ContentItem; options: ContentItem[] } | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const questionStartRef = useRef<number>(0);
+  const retryIdRef = useRef<string | null>(null);
 
   const items = topic?.items || [];
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
@@ -58,12 +59,19 @@ const Topic = () => {
   useEffect(() => {
     setQ(null);
     setPicked(null);
+    retryIdRef.current = null;
   }, [topicId, mode]);
 
   useEffect(() => {
     if (mode !== "test" || !topic || itemIds.length === 0 || q) return;
     if (topic.noPractice) return;
-    const tid = pickNextLetter(NS, topic.id, itemIds);
+    let tid: string;
+    if (retryIdRef.current && itemIds.includes(retryIdRef.current)) {
+      tid = retryIdRef.current;
+      retryIdRef.current = null;
+    } else {
+      tid = pickNextLetter(NS, topic.id, itemIds);
+    }
     setQ(buildQuestion(items, tid));
     setPicked(null);
     questionStartRef.current = Date.now();
