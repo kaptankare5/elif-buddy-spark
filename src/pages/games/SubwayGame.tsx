@@ -1,14 +1,15 @@
-// 3D "Tren Sörfü" — Subway Surfers tarzı eğitici sonsuz koşu.
-// Tasarım: docs/tren-sorfu-tasarim.md
+// 3D "ElifBâ Koşusu" — eğitici sonsuz koşu oyunu.
+// Tasarım: docs/elifba-kosu-tasarim.md
 //
 // Çekirdek döngü: ses + yazılı soru hedef harfi verir; oyuncu koşarken sabit
-// trenler / karşıdan gelen trenler / bariyerler arasında zıplayıp kayarak
+// engeller / karşıdan gelen engeller / bariyerler arasında zıplayıp kayarak
 // ilerler ve ileride beliren 3 büyük harf panosundan doğrusunun içinden geçer.
 // Doğru: puan + seri + bazen güç (jetpack / 2x / mıknatıs). Yanlış: kalp ve
 // puan kaybı + doğru cevap gösterilir. Cevaplar SRS ilerlemesine işlenir.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { useTexture } from "@react-three/drei";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, pickN, shuffle } from "./_shared";
@@ -335,15 +336,12 @@ function Ground() {
 
 function Player({ sim }: { sim: React.MutableRefObject<Sim> }) {
   const g = useRef<THREE.Group>(null!);
-  const body = useRef<THREE.Group>(null!);
-  const legL = useRef<THREE.Group>(null!);
-  const legR = useRef<THREE.Group>(null!);
-  const armL = useRef<THREE.Group>(null!);
-  const armR = useRef<THREE.Group>(null!);
+  const sprite = useRef<THREE.Sprite>(null!);
   const jet = useRef<THREE.Group>(null!);
   const flameL = useRef<THREE.Mesh>(null!);
   const flameR = useRef<THREE.Mesh>(null!);
   const shadow = useRef<THREE.Mesh>(null!);
+  const map = useTexture("/runner-child.png");
 
   useFrame((st, dRaw) => {
     const s = sim.current;
@@ -352,20 +350,16 @@ function Player({ sim }: { sim: React.MutableRefObject<Sim> }) {
     const t = st.clock.elapsedTime;
     const running = s.running && s.grounded && s.jetT <= 0 && s.slideT <= 0;
     const bob = running ? Math.abs(Math.sin(t * 9)) * 0.09 : 0;
-    g.current.position.set(s.x, s.y + bob, 0);
+    // karakter orta noktası yaklaşık 0.9; sprite'ı bu yüksekliğe oturt
+    g.current.position.set(s.x, s.y + bob + 0.9, 0);
     g.current.rotation.z = (LANE_X[s.lane] - s.x) * -0.09;
     g.current.rotation.x = s.jetT > 0 ? -0.25 : !s.grounded ? -0.12 : 0;
-    // kayma: squash
+    // kayma: dikey olarak sıkıştır
     const squash = s.slideT > 0 ? 0.52 : 1;
-    body.current.scale.y += (squash - body.current.scale.y) * Math.min(1, d * 14);
+    const baseScale = 1.6;
+    sprite.current.scale.set(baseScale, baseScale * squash, 1);
     // hayalet: yanıp sönme
     g.current.visible = s.ghostT > 0 ? Math.floor(t * 12) % 2 === 0 : true;
-    // koşu animasyonu
-    const swing = !s.grounded ? 0.55 : Math.sin(t * 12) * 0.8 * (running ? 1 : 0.1);
-    legL.current.rotation.x = !s.grounded ? -0.5 : swing;
-    legR.current.rotation.x = !s.grounded ? 0.5 : -swing;
-    armL.current.rotation.x = -swing * 0.8;
-    armR.current.rotation.x = swing * 0.8;
     jet.current.visible = s.jetT > 0;
     if (s.jetT > 0) {
       const f = 0.8 + Math.abs(Math.sin(t * 30)) * 0.5;
@@ -381,62 +375,23 @@ function Player({ sim }: { sim: React.MutableRefObject<Sim> }) {
   return (
     <>
       <group ref={g}>
-        <group ref={body}>
-          <mesh position={[0, 1.0, 0]}>
-            <capsuleGeometry args={[0.3, 0.5, 4, 12]} />
-            <meshLambertMaterial color="#a855f7" />
-          </mesh>
-          <mesh position={[0, 1.72, 0]}>
-            <sphereGeometry args={[0.26, 14, 12]} />
-            <meshLambertMaterial color="#ffd9b3" />
-          </mesh>
-          <mesh position={[0, 1.9, 0]}>
-            <sphereGeometry args={[0.24, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshLambertMaterial color="#ef4444" />
-          </mesh>
-          <mesh position={[0, 1.15, 0.28]}>
-            <boxGeometry args={[0.4, 0.5, 0.22]} />
-            <meshLambertMaterial color="#f59e0b" />
-          </mesh>
-          <group ref={armL} position={[-0.42, 1.32, 0]}>
-            <mesh position={[0, -0.24, 0]}>
-              <boxGeometry args={[0.15, 0.5, 0.15]} />
-              <meshLambertMaterial color="#9333ea" />
-            </mesh>
-          </group>
-          <group ref={armR} position={[0.42, 1.32, 0]}>
-            <mesh position={[0, -0.24, 0]}>
-              <boxGeometry args={[0.15, 0.5, 0.15]} />
-              <meshLambertMaterial color="#9333ea" />
-            </mesh>
-          </group>
-          <group ref={legL} position={[-0.15, 0.62, 0]}>
-            <mesh position={[0, -0.28, 0]}>
-              <boxGeometry args={[0.17, 0.55, 0.2]} />
-              <meshLambertMaterial color="#3b82f6" />
-            </mesh>
-          </group>
-          <group ref={legR} position={[0.15, 0.62, 0]}>
-            <mesh position={[0, -0.28, 0]}>
-              <boxGeometry args={[0.17, 0.55, 0.2]} />
-              <meshLambertMaterial color="#3b82f6" />
-            </mesh>
-          </group>
-        </group>
+        <sprite ref={sprite} position={[0, 0, 0]}>
+          <spriteMaterial map={map} transparent alphaTest={0.5} />
+        </sprite>
         <group ref={jet} visible={false}>
-          <mesh position={[-0.14, 1.1, 0.42]}>
+          <mesh position={[-0.14, 0.2, 0.42]}>
             <cylinderGeometry args={[0.11, 0.11, 0.55, 10]} />
             <meshLambertMaterial color="#94a3b8" />
           </mesh>
-          <mesh position={[0.14, 1.1, 0.42]}>
+          <mesh position={[0.14, 0.2, 0.42]}>
             <cylinderGeometry args={[0.11, 0.11, 0.55, 10]} />
             <meshLambertMaterial color="#94a3b8" />
           </mesh>
-          <mesh ref={flameL} position={[-0.14, 0.68, 0.42]} rotation-x={Math.PI}>
+          <mesh ref={flameL} position={[-0.14, -0.22, 0.42]} rotation-x={Math.PI}>
             <coneGeometry args={[0.1, 0.4, 8]} />
             <meshBasicMaterial color="#fb923c" />
           </mesh>
-          <mesh ref={flameR} position={[0.14, 0.68, 0.42]} rotation-x={Math.PI}>
+          <mesh ref={flameR} position={[0.14, -0.22, 0.42]} rotation-x={Math.PI}>
             <coneGeometry args={[0.1, 0.4, 8]} />
             <meshBasicMaterial color="#fbbf24" />
           </mesh>
@@ -1217,7 +1172,7 @@ const SubwayGame = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-100 to-background">
       <main className="container mx-auto max-w-xl px-4 pb-16">
-        <PageHeader title="🚄 Tren Sörfü" backTo="/oyunlar" centered onReset={reset} />
+        <PageHeader title="🏃 ElifBâ Koşusu" backTo="/oyunlar" centered onReset={reset} />
 
         <div className="mb-2 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-success/30">
@@ -1344,12 +1299,12 @@ const SubwayGame = () => {
           {/* başlangıç — ilk açılışta tam talimat */}
           {paused && !started && !gameOver && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/85">
-              <div className="text-5xl mb-2">🚄</div>
+              <div className="text-5xl mb-2">🏃</div>
               <div className="text-xl font-extrabold text-info mb-1">Hazır mısın?</div>
               <div className="text-sm font-bold text-muted-foreground text-center px-6 leading-relaxed">
                 Sesi dinle, doğru harfin panosundan geç!<br />
                 ⬅➡ şerit • ⬆ zıpla • ⬇ kay<br />
-                Trenlerin üstünde koşabilirsin 🚋<br />
+                Engellerin üstünde koşabilirsin<br />
                 <span className="text-info">Başlamak için dokun</span>
               </div>
             </div>
@@ -1382,7 +1337,7 @@ const SubwayGame = () => {
         </div>
 
         <p className="mt-2 text-center text-[11px] font-bold text-muted-foreground">
-          Kaydır: ⬅➡ şerit, ⬆ zıpla, ⬇ kay • Trenlere zıpla, üstünde koş, altın topla!
+          Kaydır: ⬅➡ şerit, ⬆ zıpla, ⬇ kay • Engellere zıpla, üstünde koş, altın topla!
         </p>
 
         <div className="mt-2 grid grid-cols-4 gap-2">
