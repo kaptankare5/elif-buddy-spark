@@ -180,6 +180,18 @@ const Topic = () => {
             )}
           </div>
 
+          {/* Alıştırma yap — sayfanın üstünde, hemen erişilebilir */}
+          {!topic.noPractice && (
+            <div className="mb-4 rounded-2xl bg-card border-2 border-primary/20 p-3 shadow-card">
+              <h3 className="text-center font-extrabold text-foreground mb-2 text-sm">🎯 Alıştırma yap</h3>
+              <div className="grid grid-cols-3 gap-2">
+                <PracticeCard to="#" onClick={() => setMode("test")} icon={<Zap className="h-6 w-6" />} label="Test" color="from-info to-primary" />
+                <PracticeCard to={`/konu/elifba/${topic.id}/flashcard`} icon={<Layers className="h-6 w-6" />} label="Flashcard" color="from-warning to-topic-pink" />
+                <PracticeCard to="/oyunlar" icon={<Sparkles className="h-6 w-6" />} label="Oyunlar" color="from-success to-topic-doga" />
+              </div>
+            </div>
+          )}
+
           {/* Konu videosu (Diyanet karekod videosu) */}
           {videoEmbed && (
             <div className="mb-4 overflow-hidden rounded-2xl border-2 border-primary/20 shadow-card bg-black">
@@ -240,17 +252,6 @@ const Topic = () => {
               </div>
             );
           })}
-
-          {!topic.noPractice && (
-            <div className="rounded-2xl bg-card border-2 border-primary/20 p-4 shadow-card">
-              <h3 className="text-center font-extrabold text-foreground mb-3">Alıştırma yap</h3>
-              <div className="grid grid-cols-3 gap-2">
-                <PracticeCard to="#" onClick={() => setMode("test")} icon={<Zap className="h-6 w-6" />} label="Test" color="from-info to-primary" />
-                <PracticeCard to={`/konu/elifba/${topic.id}/flashcard`} icon={<Layers className="h-6 w-6" />} label="Flashcard" color="from-warning to-topic-pink" />
-                <PracticeCard to="/oyunlar" icon={<Sparkles className="h-6 w-6" />} label="Oyunlar" color="from-success to-topic-doga" />
-              </div>
-            </div>
-          )}
 
           {topic.noPractice && (
             <div className="rounded-2xl bg-muted/50 p-4 text-center text-sm text-muted-foreground">

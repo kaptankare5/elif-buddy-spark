@@ -913,6 +913,7 @@ const SubwayGame = () => {
   const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad" | "power" } | null>(null);
   const [pu, setPu] = useState<{ jet: number; x2: number; mag: number }>({ jet: 0, x2: 0, mag: 0 });
   const [fontTick, setFontTick] = useState(0);
+  const [flash, setFlash] = useState(false); // normal modda doğru cevapta ışık
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { entsRef.current = ents; }, [ents]);
@@ -1083,6 +1084,7 @@ const SubwayGame = () => {
 
     if (correct) {
       playFeedback(true);
+      if (!isSuper) { setFlash(true); setTimeout(() => setFlash(false), 450); } // normal modda ışık
       setStreak((st) => st + 1);
       setScore((sc) => sc + (10 + Math.min(streakRef.current, 5) * 2) * (s.x2T > 0 ? 2 : 1));
       if (s.jetT <= 0 && s.x2T <= 0 && s.magT <= 0) {
@@ -1105,7 +1107,7 @@ const SubwayGame = () => {
         return nl;
       });
     }
-  }, [showBanner]);
+  }, [showBanner, isSuper]);
 
   const stumble = useCallback(() => {
     playFeedback(false);
@@ -1222,7 +1224,7 @@ const SubwayGame = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-100 to-background">
       <main className="container mx-auto max-w-xl px-4 pb-16">
-        <PageHeader title="🚄 Tren Sörfü" backTo="/oyunlar" centered onReset={reset} />
+        <PageHeader title="🏃 ElifBa Koşusu" backTo="/oyunlar" centered onReset={reset} />
 
         <div className="mb-2 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-success/30">
@@ -1307,6 +1309,12 @@ const SubwayGame = () => {
               onTimersEnd={onTimersEnd}
             />
           </Canvas>
+
+          {/* normal modda doğru cevap ışığı */}
+          {flash && (
+            <div className="pointer-events-none absolute inset-0 z-10 animate-fade-in"
+                 style={{ background: "radial-gradient(circle at 50% 55%, hsl(var(--success)/0.5), transparent 62%)" }} />
+          )}
 
           {/* güç rozetleri */}
           <div className="pointer-events-none absolute top-2 right-2 z-20 flex flex-col gap-1 items-end">

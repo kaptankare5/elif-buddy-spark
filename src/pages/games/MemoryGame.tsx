@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { LangToggle } from "@/components/LangToggle";
+import { InGameQuiz } from "@/components/InGameQuiz";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { useGameMode } from "@/lib/gameMode";
 import { gamePool, pickN, shuffle } from "./_shared";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
@@ -23,14 +25,18 @@ function buildBoard(pairs: number): Card[] {
 const PAIRS = 6;
 
 const MemoryGame = () => {
+  const [mode] = useGameMode();
+  const isSuper = mode === "super";
   const [cards, setCards] = useState<Card[]>(() => buildBoard(PAIRS));
   const [first, setFirst] = useState<Card | null>(null);
   const [busy, setBusy] = useState(false);
   const [moves, setMoves] = useState(0);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const matchCountRef = useRef(0); // normal modda 3 eşleşmede 1 gerçek test
 
   const won = useMemo(() => cards.length > 0 && cards.every((c) => c.matched), [cards]);
 
-  const reset = () => { setCards(buildBoard(PAIRS)); setFirst(null); setBusy(false); setMoves(0); };
+  const reset = () => { setCards(buildBoard(PAIRS)); setFirst(null); setBusy(false); setMoves(0); matchCountRef.current = 0; setShowQuiz(false); };
 
   const flip = async (c: Card) => {
     if (busy || c.flipped || c.matched) return;
@@ -47,11 +53,17 @@ const MemoryGame = () => {
     setMoves((m) => m + 1);
     setBusy(true);
     const isMatch = first.item.id === c.item.id;
-    recordGameAnswer(c.item, isMatch);
+    // Süper mod: her eşleşme kararı ilerlemeye sayılır. Normal mod: eğlence —
+    // eşleşmeler SRS'e yazmaz, bunun yerine her 3 eşleşmede gerçek test çıkar.
+    if (isSuper) recordGameAnswer(c.item, isMatch);
     if (isMatch) {
       setCards((cs) => cs.map((x) => x.item.id === c.item.id ? { ...x, matched: true, flipped: true } : x));
       await playItem(c.item);
       setFirst(null); setBusy(false);
+      if (!isSuper) {
+        matchCountRef.current += 1;
+        if (matchCountRef.current % 3 === 0) setShowQuiz(true);
+      }
     } else {
       await playItem(c.item);
       setCards((cs) => cs.map((x) => (x.uid === first.uid || x.uid === c.uid) ? { ...x, flipped: false } : x));
@@ -67,7 +79,6 @@ const MemoryGame = () => {
     const h = () => reset();
     window.addEventListener("games-lang-change", h);
     return () => window.removeEventListener("games-lang-change", h);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -114,6 +125,7 @@ const MemoryGame = () => {
           ))}
         </div>
       </main>
+      {showQuiz && <InGameQuiz onDone={() => setShowQuiz(false)} />}
     </div>
   );
 };

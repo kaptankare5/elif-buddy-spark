@@ -42,6 +42,15 @@ export function recordGameAnswer(
   } catch { /* ignore */ }
 }
 
+// Oyun-içi GERÇEK mini test (çoktan seçmeli soru). Moddan bağımsız her zaman
+// ilerlemeye yazılır — çünkü bu bir testtir (normal modda oyunlar arasında çıkar).
+export function recordInGameTest(item: ContentItem | undefined | null, correct: boolean) {
+  if (!item) return;
+  const t = findTopicOfItem(item.id);
+  if (!t) return;
+  try { recordSrsAnswer(NS, t.topicId, item.id, correct); } catch { /* ignore */ }
+}
+
 export function getGameItemLevel(item: ContentItem | undefined | null): Level {
   if (!item) return 1;
   const t = findTopicOfItem(item.id);

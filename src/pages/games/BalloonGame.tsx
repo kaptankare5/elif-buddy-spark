@@ -8,6 +8,7 @@ import { Volume2 } from "lucide-react";
 import { gamePool, shuffle, pickN } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
+import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 
 interface Balloon {
@@ -22,10 +23,13 @@ interface Balloon {
 const COLORS = ["bg-topic-pink", "bg-topic-blue", "bg-topic-orange", "bg-topic-purple", "bg-success", "bg-warning"];
 
 const BalloonGame = () => {
+  const [mode] = useGameMode();
+  const isSuper = mode === "super";
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [balloons, setBalloons] = useState<Balloon[]>([]);
   const [score, setScore] = useState(0);
   const [misses, setMisses] = useState(0);
+  const [flash, setFlash] = useState(false); // doğru cevapta ışık parlaması (normal mod kolaylık)
   const rafRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(0);
 
@@ -85,6 +89,7 @@ const BalloonGame = () => {
     recordGameAnswer(target, correct);
     if (correct) {
       setScore((s) => s + 1);
+      setFlash(true); setTimeout(() => setFlash(false), 450); // ışık parlaması
       await playFeedback(true);
       setTimeout(newRound, 350);
     } else {
@@ -121,26 +126,37 @@ const BalloonGame = () => {
         </div>
 
         <div className="relative bg-gradient-to-b from-info/10 to-info/30 rounded-3xl shadow-card border-4 border-info/30 overflow-hidden" style={{ height: "60vh" }}>
-          {balloons.map((b, i) => (
-            <button
-              key={b.uid}
-              onClick={() => pop(b)}
-              disabled={b.popped}
-              className={cn(
-                "absolute -translate-x-1/2 transition-opacity",
-                b.popped && "opacity-0 pointer-events-none",
-              )}
-              style={{ left: `${b.x}%`, bottom: `${b.y}%` }}
-            >
-              <div className={cn(
-                "w-16 h-20 rounded-[50%] flex items-center justify-center shadow-card",
-                COLORS[i % COLORS.length],
-              )}>
-                <span className="text-3xl"><EmojiView value={b.item.emoji} /></span>
-              </div>
-              <div className="w-px h-4 bg-foreground/40 mx-auto" />
-            </button>
-          ))}
+          {/* Doğru cevap ışık parlaması (normal modda kolaylık hissi) */}
+          {flash && (
+            <div className="pointer-events-none absolute inset-0 z-10 animate-fade-in"
+                 style={{ background: "radial-gradient(circle at 50% 60%, hsl(var(--warning)/0.55), transparent 60%)" }} />
+          )}
+          {balloons.map((b, i) => {
+            const isCorrect = !!target && b.item.id === target.id;
+            // Normal mod: doğru balon parlayan ipucu halkasıyla belirir (kolaylık).
+            const hint = !isSuper && isCorrect && !b.popped;
+            return (
+              <button
+                key={b.uid}
+                onClick={() => pop(b)}
+                disabled={b.popped}
+                className={cn(
+                  "absolute -translate-x-1/2 transition-opacity",
+                  b.popped && "opacity-0 pointer-events-none",
+                )}
+                style={{ left: `${b.x}%`, bottom: `${b.y}%` }}
+              >
+                <div className={cn(
+                  "w-16 h-20 rounded-[50%] flex items-center justify-center shadow-card",
+                  COLORS[i % COLORS.length],
+                  hint && "ring-4 ring-warning ring-offset-2 ring-offset-transparent animate-pulse",
+                )}>
+                  <span className="text-3xl"><EmojiView value={b.item.emoji} /></span>
+                </div>
+                <div className="w-px h-4 bg-foreground/40 mx-auto" />
+              </button>
+            );
+          })}
         </div>
       </main>
     </div>
