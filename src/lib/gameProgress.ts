@@ -8,6 +8,13 @@ import type { ContentItem } from "@/data/types";
 
 const NS = "quiz" as const;
 
+// Normal modda "arada test" davranışı: oyun içi rutin cevapların yalnızca
+// her N'incisi SRS'e yansır. Böylece Yılan/Runner/Flappy/ElifBâ Koşusu gibi
+// oyunlarda her hedef vuruşu seviyeyi zıplatmaz — ama tam olarak susmaz da.
+// gameId === "quiz" (Hafıza mini-testi, konu Testi) her zaman sayılır.
+const NORMAL_MODE_EVERY = 3;
+let _normalCounter = 0;
+
 export function recordGameAnswer(
   item: ContentItem | undefined | null,
   correct: boolean,
@@ -16,11 +23,12 @@ export function recordGameAnswer(
   if (!item) return;
   const t = findTopicOfItem(item.id);
   if (!t) return;
-  // Normal oyun modu = eğlence odaklı. Oyunlardaki mini-quiz cevapları
-  // SRS seviyesine dokunmaz. Yalnızca ithal "quiz" oyunu (bilinçli test)
-  // ve Süper Öğrenme modu ilerlemeyi günceller.
   const mode = getGameMode();
-  if (mode !== "super" && meta?.gameId !== "quiz") return;
+  const isExplicitQuiz = meta?.gameId === "quiz";
+  if (mode !== "super" && !isExplicitQuiz) {
+    _normalCounter += 1;
+    if (_normalCounter % NORMAL_MODE_EVERY !== 0) return;
+  }
   try {
     recordSrsAnswer(NS, t.topicId, item.id, correct, meta);
   } catch { /* ignore */ }
