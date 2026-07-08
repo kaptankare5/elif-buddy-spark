@@ -74,6 +74,7 @@ const Topic = () => {
     if (mode !== "test" || !topic || unlockedItemIds.length === 0 || q) return;
     if (topic.noPractice) return;
     const pool = items.filter((it) => unlockedItemIds.includes(it.id));
+    // Yanlış cevaplanan harf varsa onu tekrar sor (düzeltici tekrar), yoksa SRS seçer
     let tid: string;
     if (retryIdRef.current && unlockedItemIds.includes(retryIdRef.current)) {
       tid = retryIdRef.current;

@@ -1,6 +1,9 @@
+import { useEffect } from "react";
 import { useParams, Navigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { useGameSession } from "@/hooks/useGameSession";
+import { useGameMode } from "@/lib/gameMode";
 import QuizGame from "./games/QuizGame";
 import MemoryGame from "./games/MemoryGame";
 import BalloonGame from "./games/BalloonGame";
@@ -25,6 +28,18 @@ const Game = () => {
 
 const TrackedGame = ({ gameId }: { gameId: string }) => {
   useGameSession(gameId);
+  const [mode] = useGameMode();
+
+  // Normal modda oyun cevabı "arada test" olarak sayıldığında kısa olumlu
+  // sinyal — çocuğa ilerlediğini hissettirir, akışı bölmez. (Süper modda ve
+  // Quiz oyununda her cevap zaten sayıldığı için bu bildirim gösterilmez.)
+  useEffect(() => {
+    if (mode === "super" || gameId === "quiz") return;
+    const onTest = () => toast("📝 Test sorusu sayıldı! İlerliyorsun ✨", { duration: 1400 });
+    window.addEventListener("elifba-game-test-counted", onTest);
+    return () => window.removeEventListener("elifba-game-test-counted", onTest);
+  }, [mode, gameId]);
+
   switch (gameId) {
     case "memory": return <MemoryGame />;
     case "balloon": return <BalloonGame />;

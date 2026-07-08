@@ -1,19 +1,23 @@
 // Oyunlardaki test-soru cevaplarını ilerleme (SRS) sistemine kaydeder.
-// Böylece oyunlardaki doğru/yanlış cevaplar Progress sayfasındaki konu
-// ilerlemesine yansır.
+//
+// MOD MANTIĞI (tek merkez):
+// - Süper Öğrenme modu: her oyun cevabı ilerlemeye (SRS) etki eder — tam
+//   öğrenme deneyimi.
+// - Normal oyun modu: eğlence önceliklidir; her cevap SRS'i grind'lemez.
+//   Yalnızca her N (NORMAL_TEST_EVERY) cevapta 1'i "arada test" olarak
+//   sayılır (sık değil). Böylece çocuk oynarken az da olsa ilerler.
+// - Gerçek Test/Quiz oyunu (gameId "quiz") her zaman sayılır — o bir testtir.
+// Not: Topic Test ve Flashcard bu fonksiyondan geçmez; onlar recordSrsAnswer'ı
+// doğrudan çağırır ve her zaman ilerlemeye etki eder.
 import { getTopicSrs, pickNextLetterFromTopic, recordSrsAnswer, type Level, type TopicSrs } from "@/data/srs";
 import { findTopicOfItem } from "@/data/subjects";
 import { getGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 
 const NS = "quiz" as const;
-
-// Normal modda "arada test" davranışı: oyun içi rutin cevapların yalnızca
-// her N'incisi SRS'e yansır. Böylece Yılan/Runner/Flappy/ElifBâ Koşusu gibi
-// oyunlarda her hedef vuruşu seviyeyi zıplatmaz — ama tam olarak susmaz da.
-// gameId === "quiz" (Hafıza mini-testi, konu Testi) her zaman sayılır.
-const NORMAL_MODE_EVERY = 3;
-let _normalCounter = 0;
+const NORMAL_TEST_EVERY = 3; // normal modda her 3 cevapta 1'i SRS'e sayılır
+let _normalAnswerCount = 0;
+const GAME_TEST_EVENT = "elifba-game-test-counted";
 
 export function recordGameAnswer(
   item: ContentItem | undefined | null,
@@ -23,12 +27,16 @@ export function recordGameAnswer(
   if (!item) return;
   const t = findTopicOfItem(item.id);
   if (!t) return;
-  const mode = getGameMode();
-  const isExplicitQuiz = meta?.gameId === "quiz";
-  if (mode !== "super" && !isExplicitQuiz) {
-    _normalCounter += 1;
-    if (_normalCounter % NORMAL_MODE_EVERY !== 0) return;
+
+  // Süper mod veya gerçek Quiz oyunu → her zaman say. Normal mod → her 3'te 1.
+  const alwaysCount = getGameMode() === "super" || meta?.gameId === "quiz";
+  if (!alwaysCount) {
+    _normalAnswerCount += 1;
+    if (_normalAnswerCount % NORMAL_TEST_EVERY !== 0) return; // bu cevap eğlence, sayılmaz
+    // Bu cevap "arada test" olarak sayılıyor — küçük görsel sinyal için olay yay.
+    try { window.dispatchEvent(new CustomEvent(GAME_TEST_EVENT, { detail: { correct } })); } catch { /* ignore */ }
   }
+
   try {
     recordSrsAnswer(NS, t.topicId, item.id, correct, meta);
   } catch { /* ignore */ }

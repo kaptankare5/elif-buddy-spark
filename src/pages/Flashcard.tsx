@@ -20,10 +20,9 @@ const NS = "quiz" as const;
 const Flashcard = () => {
   const { subjectId, topicId } = useParams<{ subjectId: string; topicId: string }>();
   const topic = getTopic((subjectId as SubjectId) || "elifba", topicId || "");
-
-  // Flashcard, test gibi yalnızca AÇILAN bölüm harflerini sorar (kilitli
-  // bölümler hem testte hem flashcardta gizli kalır — tutarlı müfredat).
   const tick = useSrsTick(NS);
+
+  // Flashcard da test gibi YALNIZ açık (kilitli olmayan) harfleri sorar.
   const items = useMemo(
     () => (topic ? getUnlockedItemsOf(topic) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
