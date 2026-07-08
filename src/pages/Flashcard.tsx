@@ -20,7 +20,6 @@ const NS = "quiz" as const;
 const Flashcard = () => {
   const { subjectId, topicId } = useParams<{ subjectId: string; topicId: string }>();
   const topic = getTopic((subjectId as SubjectId) || "elifba", topicId || "");
-  useSrsTick(NS);
 
   // Flashcard, test gibi yalnızca AÇILAN bölüm harflerini sorar (kilitli
   // bölümler hem testte hem flashcardta gizli kalır — tutarlı müfredat).
