@@ -71,21 +71,21 @@ const Topic = () => {
   }, [topicId, mode]);
 
   useEffect(() => {
-    if (mode !== "test" || !topic || unlockedItemIds.length === 0 || q) return;
+    if (mode !== "test" || !topic || itemIds.length === 0 || q) return;
     if (topic.noPractice) return;
-    const pool = items.filter((it) => unlockedItemIds.includes(it.id));
-    // Yanlış cevaplanan harf varsa onu tekrar sor (düzeltici tekrar), yoksa SRS seçer
+    // Test, flashcard gibi konudaki TÜM harfleri sorar (kilit filtresi yok).
+    const pool = items;
     let tid: string;
-    if (retryIdRef.current && unlockedItemIds.includes(retryIdRef.current)) {
+    if (retryIdRef.current && itemIds.includes(retryIdRef.current)) {
       tid = retryIdRef.current;
       retryIdRef.current = null;
     } else {
-      tid = pickNextLetter(NS, topic.id, unlockedItemIds);
+      tid = pickNextLetter(NS, topic.id, itemIds);
     }
     setQ(buildQuestion(pool, tid));
     setPicked(null);
     questionStartRef.current = Date.now();
-  }, [mode, topic, unlockedItemIds, q, items]);
+  }, [mode, topic, itemIds, q, items]);
 
   useEffect(() => {
     if (mode === "test" && q?.target) playItem(q.target);

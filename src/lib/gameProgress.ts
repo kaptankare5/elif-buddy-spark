@@ -3,6 +3,7 @@
 // ilerlemesine yansır.
 import { getTopicSrs, pickNextLetterFromTopic, recordSrsAnswer, type Level, type TopicSrs } from "@/data/srs";
 import { findTopicOfItem } from "@/data/subjects";
+import { getGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 
 const NS = "quiz" as const;
@@ -15,6 +16,11 @@ export function recordGameAnswer(
   if (!item) return;
   const t = findTopicOfItem(item.id);
   if (!t) return;
+  // Normal oyun modu = eğlence odaklı. Oyunlardaki mini-quiz cevapları
+  // SRS seviyesine dokunmaz. Yalnızca ithal "quiz" oyunu (bilinçli test)
+  // ve Süper Öğrenme modu ilerlemeyi günceller.
+  const mode = getGameMode();
+  if (mode !== "super" && meta?.gameId !== "quiz") return;
   try {
     recordSrsAnswer(NS, t.topicId, item.id, correct, meta);
   } catch { /* ignore */ }
