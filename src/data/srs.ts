@@ -178,11 +178,16 @@ export function ensureLetters(ns: Namespace, topicId: string, letterIds: string[
   if (changed) save(ns, s);
 }
 
+// Seviye ağırlıkları — "%85 kuralı"na (Wilson ve ark. 2019: optimal öğrenme
+// ~%15 hata oranında gerçekleşir) yaklaşmak için düşük seviyeli (zorlanılan)
+// öğeler ağırlıklı sorulur; ustalaşılanlar (L3-L4) düşük oranda "bakım
+// tekrarı" olarak karışır (aralıklı tekrar + serpiştirme: eski bölümlerin
+// harfleri hiç kaybolmaz, seyrek geri gelir → unutma eğrisi kırılır).
 function waterfallWeights(filledLevels: Level[]): Record<Level, number> {
   const w: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
   const sorted = [...filledLevels].sort((a, b) => a - b);
-  if (sorted.length === 4) { w[1] = 60; w[2] = 15; w[3] = 10; w[4] = 15; }
-  else if (sorted.length === 3) { w[sorted[0]] = 70; w[sorted[1]] = 20; w[sorted[2]] = 10; }
+  if (sorted.length === 4) { w[1] = 55; w[2] = 20; w[3] = 10; w[4] = 15; }
+  else if (sorted.length === 3) { w[sorted[0]] = 65; w[sorted[1]] = 25; w[sorted[2]] = 10; }
   else if (sorted.length === 2) { w[sorted[0]] = 70; w[sorted[1]] = 30; }
   else if (sorted.length === 1) { w[sorted[0]] = 100; }
   return w;
@@ -194,7 +199,19 @@ export function pickNextLetter(ns: Namespace, topicId: string, letterIds: string
   return pickNextLetterFromTopic(s[topicId] || {}, letterIds);
 }
 
+// Son sorulan öğe — aynı sorunun art arda gelmesini önler (ardışık tekrar
+// yerine aralıklı geri getirme: Cepeda 2006). Modül düzeyinde tutulur;
+// test/flashcard/oyunlar ardışık çağırdığı için tek değer yeterli.
+let _lastPickedId: string | null = null;
+
 export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): string {
+  // 1) Hiç karşılaşılmamış öğe varsa MÜFREDAT SIRASIYLA tanıt (i+1 ilkesi:
+  //    yeni bilgi öngörülebilir sırayla gelir; elif'ten önce ye sorulmaz).
+  for (const id of letterIds) {
+    const e = topic[id];
+    if (!e || (e.seen ?? 0) === 0) { _lastPickedId = id; return id; }
+  }
+
   const byLevel: Record<Level, string[]> = { 1: [], 2: [], 3: [], 4: [] };
   for (const id of letterIds) {
     const e = topic[id] || { level: 1, seen: 0, lastSeen: 0 };
@@ -207,15 +224,26 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
   let r = Math.random() * total;
   let chosenLevel: Level = filled[0];
   for (const l of filled) { r -= w[l]; if (r <= 0) { chosenLevel = l; break; } }
-  const candidates = byLevel[chosenLevel];
-  candidates.sort((a, b) => {
+
+  // 2) Aynı öğe art arda gelmesin — seçilen seviyede başka aday varsa
+  //    sonuncuyu ele; o seviyede tek aday oysa tüm havuzdan ele.
+  let candidates = byLevel[chosenLevel];
+  if (letterIds.length > 1) {
+    const without = candidates.filter((id) => id !== _lastPickedId);
+    if (without.length > 0) candidates = without;
+    else candidates = letterIds.filter((id) => id !== _lastPickedId);
+  }
+
+  candidates = [...candidates].sort((a, b) => {
     const ea = topic[a] || { seen: 0, lastSeen: 0 };
     const eb = topic[b] || { seen: 0, lastSeen: 0 };
     if (ea.seen !== eb.seen) return ea.seen - eb.seen;
-    return ea.lastSeen - eb.lastSeen;
+    return ea.lastSeen - eb.lastSeen; // en uzun süredir görülmeyen önce (aralık etkisi)
   });
   const top = Math.max(1, Math.ceil(candidates.length * 0.3));
-  return candidates[Math.floor(Math.random() * top)];
+  const pick = candidates[Math.floor(Math.random() * top)];
+  _lastPickedId = pick;
+  return pick;
 }
 
 export interface AnswerMeta {
@@ -278,6 +306,9 @@ function recordLocalSrsAnswer(
   }
 
   save(ns, s);
+
+  // Günlük seri: her cevap günü aktif sayar (aynı gün içinde no-op)
+  import("@/lib/streak").then((m) => m.recordStreakActivity()).catch(() => {});
 
   // Milestone: seviye yükselişinde
   if (correct && e.level > prevLevel) {

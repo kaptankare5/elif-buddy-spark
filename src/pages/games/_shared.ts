@@ -1,5 +1,5 @@
 import { flattenItems } from "@/data/subjects";
-import { getUnlockedTopicIds, isItemInUnlockedTopic } from "@/lib/unlock";
+import { getUnlockedItemIdSet } from "@/lib/unlock";
 import type { ContentItem, Lang } from "@/data/types";
 
 export function shuffle<T>(a: T[]): T[] {
@@ -30,14 +30,14 @@ export function setGamePremium(_v: boolean) {
   // Premium ayrımı kaldırıldı — no-op (geriye uyum).
 }
 
-// Elifbâ oyunları için havuz: yalnızca AÇILMIŞ konulardaki, emoji (Arapça
-// glif) alanı dolu olan itemlar. `lang` parametresi tutuluyor ama Elifbâda
-// tüm içerik Türkçe okunuş etiketiyle geliyor (item.lang === "tr").
+// Elifbâ oyunları için havuz: yalnızca AÇILMIŞ konu VE bölümlerdeki, emoji
+// (Arapça glif) alanı dolu olan itemlar. Böylece oyunlar da derslerle aynı
+// aşamalı müfredatı izler — çocuk oyunda henüz öğrenmediği harfle
+// karşılaşmaz (bilişsel yük + başarı hissi). `lang` parametresi tutuluyor
+// ama Elifbâda tüm içerik Türkçe okunuş etiketiyle geliyor.
 export function gamePool(_lang?: Lang): ContentItem[] {
-  const unlocked = getUnlockedTopicIds();
-  return flattenItems().filter(
-    (it) => !!it.emoji && isItemInUnlockedTopic(it.id, unlocked),
-  );
+  const unlockedIds = getUnlockedItemIdSet();
+  return flattenItems().filter((it) => !!it.emoji && unlockedIds.has(it.id));
 }
 
 export function pickN<T>(arr: T[], n: number): T[] {

@@ -1,26 +1,40 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { LogIn, UserCircle2, Lock, Crown, TrendingUp, Gamepad2 } from "lucide-react";
+import { LogIn, UserCircle2, Lock, Crown, TrendingUp, Gamepad2, Flame } from "lucide-react";
 
 import { SUBJECTS } from "@/data/subjects";
 import { useAuth } from "@/hooks/useAuth";
 import { getUnlockedTopicIds, isTopicCompleted } from "@/lib/unlock";
-import { useSrsTick } from "@/data/srs";
+import { getTopicSrs, useSrsTick, type Level } from "@/data/srs";
+import { getStreak, STREAK_EVENT } from "@/lib/streak";
+import type { ContentTopic } from "@/data/types";
 import { cn } from "@/lib/utils";
+
+// Konu ilerlemesi: kaç öğe ustalaşıldı (seviye 3+). noPractice konular ölçülmez.
+function topicProgress(t: ContentTopic): { done: number; total: number; pct: number } {
+  if (t.noPractice || t.items.length === 0) return { done: 0, total: 0, pct: 0 };
+  const srs = getTopicSrs("quiz", t.id);
+  let done = 0;
+  for (const it of t.items) if (((srs[it.id]?.level ?? 1) as Level) >= 3) done++;
+  return { done, total: t.items.length, pct: Math.round((done / t.items.length) * 100) };
+}
 
 const Index = () => {
   useSrsTick("quiz");
   const [unlocked, setUnlocked] = useState<Set<string>>(() => getUnlockedTopicIds());
+  const [streak, setStreak] = useState(() => getStreak());
   const { session } = useAuth();
 
   useEffect(() => {
-    const refresh = () => setUnlocked(getUnlockedTopicIds());
+    const refresh = () => { setUnlocked(getUnlockedTopicIds()); setStreak(getStreak()); };
     refresh();
     window.addEventListener("elifba-progress-updated", refresh);
     window.addEventListener("elifba-srs-quiz-updated", refresh);
+    window.addEventListener(STREAK_EVENT, refresh);
     return () => {
       window.removeEventListener("elifba-progress-updated", refresh);
       window.removeEventListener("elifba-srs-quiz-updated", refresh);
+      window.removeEventListener(STREAK_EVENT, refresh);
     };
   }, []);
 
@@ -57,6 +71,21 @@ const Index = () => {
           <p className="text-xs text-muted-foreground">Rabbim, kolaylaştır zorlaştırma</p>
         </div>
 
+        {/* Günlük seri — alışkanlık döngüsü (her gün biraz çalış!) */}
+        <div className="mb-4 flex items-center justify-center gap-2">
+          <div className={cn(
+            "inline-flex items-center gap-2 rounded-full px-4 py-1.5 border-2 shadow-soft font-extrabold text-sm",
+            streak.count > 0
+              ? "bg-warning/15 border-warning/50 text-warning"
+              : "bg-muted/50 border-border text-muted-foreground",
+          )}>
+            <Flame className={cn("h-5 w-5", streak.count > 0 && "fill-warning")} />
+            {streak.count > 0
+              ? <span>{streak.count} günlük seri{!streak.activeToday && " — bugün de çalış!"}</span>
+              : <span>Bugün başla, serini kur!</span>}
+          </div>
+        </div>
+
         <div className="space-y-2 mb-6">
           {topics.map((t, i) => {
             const isUnlocked = unlocked.has(t.id);
@@ -90,6 +119,21 @@ const Index = () => {
                   <p className="text-xs font-medium text-muted-foreground truncate">
                     {isUnlocked ? t.description : "Önceki konuyu tamamla"}
                   </p>
+                  {/* İlerleme çubuğu — görünür ilerleme motivasyonu güçlendirir */}
+                  {isUnlocked && !t.noPractice && (() => {
+                    const p = topicProgress(t);
+                    return (
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all", done ? "bg-success" : "bg-primary")}
+                            style={{ width: `${Math.max(p.pct, p.done > 0 ? 6 : 0)}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-bold text-muted-foreground shrink-0">{p.done}/{p.total}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
                 {done && <Crown className="h-4 w-4 text-warning" />}
               </Link>

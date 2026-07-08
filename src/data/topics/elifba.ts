@@ -67,6 +67,12 @@ const pad2 = (n: number) => (n < 10 ? `0${n}` : String(n));
 const audioPath = (name: string) => `/audio/elifba/${name}`;
 const byName = new Map(LETTERS.map((l) => [l.name, l]));
 
+// Bilişsel yük teorisi: çocuklarda çalışma belleği ~4 öğe kaldırır.
+// Uzun konular harf numarasına göre 4'erli bölümlere ayrılır; bölümdeki tüm
+// öğeler seviye 3+'a ulaşınca sıradaki bölüm açılır (unlock.ts). Bölüm adları
+// tüm konularda aynı harf grubunu işaret eder (tutarlı zihinsel harita).
+const bolum = (n: number) => `${Math.floor((n - 1) / 4) + 1}. Bölüm`;
+
 // Elifba konusu (10 alt konu)
 const P = "elifba" as const;
 
@@ -89,7 +95,7 @@ const t1_harfler: ContentTopic = {
     emoji: l.iso,
     translit: l.name,
     audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-    section: `${Math.floor((l.n - 1) / 4) + 1}. Bölüm`,
+    section: bolum(l.n),
   })),
 };
 
@@ -111,6 +117,7 @@ const t2_yazilislar: ContentTopic = {
       emoji: l.init,
       translit: `${l.name} (başta)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
+      section: bolum(l.n),
     },
     {
       id: `l2-${pad2(l.n)}-med`,
@@ -120,6 +127,7 @@ const t2_yazilislar: ContentTopic = {
       emoji: l.med,
       translit: `${l.name} (ortada)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
+      section: bolum(l.n),
     },
     {
       id: `l2-${pad2(l.n)}-fin`,
@@ -129,6 +137,7 @@ const t2_yazilislar: ContentTopic = {
       emoji: l.fin,
       translit: `${l.name} (sonda)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
+      section: bolum(l.n),
     },
   ]),
 };
@@ -276,6 +285,7 @@ const t3_harekeler: ContentTopic = {
           emoji: l.iso + h.mark,
           translit: sesMap[h.vowel],
           audio: audioPath(`hareke-${pad2(l.n)}-${h.suf}.mp3`),
+          section: bolum(l.n),
         };
       }),
     ),
@@ -328,6 +338,7 @@ const t4_cezm: ContentTopic = {
           emoji: `${elifPre}${l.iso}ْ`,
           translit: h.sp,
           audio: hasAudio ? audioPath(h.audio) : undefined,
+          section: bolum(l.n),
         };
       });
     }),
@@ -384,6 +395,7 @@ const t5_sedde: ContentTopic = {
           emoji: l.iso + "ّ" + h.mark,
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
+          section: bolum(l.n),
         };
       });
     }),
@@ -434,6 +446,8 @@ const t6_med: ContentTopic = {
       lang: "tr" as const,
       emoji: it.ar,
       translit: it.sp,
+      // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
+      section: `${Math.floor(i / 6) + 1}. Bölüm`,
     })),
     ...MED_EKSTRA.map(([ar, sp], i) => ({
       id: `l6x-${pad2(i + 1)}`,
@@ -494,6 +508,7 @@ const t8_tenvin: ContentTopic = {
         lang: "tr" as const,
         emoji: d.glyph,
         translit: d.read,
+        section: bolum(l.n),
       }));
     }),
     ...TENVIN_EKSTRA.map(([ar, sp], i) => ({

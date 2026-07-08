@@ -3,7 +3,7 @@ import { useParams, Navigate, Link } from "react-router-dom";
 import { getSubject, getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
-import { Volume2, Sparkles, Layers, Zap } from "lucide-react";
+import { Volume2, Sparkles, Layers, Zap, Lock } from "lucide-react";
 import type { ContentItem, SubjectId } from "@/data/types";
 import {
   pickNextLetter,
@@ -14,7 +14,8 @@ import {
   type Level,
 } from "@/data/srs";
 import { cn } from "@/lib/utils";
-import { isTopicUnlocked } from "@/lib/unlock";
+import { isTopicUnlocked, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
+import { UnlockCelebration } from "@/components/UnlockCelebration";
 
 type Mode = "browse" | "test";
 
@@ -50,10 +51,19 @@ const Topic = () => {
 
   const [q, setQ] = useState<{ target: ContentItem; options: ContentItem[] } | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
+  const [celebrate, setCelebrate] = useState<{ title: string; subtitle?: string } | null>(null);
   const questionStartRef = useRef<number>(0);
+  // Yanlış cevaplanan harf bir sonraki soruda tekrar sorulsun (anlık düzeltici tekrar)
+  const retryIdRef = useRef<string | null>(null);
 
   const items = topic?.items || [];
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
+  // Test/pratik yalnızca AÇIK bölüm öğelerini sorar (aşamalı müfredat)
+  const unlockedItemIds = useMemo(
+    () => (topic ? getUnlockedItemsOf(topic).map((i) => i.id) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [topic, tick],
+  );
 
   useEffect(() => {
     setQ(null);
@@ -61,18 +71,47 @@ const Topic = () => {
   }, [topicId, mode]);
 
   useEffect(() => {
-    if (mode !== "test" || !topic || itemIds.length === 0 || q) return;
+    if (mode !== "test" || !topic || unlockedItemIds.length === 0 || q) return;
     if (topic.noPractice) return;
-    const tid = pickNextLetter(NS, topic.id, itemIds);
-    setQ(buildQuestion(items, tid));
+    const pool = items.filter((it) => unlockedItemIds.includes(it.id));
+    // Yanlış cevaplanan harf varsa onu tekrar sor (düzeltici tekrar), yoksa SRS seçer
+    let tid: string;
+    if (retryIdRef.current && unlockedItemIds.includes(retryIdRef.current)) {
+      tid = retryIdRef.current;
+      retryIdRef.current = null;
+    } else {
+      tid = pickNextLetter(NS, topic.id, unlockedItemIds);
+    }
+    setQ(buildQuestion(pool, tid));
     setPicked(null);
     questionStartRef.current = Date.now();
-  }, [mode, topic, itemIds, q, items]);
+  }, [mode, topic, unlockedItemIds, q, items]);
 
   useEffect(() => {
     if (mode === "test" && q?.target) playItem(q.target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q?.target?.id, mode]);
+
+  // Yeni bölüm açıldı mı? Açılan bölüm sayısı önceki kayda göre arttıysa kutla.
+  useEffect(() => {
+    if (!topic) return;
+    const order = getSectionOrder(topic);
+    if (order.length === 0) return;
+    const unlocked = getUnlockedSections(topic);
+    const count = order.filter((s) => unlocked.has(s)).length;
+    const key = `elifba-secseen-${topic.id}`;
+    let prev = -1;
+    try { prev = Number(localStorage.getItem(key) ?? "-1"); } catch { /* ignore */ }
+    if (prev < 0) { try { localStorage.setItem(key, String(count)); } catch { /* ignore */ } return; }
+    if (count > prev) {
+      const done = order.length;
+      setCelebrate({
+        title: count >= done ? "🏆 Konu tamamlandı!" : "Yeni bölüm açıldı! 🎉",
+        subtitle: count >= done ? "Hepsini öğrendin, aferin!" : `${count}. Bölüm hazır — hadi devam!`,
+      });
+      try { localStorage.setItem(key, String(count)); } catch { /* ignore */ }
+    }
+  }, [topic, tick]);
 
   if (!subject || !topic) return <Navigate to="/" replace />;
   if (!isTopicUnlocked(topic.id)) return <Navigate to="/" replace />;
@@ -89,10 +128,14 @@ const Topic = () => {
   const colClass = cols === 2 ? "grid-cols-2" : cols === 3 ? "grid-cols-3" : "grid-cols-4";
   const baseItems = items.filter((it) => !it.section);
   // Bölümler ilk görülme sırasına göre (Harfler'de "1. Bölüm…", diğer konularda "Ekstralar")
-  const sectionOrder: string[] = [];
-  for (const it of items) {
-    if (it.section && !sectionOrder.includes(it.section)) sectionOrder.push(it.section);
-  }
+  const sectionOrder = getSectionOrder(topic);
+  const unlockedSecs = getUnlockedSections(topic);
+  // Bir bölümde kaç öğe ustalaşıldı (L3+) — yıldız ilerlemesi
+  const sectionMastery = (sec: string) => {
+    const its = items.filter((it) => it.section === sec);
+    const done = its.filter((it) => ((srs[it.id]?.level ?? 1) as Level) >= 3).length;
+    return { done, total: its.length };
+  };
   const videoEmbed = topic.video ? ytEmbedUrl(topic.video) : null;
 
   const renderTile = (it: ContentItem) => (
@@ -159,21 +202,44 @@ const Topic = () => {
             </div>
           )}
 
-          {sectionOrder.map((sec) => (
-            <div key={sec}>
-              <h3 className="mb-2 text-center font-extrabold text-foreground">
-                {sec === "Ekstralar" ? "✨ Ekstralar" : sec}
-                {sec === "Ekstralar" && (
-                  <span className="block text-[11px] font-bold text-muted-foreground">
-                    Kitaptaki alıştırmalardan
+          {sectionOrder.map((sec) => {
+            const open = unlockedSecs.has(sec);
+            const { done, total } = sectionMastery(sec);
+            const isExtra = sec === "Ekstralar";
+            return (
+              <div key={sec}>
+                <h3 className="mb-2 flex items-center justify-center gap-2 text-center font-extrabold text-foreground">
+                  {!open && <Lock className="h-4 w-4 text-muted-foreground" />}
+                  <span className={cn(!open && "text-muted-foreground")}>
+                    {isExtra ? "✨ Ekstralar" : sec}
                   </span>
+                  {/* Bölüm ilerleme rozeti: kaç öğe ustalaşıldı */}
+                  {open && !isExtra && total > 0 && (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 border border-warning/40 px-2 py-0.5 text-[11px] text-warning">
+                      {done >= total ? "⭐" : "☆"} {done}/{total}
+                    </span>
+                  )}
+                </h3>
+                {isExtra && open && (
+                  <p className="mb-2 text-center text-[11px] font-bold text-muted-foreground">
+                    Kitaptaki alıştırmalardan
+                  </p>
                 )}
-              </h3>
-              <div dir="rtl" className={cn("grid gap-2 mb-6", colClass)}>
-                {items.filter((it) => it.section === sec).map(renderTile)}
+                {open ? (
+                  <div dir="rtl" className={cn("grid gap-2 mb-6", colClass)}>
+                    {items.filter((it) => it.section === sec).map(renderTile)}
+                  </div>
+                ) : (
+                  <div className="mb-6 rounded-2xl border-2 border-dashed border-border bg-muted/40 p-5 text-center">
+                    <Lock className="mx-auto mb-1 h-6 w-6 text-muted-foreground" />
+                    <p className="text-xs font-bold text-muted-foreground">
+                      Önceki bölümdeki harfleri öğrenince açılır
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {!topic.noPractice && (
             <div className="rounded-2xl bg-card border-2 border-primary/20 p-4 shadow-card">
@@ -192,6 +258,9 @@ const Topic = () => {
             </div>
           )}
         </main>
+        {celebrate && (
+          <UnlockCelebration title={celebrate.title} subtitle={celebrate.subtitle} onDone={() => setCelebrate(null)} />
+        )}
       </div>
     );
   }
@@ -204,6 +273,8 @@ const Topic = () => {
     const responseMs = questionStartRef.current ? Date.now() - questionStartRef.current : undefined;
     await recordSrsAnswer(NS, topic.id, q.target.id, correct, { responseMs });
     await playFeedback(correct);
+    // Yanlışsa aynı harf bir sonraki soruda tekrar sorulsun
+    retryIdRef.current = correct ? null : q.target.id;
     setTimeout(() => setQ(null), correct ? 700 : 2000);
   };
 
@@ -287,6 +358,9 @@ const Topic = () => {
           </>
         )}
       </main>
+      {celebrate && (
+        <UnlockCelebration title={celebrate.title} subtitle={celebrate.subtitle} onDone={() => setCelebrate(null)} />
+      )}
     </div>
   );
 };
