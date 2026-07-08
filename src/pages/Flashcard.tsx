@@ -11,7 +11,7 @@ import {
   useSrsTick,
   type Level,
 } from "@/data/srs";
-import { isTopicUnlocked } from "@/lib/unlock";
+import { isTopicUnlocked, getUnlockedItemsOf } from "@/lib/unlock";
 import { cn } from "@/lib/utils";
 import type { ContentItem, SubjectId } from "@/data/types";
 
@@ -22,7 +22,14 @@ const Flashcard = () => {
   const topic = getTopic((subjectId as SubjectId) || "elifba", topicId || "");
   useSrsTick(NS);
 
-  const items = topic?.items || [];
+  // Flashcard, test gibi yalnızca AÇILAN bölüm harflerini sorar (kilitli
+  // bölümler hem testte hem flashcardta gizli kalır — tutarlı müfredat).
+  const tick = useSrsTick(NS);
+  const items = useMemo(
+    () => (topic ? getUnlockedItemsOf(topic) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [topic, tick],
+  );
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
