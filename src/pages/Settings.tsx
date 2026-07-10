@@ -13,7 +13,8 @@ import { clearLocalProgress, hydrateSrsFromCloud } from "@/data/srs";
 import { ConfirmDestructive } from "@/components/ConfirmDestructive";
 import { toast } from "sonner";
 import { useTestUnlock, tryUnlockWithCode } from "@/lib/testUnlock";
-import { KeyRound } from "lucide-react";
+import { KeyRound, Users } from "lucide-react";
+import { useStudents, addStudent, removeStudent, switchStudent } from "@/lib/students";
 
 
 const Settings = () => {
@@ -26,6 +27,14 @@ const Settings = () => {
   const [deviceScope, setDeviceScope] = useState<"active" | "guest" | "all">(session ? "active" : "guest");
   const [testUnlock, setTestUnlock] = useTestUnlock();
   const [unlockCode, setUnlockCode] = useState("");
+  const { students, active: activeStudent } = useStudents();
+  const [studentName, setStudentName] = useState("");
+
+  const submitStudent = () => {
+    const s = addStudent(studentName);
+    if (s) { setStudentName(""); toast.success(`${s.name} eklendi ${s.emoji}`); }
+    else toast.error("İsim boş olamaz.");
+  };
 
   const submitUnlockCode = () => {
     if (tryUnlockWithCode(unlockCode)) {
@@ -167,6 +176,82 @@ const Settings = () => {
                   Aç
                 </button>
               </div>
+            )}
+          </div>
+
+          {/* Hoca Modu — cihazda öğrenci profilleri */}
+          <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">
+            <div className="flex items-center gap-3 mb-2">
+              <Users className="h-7 w-7 text-primary" />
+              <div className="flex-1">
+                <h3 className="text-base font-extrabold text-foreground">👨‍🏫 Hoca Modu</h3>
+                <p className="text-xs text-muted-foreground">
+                  Öğrenci ekle; sayfa başlığındaki avatardan öğrenci değiştir.
+                  Her öğrencinin ilerlemesi (seviye, kilitli bölümler) ayrı tutulur.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mb-3">
+              <input
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") submitStudent(); }}
+                placeholder="Öğrenci adı"
+                className="flex-1 rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"
+              />
+              <button
+                onClick={submitStudent}
+                className="rounded-xl bg-primary text-primary-foreground px-4 py-2 font-extrabold text-sm active:scale-95"
+              >
+                Ekle
+              </button>
+            </div>
+
+            {students.length > 0 ? (
+              <div className="space-y-1.5">
+                {students.map((st) => (
+                  <div
+                    key={st.id}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl border-2 px-3 py-2",
+                      activeStudent?.id === st.id ? "border-primary bg-primary/10" : "border-border bg-muted/30",
+                    )}
+                  >
+                    <span className="text-lg">{st.emoji}</span>
+                    <span className="flex-1 text-sm font-extrabold text-foreground truncate">{st.name}</span>
+                    {activeStudent?.id === st.id ? (
+                      <span className="text-[10px] font-extrabold text-primary">AKTİF</span>
+                    ) : (
+                      <button
+                        onClick={() => switchStudent(st.id)}
+                        className="rounded-lg bg-primary/15 px-2 py-1 text-[11px] font-extrabold text-primary"
+                      >
+                        Seç
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { if (window.confirm(`${st.name} silinsin mi? İlerlemesi de silinir.`)) removeStudent(st.id); }}
+                      aria-label={`${st.name} profilini sil`}
+                      className="rounded-lg bg-destructive/10 p-1.5 text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {activeStudent && (
+                  <button
+                    onClick={() => switchStudent(null)}
+                    className="mt-1 w-full rounded-xl border-2 border-border bg-muted/40 py-2 text-xs font-extrabold text-foreground"
+                  >
+                    🧑 Cihaz sahibine (bana) dön
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="text-[11px] font-bold text-muted-foreground">
+                Henüz öğrenci yok. Öğrenci eklersen sayfa başlığında profil düğmesi belirir.
+              </p>
             )}
           </div>
         </div>

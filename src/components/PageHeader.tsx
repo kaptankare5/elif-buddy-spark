@@ -1,6 +1,7 @@
 import { forwardRef } from "react";
 import { ArrowLeft, RotateCcw, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { StudentSwitcher } from "@/components/StudentSwitcher";
 
 interface PageHeaderProps {
   title?: string;
@@ -47,6 +48,8 @@ export const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
         )}
 
         <div className="flex shrink-0 items-center gap-2 justify-self-end">
+          {/* Hoca modu: öğrenci profili değiştirici (öğrenci yoksa görünmez) */}
+          <StudentSwitcher />
           {onReset && (
             <button
               onClick={onReset}

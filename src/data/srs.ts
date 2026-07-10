@@ -47,7 +47,37 @@ export function getActiveSrsUser(): string | null { return _activeUid; }
 
 // Local-first: ilerleme verisi cihaza bağlıdır, hesaba değil. Aynı cihazda
 // giriş yapsan da yapmasan da aynı önbellek kullanılır (kullanıcı isteği).
-const KEY = (ns: Namespace) => `elifba-srs-${ns}-guest-v1`;
+//
+// HOCA MODU: cihazda birden çok öğrenci profili tutulabilir. Aktif öğrenci
+// seçiliyken tüm SRS okuma/yazma o öğrencinin anahtarına gider — harf
+// seviyeleri, kilitli bölümler, konu ilerlemesi öğrenciye özeldir ve
+// geçişte kaldığı yerden devam eder. null = cihaz sahibi (varsayılan).
+let _activeStudent: string | null = null;
+try {
+  if (typeof window !== "undefined") {
+    _activeStudent = localStorage.getItem("elifba-active-student-v1") || null;
+  }
+} catch { /* ignore */ }
+
+export function setActiveStudentScope(sid: string | null) {
+  _activeStudent = sid || null;
+  if (typeof window === "undefined") return;
+  try {
+    if (sid) localStorage.setItem("elifba-active-student-v1", sid);
+    else localStorage.removeItem("elifba-active-student-v1");
+  } catch { /* ignore */ }
+  // Tüm ekranlar (Index/Topic/Flashcard/oyun havuzu) yeni öğrencinin
+  // verileriyle tazelensin.
+  try { window.dispatchEvent(new Event(EVENT("quiz"))); } catch { /* */ }
+  try { window.dispatchEvent(new Event(EVENT("games"))); } catch { /* */ }
+  try { window.dispatchEvent(new Event(PROGRESS_EVENT)); } catch { /* */ }
+}
+export function getActiveStudentScope(): string | null { return _activeStudent; }
+
+const KEY = (ns: Namespace) =>
+  _activeStudent
+    ? `elifba-srs-${ns}-student-${_activeStudent}-v1`
+    : `elifba-srs-${ns}-guest-v1`;
 
 export function clearUserLocalSrs(uid: string | null) {
   if (typeof window === "undefined" || !uid) return;
@@ -329,7 +359,9 @@ export async function recordSrsAnswer(
 ): Promise<LetterSrsEntry | null> {
   const entry = recordLocalSrsAnswer(ns, topicId, letterId, correct, meta);
   const uid = getActiveSrsUser();
-  if (uid) {
+  // Öğrenci profili aktifken buluta yazma — öğrencinin ilerlemesi hocanın
+  // hesabına karışmasın (öğrenci verisi cihazda yaşar).
+  if (uid && !_activeStudent) {
     // Fire-and-forget bulut yedeği — başarısız olsa bile yerel ilerleme korunur.
     import("@/data/cloudSync")
       .then(({ logAnswer }) => logAnswer({ topicId, letterId, correct, gameId: meta?.gameId, responseMs: meta?.responseMs }))

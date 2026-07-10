@@ -11,6 +11,7 @@ import {
   getTopicSrs,
   resetTopicSrs,
   useSrsTick,
+  getActiveStudentScope,
   type Level,
 } from "@/data/srs";
 import { cn } from "@/lib/utils";
@@ -99,7 +100,9 @@ const Topic = () => {
     if (order.length === 0) return;
     const unlocked = getUnlockedSections(topic);
     const count = order.filter((s) => unlocked.has(s)).length;
-    const key = `elifba-secseen-${topic.id}`;
+    // Öğrenci profiline göre ayrı takip — profil geçişinde yanlış kutlama çıkmasın
+    const scope = getActiveStudentScope() ?? "guest";
+    const key = `elifba-secseen-${scope}-${topic.id}`;
     let prev = -1;
     try { prev = Number(localStorage.getItem(key) ?? "-1"); } catch { /* ignore */ }
     if (prev < 0) { try { localStorage.setItem(key, String(count)); } catch { /* ignore */ } return; }

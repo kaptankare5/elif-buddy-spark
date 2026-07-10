@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUnlockedTopicIds, isTopicCompleted } from "@/lib/unlock";
 import { getTopicSrs, useSrsTick, type Level } from "@/data/srs";
 import { getStreak, STREAK_EVENT } from "@/lib/streak";
+import { useStudents } from "@/lib/students";
+import { StudentSwitcher } from "@/components/StudentSwitcher";
 import type { ContentTopic } from "@/data/types";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +26,7 @@ const Index = () => {
   const [unlocked, setUnlocked] = useState<Set<string>>(() => getUnlockedTopicIds());
   const [streak, setStreak] = useState(() => getStreak());
   const { session } = useAuth();
+  const { active: activeStudent } = useStudents();
 
   useEffect(() => {
     const refresh = () => { setUnlocked(getUnlockedTopicIds()); setStreak(getStreak()); };
@@ -48,13 +51,17 @@ const Index = () => {
       </div>
 
       <main className="container relative mx-auto max-w-2xl px-4 pb-24 pt-6">
-        <Link
-          to={session ? "/ayarlar" : "/giris"}
-          className="absolute top-3 right-3 z-10 rounded-full bg-card p-2 shadow-card border-2 border-primary/20"
-          aria-label={session ? "Hesap" : "Giriş"}
-        >
-          {session ? <UserCircle2 className="h-5 w-5 text-primary" /> : <LogIn className="h-5 w-5 text-primary" />}
-        </Link>
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+          {/* Hoca modu: öğrenci profili değiştirici */}
+          <StudentSwitcher />
+          <Link
+            to={session ? "/ayarlar" : "/giris"}
+            className="rounded-full bg-card p-2 shadow-card border-2 border-primary/20"
+            aria-label={session ? "Hesap" : "Giriş"}
+          >
+            {session ? <UserCircle2 className="h-5 w-5 text-primary" /> : <LogIn className="h-5 w-5 text-primary" />}
+          </Link>
+        </div>
 
         <div className="mb-6 text-center animate-bounce-in">
           <div className="text-7xl font-arabic mb-2 text-emerald-700">ﺇﻗﺮﺃ</div>
@@ -85,6 +92,15 @@ const Index = () => {
               : <span>Bugün başla, serini kur!</span>}
           </div>
         </div>
+
+        {/* Hoca modu: kimin profili aktif — hoca bir bakışta görsün */}
+        {activeStudent && (
+          <div className="mb-4 -mt-2 flex justify-center">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-info/15 border-2 border-info/40 px-4 py-1 text-xs font-extrabold text-info">
+              📖 {activeStudent.emoji} {activeStudent.name} çalışıyor
+            </span>
+          </div>
+        )}
 
         <div className="space-y-2 mb-6">
           {topics.map((t, i) => {
