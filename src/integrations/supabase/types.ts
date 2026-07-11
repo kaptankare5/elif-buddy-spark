@@ -287,6 +287,108 @@ export type Database = {
         }
         Relationships: []
       }
+      student_guardians: {
+        Row: {
+          added_at: string
+          guardian_id: string
+          student_id: string
+        }
+        Insert: {
+          added_at?: string
+          guardian_id: string
+          student_id: string
+        }
+        Update: {
+          added_at?: string
+          guardian_id?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
+      student_letter_stats: {
+        Row: {
+          consecutive_correct: number
+          correct_count: number
+          id: string
+          knew_before: boolean | null
+          last_seen_at: string
+          learned_at: string | null
+          letter_id: string
+          level: number
+          ns: string
+          shown_count: number
+          student_id: string
+          time_to_learn_ms: number | null
+          topic_id: string
+          total_response_ms: number
+          updated_at: string
+        }
+        Insert: {
+          consecutive_correct?: number
+          correct_count?: number
+          id?: string
+          knew_before?: boolean | null
+          last_seen_at?: string
+          learned_at?: string | null
+          letter_id: string
+          level?: number
+          ns?: string
+          shown_count?: number
+          student_id: string
+          time_to_learn_ms?: number | null
+          topic_id: string
+          total_response_ms?: number
+          updated_at?: string
+        }
+        Update: {
+          consecutive_correct?: number
+          correct_count?: number
+          id?: string
+          knew_before?: boolean | null
+          last_seen_at?: string
+          learned_at?: string | null
+          letter_id?: string
+          level?: number
+          ns?: string
+          shown_count?: number
+          student_id?: string
+          time_to_learn_ms?: number | null
+          topic_id?: string
+          total_response_ms?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          link_code: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          link_code?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          link_code?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -502,6 +604,16 @@ export type Database = {
       }
     }
     Functions: {
+      can_access_student: { Args: { _student_id: string }; Returns: boolean }
+      claim_student_by_code: {
+        Args: { _code: string }
+        Returns: {
+          emoji: string
+          id: string
+          link_code: string
+          name: string
+        }[]
+      }
       has_active_subscription: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {

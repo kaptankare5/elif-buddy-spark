@@ -1,8 +1,26 @@
 # Elifbâ (elif-buddy-spark)
 
 Çocuklara Kur'an harflerini öğreten React uygulaması. Vite + React 18 + TS +
-Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
+Tailwind + shadcn + Supabase. Dev: `npm run dev`
 (port 8080, `.claude/launch.json` var). Doğrulama: `npx tsc --noEmit` + eslint.
+
+### Supabase (Lovable bağımlılığı SÖKÜLDÜ — Tem 2026)
+- Eski Lovable Supabase projesi ve `@lovable.dev/cloud-auth-js` kaldırıldı.
+  Yeni bağımsız proje kurulumu: `docs/supabase-kurulum.md`; şemanın tamamı TEK
+  migration'da: `supabase/migrations/20260711000000_yeni_kurulum.sql`.
+- `.env` gitignore'da; `.env.example`'dan kopyalanır. Env yoksa client.ts
+  placeholder URL ile çalışır (`isSupabaseConfigured` false) — app local-first
+  çalışmaya devam eder, bulut istekleri sessizce başarısız olur.
+- Auth: e-posta+şifre ve Google, `supabase.auth.signInWithOAuth` (Auth.tsx).
+  Capacitor'da Google için deep link gerekir (dokümanda adımlar).
+- Öğrenci bulut senkronu (`src/lib/studentSync.ts`): Hoca Modu öğrencileri
+  giriş varken buluta bağlanır (`students` + `student_letter_stats`, ns=quiz/games).
+  6 haneli link_code ile başka cihaz/hesap `claim_student_by_code` RPC'siyle
+  bağlanır → `mergeIntoStudentSrs` (srs.ts) "daha çok karşılaşma kazanır"
+  kuralıyla birleştirir. Öğrenci aktifken cevap hocanın letter_stats'ine DEĞİL
+  öğrencinin bulut kaydına gider (srs.ts recordSrsAnswer).
+- Hoca Paneli `/hoca` (TeacherPanel.tsx): öğrenci raporları, bağlantı kodları,
+  kodla bağlanma, "hesabımdaki öğrencileri getir".
 
 ## Mimari — kritik kurallar
 
@@ -48,7 +66,8 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 ### Hoca Modu (`src/lib/students.ts`)
 - Cihazda öğrenci profilleri; `setActiveStudentScope` (srs.ts) localStorage
   anahtarını `elifba-srs-{ns}-student-{id}-v1` yapar → seviye/kilit/ilerleme
-  öğrenciye özel, geçişte kaldığı yerden. Öğrenci aktifken buluta YAZILMAZ.
+  öğrenciye özel, geçişte kaldığı yerden. Öğrenci aktifken cevaplar hocanın
+  hesabına değil, öğrencinin bulut kaydına yazılır (bkz. studentSync.ts).
 - UI: `StudentSwitcher` (PageHeader + Index sağ üst), yönetim Ayarlar →
   Hoca Modu. Öğrenci yoksa düğme görünmez.
 

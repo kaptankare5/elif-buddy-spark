@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Switch } from "@/components/ui/switch";
 import { useSettings } from "@/lib/settings";
@@ -8,7 +9,7 @@ import { useGameMode } from "@/lib/gameMode";
 import { cn } from "@/lib/utils";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
-// import { AccountCard } from "@/components/AccountCard"; // UI gizlendi
+import { AccountCard } from "@/components/AccountCard";
 import { clearLocalProgress, hydrateSrsFromCloud } from "@/data/srs";
 import { ConfirmDestructive } from "@/components/ConfirmDestructive";
 import { toast } from "sonner";
@@ -32,7 +33,18 @@ const Settings = () => {
 
   const submitStudent = () => {
     const s = addStudent(studentName);
-    if (s) { setStudentName(""); toast.success(`${s.name} eklendi ${s.emoji}`); }
+    if (s) {
+      setStudentName("");
+      toast.success(`${s.name} eklendi ${s.emoji}`);
+      // Giriş yapıldıysa öğrenciyi buluta bağla → bağlantı kodu üretilir,
+      // başka cihazdan aynı öğrenciyle devam edilebilir (Hoca Paneli'nde görünür).
+      if (session) {
+        import("@/lib/studentSync")
+          .then(({ connectStudentToCloud }) => connectStudentToCloud(s))
+          .then((c) => { if (c?.linkCode) toast.success(`${c.name} buluta bağlandı — kod: ${c.linkCode}`); })
+          .catch(() => {});
+      }
+    }
     else toast.error("İsim boş olamaz.");
   };
 
@@ -72,7 +84,7 @@ const Settings = () => {
       <main className="container mx-auto max-w-xl px-4 pb-16">
         <PageHeader title="⚙️ Ayarlar" backTo="/" centered />
 
-        {/* <AccountCard /> — hesap UI şimdilik gizli */}
+        <AccountCard />
 
         <div className="space-y-3">
           <div className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">
@@ -253,6 +265,13 @@ const Settings = () => {
                 Henüz öğrenci yok. Öğrenci eklersen sayfa başlığında profil düğmesi belirir.
               </p>
             )}
+
+            <Link
+              to="/hoca"
+              className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-primary/10 border-2 border-primary/30 py-2 text-sm font-extrabold text-primary"
+            >
+              📊 Hoca Paneli — öğrenci raporları & bağlantı kodları
+            </Link>
           </div>
         </div>
 

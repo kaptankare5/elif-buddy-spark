@@ -191,6 +191,41 @@ export async function hydrateSrsFromCloud(_uid: string) {
   return;
 }
 
+// --- Öğrenci profili SRS verisine doğrudan erişim ---------------------------
+// Bulut senkronu (studentSync.ts) ve Hoca Paneli aktif olmayan öğrencilerin
+// verisini de okuyup birleştirebilsin diye anahtar mantığı burada kalır.
+const STUDENT_KEY = (sid: string, ns: Namespace) => `elifba-srs-${ns}-student-${sid}-v1`;
+
+export function readStudentSrs(studentId: string, ns: Namespace): SrsState {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(localStorage.getItem(STUDENT_KEY(studentId, ns)) || "{}"); } catch { return {}; }
+}
+
+// Buluttan gelen öğrenci verisini yereldekiyle birleştirir: aynı harf için
+// daha çok karşılaşma görmüş (eşitse daha yeni) kayıt kazanır — böylece iki
+// cihazdan hangisi daha ilerideyse o geçerli olur.
+export function mergeIntoStudentSrs(studentId: string, ns: Namespace, incoming: SrsState) {
+  if (typeof window === "undefined") return;
+  const cur = readStudentSrs(studentId, ns);
+  let changed = false;
+  for (const [topicId, letters] of Object.entries(incoming)) {
+    if (!cur[topicId]) cur[topicId] = {};
+    for (const [letterId, next] of Object.entries(letters)) {
+      const prev = cur[topicId][letterId];
+      if (!prev || next.total > prev.total || (next.total === prev.total && (next.lastSeen ?? 0) >= (prev.lastSeen ?? 0))) {
+        cur[topicId][letterId] = next;
+        changed = true;
+      }
+    }
+  }
+  if (!changed) return;
+  try { localStorage.setItem(STUDENT_KEY(studentId, ns), JSON.stringify(cur)); } catch { /* ignore */ }
+  if (_activeStudent === studentId) {
+    try { window.dispatchEvent(new Event(EVENT(ns))); } catch { /* */ }
+    try { window.dispatchEvent(new Event(PROGRESS_EVENT)); } catch { /* */ }
+  }
+}
+
 function ensureEntry(s: SrsState, topicId: string, letterId: string): LetterSrsEntry {
   if (!s[topicId]) s[topicId] = {};
   if (!s[topicId][letterId]) {
@@ -359,12 +394,18 @@ export async function recordSrsAnswer(
 ): Promise<LetterSrsEntry | null> {
   const entry = recordLocalSrsAnswer(ns, topicId, letterId, correct, meta);
   const uid = getActiveSrsUser();
-  // Öğrenci profili aktifken buluta yazma — öğrencinin ilerlemesi hocanın
-  // hesabına karışmasın (öğrenci verisi cihazda yaşar).
   if (uid && !_activeStudent) {
     // Fire-and-forget bulut yedeği — başarısız olsa bile yerel ilerleme korunur.
     import("@/data/cloudSync")
       .then(({ logAnswer }) => logAnswer({ topicId, letterId, correct, gameId: meta?.gameId, responseMs: meta?.responseMs }))
+      .catch((error) => dispatchCloudSaveFailure(error));
+  } else if (uid && _activeStudent) {
+    // Öğrenci profili aktif: cevap hocanın hesabına DEĞİL, öğrencinin bulut
+    // kaydına (student_letter_stats) yazılır → başka cihazdan bağlantı koduyla
+    // bağlanan veli/hoca kaldığı yerden devam eder.
+    const sid = _activeStudent;
+    import("@/lib/studentSync")
+      .then(({ pushStudentEntryByLocalId }) => pushStudentEntryByLocalId(sid, ns, topicId, letterId, entry))
       .catch((error) => dispatchCloudSaveFailure(error));
   }
   return entry;

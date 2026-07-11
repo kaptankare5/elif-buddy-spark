@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Ortam değişkenleri (Supabase anahtarları) — commit edilmez
+.env
+.env.*
+!.env.example

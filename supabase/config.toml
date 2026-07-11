@@ -1,1 +1,3 @@
-project_id = "hylmebpxmnjhjnlsyfdj"
+# Yeni Supabase projeni oluşturunca proje ID'sini buraya yaz.
+# (Dashboard adresindeki https://supabase.com/dashboard/project/<PROJE_ID> kısmı)
+project_id = "PROJE_ID_BURAYA"
