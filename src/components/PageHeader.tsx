@@ -16,7 +16,7 @@ export const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
     const navigate = useNavigate();
     // Geri butonu etiketi hedefe göre — oyunlarda "Ana Sayfa" yazıp /oyunlar'a
     // gitmesi kafa karıştırıyordu. Home'a gidiyorsa "Ana Sayfa", değilse "Geri".
-    const isHomeBack = backTo === "/";
+    const isHomeBack = !onBack && backTo === "/";
     const backLabel = isHomeBack ? "Ana Sayfa" : "Geri";
     return (
       <header
