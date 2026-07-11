@@ -25,7 +25,7 @@ export const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
         style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
       >
         <button
-          onClick={() => (backTo ? navigate(backTo) : navigate(-1))}
+          onClick={() => (onBack ? onBack() : backTo ? navigate(backTo) : navigate(-1))}
           aria-label={backLabel}
           className="group flex shrink-0 items-center gap-1.5 h-11 pl-2 pr-4 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-soft border-2 border-primary-foreground/40 active:scale-95 transition-bouncy"
         >
