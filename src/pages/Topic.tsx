@@ -287,7 +287,7 @@ const Topic = () => {
       <main className="container mx-auto max-w-xl px-4 pb-24">
         <PageHeader
           title={`${topic.title} • Test`}
-          backTo={`/konu/elifba/${topic.id}`}
+          onBack={() => { setMode("browse"); setQ(null); setPicked(null); }}
           centered
           onReset={() => {
             resetTopicSrs(NS, topic.id);
