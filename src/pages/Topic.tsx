@@ -3,7 +3,7 @@ import { useParams, Navigate, Link } from "react-router-dom";
 import { getSubject, getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
-import { Volume2, Sparkles, Layers, Zap, Lock } from "lucide-react";
+import { Volume2, Layers, Zap, Lock, Gamepad2 } from "lucide-react";
 import type { ContentItem, SubjectId } from "@/data/types";
 import {
   pickNextLetter,
@@ -190,7 +190,7 @@ const Topic = () => {
               <div className="grid grid-cols-3 gap-2">
                 <PracticeCard to="#" onClick={() => setMode("test")} icon={<Zap className="h-6 w-6" />} label="Test" color="from-info to-primary" />
                 <PracticeCard to={`/konu/elifba/${topic.id}/flashcard`} icon={<Layers className="h-6 w-6" />} label="Flashcard" color="from-warning to-topic-pink" />
-                <PracticeCard to="/oyunlar" icon={<Sparkles className="h-6 w-6" />} label="Oyunlar" color="from-success to-topic-doga" />
+                <PracticeCard to="/oyunlar" icon={<Gamepad2 className="h-6 w-6" />} label="Oyunlar" color="from-success to-topic-doga" />
               </div>
             </div>
           )}
@@ -287,7 +287,7 @@ const Topic = () => {
       <main className="container mx-auto max-w-xl px-4 pb-24">
         <PageHeader
           title={`${topic.title} • Test`}
-          backTo={`/konu/elifba/${topic.id}`}
+          onBack={() => { setMode("browse"); setQ(null); setPicked(null); }}
           centered
           onReset={() => {
             resetTopicSrs(NS, topic.id);
