@@ -190,7 +190,7 @@ const Topic = () => {
               <div className="grid grid-cols-3 gap-2">
                 <PracticeCard to="#" onClick={() => setMode("test")} icon={<Zap className="h-6 w-6" />} label="Test" color="from-info to-primary" />
                 <PracticeCard to={`/konu/elifba/${topic.id}/flashcard`} icon={<Layers className="h-6 w-6" />} label="Flashcard" color="from-warning to-topic-pink" />
-                <PracticeCard to="/oyunlar" icon={<Sparkles className="h-6 w-6" />} label="Oyunlar" color="from-success to-topic-doga" />
+                <PracticeCard to="/oyunlar" icon={<Gamepad2 className="h-6 w-6" />} label="Oyunlar" color="from-success to-topic-doga" />
               </div>
             </div>
           )}
