@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
-import { LangToggle } from "@/components/LangToggle";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { Volume2 } from "lucide-react";
@@ -59,7 +58,6 @@ const QuizGame = () => {
     <div className="min-h-screen bg-gradient-to-b from-secondary/40 to-background">
       <main className="container mx-auto max-w-xl px-4 pb-16">
         <PageHeader title="⚡ Hızlı Quiz" backTo="/oyunlar" centered onReset={reset} />
-        <div className="flex justify-center mb-3"><LangToggle /></div>
 
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-card p-3 text-center shadow-card border-2 border-warning/30">

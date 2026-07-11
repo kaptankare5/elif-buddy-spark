@@ -271,10 +271,6 @@ const Match3Game = () => {
       <main className="container mx-auto max-w-xl px-4 pb-16">
         <PageHeader title="🍬 Üçlü Eşleştir" backTo="/oyunlar" centered onReset={reset} />
 
-        <div className="flex justify-center mb-3">
-          <LangToggle />
-        </div>
-
         <div className="mb-3 grid grid-cols-2 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-primary/30">
             <div className="text-[10px] font-bold text-muted-foreground">Eşleşme</div>
