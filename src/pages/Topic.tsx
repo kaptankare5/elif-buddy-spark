@@ -3,7 +3,7 @@ import { useParams, Navigate, Link } from "react-router-dom";
 import { getSubject, getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
-import { Volume2, Sparkles, Layers, Zap, Lock } from "lucide-react";
+import { Volume2, Layers, Zap, Lock, Gamepad2 } from "lucide-react";
 import type { ContentItem, SubjectId } from "@/data/types";
 import {
   pickNextLetter,
