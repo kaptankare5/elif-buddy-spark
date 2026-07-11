@@ -8,7 +8,7 @@ import { useGameMode } from "@/lib/gameMode";
 import { cn } from "@/lib/utils";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
-import { AccountCard } from "@/components/AccountCard";
+// import { AccountCard } from "@/components/AccountCard"; // UI gizlendi
 import { clearLocalProgress, hydrateSrsFromCloud } from "@/data/srs";
 import { ConfirmDestructive } from "@/components/ConfirmDestructive";
 import { toast } from "sonner";
@@ -72,7 +72,7 @@ const Settings = () => {
       <main className="container mx-auto max-w-xl px-4 pb-16">
         <PageHeader title="⚙️ Ayarlar" backTo="/" centered />
 
-        <AccountCard />
+        {/* <AccountCard /> — hesap UI şimdilik gizli */}
 
         <div className="space-y-3">
           <div className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">

@@ -72,7 +72,7 @@ const Paywall = () => {
   };
 
   const handleSubscribe = () => {
-    if (!session) { navigate("/giris"); return; }
+    // Giriş UI'ı şimdilik gizli — session kontrolü kaldırıldı
     if (!parentConsent) { alert("Önce veli beyanını onaylamalısın."); return; }
     if (!parentOk) { setGateOpen(true); return; }
     void runCheckout();

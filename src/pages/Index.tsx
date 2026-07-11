@@ -54,13 +54,7 @@ const Index = () => {
         <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
           {/* Hoca modu: öğrenci profili değiştirici */}
           <StudentSwitcher />
-          <Link
-            to={session ? "/ayarlar" : "/giris"}
-            className="rounded-full bg-card p-2 shadow-card border-2 border-primary/20"
-            aria-label={session ? "Hesap" : "Giriş"}
-          >
-            {session ? <UserCircle2 className="h-5 w-5 text-primary" /> : <LogIn className="h-5 w-5 text-primary" />}
-          </Link>
+          {/* Hesap/Giriş butonu şimdilik gizli — Ayarlar alt menüden erişilebilir */}
         </div>
 
         <div className="mb-6 text-center animate-bounce-in">

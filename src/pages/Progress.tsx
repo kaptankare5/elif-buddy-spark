@@ -40,11 +40,7 @@ const ProgressPage = () => {
           <span className="rounded-full bg-card border-2 border-primary/30 px-3 py-1">
             👤 {accountLabel}
           </span>
-          {!session && (
-            <Link to="/giris" className="rounded-full bg-primary text-primary-foreground px-3 py-1 font-extrabold">
-              Giriş yap
-            </Link>
-          )}
+          {/* Giriş yap butonu şimdilik gizli */}
         </div>
 
         {false && (
