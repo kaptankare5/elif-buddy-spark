@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
-import { LangToggle } from "@/components/LangToggle";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { gamePool, getGameLang, pickN, shuffle } from "./_shared";
@@ -270,10 +269,6 @@ const Match3Game = () => {
     <div className="min-h-screen bg-gradient-to-b from-topic-pink/20 to-background">
       <main className="container mx-auto max-w-xl px-4 pb-16">
         <PageHeader title="🍬 Üçlü Eşleştir" backTo="/oyunlar" centered onReset={reset} />
-
-        <div className="flex justify-center mb-3">
-          <LangToggle />
-        </div>
 
         <div className="mb-3 grid grid-cols-2 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-primary/30">

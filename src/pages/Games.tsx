@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
-import { LangToggle } from "@/components/LangToggle";
 import { useGameMode, SUPER_MODE_GAMES } from "@/lib/gameMode";
 
 type Diff = "kolay" | "zor";
@@ -47,10 +46,6 @@ const Games = () => {
     <div className="min-h-screen bg-gradient-to-b from-primary-soft/40 to-background">
       <main className="container mx-auto max-w-3xl px-4 pb-20">
         <PageHeader title="🎮 Oyunlar" backTo="/" centered />
-
-        <div className="flex justify-center mb-3">
-          <LangToggle />
-        </div>
 
         <p className="text-center text-muted-foreground font-semibold mb-5 text-sm sm:text-base">
           {mode === "super" ? "⚡ Süper Öğrenme Modu — sıkı çalış!" : "Hangi oyunu oynamak istersin?"}
