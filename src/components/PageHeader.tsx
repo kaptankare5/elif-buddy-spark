@@ -6,12 +6,13 @@ import { StudentSwitcher } from "@/components/StudentSwitcher";
 interface PageHeaderProps {
   title?: string;
   backTo?: string;
+  onBack?: () => void;
   onReset?: () => void;
   centered?: boolean;
 }
 
 export const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
-  ({ title, backTo = "/", onReset, centered }, ref) => {
+  ({ title, backTo = "/", onBack, onReset, centered }, ref) => {
     const navigate = useNavigate();
     // Geri butonu etiketi hedefe göre — oyunlarda "Ana Sayfa" yazıp /oyunlar'a
     // gitmesi kafa karıştırıyordu. Home'a gidiyorsa "Ana Sayfa", değilse "Geri".
