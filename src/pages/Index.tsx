@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { LogIn, UserCircle2, Lock, Crown, TrendingUp, Gamepad2, Flame } from "lucide-react";
+import { Lock, Crown, TrendingUp, Gamepad2, Flame } from "lucide-react";
 
 import { SUBJECTS } from "@/data/subjects";
-import { useAuth } from "@/hooks/useAuth";
+
 import { getUnlockedTopicIds, isTopicCompleted } from "@/lib/unlock";
 import { getTopicSrs, useSrsTick, type Level } from "@/data/srs";
 import { getStreak, STREAK_EVENT } from "@/lib/streak";
@@ -25,7 +25,7 @@ const Index = () => {
   useSrsTick("quiz");
   const [unlocked, setUnlocked] = useState<Set<string>>(() => getUnlockedTopicIds());
   const [streak, setStreak] = useState(() => getStreak());
-  const { session } = useAuth();
+  
   const { active: activeStudent } = useStudents();
 
   useEffect(() => {
