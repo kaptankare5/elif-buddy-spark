@@ -51,26 +51,26 @@ const Games = () => {
           {mode === "super" ? "⚡ Süper Öğrenme Modu — sıkı çalış!" : "Hangi oyunu oynamak istersin?"}
         </p>
 
-        {kolay.length > 0 && (
-          <>
-            <h3 className="mb-2 flex items-center gap-2 font-extrabold text-success">
-              <span className="text-lg">🟢</span> Kolay Oyunlar
-              <span className="text-[11px] font-bold text-muted-foreground">— sakin & eğlenceli</span>
-            </h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-              {kolay.map((g, i) => <Card key={g.id} g={g} i={i} />)}
-            </div>
-          </>
-        )}
-
         {zor.length > 0 && (
           <>
             <h3 className="mb-2 flex items-center gap-2 font-extrabold text-destructive">
               <span className="text-lg">🔴</span> Zor Oyunlar
               <span className="text-[11px] font-bold text-muted-foreground">— hızlı & refleks</span>
             </h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
               {zor.map((g, i) => <Card key={g.id} g={g} i={i} />)}
+            </div>
+          </>
+        )}
+
+        {kolay.length > 0 && (
+          <>
+            <h3 className="mb-2 flex items-center gap-2 font-extrabold text-success">
+              <span className="text-lg">🟢</span> Kolay Oyunlar
+              <span className="text-[11px] font-bold text-muted-foreground">— sakin & eğlenceli</span>
+            </h3>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {kolay.map((g, i) => <Card key={g.id} g={g} i={i} />)}
             </div>
           </>
         )}
