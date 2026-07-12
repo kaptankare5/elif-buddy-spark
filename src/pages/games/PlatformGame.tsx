@@ -2,21 +2,26 @@
 //
 // 10 BÖLÜM: her bölüm farklı temalı (çayır, orman, sahil, çöl, gün batımı,
 // kar, gece, şeker, uzay, gökkuşağı), soldan sağa koşulur ve bölüm sonundaki
-// BAYRAĞA ulaşınca biter (kale + kutlama). Bölüm ilerledikçe çukur/düşman
-// artar; zıplama yayı, hareketli platform, merdiven, uçan kuş eklenir.
+// CAMİYE ulaşınca biter (kubbe + minareler + kutlama). Bölüm ilerledikçe
+// çukur/canavar artar; zıplama yayı, hareketli platform, merdiven eklenir.
 // İlerleme localStorage'da tutulur; bir bölümü bitirince sonraki açılır.
 //
+// CANAVARLAR (şiddetsiz tasarım — bilinçli tercih):
+// 4 tür: yürüyen kestane, zıplayan kurbağa, dikey süzülen baloncuk, uçan kuş.
+// Yok etme/öldürme YOK: üstüne basmak zarar vermez (oyuncu seker, canavar
+// kısa süre sersemler); yandan dokunursan can gidersin. Doğru cevap ödülü
+// "NUR" aktifken dokunduğun canavar GÜVERCİNE DÖNÜŞÜP özgürce uçar gider —
+// kimse zarar görmez, çocuk yine de güçlü hisseder.
+//
 // Para/altın yerine HARF toplanır: sesli + yazılı soru hedef harfi verir,
-// yolda 3 harf bloğu belirir; oyuncu koşup zıplayarak DOĞRU bloğa dokunur.
-// Doğru: puan + seri + hedef harften bonus "harf parası" dizisi. Yanlış: can
-// ve puan kaybı + doğru blok yeşil gösterilir ve harf tekrar sorulur.
-// Sorular bloklar GÖRÜNÜRKEN seçilir (önceden değil) — böylece SRS/retry
-// kuyruğu bölüm içinde de işler. Cevaplar recordGameAnswer'dan geçer
-// (süper modda hepsi, normal modda 3'te 1 sayılır); ipucu halkası süper
-// modda yalnız seviye 1'de.
-// Mobil (Capacitor) öncelikli: büyük basılı-tut butonları (◀ ▶ Zıpla),
-// pointer olayları, dpr'a duyarlı tek <canvas>, arka planda otomatik durur,
-// rAF kısılmasına karşı DT_MAX kelepçesi.
+// yolda 3 harf bloğu belirir; doğru bloğa dokununca puan + seri + ÖDÜL
+// (+1 can / Nur / mıknatıs / 2X puan / harf yağmuru) — soruları cazip kılar.
+// Yanlışta CAN GİTMEZ (öğrenme hatası oyunu bitirmez): puan düşer, doğru
+// blok yeşil gösterilir ve harf tekrar sorulur. Sorular bloklar GÖRÜNÜRKEN
+// SRS'ten seçilir; cevaplar recordGameAnswer'dan geçer (süper modda hepsi,
+// normal modda 3'te 1); ipucu halkası süper modda yalnız seviye 1'de.
+// Mobil (Capacitor) öncelikli: büyük basılı-tut butonları, pointer olayları,
+// dpr'a duyarlı tek <canvas>, arka planda otomatik durur, DT_MAX kelepçesi.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem } from "@/lib/audio";
@@ -36,18 +41,26 @@ const JUMP_CUT = -220;        // tuş erken bırakılınca kısa zıplama
 const SPRING_V = -1000;       // zıplama yayı ≈ 263px fırlatır
 const MAX_FALL = 950;
 const RUN_SPEED = 200;
-const ENEMY_SPEED = 55;
+const WALKER_SPEED = 55;
 const FLYER_SPEED = 70;
 const DT_MAX = 0.05;          // sekme arkaplandan dönünce ışınlanmayı önler
 const PW = 26, PH = 36;       // oyuncu çarpışma kutusu
-const EW = 30, EH = 24;       // kestane (yürüyen düşman) kutusu
-const FW = 26, FH = 20;       // uçan kuş kutusu
 const COYOTE = 0.1, JUMP_BUFFER = 0.12;
 const GHOST_TIME = 2.0;       // hasar sonrası dokunulmazlık
 const BLOCK = 54;             // harf bloğu kenarı
 const COIN_R = 13;
 const PLAT_H = 16;
 const LEVEL_COUNT = 10;
+const MAX_LIVES = 5;          // sorulardan +1 can kazanılabilir
+const NUR_TIME = 10;          // ✨ Nur: canavarlar güvercine dönüşür
+const MAG_TIME = 10;          // 🧲 mıknatıs: harf paraları oyuncuya akar
+const X2_TIME = 12;           // ⭐ 2X puan
+const FREED_DUR = 1.0;        // güvercine dönüşüp uçma animasyonu
+
+// canavar çarpışma kutuları (tür bazlı)
+type MonsterKind = "walker" | "hopper" | "floater" | "flyer";
+const MW: Record<MonsterKind, number> = { walker: 30, hopper: 26, floater: 26, flyer: 26 };
+const MH: Record<MonsterKind, number> = { walker: 24, hopper: 22, floater: 26, flyer: 20 };
 
 const FONT_STACK = '"Amiri Quran", "Scheherazade New", "Traditional Arabic", serif';
 const CONFETTI = ["#f43f5e", "#f59e0b", "#22c55e", "#3b82f6", "#a855f7"];
@@ -91,15 +104,19 @@ const THEMES: Theme[] = [
 
 // Bölüm zorluk ayarı — seviye arttıkça uzar ve sıklaşır
 function levelConf(lv: number) {
+  const kinds: MonsterKind[] = ["walker"];
+  if (lv >= 2) kinds.push("hopper");
+  if (lv >= 3) kinds.push("floater");
+  if (lv >= 4) kinds.push("flyer");
   return {
     len: 2900 + lv * 380,
     gapChance: lv === 1 ? 0.22 : Math.min(0.5, 0.24 + lv * 0.028),
     gapMin: 58,
     gapMax: 84 + Math.min(38, lv * 4),
-    enemyChance: Math.min(0.72, 0.3 + lv * 0.045),
+    monsterChance: Math.min(0.72, 0.3 + lv * 0.045),
+    monsterKinds: kinds,
     springs: lv >= 2,
     movers: lv >= 3,
-    flyers: lv >= 4,
     questions: Math.min(8, 4 + Math.ceil(lv / 2)),
   };
 }
@@ -121,8 +138,24 @@ function unlockLevel(n: number) {
 // ---- tipler ----
 interface Mover { baseY: number; range: number; speed: number; phase: number }
 interface SolidEnt { x: number; y: number; w: number; oneWay: boolean; mover?: Mover }
-interface EnemyEnt { id: number; x: number; y: number; dir: 1 | -1; minX: number; maxX: number; squashT: number }
-interface FlyerEnt { id: number; x: number; y: number; baseY: number; dir: 1 | -1; minX: number; maxX: number; amp: number; t: number; squashT: number }
+interface MonsterEnt {
+  id: number;
+  kind: MonsterKind;
+  x: number;
+  y: number;
+  dir: 1 | -1;
+  minX: number;
+  maxX: number;
+  homeX: number;      // floater: yatay salınım merkezi
+  baseY: number;      // floater/flyer: dikey salınım merkezi
+  amp: number;
+  t: number;
+  vy: number;         // hopper
+  grounded: boolean;  // hopper
+  hopT: number;       // hopper: bir sonraki zıplamaya kalan süre
+  calmT: number;      // üstüne basılınca sersemleme (zarar yok)
+  freedT: number;     // Nur ile güvercine dönüşüp uçma (yok etme değil)
+}
 interface SpringEnt { id: number; x: number; y: number; t: number }
 interface BlockEnt { x: number; y: number; item: ContentItem | null; isTarget: boolean; state?: "good" | "bad" | "fade" }
 interface TrioEnt {
@@ -136,16 +169,16 @@ interface TrioEnt {
   resolved: null | { correct: boolean; missed?: boolean };
   doneT: number;
 }
-interface CoinEnt { id: number; x: number; y: number; glyph: string; taken: boolean }
+interface CoinEnt { id: number; x: number; y: number; glyph: string; taken: boolean; heart?: boolean }
 interface Pop { x: number; y: number; vx: number; vy: number; t: number; life: number; color: string; text?: string; grav?: boolean }
 interface World {
   solids: SolidEnt[];
-  enemies: EnemyEnt[];
-  flyers: FlyerEnt[];
+  monsters: MonsterEnt[];
   springs: SpringEnt[];
   trios: TrioEnt[];
   coins: CoinEnt[];
   pops: Pop[];
+  cliffs: { x: number; w: number }[];   // geniş uçurumlar (görsel kaya duvarı + tabela)
   genX: number;
 }
 
@@ -195,7 +228,6 @@ function glyphSprite(glyph: string, kind: "block" | "coin" | "mystery"): HTMLCan
     g.lineWidth = 7;
     g.strokeStyle = "#b45309";
     g.stroke();
-    // köşe perçinleri
     g.fillStyle = "#fde68a";
     for (const [cx, cy] of [[16, 16], [px - 16, 16], [16, px - 16], [px - 16, px - 16]]) {
       g.beginPath(); g.arc(cx, cy, 4, 0, Math.PI * 2); g.fill();
@@ -329,7 +361,7 @@ function drawBirds(g: CanvasRenderingContext2D, vw: number, time: number) {
   }
 }
 
-function drawHills(g: CanvasRenderingContext2D, camX: number, vw: number, th: Theme, time: number) {
+function drawHills(g: CanvasRenderingContext2D, camX: number, vw: number, th: Theme) {
   // gökkuşağı — tepelerin arkasında büyük kemer
   if (th.celestial === "rainbow") {
     const off = camX * 0.3, spacing = 1400;
@@ -361,7 +393,6 @@ function drawHills(g: CanvasRenderingContext2D, camX: number, vw: number, th: Th
     g.arc(x, GROUND_Y + 4, r, Math.PI, Math.PI * 2);
     g.fill();
   }
-  void time;
 }
 
 function drawSnow(g: CanvasRenderingContext2D, vw: number, time: number) {
@@ -597,144 +628,514 @@ function drawSpring(g: CanvasRenderingContext2D, sp: SpringEnt) {
   g.fill();
 }
 
-function drawEnemy(g: CanvasRenderingContext2D, e: EnemyEnt, time: number) {
+// ---- canavarlar (sevimli, şiddetsiz) ----
+
+// Nur ile dönüşen güvercin — yukarı süzülüp kaybolur (kimse zarar görmez)
+function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number, k: number, time: number) {
+  const dx = x + k * 46 * dir;
+  const dy = y - k * 82;
   g.save();
-  g.translate(e.x + EW / 2, e.y + EH);
-  g.scale(1, e.squashT > 0 ? 0.35 : 1);
-  g.fillStyle = "#92400e";
-  g.beginPath();
-  g.ellipse(0, -EH / 2, EW / 2, EH / 2, 0, 0, Math.PI * 2);
-  g.fill();
-  const step = e.squashT > 0 ? 0 : Math.sin(time * 10 + e.id) * 3;
-  g.fillStyle = "#451a03";
-  g.beginPath();
-  g.ellipse(-8 + step, -2, 6, 3.5, 0, 0, Math.PI * 2);
-  g.fill();
-  g.beginPath();
-  g.ellipse(8 - step, -2, 6, 3.5, 0, 0, Math.PI * 2);
-  g.fill();
+  g.globalAlpha = Math.max(0, 1 - k * 0.85);
+  g.translate(dx, dy);
+  g.scale(dir, 1);
+  // ilk anda ışık parlaması
+  if (k < 0.25) {
+    g.globalAlpha = (0.25 - k) * 3;
+    g.fillStyle = "#fde047";
+    g.beginPath(); g.arc(0, 0, 20 * (1 - k), 0, Math.PI * 2); g.fill();
+    g.globalAlpha = Math.max(0, 1 - k * 0.85);
+  }
+  // gövde + kuyruk
   g.fillStyle = "#ffffff";
   g.beginPath();
-  g.arc(-5, -EH / 2 - 3, 3.4, 0, Math.PI * 2);
-  g.arc(5, -EH / 2 - 3, 3.4, 0, Math.PI * 2);
+  g.ellipse(0, 0, 10, 6.2, -0.15, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = "#1f2937";
   g.beginPath();
-  g.arc(-4.4 + e.dir, -EH / 2 - 3, 1.5, 0, Math.PI * 2);
-  g.arc(5.6 + e.dir, -EH / 2 - 3, 1.5, 0, Math.PI * 2);
+  g.moveTo(-9, 0);
+  g.lineTo(-16, -4);
+  g.lineTo(-15, 3);
+  g.closePath();
   g.fill();
-  g.strokeStyle = "#451a03";
-  g.lineWidth = 1.6;
-  g.beginPath();
-  g.moveTo(-8, -EH / 2 - 8); g.lineTo(-2, -EH / 2 - 6);
-  g.moveTo(8, -EH / 2 - 8); g.lineTo(2, -EH / 2 - 6);
-  g.stroke();
-  g.restore();
-}
-
-function drawFlyer(g: CanvasRenderingContext2D, f: FlyerEnt, time: number) {
-  g.save();
-  g.translate(f.x + FW / 2, f.y + FH / 2);
-  g.scale(f.dir, f.squashT > 0 ? 0.35 : 1);
-  // gövde
-  g.fillStyle = "#7c3aed";
-  g.beginPath();
-  g.ellipse(0, 0, FW / 2, FH / 2, 0, 0, Math.PI * 2);
-  g.fill();
-  // karın
-  g.fillStyle = "#c4b5fd";
-  g.beginPath();
-  g.ellipse(1, 3, FW / 3, FH / 3.2, 0, 0, Math.PI * 2);
-  g.fill();
-  // kanat (çırpar)
-  const wf = Math.sin(time * 13 + f.id) * 0.9;
-  g.fillStyle = "#a78bfa";
-  g.save();
-  g.translate(-2, -2);
-  g.rotate(wf * 0.6 - 0.3);
-  g.beginPath();
-  g.ellipse(0, -6, 9, 5, 0, 0, Math.PI * 2);
-  g.fill();
-  g.restore();
-  // gaga + göz
+  // baş + gaga + göz
+  g.beginPath(); g.arc(9, -4, 4.2, 0, Math.PI * 2); g.fill();
   g.fillStyle = "#f59e0b";
   g.beginPath();
-  g.moveTo(FW / 2 - 2, -2);
-  g.lineTo(FW / 2 + 6, 1);
-  g.lineTo(FW / 2 - 2, 4);
-  g.closePath();
-  g.fill();
-  g.fillStyle = "#ffffff";
-  g.beginPath(); g.arc(5, -3, 3, 0, Math.PI * 2); g.fill();
+  g.moveTo(12.5, -4.5); g.lineTo(16.5, -3.4); g.lineTo(12.5, -2.2);
+  g.closePath(); g.fill();
   g.fillStyle = "#1f2937";
-  g.beginPath(); g.arc(6, -3, 1.4, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(10, -4.6, 1, 0, Math.PI * 2); g.fill();
+  // çırpan kanat
+  const wf = Math.sin(time * 18) * 0.9;
+  g.fillStyle = "#f1f5f9";
+  g.save();
+  g.translate(-1, -2);
+  g.rotate(-0.5 + wf * 0.55);
+  g.beginPath();
+  g.ellipse(0, -7, 11, 4.6, 0, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
   g.restore();
 }
 
-function drawFlag(g: CanvasRenderingContext2D, x: number, time: number) {
-  // taban + direk + dalgalanan bayrak
-  g.fillStyle = "#94a3b8";
-  rr(g, x - 11, GROUND_Y - 10, 22, 10, 3);
-  g.fill();
-  g.fillStyle = "#64748b";
-  g.fillRect(x - 2.5, GROUND_Y - 148, 5, 138);
-  g.fillStyle = "#fbbf24";
-  g.beginPath(); g.arc(x, GROUND_Y - 150, 6, 0, Math.PI * 2); g.fill();
-  const wav = Math.sin(time * 4) * 4;
-  g.fillStyle = "#ef4444";
-  g.beginPath();
-  g.moveTo(x + 3, GROUND_Y - 144);
-  g.quadraticCurveTo(x + 28, GROUND_Y - 140 + wav, x + 48, GROUND_Y - 131 + wav);
-  g.quadraticCurveTo(x + 28, GROUND_Y - 124 + wav, x + 3, GROUND_Y - 118);
-  g.closePath();
-  g.fill();
-  g.fillStyle = "#ffffff";
-  g.beginPath(); g.arc(x + 18, GROUND_Y - 131 + wav * 0.5, 4.5, 0, Math.PI * 2); g.fill();
+// sersemleme yıldızları (üstüne basılınca — zarar görmez, kısa süre şaşkın)
+function drawDizzyStars(g: CanvasRenderingContext2D, cx: number, cy: number, time: number) {
+  g.fillStyle = "#fde047";
+  for (let k = 0; k < 2; k++) {
+    const a = time * 6 + k * Math.PI;
+    g.beginPath();
+    g.arc(cx + Math.cos(a) * 12, cy + Math.sin(a) * 3 - 4, 2.4, 0, Math.PI * 2);
+    g.fill();
+  }
 }
 
-function drawCastle(g: CanvasRenderingContext2D, x: number) {
-  const by = GROUND_Y;
-  // yan kuleler
-  for (const tx of [x - 16, x + 112]) {
-    g.fillStyle = "#b97c39";
-    g.fillRect(tx, by - 108, 24, 108);
-    g.fillStyle = "#9a6430";
-    for (let k = 0; k < 3; k++) g.fillRect(tx + k * 9, by - 116, 6, 8);
-    g.fillStyle = "#5b3a1a";
-    g.fillRect(tx + 8, by - 92, 8, 12);
+function drawMonster(g: CanvasRenderingContext2D, m: MonsterEnt, time: number) {
+  if (m.freedT > 0) {
+    drawDove(g, m.x + MW[m.kind] / 2, m.y + MH[m.kind] / 2, m.dir, 1 - m.freedT / FREED_DUR, time);
+    return;
   }
-  // gövde
-  g.fillStyle = "#cd8a3f";
-  g.fillRect(x, by - 84, 120, 84);
-  g.fillStyle = "#9a6430";
-  for (let k = 0; k < 6; k++) g.fillRect(x + 4 + k * 20, by - 92, 12, 8);
-  // pencereler + kapı
-  g.fillStyle = "#5b3a1a";
-  g.fillRect(x + 18, by - 66, 12, 16);
-  g.fillRect(x + 90, by - 66, 12, 16);
+  const w = MW[m.kind], h = MH[m.kind];
+  const calm = m.calmT > 0;
+  switch (m.kind) {
+    case "walker": {
+      g.save();
+      g.translate(m.x + w / 2, m.y + h);
+      g.scale(1, calm ? 0.8 : 1);
+      g.fillStyle = "#92400e";
+      g.beginPath();
+      g.ellipse(0, -h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+      g.fill();
+      const step = calm ? 0 : Math.sin(time * 10 + m.id) * 3;
+      g.fillStyle = "#451a03";
+      g.beginPath();
+      g.ellipse(-8 + step, -2, 6, 3.5, 0, 0, Math.PI * 2);
+      g.fill();
+      g.beginPath();
+      g.ellipse(8 - step, -2, 6, 3.5, 0, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = "#ffffff";
+      g.beginPath();
+      g.arc(-5, -h / 2 - 3, 3.4, 0, Math.PI * 2);
+      g.arc(5, -h / 2 - 3, 3.4, 0, Math.PI * 2);
+      g.fill();
+      if (calm) {
+        // şaşkın kapalı gözler
+        g.strokeStyle = "#1f2937";
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.moveTo(-7, -h / 2 - 3); g.lineTo(-3, -h / 2 - 3);
+        g.moveTo(3, -h / 2 - 3); g.lineTo(7, -h / 2 - 3);
+        g.stroke();
+      } else {
+        g.fillStyle = "#1f2937";
+        g.beginPath();
+        g.arc(-4.4 + m.dir, -h / 2 - 3, 1.5, 0, Math.PI * 2);
+        g.arc(5.6 + m.dir, -h / 2 - 3, 1.5, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.restore();
+      break;
+    }
+    case "hopper": {
+      // zıplayan kurbağa: yerdeyken çömelir, havada gerilir
+      const stretch = !m.grounded ? 1.14 : m.hopT < 0.16 ? 0.68 : 1 - Math.abs(Math.sin(time * 3 + m.id)) * 0.05;
+      g.save();
+      g.translate(m.x + w / 2, m.y + h);
+      g.scale(1, calm ? 0.75 : stretch);
+      g.fillStyle = "#4ade80";
+      rr(g, -w / 2, -h, w, h, 9);
+      g.fill();
+      g.fillStyle = "#bbf7d0";
+      g.beginPath();
+      g.ellipse(0, -h * 0.32, w * 0.3, h * 0.26, 0, 0, Math.PI * 2);
+      g.fill();
+      // arka bacaklar
+      g.fillStyle = "#22c55e";
+      g.beginPath();
+      g.ellipse(-w / 2 + 2, -3, 5.5, 3.4, 0, 0, Math.PI * 2);
+      g.ellipse(w / 2 - 2, -3, 5.5, 3.4, 0, 0, Math.PI * 2);
+      g.fill();
+      // patlak gözler
+      g.fillStyle = "#ffffff";
+      g.beginPath();
+      g.arc(-6, -h + 1, 4, 0, Math.PI * 2);
+      g.arc(6, -h + 1, 4, 0, Math.PI * 2);
+      g.fill();
+      if (calm) {
+        g.strokeStyle = "#14532d";
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.moveTo(-8, -h + 1); g.lineTo(-4, -h + 1);
+        g.moveTo(4, -h + 1); g.lineTo(8, -h + 1);
+        g.stroke();
+      } else {
+        g.fillStyle = "#14532d";
+        g.beginPath();
+        g.arc(-5.4 + m.dir * 1.2, -h + 1, 1.7, 0, Math.PI * 2);
+        g.arc(6.6 + m.dir * 1.2, -h + 1, 1.7, 0, Math.PI * 2);
+        g.fill();
+      }
+      // ağız
+      g.strokeStyle = "#14532d";
+      g.lineWidth = 1.4;
+      g.beginPath();
+      g.arc(0, -h * 0.42, 3.4, 0.3, Math.PI - 0.3);
+      g.stroke();
+      g.restore();
+      break;
+    }
+    case "floater": {
+      // dikey süzülen baloncuk: yuvarlak, tepe püsküllü, minik kanatlı
+      g.save();
+      g.translate(m.x + w / 2, m.y + h / 2);
+      if (calm) g.scale(1, 0.8);
+      // minik kanatlar
+      const wf = Math.sin(time * 12 + m.id) * 0.8;
+      g.fillStyle = "#a5f3fc";
+      for (const sd of [-1, 1]) {
+        g.save();
+        g.translate(sd * (w / 2 - 1), -2);
+        g.rotate(sd * (0.5 + wf * 0.4));
+        g.beginPath();
+        g.ellipse(sd * 5, 0, 7, 4, 0, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+      }
+      // gövde
+      g.fillStyle = "#22d3ee";
+      g.beginPath();
+      g.arc(0, 0, w / 2, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = "#cffafe";
+      g.beginPath();
+      g.ellipse(0, 4, w * 0.3, h * 0.22, 0, 0, Math.PI * 2);
+      g.fill();
+      // tepe püskülleri
+      g.fillStyle = "#0891b2";
+      for (let k = -1; k <= 1; k++) {
+        g.beginPath();
+        g.arc(k * 5.5, -w / 2 + 1.5, 2.6, 0, Math.PI * 2);
+        g.fill();
+      }
+      // gözler
+      g.fillStyle = "#ffffff";
+      g.beginPath();
+      g.arc(-4.6, -2, 3.6, 0, Math.PI * 2);
+      g.arc(4.6, -2, 3.6, 0, Math.PI * 2);
+      g.fill();
+      if (calm) {
+        g.strokeStyle = "#164e63";
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.moveTo(-7, -2); g.lineTo(-2.5, -2);
+        g.moveTo(2.5, -2); g.lineTo(7, -2);
+        g.stroke();
+      } else {
+        g.fillStyle = "#164e63";
+        g.beginPath();
+        g.arc(-4, -2 + Math.sin(time * 1.5) * 1, 1.6, 0, Math.PI * 2);
+        g.arc(5.2, -2 + Math.sin(time * 1.5) * 1, 1.6, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.restore();
+      break;
+    }
+    case "flyer": {
+      g.save();
+      g.translate(m.x + w / 2, m.y + h / 2);
+      g.scale(m.dir, calm ? 0.75 : 1);
+      g.fillStyle = "#7c3aed";
+      g.beginPath();
+      g.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = "#c4b5fd";
+      g.beginPath();
+      g.ellipse(1, 3, w / 3, h / 3.2, 0, 0, Math.PI * 2);
+      g.fill();
+      const wf = Math.sin(time * 13 + m.id) * 0.9;
+      g.fillStyle = "#a78bfa";
+      g.save();
+      g.translate(-2, -2);
+      g.rotate(wf * 0.6 - 0.3);
+      g.beginPath();
+      g.ellipse(0, -6, 9, 5, 0, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+      g.fillStyle = "#f59e0b";
+      g.beginPath();
+      g.moveTo(w / 2 - 2, -2);
+      g.lineTo(w / 2 + 6, 1);
+      g.lineTo(w / 2 - 2, 4);
+      g.closePath();
+      g.fill();
+      g.fillStyle = "#ffffff";
+      g.beginPath(); g.arc(5, -3, 3, 0, Math.PI * 2); g.fill();
+      if (calm) {
+        g.strokeStyle = "#1f2937";
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.moveTo(3.4, -3); g.lineTo(7, -3);
+        g.stroke();
+      } else {
+        g.fillStyle = "#1f2937";
+        g.beginPath(); g.arc(6, -3, 1.4, 0, Math.PI * 2); g.fill();
+      }
+      g.restore();
+      break;
+    }
+  }
+  if (calm) drawDizzyStars(g, m.x + w / 2, m.y - 4, time);
+}
+
+// ---- bölüm sonu: cami + minareler ----
+
+function drawCrescent(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string, rot = -0.5) {
+  g.save();
+  g.translate(cx, cy);
+  g.rotate(rot);
+  g.fillStyle = color;
   g.beginPath();
-  g.arc(x + 60, by - 26, 17, Math.PI, Math.PI * 2);
-  g.fill();
-  g.fillRect(x + 43, by - 26, 34, 26);
-  // tepe bayrağı
-  g.fillStyle = "#64748b";
-  g.fillRect(x + 58, by - 128, 3, 36);
-  g.fillStyle = "#facc15";
-  g.beginPath();
-  g.moveTo(x + 61, by - 128);
-  g.lineTo(x + 82, by - 122);
-  g.lineTo(x + 61, by - 116);
+  g.arc(0, 0, r, 0.55, Math.PI * 2 - 0.55, false);
+  g.arc(r * 0.45, 0, r * 0.68, Math.PI * 2 - 0.95, 0.95, true);
   g.closePath();
   g.fill();
-  // tuğla çizgileri
-  g.strokeStyle = "rgba(90,56,22,0.25)";
-  g.lineWidth = 1.5;
-  for (let k = 1; k < 4; k++) {
+  g.restore();
+}
+
+function drawMinaret(g: CanvasRenderingContext2D, x: number, baseY: number) {
+  // gövde
+  g.fillStyle = "#f6ead2";
+  g.fillRect(x - 7, baseY - 128, 14, 128);
+  g.fillStyle = "#e3d0ac";
+  g.fillRect(x - 7, baseY - 128, 4, 128);
+  // şerefe (balkon)
+  g.fillStyle = "#d9bf93";
+  rr(g, x - 12, baseY - 92, 24, 8, 3);
+  g.fill();
+  g.fillStyle = "#b89b6c";
+  for (let k = -1; k <= 1; k++) g.fillRect(x + k * 8 - 1, baseY - 86, 2, 5);
+  // petek (üst daralan bölüm)
+  g.fillStyle = "#f6ead2";
+  g.fillRect(x - 5, baseY - 148, 10, 20);
+  // külah (koni)
+  g.fillStyle = "#2ea394";
+  g.beginPath();
+  g.moveTo(x - 9, baseY - 148);
+  g.lineTo(x + 9, baseY - 148);
+  g.lineTo(x, baseY - 176);
+  g.closePath();
+  g.fill();
+  // alem + hilal
+  g.fillStyle = "#d4a017";
+  g.fillRect(x - 1, baseY - 186, 2, 10);
+  drawCrescent(g, x, baseY - 189, 5, "#d4a017", -0.4);
+}
+
+function drawMosque(g: CanvasRenderingContext2D, x: number, time: number) {
+  const by = GROUND_Y;
+  const bw = 170;   // ana gövde genişliği
+  // minareler (iki yanda)
+  drawMinaret(g, x - 26, by);
+  drawMinaret(g, x + bw + 26, by);
+  // ana gövde
+  g.fillStyle = "#f6ead2";
+  rr(g, x, by - 78, bw, 78, 6);
+  g.fill();
+  // gövde süs bandı
+  g.fillStyle = "#e8d7b4";
+  g.fillRect(x, by - 78, bw, 8);
+  // büyük kubbe
+  g.fillStyle = "#2ea394";
+  g.beginPath();
+  g.arc(x + bw / 2, by - 76, 52, Math.PI, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#3fc0ae";
+  g.beginPath();
+  g.arc(x + bw / 2 - 14, by - 78, 40, Math.PI + 0.35, Math.PI * 1.6);
+  g.lineTo(x + bw / 2 - 14, by - 78);
+  g.closePath();
+  g.fill();
+  // kubbe alemi + hilal
+  g.fillStyle = "#d4a017";
+  g.fillRect(x + bw / 2 - 1.5, by - 140, 3, 14);
+  drawCrescent(g, x + bw / 2, by - 145, 6.5, "#d4a017", -0.4);
+  // küçük yan kubbeler
+  for (const sx of [x + 26, x + bw - 26]) {
+    g.fillStyle = "#2ea394";
     g.beginPath();
-    g.moveTo(x, by - 84 + k * 21);
-    g.lineTo(x + 120, by - 84 + k * 21);
+    g.arc(sx, by - 78, 18, Math.PI, Math.PI * 2);
+    g.fill();
+  }
+  // kemerli pencereler
+  g.fillStyle = "#8a6b3f";
+  for (const wx of [x + 30, x + bw - 30]) {
+    g.beginPath();
+    g.arc(wx, by - 42, 8, Math.PI, Math.PI * 2);
+    g.fill();
+    g.fillRect(wx - 8, by - 42, 16, 22);
+  }
+  g.fillStyle = "#fde68a";
+  for (const wx of [x + 30, x + bw - 30]) {
+    g.beginPath();
+    g.arc(wx, by - 42, 5.5, Math.PI, Math.PI * 2);
+    g.fill();
+    g.fillRect(wx - 5.5, by - 42, 11, 19);
+  }
+  // ana kapı (sivri kemer) — hedef burası, hafifçe parlar
+  const glow = 0.55 + Math.sin(time * 3) * 0.2;
+  g.fillStyle = "#7a5b32";
+  g.beginPath();
+  g.arc(x + bw / 2, by - 34, 17, Math.PI, Math.PI * 2);
+  g.fill();
+  g.fillRect(x + bw / 2 - 17, by - 34, 34, 34);
+  g.fillStyle = `rgba(253,230,138,${glow})`;
+  g.beginPath();
+  g.arc(x + bw / 2, by - 32, 12.5, Math.PI, Math.PI * 2);
+  g.fill();
+  g.fillRect(x + bw / 2 - 12.5, by - 32, 25, 32);
+  g.fillStyle = "#7a5b32";
+  g.fillRect(x + bw / 2 - 1, by - 30, 2, 30);
+  // basamaklar
+  g.fillStyle = "#d9c49a";
+  rr(g, x + bw / 2 - 26, by - 5, 52, 5, 2);
+  g.fill();
+}
+
+// Uçurum: kenarlarda kaya duvarı gölgesi + solda uyarı tabelası
+function drawCliff(g: CanvasRenderingContext2D, x: number, w: number) {
+  g.fillStyle = "rgba(62,38,18,0.4)";
+  g.beginPath();
+  g.moveTo(x, GROUND_Y);
+  g.lineTo(x + 13, GROUND_Y + 34);
+  g.lineTo(x + 7, VH + 20);
+  g.lineTo(x, VH + 20);
+  g.closePath();
+  g.fill();
+  g.beginPath();
+  g.moveTo(x + w, GROUND_Y);
+  g.lineTo(x + w - 13, GROUND_Y + 34);
+  g.lineTo(x + w - 7, VH + 20);
+  g.lineTo(x + w, VH + 20);
+  g.closePath();
+  g.fill();
+  // dipte sivri kayalar
+  g.fillStyle = "rgba(50,30,14,0.45)";
+  const n = Math.max(2, Math.floor(w / 22));
+  for (let i = 0; i < n; i++) {
+    const rx = x + 6 + (i + 0.5) * ((w - 12) / n);
+    const rh = 16 + hash01(x + i) * 14;
+    g.beginPath();
+    g.moveTo(rx - 8, VH + 4);
+    g.lineTo(rx + 8, VH + 4);
+    g.lineTo(rx, VH + 4 - rh);
+    g.closePath();
+    g.fill();
+  }
+  // uyarı tabelası (sol kenarda)
+  const sx = x - 16;
+  g.fillStyle = "#8a5a34";
+  g.fillRect(sx - 2, GROUND_Y - 26, 4, 26);
+  g.fillStyle = "#facc15";
+  g.beginPath();
+  g.moveTo(sx - 12, GROUND_Y - 26);
+  g.lineTo(sx + 12, GROUND_Y - 26);
+  g.lineTo(sx, GROUND_Y - 46);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = "#92400e";
+  g.lineWidth = 2;
+  g.stroke();
+  g.fillStyle = "#92400e";
+  g.fillRect(sx - 1.5, GROUND_Y - 41, 3, 8.5);
+  g.beginPath();
+  g.arc(sx, GROUND_Y - 30.5, 1.7, 0, Math.PI * 2);
+  g.fill();
+}
+
+// Gizli kapı: kemerli tahta kapı; saklıyken önünde çalı + ara sıra pırıltı
+function drawSecretDoor(g: CanvasRenderingContext2D, x: number, time: number, hidden: boolean) {
+  const by = GROUND_Y;
+  g.fillStyle = "#6b4226";
+  g.beginPath();
+  g.arc(x + 15, by - 30, 15, Math.PI, Math.PI * 2);
+  g.fill();
+  g.fillRect(x, by - 30, 30, 30);
+  g.fillStyle = "#8a5a34";
+  g.beginPath();
+  g.arc(x + 15, by - 30, 11, Math.PI, Math.PI * 2);
+  g.fill();
+  g.fillRect(x + 4, by - 30, 22, 26);
+  // kapı tahta çizgileri + topuz
+  g.strokeStyle = "#5b3a1a";
+  g.lineWidth = 1.6;
+  for (let k = -1; k <= 1; k++) {
+    g.beginPath();
+    g.moveTo(x + 15 + k * 7, by - 38 + Math.abs(k) * 4);
+    g.lineTo(x + 15 + k * 7, by - 4);
     g.stroke();
   }
+  g.fillStyle = "#d4a017";
+  g.beginPath();
+  g.arc(x + 23, by - 16, 2.2, 0, Math.PI * 2);
+  g.fill();
+  if (hidden) {
+    // önünde çalı — kapıyı yarı gizler
+    g.fillStyle = "#3f9d45";
+    g.beginPath();
+    g.arc(x + 4, by, 10, Math.PI, Math.PI * 2);
+    g.arc(x + 17, by, 12, Math.PI, Math.PI * 2);
+    g.arc(x + 29, by, 9, Math.PI, Math.PI * 2);
+    g.fill();
+    // ara sıra göz kırpan pırıltı — meraklı çocuğa ipucu
+    const tw = Math.sin(time * 2.4);
+    if (tw > 0.82) {
+      g.globalAlpha = (tw - 0.82) / 0.18;
+      g.fillStyle = "#fde047";
+      g.beginPath();
+      g.arc(x + 15, by - 40, 3, 0, Math.PI * 2);
+      g.fill();
+      g.globalAlpha = 1;
+    }
+  } else {
+    // çıkış kapısı: üstünde yeşil ok
+    g.fillStyle = "#22c55e";
+    g.beginPath();
+    g.moveTo(x + 15, by - 56);
+    g.lineTo(x + 24, by - 66);
+    g.lineTo(x + 6, by - 66);
+    g.closePath();
+    g.fill();
+  }
+}
+
+// Can kalbi (bonus bahçede) — nabız gibi atar
+function drawHeartPickup(g: CanvasRenderingContext2D, x: number, y: number, time: number) {
+  const k = 1 + Math.sin(time * 5) * 0.12;
+  g.save();
+  g.translate(x, y);
+  g.scale(k, k);
+  const grad = g.createRadialGradient(0, 0, 2, 0, 0, 18);
+  grad.addColorStop(0, "rgba(244,63,94,0.4)");
+  grad.addColorStop(1, "rgba(244,63,94,0)");
+  g.fillStyle = grad;
+  g.beginPath();
+  g.arc(0, 0, 18, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#ef4444";
+  g.beginPath();
+  g.arc(-4.5, -3, 5.5, 0, Math.PI * 2);
+  g.arc(4.5, -3, 5.5, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.moveTo(-9.6, -0.6);
+  g.lineTo(0, 11);
+  g.lineTo(9.6, -0.6);
+  g.closePath();
+  g.fill();
+  g.fillStyle = "rgba(255,255,255,0.7)";
+  g.beginPath();
+  g.arc(-4.5, -4.5, 2, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
 }
 
 function drawStartSign(g: CanvasRenderingContext2D, x: number) {
@@ -765,8 +1166,28 @@ function drawStartSign(g: CanvasRenderingContext2D, x: number) {
 function drawPlayerChar(
   g: CanvasRenderingContext2D,
   x: number, y: number, facing: 1 | -1, anim: number,
-  grounded: boolean, ghostT: number, time: number,
+  grounded: boolean, ghostT: number, nurT: number, time: number,
 ) {
+  // Nur halesi — altın ışık (dokunulan canavarlar güvercine dönüşür)
+  if (nurT > 0) {
+    const cx = x + PW / 2, cy = y + PH / 2;
+    const pr = 30 + Math.sin(time * 6) * 3;
+    const grad = g.createRadialGradient(cx, cy, 6, cx, cy, pr);
+    grad.addColorStop(0, "rgba(253,224,71,0.5)");
+    grad.addColorStop(1, "rgba(253,224,71,0)");
+    g.fillStyle = grad;
+    g.beginPath();
+    g.arc(cx, cy, pr, 0, Math.PI * 2);
+    g.fill();
+    // dönen ışık zerreleri
+    g.fillStyle = "#fde047";
+    for (let k = 0; k < 3; k++) {
+      const a = time * 3 + (k / 3) * Math.PI * 2;
+      g.beginPath();
+      g.arc(cx + Math.cos(a) * 24, cy + Math.sin(a) * 16, 2.2, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
   if (ghostT > 0 && Math.floor(time * 12) % 2 === 0) return; // hayalet yanıp söner
   g.save();
   g.translate(x + PW / 2, y + PH);
@@ -872,7 +1293,8 @@ const PlatformGame = () => {
   const [won, setWon] = useState(false);
   const [progress, setProgress] = useState(0);
   const [question, setQuestion] = useState<string | null>(null);
-  const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad" } | null>(null);
+  const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad" | "power" } | null>(null);
+  const [pu, setPu] = useState<{ nur: number; mag: number; x2: number }>({ nur: 0, mag: 0, x2: 0 });
   const [flash, setFlash] = useState(false); // normal modda doğru cevapta ışık
   const [resetTick, setResetTick] = useState(0);
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -896,7 +1318,7 @@ const PlatformGame = () => {
     return () => document.removeEventListener("visibilitychange", h);
   }, []);
 
-  const showBanner = useCallback((text: string, tone: "good" | "bad", ms = 1600) => {
+  const showBanner = useCallback((text: string, tone: "good" | "bad" | "power", ms = 1600) => {
     if (bannerTimer.current) clearTimeout(bannerTimer.current);
     setBanner({ text, tone });
     bannerTimer.current = setTimeout(() => setBanner(null), ms);
@@ -919,6 +1341,7 @@ const PlatformGame = () => {
     setScore(0); setStreak(0); setLives(3);
     setGameOver(false); setWon(false);
     setQuestion(null); setBanner(null); setFlash(false); setProgress(0);
+    setPu({ nur: 0, mag: 0, x2: 0 });
     controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, paused: false, over: false };
     trioRef.current = null;
     setStarted(true);
@@ -929,6 +1352,7 @@ const PlatformGame = () => {
   const toPicker = useCallback(() => {
     setStarted(false); setPaused(true); setGameOver(false); setWon(false);
     setQuestion(null); setBanner(null); setProgress(0);
+    setPu({ nur: 0, mag: 0, x2: 0 });
     controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, paused: true, over: false };
     trioRef.current = null;
     setResetTick((t) => t + 1);
@@ -948,10 +1372,11 @@ const PlatformGame = () => {
     const s = {
       x: 80, y: GROUND_Y - PH, vy: 0, grounded: true, facing: 1 as 1 | -1,
       coyote: 0, jumpBuf: 0, ghostT: 0, camX: 0, safeX: 80, anim: 0, time: 0,
+      nurT: 0, magT: 0, x2T: 0,
     };
     const w: World = {
       solids: [{ x: -240, y: GROUND_Y, w: 1040, oneWay: false }],
-      enemies: [], flyers: [], springs: [], trios: [], coins: [], pops: [],
+      monsters: [], springs: [], trios: [], coins: [], pops: [], cliffs: [],
       genX: 800,
     };
     let score = 0, streak = 0, lives = 3, over = false;
@@ -997,6 +1422,28 @@ const PlatformGame = () => {
       }
     };
 
+    const spawnMonster = (kind: MonsterKind, rx0: number, rx1: number) => {
+      const cx = (rx0 + rx1) / 2;
+      const base: MonsterEnt = {
+        id: UID++, kind, x: cx, y: GROUND_Y - MH[kind],
+        dir: Math.random() < 0.5 ? -1 : 1,
+        minX: rx0, maxX: rx1, homeX: cx,
+        baseY: GROUND_Y - MH[kind], amp: 0, t: Math.random() * 6,
+        vy: 0, grounded: true, hopT: 0.5 + Math.random() * 0.6,
+        calmT: 0, freedT: 0,
+      };
+      if (kind === "floater") {
+        base.baseY = GROUND_Y - 104 - Math.random() * 30;
+        base.amp = 42 + Math.random() * 20;
+        base.y = base.baseY;
+      } else if (kind === "flyer") {
+        base.baseY = GROUND_Y - 118 - Math.random() * 36;
+        base.amp = 20 + Math.random() * 14;
+        base.y = base.baseY;
+      }
+      w.monsters.push(base);
+    };
+
     // Soru üçlüsü: bloklar şimdi yerleştirilir, HARFLER görünürken seçilir
     const placeTrio = (baseX: number) => {
       const hs = shuffle([84, 138, 84]); // blok alt kenarının zeminden yüksekliği
@@ -1016,13 +1463,23 @@ const PlatformGame = () => {
     const genChunk = (wantQ: boolean): boolean => {
       let x = w.genX;
       if (!wantQ && x > 1150 && Math.random() < conf.gapChance) {
-        const gw = conf.gapMin + Math.random() * (conf.gapMax - conf.gapMin);
-        // çukur üstüne para yayı — zıplarken toplanır
+        // bazen dar çukur, bazen (2. bölümden itibaren) GENİŞ UÇURUM
+        const cliff = lv >= 2 && Math.random() < 0.3;
+        const gw = cliff
+          ? 100 + Math.random() * 26
+          : conf.gapMin + Math.random() * (conf.gapMax - conf.gapMin);
+        if (cliff) w.cliffs.push({ x, w: gw });
+        // üstüne para yayı — zıplarken toplanır (uçurumda daha yüksek)
         const glyph = randGlyph();
         if (glyph) {
           for (let i = 0; i < 4; i++) {
             const k = (i + 0.5) / 4;
-            w.coins.push({ id: UID++, x: x + gw * k, y: GROUND_Y - 66 - Math.sin(k * Math.PI) * 34, glyph, taken: false });
+            w.coins.push({
+              id: UID++,
+              x: x + gw * k,
+              y: GROUND_Y - (cliff ? 84 : 66) - Math.sin(k * Math.PI) * (cliff ? 44 : 34),
+              glyph, taken: false,
+            });
           }
         }
         x += gw;
@@ -1070,34 +1527,22 @@ const PlatformGame = () => {
         }
         // yerde para sırası
         if (Math.random() < 0.45) addCoinRow(x + len / 2, GROUND_Y - 26, 4);
-        // kestaneler
-        if (len >= 240 && Math.random() < conf.enemyChance) {
-          const m = 26;
-          w.enemies.push({
-            id: UID++, x: x + len / 2, y: GROUND_Y - EH,
-            dir: Math.random() < 0.5 ? -1 : 1,
-            minX: x + m, maxX: x + len - m, squashT: 0,
-          });
-          if (len >= 430 && Math.random() < 0.4) {
-            w.enemies.push({ id: UID++, x: x + len * 0.72, y: GROUND_Y - EH, dir: 1, minX: x + len * 0.5, maxX: x + len - m, squashT: 0 });
+        // canavarlar — tür çeşidi bölümle artar
+        if (len >= 240 && Math.random() < conf.monsterChance) {
+          const kinds = conf.monsterKinds;
+          const kind = kinds[Math.floor(Math.random() * kinds.length)];
+          spawnMonster(kind, x + 26, x + len - 26);
+          if (len >= 430 && Math.random() < 0.45) {
+            const kind2 = kinds[Math.floor(Math.random() * kinds.length)];
+            spawnMonster(kind2, x + len * 0.55, x + len - 26);
           }
-        }
-        // uçan kuş
-        if (conf.flyers && len >= 260 && Math.random() < 0.3) {
-          const m = 40;
-          w.flyers.push({
-            id: UID++, x: x + len * 0.4, y: 0,
-            baseY: GROUND_Y - 118 - Math.random() * 40,
-            dir: 1, minX: x + m, maxX: x + len - m,
-            amp: 20 + Math.random() * 14, t: Math.random() * 6, squashT: 0,
-          });
         }
       }
       w.genX = x + len;
       return placed;
     };
 
-    // Bölümü baştan sona üret: sorular eşit aralıklı, sonda düzlük+bayrak+kale
+    // Bölümü baştan sona üret: sorular eşit aralıklı, sonda düzlük + CAMİ
     placeTrio(460); // ilk soru başlangıç düzlüğünde hazır
     const qStep = (conf.len - 1600) / Math.max(1, conf.questions - 1);
     const qXs = Array.from({ length: conf.questions }, (_, i) => 900 + i * qStep);
@@ -1106,10 +1551,34 @@ const PlatformGame = () => {
       const wantQ = qi < qXs.length && w.genX >= qXs[qi];
       if (genChunk(wantQ)) qi++;
     }
-    w.solids.push({ x: w.genX, y: GROUND_Y, w: 780, oneWay: false });
-    const flagX = w.genX + 300;
-    const castleX = w.genX + 440;
-    w.genX += 780;
+    w.solids.push({ x: w.genX, y: GROUND_Y, w: 860, oneWay: false });
+    const mosqueX = w.genX + 300;          // cami sol kenarı
+    const finishX = mosqueX + 85;          // cami kapısı — hedef
+    w.genX += 860;
+
+    // GİZLİ KAPI + bonus bahçe (2, 5 ve 8. bölümlerde): kapı bir çalının
+    // arkasında saklıdır; giren çocuk cami arkasındaki gizli bahçeye ışınlanır
+    // (bol harf parası + can kalbi), çıkış kapısıyla kaldığı yere döner.
+    const bonusX = mosqueX + 520;
+    const bonusExitX = bonusX + 660;
+    let doorX: number | null = null;
+    if (lv % 3 === 2) {
+      const cands = w.solids.filter((so) => !so.oneWay && so.x > 1000 && so.x + so.w < conf.len && so.w >= 300);
+      if (cands.length) {
+        const so = cands[Math.floor(cands.length / 2)];
+        doorX = so.x + so.w - 96;
+        w.solids.push({ x: bonusX - 60, y: GROUND_Y, w: 820, oneWay: false });
+        addCoinRow(bonusX + 120, GROUND_Y - 26, 5);
+        addCoinRow(bonusX + 290, GROUND_Y - 84, 4);
+        addCoinRow(bonusX + 460, GROUND_Y - 26, 5);
+        w.springs.push({ id: UID++, x: bonusX + 380, y: GROUND_Y, t: 0 });
+        addCoinColumn(bonusX + 380);
+        w.coins.push({ id: UID++, x: bonusX + 210, y: GROUND_Y - 48, glyph: "", taken: false, heart: true });
+      }
+    }
+    let bonusActive = false;
+    let doorCd = 0;
+    let doorStandT = 0; // kapı önünde durma süresi — gizli kapı böyle açılır
 
     // --- olay yardımcıları ---
 
@@ -1152,15 +1621,26 @@ const PlatformGame = () => {
       }
     };
 
+    const spawnSparkles = (x: number, y: number) => {
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        w.pops.push({
+          x, y,
+          vx: Math.cos(a) * 90, vy: Math.sin(a) * 90 - 40,
+          t: 0, life: 0.55, color: "#fde047",
+        });
+      }
+    };
+
     // Doğru cevap ödülü: hedef harften bonus "harf parası" dizisi
-    const spawnCoinTrail = (item: ContentItem) => {
+    const spawnCoinTrail = (item: ContentItem, n: number) => {
       const glyph = item.emoji || "";
       if (!glyph) return;
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < n; i++) {
         w.coins.push({
           id: UID++,
-          x: s.x + 150 + i * 55,
-          y: GROUND_Y - 70 - Math.sin((i / 4) * Math.PI) * 55,
+          x: s.x + 150 + i * 52,
+          y: GROUND_Y - 70 - Math.sin(((i % 5) / 4) * Math.PI) * 55,
           glyph, taken: false,
         });
       }
@@ -1198,6 +1678,35 @@ const PlatformGame = () => {
       loseLife();
     };
 
+    // Doğru cevap ödülleri — soruları cazip kılar: kalp / Nur / mıknatıs /
+    // 2X / harf yağmuru. Yanlış cevap CAN GÖTÜRMEZ (öğrenme hatası ölüm değil).
+    const grantReward = (target: ContentItem) => {
+      const anyPower = s.nurT > 0 || s.magT > 0 || s.x2T > 0;
+      const roll = Math.random();
+      if (lives < MAX_LIVES && roll < 0.3) {
+        lives += 1;
+        setLives(lives);
+        showBanner("❤️ +1 Can kazandın!", "good", 1700);
+        spawnCoinTrail(target, 5);
+      } else if (!anyPower) {
+        const r2 = Math.random();
+        if (r2 < 0.4) {
+          s.nurT = NUR_TIME;
+          showBanner("✨ NUR! Dokunduğun canavar güvercin olur 🕊️", "power", 2200);
+        } else if (r2 < 0.7) {
+          s.magT = MAG_TIME;
+          showBanner("🧲 MIKNATIS! Harfler sana gelir", "power", 1800);
+        } else {
+          s.x2T = X2_TIME;
+          showBanner("⭐ 2X PUAN!", "power", 1600);
+        }
+        spawnCoinTrail(target, 5);
+      } else {
+        showBanner("🪙 Harf yağmuru!", "good", 1400);
+        spawnCoinTrail(target, 9);
+      }
+    };
+
     const resolveTrio = (t: TrioEnt, b: BlockEnt) => {
       const target = t.target!;
       const correct = b.isTarget;
@@ -1208,13 +1717,13 @@ const PlatformGame = () => {
         playFeedback(true);
         streak += 1;
         setStreak(streak);
-        score += 10 + Math.min(streak, 5) * 2;
+        score += (10 + Math.min(streak, 5) * 2) * (s.x2T > 0 ? 2 : 1);
         setScore(score);
         b.state = "good";
         for (const o of t.blocks) if (o !== b) o.state = "fade";
         if (!isSuperRef.current) { setFlash(true); setTimeout(() => setFlash(false), 450); }
         spawnConfetti(b.x + BLOCK / 2, b.y + BLOCK / 2);
-        spawnCoinTrail(target);
+        grantReward(target);
       } else {
         playFeedback(false);
         streak = 0;
@@ -1224,8 +1733,7 @@ const PlatformGame = () => {
         for (const o of t.blocks) o.state = o === b ? "bad" : o.isTarget ? "good" : "fade";
         // Yanlış cevaplanan harf, moddan bağımsız tekrar sorulsun
         enqueueRetryItem(target);
-        showBanner(`Doğrusu: ${target.translit || target.label}`, "bad", 1800);
-        loseLife(true);
+        showBanner(`Doğrusu: ${target.translit || target.label} — tekrar gelecek`, "bad", 1800);
       }
     };
 
@@ -1244,8 +1752,8 @@ const PlatformGame = () => {
         if (standSolid === so && s.grounded) s.y += dy;
       }
 
-      // bayrağa ulaşınca: kısa kutlama, sonra bölüm tamam
-      if (!winning && s.x + PW / 2 >= flagX) {
+      // cami kapısına ulaşınca: kısa kutlama, sonra bölüm tamam
+      if (!winning && !bonusActive && s.x + PW / 2 >= finishX) {
         winning = true;
         winT = 1.15;
         winBurst = 0;
@@ -1260,7 +1768,7 @@ const PlatformGame = () => {
         winBurst -= dt;
         if (winBurst <= 0) {
           winBurst = 0.25;
-          spawnConfetti(flagX + (Math.random() - 0.5) * 60, GROUND_Y - 120 - Math.random() * 40);
+          spawnConfetti(mosqueX + 85 + (Math.random() - 0.5) * 90, GROUND_Y - 130 - Math.random() * 40);
         }
         if (winT <= 0) {
           over = true;
@@ -1268,6 +1776,11 @@ const PlatformGame = () => {
           return;
         }
       }
+
+      // güç zamanlayıcıları
+      if (s.nurT > 0) s.nurT = Math.max(0, s.nurT - dt);
+      if (s.magT > 0) s.magT = Math.max(0, s.magT - dt);
+      if (s.x2T > 0) s.x2T = Math.max(0, s.x2T - dt);
 
       // yatay hareket (geri gitmek serbest ama kamera geri dönmez)
       const mv = winning ? 0 : c.moveDir;
@@ -1329,6 +1842,41 @@ const PlatformGame = () => {
         }
       }
 
+      // gizli kapı: önünde kısa süre DURAN çocuk bonus bahçeye ışınlanır
+      // (üzerinden koşup geçmek tetiklemez — kapı gerçekten "gizli" kalır);
+      // çıkış kapısına dokunmak kaldığı yere döndürür.
+      if (doorCd > 0) doorCd -= dt;
+      if (doorX !== null && doorCd <= 0 && s.grounded) {
+        const atDoor = s.x + PW > doorX - 6 && s.x < doorX + 38 && s.y + PH > GROUND_Y - 46;
+        if (!bonusActive && atDoor && mv === 0) {
+          doorStandT += dt;
+          if (doorStandT > 0.12 && Math.random() < dt * 8) spawnSparkles(doorX + 16, GROUND_Y - 30);
+        } else if (!bonusActive) {
+          doorStandT = 0;
+        }
+        if (!bonusActive && doorStandT >= 0.4) {
+          bonusActive = true;
+          doorCd = 1;
+          doorStandT = 0;
+          spawnSparkles(doorX + 16, GROUND_Y - 24);
+          s.x = bonusX + 20;
+          s.y = GROUND_Y - PH;
+          s.vy = 0;
+          s.camX = bonusX - 70;
+          s.ghostT = 0.6;
+          showBanner("🚪 Gizli bahçeyi buldun!", "power", 1900);
+        } else if (bonusActive && s.x + PW > bonusExitX + 4 && s.x < bonusExitX + 30) {
+          bonusActive = false;
+          doorCd = 1;
+          s.x = doorX + 62;
+          s.y = GROUND_Y - PH;
+          s.vy = 0;
+          s.camX = Math.max(0, s.x - view.w * 0.45);
+          s.ghostT = 0.6;
+          showBanner("Maceraya devam! 🏃", "good", 1400);
+        }
+      }
+
       // çukura düşme → can kaybı + güvenli yerde yeniden doğ
       if (s.y > VH + 90) {
         loseLife();
@@ -1341,51 +1889,79 @@ const PlatformGame = () => {
         }
       }
 
-      // kestaneler: devriye + çarpışma (üstten ez / yandan hasar al)
-      for (let i = w.enemies.length - 1; i >= 0; i--) {
-        const e = w.enemies[i];
-        if (e.squashT > 0) {
-          e.squashT -= dt;
-          if (e.squashT <= 0) w.enemies.splice(i, 1);
+      // canavarlar: tür bazlı hareket + şiddetsiz çarpışma
+      for (let i = w.monsters.length - 1; i >= 0; i--) {
+        const m = w.monsters[i];
+        if (m.freedT > 0) {
+          // güvercin olarak uçup gidiyor — çarpışmaz
+          m.freedT -= dt;
+          if (m.freedT <= 0) w.monsters.splice(i, 1);
           continue;
         }
-        e.x += e.dir * ENEMY_SPEED * dt;
-        if (e.x < e.minX) { e.x = e.minX; e.dir = 1; }
-        if (e.x + EW > e.maxX) { e.x = e.maxX - EW; e.dir = -1; }
-        if (s.x + PW > e.x + 4 && s.x < e.x + EW - 4 && s.y + PH > e.y && s.y < e.y + EH) {
-          if (s.vy > 0 && prevFeet <= e.y + 10) {
-            e.squashT = 0.45;
-            s.vy = -400;
-            score += 5;
-            setScore(score);
-            w.pops.push({ x: e.x + EW / 2, y: e.y - 8, vx: 0, vy: -70, t: 0, life: 0.7, color: "#92400e", text: "+5" });
-          } else if (s.ghostT <= 0) {
-            hurt();
+        if (m.calmT > 0) m.calmT = Math.max(0, m.calmT - dt);
+        m.t += dt;
+        const mw = MW[m.kind], mh = MH[m.kind];
+        if (m.calmT <= 0) {
+          switch (m.kind) {
+            case "walker":
+              m.x += m.dir * WALKER_SPEED * dt;
+              if (m.x < m.minX) { m.x = m.minX; m.dir = 1; }
+              if (m.x + mw > m.maxX) { m.x = m.maxX - mw; m.dir = -1; }
+              break;
+            case "hopper": {
+              if (m.grounded) {
+                m.hopT -= dt;
+                if (m.hopT <= 0) {
+                  m.grounded = false;
+                  m.vy = -470;
+                  if (m.x <= m.minX + 2) m.dir = 1;
+                  else if (m.x + mw >= m.maxX - 2) m.dir = -1;
+                  else if (Math.random() < 0.3) m.dir = Math.random() < 0.5 ? -1 : 1;
+                }
+              } else {
+                m.vy += GRAVITY * 0.72 * dt;
+                m.y += m.vy * dt;
+                m.x += m.dir * 118 * dt;
+                if (m.x < m.minX) { m.x = m.minX; m.dir = 1; }
+                if (m.x + mw > m.maxX) { m.x = m.maxX - mw; m.dir = -1; }
+                const gy = GROUND_Y - mh;
+                if (m.y >= gy) {
+                  m.y = gy;
+                  m.vy = 0;
+                  m.grounded = true;
+                  m.hopT = 0.45 + Math.random() * 0.6;
+                }
+              }
+              break;
+            }
+            case "floater":
+              m.y = m.baseY + Math.sin(m.t * 1.5) * m.amp;
+              m.x = m.homeX + Math.sin(m.t * 0.7) * 16;
+              break;
+            case "flyer":
+              m.x += m.dir * FLYER_SPEED * dt;
+              if (m.x < m.minX) { m.x = m.minX; m.dir = 1; }
+              if (m.x + mw > m.maxX) { m.x = m.maxX - mw; m.dir = -1; }
+              m.y = m.baseY + Math.sin(m.t * 2.2) * m.amp;
+              break;
           }
         }
-      }
-
-      // uçan kuşlar
-      for (let i = w.flyers.length - 1; i >= 0; i--) {
-        const f = w.flyers[i];
-        if (f.squashT > 0) {
-          f.squashT -= dt;
-          if (f.squashT <= 0) w.flyers.splice(i, 1);
-          continue;
-        }
-        f.t += dt;
-        f.x += f.dir * FLYER_SPEED * dt;
-        if (f.x < f.minX) { f.x = f.minX; f.dir = 1; }
-        if (f.x + FW > f.maxX) { f.x = f.maxX - FW; f.dir = -1; }
-        f.y = f.baseY + Math.sin(f.t * 2.2) * f.amp;
-        if (s.x + PW > f.x + 3 && s.x < f.x + FW - 3 && s.y + PH > f.y && s.y < f.y + FH) {
-          if (s.vy > 0 && prevFeet <= f.y + 9) {
-            f.squashT = 0.4;
-            s.vy = -420;
-            score += 8;
+        // çarpışma
+        if (s.x + PW > m.x + 3 && s.x < m.x + mw - 3 && s.y + PH > m.y && s.y < m.y + mh) {
+          if (s.nurT > 0) {
+            // NUR: canavar güvercine dönüşüp özgürce uçar — kimse zarar görmez
+            m.freedT = FREED_DUR;
+            score += 5 * (s.x2T > 0 ? 2 : 1);
             setScore(score);
-            w.pops.push({ x: f.x + FW / 2, y: f.y - 8, vx: 0, vy: -70, t: 0, life: 0.7, color: "#7c3aed", text: "+8" });
-          } else if (s.ghostT <= 0) {
+            spawnSparkles(m.x + mw / 2, m.y + mh / 2);
+            w.pops.push({ x: m.x + mw / 2, y: m.y - 10, vx: 0, vy: -70, t: 0, life: 0.8, color: "#0891b2", text: "🕊️ +5" });
+          } else if (s.vy > 0 && prevFeet <= m.y + 9) {
+            // üstüne basmak zarar vermez: oyuncu seker, canavar sersemler
+            s.vy = -430;
+            s.grounded = false;
+            m.calmT = 1.1;
+            spawnDust(m.x + mw / 2, m.y);
+          } else if (s.ghostT <= 0 && m.calmT <= 0) {
             hurt();
           }
         }
@@ -1394,8 +1970,10 @@ const PlatformGame = () => {
       // soru üçlüleri
       for (let i = w.trios.length - 1; i >= 0; i--) {
         const t = w.trios[i];
-        if (!t.announced && t.left < s.camX + view.w + 80) announceTrio(t);
-        if (!t.resolved) {
+        if (!bonusActive && !t.announced && t.left < s.camX + view.w + 80) announceTrio(t);
+        // bonus bahçedeyken soru etkileşimi durur — ışınlanma "kaçırdın"
+        // saymaz, banner ezilmez; dönünce soru kaldığı yerden devam eder
+        if (!t.resolved && !bonusActive) {
           if (t.announced && t.target) {
             for (const b of t.blocks) {
               if (s.x + PW > b.x && s.x < b.x + BLOCK && s.y + PH > b.y && s.y < b.y + BLOCK) {
@@ -1417,14 +1995,30 @@ const PlatformGame = () => {
         }
       }
 
-      // harf paraları
+      // harf paraları (+ mıknatıs çekimi)
       for (const cn of w.coins) {
         if (cn.taken) continue;
+        if (s.magT > 0) {
+          const dx = s.x + PW / 2 - cn.x, dy = s.y + PH / 2 - cn.y;
+          if (dx * dx + dy * dy < 150 * 150) {
+            const k = Math.min(1, dt * 5);
+            cn.x += dx * k;
+            cn.y += dy * k;
+          }
+        }
         if (s.x + PW > cn.x - COIN_R && s.x < cn.x + COIN_R && s.y + PH > cn.y - COIN_R && s.y < cn.y + COIN_R) {
           cn.taken = true;
-          score += 2;
-          setScore(score);
-          w.pops.push({ x: cn.x, y: cn.y - 12, vx: 0, vy: -60, t: 0, life: 0.7, color: "#b45309", text: "+2" });
+          if (cn.heart) {
+            if (lives < MAX_LIVES) { lives += 1; setLives(lives); }
+            playFeedback(true);
+            showBanner("❤️ +1 Can!", "good", 1400);
+            spawnSparkles(cn.x, cn.y);
+          } else {
+            const v = 2 * (s.x2T > 0 ? 2 : 1);
+            score += v;
+            setScore(score);
+            w.pops.push({ x: cn.x, y: cn.y - 12, vx: 0, vy: -60, t: 0, life: 0.7, color: "#b45309", text: `+${v}` });
+          }
         }
       }
 
@@ -1439,16 +2033,17 @@ const PlatformGame = () => {
       }
 
       // kamera + temizlik (dünya baştan üretildi — akış üretimi yok)
-      s.camX = Math.max(s.camX, Math.min(s.x - view.w * 0.38, castleX + 220 - view.w));
+      const camMax = bonusActive ? bonusX + 830 - view.w : mosqueX + 300 - view.w;
+      s.camX = Math.max(s.camX, Math.min(s.x - view.w * 0.38, camMax));
       cleanT -= dt;
-      if (cleanT <= 0) {
+      if (cleanT <= 0 && !bonusActive) {
+        // bonus bahçedeyken temizlik yapılmaz — dönüş noktası korunur
         cleanT = 1;
         const cut = s.camX - 280;
         w.solids = w.solids.filter((so) => so.x + so.w > cut);
-        w.enemies = w.enemies.filter((e) => e.maxX > cut);
-        w.flyers = w.flyers.filter((f) => f.maxX > cut);
-        w.springs = w.springs.filter((sp) => sp.x > cut);
-        w.coins = w.coins.filter((cn) => !cn.taken && cn.x > cut);
+        w.monsters = w.monsters.filter((m) => m.maxX > cut);
+        w.springs = w.springs.filter((sp) => sp.x > cut || sp.x >= bonusX - 60);
+        w.coins = w.coins.filter((cn) => !cn.taken && (cn.x > cut || cn.x >= bonusX - 60));
         w.trios = w.trios.filter((t) => t.right > cut - 100);
       }
     };
@@ -1466,7 +2061,7 @@ const PlatformGame = () => {
       drawCelestial(g, theme, view.w, s.time);
       if (theme.cloud) drawClouds(g, s.camX, view.w, theme.cloud);
       if (theme.birds) drawBirds(g, view.w, s.time);
-      drawHills(g, s.camX, view.w, theme, s.time);
+      drawHills(g, s.camX, view.w, theme);
 
       g.save();
       g.translate(-s.camX, 0);
@@ -1476,6 +2071,12 @@ const PlatformGame = () => {
         if (so.x + so.w < l || so.x > r) continue;
         if (so.oneWay) drawPlatform(g, so, theme);
         else drawGroundSolid(g, so, theme, s.time);
+      }
+
+      // uçurum duvarları + uyarı tabelaları
+      for (const cf of w.cliffs) {
+        if (cf.x + cf.w < l || cf.x > r) continue;
+        drawCliff(g, cf.x, cf.w);
       }
 
       // ateşböcekleri (gece teması) — zemin dekorunun üstünde süzülür
@@ -1495,8 +2096,11 @@ const PlatformGame = () => {
       }
 
       if (150 > l && 150 < r) drawStartSign(g, 150);
-      if (castleX + 160 > l && castleX < r) drawCastle(g, castleX);
-      if (flagX + 60 > l && flagX - 20 < r) drawFlag(g, flagX, s.time);
+      if (mosqueX + 240 > l && mosqueX - 60 < r) drawMosque(g, mosqueX, s.time);
+      if (doorX !== null) {
+        if (doorX + 40 > l && doorX - 10 < r) drawSecretDoor(g, doorX, s.time, true);
+        if (bonusExitX + 40 > l && bonusExitX - 10 < r) drawSecretDoor(g, bonusExitX, s.time, false);
+      }
 
       for (const sp of w.springs) {
         if (sp.x + 20 < l || sp.x - 20 > r) continue;
@@ -1506,6 +2110,10 @@ const PlatformGame = () => {
       for (const cn of w.coins) {
         if (cn.taken || cn.x < l || cn.x > r) continue;
         const bob = Math.sin(s.time * 3 + cn.id) * 2.5;
+        if (cn.heart) {
+          drawHeartPickup(g, cn.x, cn.y + bob, s.time);
+          continue;
+        }
         const spin = Math.abs(Math.cos(s.time * 3.4 + cn.id * 0.7)) * 0.75 + 0.25;
         g.save();
         g.translate(cn.x, cn.y + bob);
@@ -1552,16 +2160,12 @@ const PlatformGame = () => {
         }
       }
 
-      for (const e of w.enemies) {
-        if (e.x + EW < l || e.x > r) continue;
-        drawEnemy(g, e, s.time);
-      }
-      for (const f of w.flyers) {
-        if (f.x + FW < l || f.x > r) continue;
-        drawFlyer(g, f, s.time);
+      for (const m of w.monsters) {
+        if (m.x + MW[m.kind] < l - 60 || m.x > r + 60) continue;
+        drawMonster(g, m, s.time);
       }
 
-      drawPlayerChar(g, s.x, s.y, s.facing, s.anim, s.grounded, s.ghostT, s.time);
+      drawPlayerChar(g, s.x, s.y, s.facing, s.anim, s.grounded, s.ghostT, s.nurT, s.time);
 
       for (const p of w.pops) {
         g.globalAlpha = Math.max(0, 1 - p.t / p.life);
@@ -1581,20 +2185,27 @@ const PlatformGame = () => {
       if (theme.snow) drawSnow(g, view.w, s.time);
     };
 
-    // bölüm ilerleme çubuğu — düşük frekans HUD güncellemesi
+    // bölüm ilerlemesi + güç rozetleri — düşük frekans HUD güncellemesi
     const progId = setInterval(() => {
-      setProgress(Math.max(0, Math.min(100, Math.round(((s.x - 80) / (flagX - 80)) * 100))));
+      const effX = bonusActive && doorX !== null ? doorX : s.x; // bonusta çubuk donar
+      setProgress(Math.max(0, Math.min(100, Math.round(((effX - 80) / (finishX - 80)) * 100))));
+      setPu((prev) => {
+        if (prev.nur === s.nurT && prev.mag === s.magT && prev.x2 === s.x2T) return prev;
+        return { nur: s.nurT, mag: s.magT, x2: s.x2T };
+      });
     }, 250);
 
     let raf = 0;
     let last = performance.now();
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
-      const dt = Math.min((now - last) / 1000, DT_MAX);
+      // dt her iki yönde kelepçeli: rAF zaman damgası kurulumdaki
+      // performance.now()'dan ÖNCE olabilir (negatif dt) — negatif yerçekimi
+      // oyuncuyu zeminden tünelleyip düşürüyordu (başlangıçta 1 can kaybı).
+      const dt = Math.min(Math.max((now - last) / 1000, 0), DT_MAX);
       last = now;
       const c = controls.current;
       if (!c.paused && !c.over) step(dt);
-      else if (winning && !over) step(dt); // kutlama akmaya devam etsin
       draw();
     };
     raf = requestAnimationFrame(frame);
@@ -1677,9 +2288,9 @@ const PlatformGame = () => {
           </div>
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-destructive/30 flex flex-col items-center">
             <div className="text-[10px] font-bold text-muted-foreground">Can</div>
-            <div className="flex gap-0.5 mt-0.5">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Heart key={i} className={cn("h-4 w-4", i < lives ? "fill-destructive text-destructive" : "text-muted")} />
+            <div className="flex gap-0.5 mt-1">
+              {Array.from({ length: MAX_LIVES }).map((_, i) => (
+                <Heart key={i} className={cn("h-3.5 w-3.5", i < lives ? "fill-destructive text-destructive" : "text-muted")} />
               ))}
             </div>
           </div>
@@ -1689,7 +2300,7 @@ const PlatformGame = () => {
           </div>
         </div>
 
-        {/* bölüm + ilerleme çubuğu */}
+        {/* bölüm + ilerleme çubuğu (hedef: cami) */}
         {started && (
           <div className="mb-2 flex items-center gap-2">
             <span className="text-[11px] font-extrabold text-muted-foreground whitespace-nowrap">
@@ -1701,7 +2312,7 @@ const PlatformGame = () => {
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="text-sm">🚩</span>
+            <span className="text-sm">🕌</span>
           </div>
         )}
 
@@ -1736,6 +2347,19 @@ const PlatformGame = () => {
             />
           )}
 
+          {/* güç rozetleri */}
+          <div className="pointer-events-none absolute top-2 right-2 z-20 flex flex-col gap-1 items-end">
+            {pu.nur > 0 && (
+              <span className="rounded-full bg-warning/90 px-2.5 py-0.5 text-[11px] font-extrabold text-white shadow-soft">✨ Nur {Math.ceil(pu.nur)}s</span>
+            )}
+            {pu.mag > 0 && (
+              <span className="rounded-full bg-info/90 px-2.5 py-0.5 text-[11px] font-extrabold text-white shadow-soft">🧲 {Math.ceil(pu.mag)}s</span>
+            )}
+            {pu.x2 > 0 && (
+              <span className="rounded-full bg-primary/90 px-2.5 py-0.5 text-[11px] font-extrabold text-white shadow-soft">⭐2X {Math.ceil(pu.x2)}s</span>
+            )}
+          </div>
+
           {/* duraklat */}
           {started && !paused && !gameOver && !won && (
             <button
@@ -1756,6 +2380,7 @@ const PlatformGame = () => {
                 "pointer-events-none absolute top-4 left-1/2 -translate-x-1/2 z-20 rounded-2xl px-4 py-2 font-extrabold text-white shadow-card animate-bounce-in whitespace-nowrap",
                 banner.tone === "good" && "bg-success",
                 banner.tone === "bad" && "bg-destructive",
+                banner.tone === "power" && "bg-gradient-to-r from-indigo-500 to-fuchsia-500",
               )}
             >
               {banner.text}
@@ -1791,8 +2416,9 @@ const PlatformGame = () => {
                 })}
               </div>
               <div className="text-[11px] font-bold text-muted-foreground text-center leading-relaxed px-4">
-                Sesi dinle, doğru harf bloğuna dokun! Bayrağa ulaşınca bölüm biter 🚩<br />
-                ◀ ▶ yürü • Zıpla • kestaneleri üstten ez 🌰 • yaylarla uç 🔴
+                Sesi dinle, doğru harf bloğuna dokun — ödül kazan! 🎁 (can, Nur, mıknatıs...)<br />
+                ✨ Nur varken dokunduğun canavar güvercin olup uçar 🕊️ • Gizli kapıları ara 🚪<br />
+                ◀ ▶ yürü • Zıpla • Uçurumlara dikkat ⚠️ • Camiye ulaşınca bölüm biter 🕌
               </div>
             </div>
           )}
@@ -1810,10 +2436,10 @@ const PlatformGame = () => {
           {/* bölüm tamamlandı */}
           {won && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/95">
-              <div className="text-4xl mb-1">🎉</div>
+              <div className="text-4xl mb-1">🕌</div>
               <div className="text-2xl font-extrabold text-success mb-1">Bölüm {level} Tamam!</div>
-              <div className="text-2xl mb-1">{"⭐".repeat(Math.max(1, lives))}</div>
-              <div className="text-sm font-bold text-muted-foreground mb-4">Puan: {score}</div>
+              <div className="text-2xl mb-1">{"⭐".repeat(Math.max(1, Math.min(3, lives)))}</div>
+              <div className="text-sm font-bold text-muted-foreground mb-4">Camiye ulaştın! Puan: {score}</div>
               <div className="flex gap-2">
                 {level < LEVEL_COUNT ? (
                   <button
@@ -1870,7 +2496,7 @@ const PlatformGame = () => {
         </div>
 
         <p className="mt-2 text-center text-[11px] font-bold text-muted-foreground">
-          ◀ ▶ yürü • Zıpla • Doğru harf bloğuna dokun, bayrağa koş! 🚩
+          ◀ ▶ yürü • Zıpla • Doğru harfe dokun, ödül kazan, camiye koş! 🕌
         </p>
 
         <div className="mt-2 flex gap-2">
