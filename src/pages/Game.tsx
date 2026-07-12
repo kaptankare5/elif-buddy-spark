@@ -15,8 +15,9 @@ import FlappyGame from "./games/FlappyGame";
 import PuzzleGame from "./games/PuzzleGame";
 import RunnerGame from "./games/RunnerGame";
 import SubwayGame from "./games/SubwayGame";
+import PlatformGame from "./games/PlatformGame";
 
-const GAMES = ["memory", "balloon", "sorter", "match3", "triple", "quiz", "snake", "flappy", "puzzle", "runner", "subway"] as const;
+const GAMES = ["memory", "balloon", "sorter", "match3", "triple", "quiz", "snake", "flappy", "puzzle", "runner", "subway", "platform"] as const;
 
 const Game = () => {
   useLockBodyScroll();
@@ -52,6 +53,7 @@ const TrackedGame = ({ gameId }: { gameId: string }) => {
     case "puzzle": return <PuzzleGame />;
     case "runner": return <RunnerGame />;
     case "subway": return <SubwayGame />;
+    case "platform": return <PlatformGame />;
     default: return <Navigate to="/oyunlar" replace />;
   }
 };
