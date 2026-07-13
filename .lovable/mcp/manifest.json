@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "sdk_version": "0.21.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "elifmim-mcp",
+      "version": "0.1.0",
+      "title": "Elifmim MCP"
+    },
+    "tools": [
+      {
+        "name": "list_topics",
+        "title": "Konuları listele",
+        "description": "Elifbâ müfredatındaki tüm konuları (10 konu: Harfler, Yazılışlar, Harekeler, Cezm, Şedde, Med, Âsar, Tenvin, Zamir, Elif-Lâm) döndürür.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_topic",
+        "title": "Konu detayı",
+        "description": "Bir Elifbâ konusunun tüm öğelerini (harf/hece/kelime, Arapça glif, Türkçe okunuş, ses dosyası yolu, bölüm) döndürür.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "topicId": {
+              "type": "string",
+              "description": "Konu id (ör. 'harfler', 'harekeler', 'cezm', 'sedde', 'med', 'tenvin')."
+            }
+          },
+          "required": [
+            "topicId"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_letter",
+        "title": "Harf bilgisi",
+        "description": "28 temel Arap harfinden birini Türkçe adı (Elif, Be, Cim, Vev, Ye...) veya Arapça glifi ile arar; okunuş ve ses dosyası yolunu döndürür.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Harf adı (Türkçe) veya Arapça glif. Ör: 'Elif', 'ب', 'Cim'."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
