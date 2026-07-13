@@ -7,7 +7,647 @@ import { defineMcp } from "npm:@lovable.dev/mcp-js@0.21.0";
 
 // src/lib/mcp/tools/list-topics.ts
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.21.0";
-import { elifbaTopics } from "npm:@/data/topics/elifba";
+
+// src/data/topics/elifba.ts
+var LETTERS = [
+  { n: 1, name: "Elif", iso: "\u0627", init: "\u0627", med: "\u0640\u0627", fin: "\u0640\u0627", speech: "elif", cons: "", thick: "ince" },
+  { n: 2, name: "Be", iso: "\u0628", init: "\uFE91", med: "\uFE92", fin: "\uFE90", speech: "be", cons: "b", thick: "ince" },
+  { n: 3, name: "Te", iso: "\u062A", init: "\uFE97", med: "\uFE98", fin: "\uFE96", speech: "te", cons: "t", thick: "ince" },
+  { n: 4, name: "Se", iso: "\u062B", init: "\uFE9B", med: "\uFE9C", fin: "\uFE9A", speech: "se", cons: "s", thick: "ince" },
+  { n: 5, name: "Cim", iso: "\u062C", init: "\uFE9F", med: "\uFEA0", fin: "\uFE9E", speech: "cim", cons: "c", thick: "ince" },
+  { n: 6, name: "Ha", iso: "\u062D", init: "\uFEA3", med: "\uFEA4", fin: "\uFEA2", speech: "ha", cons: "h", thick: "ince" },
+  { n: 7, name: "H\u0131", iso: "\u062E", init: "\uFEA7", med: "\uFEA8", fin: "\uFEA6", speech: "h\u0131", cons: "h", thick: "kalin" },
+  { n: 8, name: "Dal", iso: "\u062F", init: "\u062F", med: "\u0640\u062F", fin: "\u0640\u062F", speech: "dal", cons: "d", thick: "ince" },
+  { n: 9, name: "Zel", iso: "\u0630", init: "\u0630", med: "\u0640\u0630", fin: "\u0640\u0630", speech: "zel", cons: "z", thick: "ince" },
+  { n: 10, name: "Ra", iso: "\u0631", init: "\u0631", med: "\u0640\u0631", fin: "\u0640\u0631", speech: "ra", cons: "r", thick: "ra" },
+  { n: 11, name: "Ze", iso: "\u0632", init: "\u0632", med: "\u0640\u0632", fin: "\u0640\u0632", speech: "ze", cons: "z", thick: "ince" },
+  { n: 12, name: "Sin", iso: "\u0633", init: "\uFEB3", med: "\uFEB4", fin: "\uFEB2", speech: "sin", cons: "s", thick: "ince" },
+  { n: 13, name: "\u015Ein", iso: "\u0634", init: "\uFEB7", med: "\uFEB8", fin: "\uFEB6", speech: "\u015Fin", cons: "\u015F", thick: "ince" },
+  { n: 14, name: "Sad", iso: "\u0635", init: "\uFEBB", med: "\uFEBC", fin: "\uFEBA", speech: "sad", cons: "s", thick: "kalin" },
+  { n: 15, name: "Dad", iso: "\u0636", init: "\uFEBF", med: "\uFEC0", fin: "\uFEBE", speech: "dad", cons: "d", thick: "kalin" },
+  { n: 16, name: "T\u0131", iso: "\u0637", init: "\uFEC3", med: "\uFEC4", fin: "\uFEC2", speech: "t\u0131", cons: "t", thick: "kalin" },
+  { n: 17, name: "Z\u0131", iso: "\u0638", init: "\uFEC7", med: "\uFEC8", fin: "\uFEC6", speech: "z\u0131", cons: "z", thick: "kalin" },
+  { n: 18, name: "Ayn", iso: "\u0639", init: "\uFECB", med: "\uFECC", fin: "\uFECA", speech: "ayn", cons: "", thick: "ince" },
+  { n: 19, name: "Gayn", iso: "\u063A", init: "\uFECF", med: "\uFED0", fin: "\uFECE", speech: "gay\u0131n", cons: "g", thick: "kalin" },
+  { n: 20, name: "Fe", iso: "\u0641", init: "\uFED3", med: "\uFED4", fin: "\uFED2", speech: "fe", cons: "f", thick: "ince" },
+  { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "k", thick: "kalin" },
+  { n: 22, name: "Kef", iso: "\u0643", init: "\uFEDB", med: "\uFEDC", fin: "\uFEDA", speech: "kef", cons: "k", thick: "ince" },
+  { n: 23, name: "Lem", iso: "\u0644", init: "\uFEDF", med: "\uFEE0", fin: "\uFEDE", speech: "lem", cons: "l", thick: "ince" },
+  { n: 24, name: "Mim", iso: "\u0645", init: "\uFEE3", med: "\uFEE4", fin: "\uFEE2", speech: "mim", cons: "m", thick: "ince" },
+  { n: 25, name: "Nun", iso: "\u0646", init: "\uFEE7", med: "\uFEE8", fin: "\uFEE6", speech: "nun", cons: "n", thick: "ince" },
+  { n: 26, name: "Vev", iso: "\u0648", init: "\u0648", med: "\u0640\u0648", fin: "\u0640\u0648", speech: "vev", cons: "v", thick: "ince" },
+  { n: 27, name: "He", iso: "\u0647", init: "\uFEEB", med: "\uFEEC", fin: "\uFEEA", speech: "he", cons: "h", thick: "ince" },
+  { n: 28, name: "Ye", iso: "\u064A", init: "\uFEF3", med: "\uFEF4", fin: "\uFEF2", speech: "ye", cons: "y", thick: "ince" }
+];
+function harekeVowels(thick) {
+  if (thick === "kalin") return { a: "a", i: "\u0131", u: "u" };
+  if (thick === "ra") return { a: "a", i: "i", u: "u" };
+  return { a: "e", i: "i", u: "\xFC" };
+}
+var pad2 = (n) => n < 10 ? `0${n}` : String(n);
+var audioPath = (name) => `/audio/elifba/${name}`;
+var byName = new Map(LETTERS.map((l) => [l.name, l]));
+var bolum = (n) => `${Math.floor((n - 1) / 4) + 1}. B\xF6l\xFCm`;
+var P = "elifba";
+var t1_harfler = {
+  id: "harfler",
+  parent: P,
+  title: "1. Harfler",
+  description: "28 temel Arap harfi",
+  emoji: "\uFE8D",
+  practiceMode: "visual",
+  gridCols: 4,
+  items: LETTERS.map((l) => ({
+    id: `l1-${pad2(l.n)}`,
+    label: l.name,
+    speech: l.speech,
+    lang: "tr",
+    emoji: l.iso,
+    translit: l.name,
+    audio: audioPath(`basic-${pad2(l.n)}.mp3`),
+    section: bolum(l.n)
+  }))
+};
+var t2_yazilislar = {
+  id: "yazilislar",
+  parent: P,
+  title: "2. Harflerin Yaz\u0131l\u0131\u015Flar\u0131",
+  description: "Ba\u015Fta, ortada ve sonda halleri",
+  emoji: "\uFE91",
+  practiceMode: "visual",
+  gridCols: 3,
+  items: LETTERS.flatMap((l) => [
+    {
+      id: `l2-${pad2(l.n)}-init`,
+      label: `${l.name} \u2022 ba\u015Fta`,
+      speech: l.speech,
+      lang: "tr",
+      emoji: l.init,
+      translit: `${l.name} (ba\u015Fta)`,
+      audio: audioPath(`basic-${pad2(l.n)}.mp3`),
+      section: bolum(l.n)
+    },
+    {
+      id: `l2-${pad2(l.n)}-med`,
+      label: `${l.name} \u2022 ortada`,
+      speech: l.speech,
+      lang: "tr",
+      emoji: l.med,
+      translit: `${l.name} (ortada)`,
+      audio: audioPath(`basic-${pad2(l.n)}.mp3`),
+      section: bolum(l.n)
+    },
+    {
+      id: `l2-${pad2(l.n)}-fin`,
+      label: `${l.name} \u2022 sonda`,
+      speech: l.speech,
+      lang: "tr",
+      emoji: l.fin,
+      translit: `${l.name} (sonda)`,
+      audio: audioPath(`basic-${pad2(l.n)}.mp3`),
+      section: bolum(l.n)
+    }
+  ])
+};
+var HAREKE = [
+  { suf: "fetha", mark: "\u064E", vowel: "a" },
+  // ــَ  → "e/a"
+  { suf: "esre", mark: "\u0650", vowel: "i" },
+  // __ِ  → "i/ı"
+  { suf: "otre", mark: "\u064F", vowel: "u" }
+  // ــُ  → "ü/u"
+];
+var HAREKE_ALISTIRMA_KELIMELERI = [
+  // sayfa 10
+  [["Dad", "a"], ["Ra", "a"], ["Be", "a"]],
+  // ضَرَبَ
+  [["Kaf", "a"], ["Ra", "a"], ["Elif", "a"]],
+  // قَرَاَ
+  [["Ra", "a"], ["Cim", "a"], ["Ayn", "a"]],
+  // رَجَعَ
+  [["Ra", "a"], ["Ze", "a"], ["Kaf", "a"]],
+  // رَزَقَ
+  [["Sad", "a"], ["Be", "a"], ["Ra", "a"]],
+  // صَبَرَ
+  [["Ra", "a"], ["Fe", "a"], ["Ayn", "a"]],
+  // رَفَعَ
+  [["Ye", "a"], ["Dal", "a"], ["Kef", "a"]],
+  // يَدَكَ
+  [["Z\u0131", "a"], ["He", "a"], ["Ra", "a"]],
+  // ظَهَرَ
+  [["Ha", "a"], ["Mim", "i"], ["Dal", "a"]],
+  // حَمِدَ
+  [["Sin", "a"], ["Mim", "i"], ["Ayn", "a"]],
+  // سَمِعَ
+  [["Ayn", "a"], ["Mim", "i"], ["Lem", "a"]],
+  // عَمِلَ
+  [["Sad", "a"], ["Ayn", "i"], ["Kaf", "a"]],
+  // صَعِقَ
+  [["Sad", "a"], ["Ayn", "i"], ["Dal", "a"]],
+  // صَعِدَ
+  [["T\u0131", "a"], ["Fe", "i"], ["Kaf", "a"]],
+  // طَفِقَ
+  [["Nun", "a"], ["Dad", "i"], ["Cim", "a"]],
+  // نَضِجَ
+  [["Fe", "a"], ["Ra", "i"], ["Ha", "a"]],
+  // فَرِحَ
+  [["Se", "u"], ["Lem", "u"], ["Se", "u"]],
+  // ثُلُثُ
+  [["Kef", "u"], ["Te", "u"], ["Be", "u"]],
+  // كُتُبُ
+  [["H\u0131", "u"], ["Lem", "u"], ["Kaf", "u"]],
+  // خُلُقُ
+  [["Ra", "u"], ["Sin", "u"], ["Lem", "u"]],
+  // رُسُلُ
+  [["Sad", "a"], ["Mim", "a"], ["Dal", "u"]],
+  // صَمَدُ
+  [["Fe", "a"], ["He", "u"], ["Vev", "a"]],
+  // فَهُوَ
+  [["Kaf", "u"], ["Te", "i"], ["Lem", "a"]],
+  // قُتِلَ
+  [["Ra", "a"], ["Gayn", "i"], ["Be", "a"]],
+  // رَغِبَ
+  [["Mim", "a"], ["Ra", "i"], ["Dad", "a"]],
+  // مَرِضَ
+  [["Gayn", "u"], ["Fe", "i"], ["Ra", "a"]],
+  // غُفِرَ
+  [["Zel", "u"], ["Kef", "i"], ["Ra", "a"]],
+  // ذُكِرَ
+  // sayfa 11
+  [["\u015Ein", "a"], ["Cim", "a"], ["Ra", "a"]],
+  // شَجَرَ
+  [["Sin", "u"], ["Be", "u"], ["Lem", "a"]],
+  // سُبُلَ
+  [["Kef", "a"], ["Zel", "i"], ["Be", "a"]],
+  // كَذِبَ
+  [["H\u0131", "a"], ["T\u0131", "i"], ["Ra", "a"]],
+  // خَطِرَ
+  [["Te", "a"], ["Be", "i"], ["Ayn", "a"]],
+  // تَبِعَ
+  [["Kef", "a"], ["Sin", "a"], ["Be", "a"]],
+  // كَسَبَ
+  [["T\u0131", "u"], ["Be", "i"], ["Ayn", "a"]],
+  // طُبِعَ
+  [["Ra", "a"], ["Kef", "i"], ["Be", "a"]],
+  // رَكِبَ
+  [["Ha", "a"], ["Sin", "u"], ["Nun", "a"]],
+  // حَسُنَ
+  [["Lem", "a"], ["Ayn", "i"], ["Be", "a"]],
+  // لَعِبَ
+  [["Sad", "a"], ["Dal", "a"], ["Kaf", "a"]],
+  // صَدَقَ
+  [["Ayn", "u"], ["Nun", "u"], ["Kaf", "u"]],
+  // عُنُقُ
+  [["Vev", "a"], ["Sad", "a"], ["Fe", "a"]],
+  // وَصَفَ
+  [["Vev", "a"], ["Sin", "i"], ["Ayn", "a"]],
+  // وَسِعَ
+  [["Dal", "a"], ["H\u0131", "a"], ["Lem", "a"]],
+  // دَخَلَ
+  [["Sin", "a"], ["Ra", "i"], ["Ayn", "a"]],
+  // سَرِعَ
+  [["Nun", "a"], ["Kef", "a"], ["Sad", "a"]],
+  // نَكَصَ
+  [["Fe", "a"], ["Ze", "i"], ["Ayn", "a"]],
+  // فَزِعَ
+  [["Ra", "u"], ["Ze", "i"], ["Kaf", "a"]],
+  // رُزِقَ
+  [["Be", "a"], ["Ra", "a"], ["Ze", "a"]],
+  // بَرَزَ
+  [["Ra", "u"], ["Be", "u"], ["Ayn", "u"]],
+  // رُبُعُ
+  [["Kef", "a"], ["Ra", "i"], ["He", "a"]],
+  // كَرِهَ
+  [["Lem", "a"], ["Ayn", "a"], ["Nun", "a"]],
+  // لَعَنَ
+  [["Ha", "a"], ["Sin", "i"], ["Be", "a"]],
+  // حَسِبَ
+  [["Be", "a"], ["T\u0131", "a"], ["Nun", "a"]],
+  // بَطَنَ
+  [["Sin", "a"], ["H\u0131", "i"], ["Ra", "a"]],
+  // سَخِرَ
+  [["Ra", "a"], ["He", "i"], ["Kaf", "a"]]
+  // رَهِقَ
+];
+var NON_CONNECT = /* @__PURE__ */ new Set(["Elif", "Dal", "Zel", "Ra", "Ze", "Vev"]);
+var HV_TO_SUF = { a: "fetha", i: "esre", u: "otre" };
+var HV_MARK = { a: "\u064E", i: "\u0650", u: "\u064F" };
+function buildHarekeExtras() {
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const word of HAREKE_ALISTIRMA_KELIMELERI) {
+    for (let i = 0; i < word.length; i++) {
+      const [name, hv] = word[i];
+      const l = byName.get(name);
+      if (!l) continue;
+      const prevConnects = i > 0 && !NON_CONNECT.has(word[i - 1][0]);
+      const hasNext = i < word.length - 1;
+      const pos = !prevConnects && hasNext ? "init" : prevConnects && hasNext ? "med" : prevConnects ? "fin" : "iso";
+      if (pos === "iso") continue;
+      const form = pos === "init" ? l.init : pos === "med" ? l.med : l.fin;
+      if (form === l.iso) continue;
+      const key = `${l.n}|${form}|${hv}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const v = harekeVowels(l.thick);
+      const read = `${l.cons}${v[hv]}`;
+      const posTr = pos === "init" ? "ba\u015Fta" : pos === "med" ? "ortada" : "sonda";
+      const suf = HV_TO_SUF[hv];
+      const harekeAd = suf === "fetha" ? "fethal\u0131" : suf === "esre" ? "esreli" : "\xF6treli";
+      out.push({
+        id: `l3x-${pad2(l.n)}-${pos}-${hv}`,
+        label: `${l.name} ${posTr} ${harekeAd}`,
+        speech: read,
+        lang: "tr",
+        emoji: form + HV_MARK[hv],
+        translit: read,
+        audio: audioPath(`hareke-${pad2(l.n)}-${suf}.mp3`),
+        section: "Ekstralar"
+      });
+    }
+  }
+  return out;
+}
+var t3_harekeler = {
+  id: "harekeler",
+  parent: P,
+  title: "3. Harekeler",
+  description: "Fetha, esre ve \xF6tre",
+  emoji: "\uFE77",
+  practiceMode: "visual",
+  gridCols: 3,
+  items: [
+    ...LETTERS.flatMap(
+      (l) => HAREKE.map((h) => {
+        const v = harekeVowels(l.thick);
+        const sesMap = {
+          a: `${l.cons}${v.a}`,
+          i: `${l.cons}${v.i}`,
+          u: `${l.cons}${v.u}`
+        };
+        return {
+          id: `l3-${pad2(l.n)}-${h.suf}`,
+          label: `${l.name} ${h.suf}`,
+          speech: sesMap[h.vowel],
+          lang: "tr",
+          emoji: l.iso + h.mark,
+          translit: sesMap[h.vowel],
+          audio: audioPath(`hareke-${pad2(l.n)}-${h.suf}.mp3`),
+          section: bolum(l.n)
+        };
+      })
+    ),
+    ...buildHarekeExtras()
+  ]
+};
+var CEZM_MISSING = /* @__PURE__ */ new Set([22]);
+var CEZM_EKSTRA = [
+  ["\u0645\u0650\u0646\u0652", "min"],
+  ["\u0647\u064F\u0645\u0652", "h\xFCm"],
+  ["\u0644\u064E\u0645\u0652", "lem"],
+  ["\u0642\u064F\u0644\u0652", "kul"],
+  ["\u064A\u064E\u0648\u0652", "yev"],
+  ["\u0643\u064F\u0645\u0652", "k\xFCm"],
+  ["\u0643\u064E\u064A\u0652", "key"],
+  ["\u0642\u064E\u0628\u0652", "kab"],
+  ["\u0627\u064E\u0646\u0652", "en"],
+  ["\u0627\u064E\u0643\u0652", "ek"],
+  ["\u0627\u064E\u0631\u0652", "er"],
+  ["\u0643\u064F\u0646\u0652", "k\xFCn"],
+  ["\u062A\u064F\u0645\u0652", "t\xFCm"],
+  ["\u0644\u0650\u062F\u0652", "lid"],
+  ["\u0627\u0650\u0633\u0652", "is"],
+  ["\u062A\u064E\u0643\u0652", "tek"],
+  ["\u0644\u064E\u0633\u0652", "les"],
+  ["\u0646\u064E\u0639\u0652", "na'"],
+  ["\u062D\u064E\u062A\u0652", "het"],
+  ["\u0644\u064E\u064A\u0652", "ley"],
+  ["\u0647\u0650\u0645\u0652", "him"],
+  ["\u0627\u064E\u064A\u0652", "ey"],
+  ["\u062A\u064E\u0648\u0652", "tev"],
+  ["\u0642\u064E\u0648\u0652", "kav"],
+  ["\u062A\u064F\u0646\u0652", "t\xFCn"],
+  ["\u0630\u0650\u0631\u0652", "zir"],
+  ["\u0630\u064E\u0631\u0652", "zer"],
+  ["\u0627\u064E\u0641\u0652", "ef"]
+];
+var t4_cezm = {
+  id: "cezm",
+  parent: P,
+  title: "4. Cezm",
+  description: "Cezimli okuyu\u015F (eb, ib, \xFCb\u2026)",
+  emoji: "\uFE7F",
+  practiceMode: "visual",
+  gridCols: 3,
+  items: [
+    ...LETTERS.filter((l) => l.n >= 2).flatMap((l) => {
+      const cezmIdx = l.n - 1;
+      const hasAudio = !CEZM_MISSING.has(l.n);
+      const base = l.cons;
+      const v = harekeVowels(l.thick);
+      return [
+        { v: "e", audio: `cezm-${pad2(cezmIdx)}-e.mp3`, sp: `${v.a}${base}` },
+        { v: "i", audio: `cezm-${pad2(cezmIdx)}-i.mp3`, sp: `${v.i}${base}` },
+        { v: "u", audio: `cezm-${pad2(cezmIdx)}-u.mp3`, sp: `${v.u}${base}` }
+      ].map((h, idx) => {
+        const elifPre = idx === 0 ? "\u0627\u064E" : idx === 1 ? "\u0625\u0650" : "\u0623\u064F";
+        return {
+          id: `l4-${pad2(l.n)}-${h.v}`,
+          label: `${h.sp}`,
+          speech: h.sp,
+          lang: "tr",
+          // Örn: أَبْ / إِبْ / أُبْ
+          emoji: `${elifPre}${l.iso}\u0652`,
+          translit: h.sp,
+          audio: hasAudio ? audioPath(h.audio) : void 0,
+          section: bolum(l.n)
+        };
+      });
+    }),
+    ...CEZM_EKSTRA.map(([ar, sp], i) => ({
+      id: `l4x-${pad2(i + 1)}`,
+      label: sp,
+      speech: sp.replace(/'/g, ""),
+      lang: "tr",
+      emoji: ar,
+      translit: sp,
+      section: "Ekstralar"
+    }))
+  ]
+};
+var SEDDE_EKSTRA = [
+  ["\u0632\u064E\u064A\u064E\u0651", "zeyye"],
+  ["\u0639\u064E\u0644\u064E\u0651", "alle"],
+  ["\u062D\u064E\u0642\u064F\u0651", "hakku"],
+  ["\u0643\u064F\u0644\u064F\u0651", "k\xFCll\xFC"],
+  ["\u0646\u064E\u0632\u064E\u0651", "nezze"],
+  ["\u0638\u064F\u0646\u064F\u0651", "zunn\xFC"],
+  ["\u0633\u064E\u0628\u0650\u0651", "sebbi"],
+  ["\u062C\u064E\u0646\u064E\u0651", "cenne"],
+  ["\u0645\u064F\u062F\u064E\u0651", "m\xFCdde"],
+  ["\u0647\u064E\u0646\u064E\u0651", "henne"],
+  ["\u0641\u064E\u0635\u064E\u0651", "fassa"],
+  ["\u0634\u064E\u0631\u0650\u0651", "\u015Ferri"],
+  ["\u0641\u064F\u0635\u0650\u0651", "fuss\u0131"],
+  ["\u0627\u0650\u062A\u064E\u0651", "itte"],
+  ["\u0628\u064E\u0634\u0650\u0651", "be\u015F\u015Fi"],
+  ["\u0648\u064E\u062C\u064E\u0651", "vecce"],
+  ["\u0648\u064E\u0643\u064E\u0651", "vekke"],
+  ["\u0643\u064E\u0630\u0650\u0651", "kezzi"],
+  ["\u0628\u064E\u064A\u0650\u0651", "beyyi"],
+  ["\u0646\u064E\u0628\u0650\u0651", "nebbi"],
+  ["\u0644\u064E\u0646\u064E\u0651", "lenne"]
+];
+var t5_sedde = {
+  id: "sedde",
+  parent: P,
+  title: "5. \u015Eedde",
+  description: "\u015Eeddeli okuyu\u015F (ebbe, ibbi, \xFCbb\xFC\u2026)",
+  emoji: "\uFE7D",
+  practiceMode: "visual",
+  gridCols: 3,
+  items: [
+    ...LETTERS.filter((l) => l.n >= 2).flatMap((l) => {
+      const idx = l.n - 1;
+      const base = l.cons;
+      const v = harekeVowels(l.thick);
+      return HAREKE.map((h) => {
+        const sesMap = {
+          a: `${v.a}${base}${base}${v.a}`,
+          i: `${v.i}${base}${base}${v.i}`,
+          u: `${v.u}${base}${base}${v.u}`
+        };
+        return {
+          id: `l5-${pad2(l.n)}-${h.suf}`,
+          label: sesMap[h.vowel],
+          speech: sesMap[h.vowel],
+          lang: "tr",
+          // Örn: بَّ / بِّ / بُّ
+          emoji: l.iso + "\u0651" + h.mark,
+          translit: sesMap[h.vowel],
+          audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
+          section: bolum(l.n)
+        };
+      });
+    }),
+    ...SEDDE_EKSTRA.map(([ar, sp], i) => ({
+      id: `l5x-${pad2(i + 1)}`,
+      label: sp,
+      speech: sp,
+      lang: "tr",
+      emoji: ar,
+      translit: sp,
+      section: "Ekstralar"
+    }))
+  ]
+};
+var MED_EKSTRA = [
+  ["\u0642\u064E\u0627", "k\xE2"],
+  ["\u0643\u064E\u0627", "k\xE2"],
+  ["\u0648\u064E\u0627", "v\xE2"],
+  ["\u0636\u064E\u0627", "d\xE2"],
+  ["\u0645\u064E\u0627", "m\xE2"],
+  ["\u062E\u0650\u0649", "h\xEE"],
+  ["\u062F\u0650\u0649", "d\xEE"],
+  ["\u0638\u0650\u0649", "z\xEE"],
+  ["\u0645\u0650\u0649", "m\xEE"],
+  ["\u0642\u0650\u0649", "k\xEE"],
+  ["\u0637\u0650\u0649", "t\xEE"],
+  ["\u0646\u0650\u0649", "n\xEE"],
+  ["\u0644\u064F\u0648", "l\xFB"],
+  ["\u0643\u064F\u0648", "k\xFB"],
+  ["\u0646\u064F\u0648", "n\xFB"],
+  ["\u0639\u064F\u0648", "\xFB"],
+  ["\u0633\u064F\u0648", "s\xFB"],
+  ["\u0645\u064F\u0648", "m\xFB"],
+  ["\u0631\u064F\u0648", "r\xFB"],
+  ["\u062F\u064F\u0648", "d\xFB"]
+];
+var t6_med = {
+  id: "med",
+  parent: P,
+  title: "6. Med Harfleri",
+  description: "Elif, vav ve ye ile uzatma",
+  emoji: "\uFE81",
+  practiceMode: "visual",
+  gridCols: 3,
+  items: [
+    ...[
+      { ar: "\u0628\u064E\u0627", sp: "b\xE2" },
+      { ar: "\u0628\u0650\u0649", sp: "b\xEE" },
+      { ar: "\u0628\u064F\u0648", sp: "b\xFB" },
+      { ar: "\u062A\u064E\u0627", sp: "t\xE2" },
+      { ar: "\u062A\u0650\u0649", sp: "t\xEE" },
+      { ar: "\u062A\u064F\u0648", sp: "t\xFB" },
+      { ar: "\u062B\u064E\u0627", sp: "s\xE2" },
+      { ar: "\u062B\u0650\u0649", sp: "s\xEE" },
+      { ar: "\u062B\u064F\u0648", sp: "s\xFB" },
+      { ar: "\u062C\u064E\u0627", sp: "c\xE2" },
+      { ar: "\u062C\u0650\u0649", sp: "c\xEE" },
+      { ar: "\u062C\u064F\u0648", sp: "c\xFB" },
+      { ar: "\u062D\u064E\u0627", sp: "h\xE2" },
+      { ar: "\u062D\u0650\u0649", sp: "h\xEE" },
+      { ar: "\u062D\u064F\u0648", sp: "h\xFB" },
+      { ar: "\u062F\u064E\u0627", sp: "d\xE2" },
+      { ar: "\u0630\u064E\u0627", sp: "z\xE2" },
+      { ar: "\u0631\u064E\u0627", sp: "r\xE2" },
+      { ar: "\u0632\u064E\u0627", sp: "z\xE2" },
+      { ar: "\u0633\u064E\u0627", sp: "s\xE2" },
+      { ar: "\u0634\u064E\u0627", sp: "\u015F\xE2" },
+      { ar: "\u0642\u064E\u0627\u0644\u064E", sp: "k\xE2le" },
+      { ar: "\u0643\u064E\u0627\u0646\u064E", sp: "k\xE2ne" },
+      { ar: "\u0643\u0650\u062A\u064E\u0627\u0628\u064F", sp: "kit\xE2b\xFC" }
+    ].map((it, i) => ({
+      id: `l6-${pad2(i + 1)}`,
+      label: it.sp,
+      speech: it.sp,
+      lang: "tr",
+      emoji: it.ar,
+      translit: it.sp,
+      // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
+      section: `${Math.floor(i / 6) + 1}. B\xF6l\xFCm`
+    })),
+    ...MED_EKSTRA.map(([ar, sp], i) => ({
+      id: `l6x-${pad2(i + 1)}`,
+      label: sp,
+      speech: sp,
+      lang: "tr",
+      emoji: ar,
+      translit: sp,
+      section: "Ekstralar"
+    }))
+  ]
+};
+var t7_asar = {
+  id: "asar-med-kasr",
+  parent: P,
+  title: "7. \xC2sar, Med ve Kasr",
+  description: "Uzatma i\u015Faretleri \u2014 videoyu izle",
+  emoji: "\uFEF5",
+  practiceMode: "visual",
+  gridCols: 2,
+  noPractice: true,
+  video: "https://www.youtube.com/watch?v=s6oYG1Bl77E",
+  items: []
+};
+var TENVIN_EKSTRA = [
+  ["\u0628\u064E\u062F\u064B\u0627", "beden"],
+  ["\u0628\u064E\u0629\u064B", "beten"],
+  ["\u0646\u064E\u0629\u064B", "neten"],
+  ["\u0646\u064E\u0629\u064C", "net\xFCn"],
+  ["\u064A\u064E\u0629\u064C", "yet\xFCn"],
+  ["\u0642\u064E\u0629\u064D", "katin"],
+  ["\u0644\u064E\u0629\u064C", "let\xFCn"],
+  ["\u062F\u064E\u0629\u064C", "det\xFCn"]
+];
+var t8_tenvin = {
+  id: "tenvin",
+  parent: P,
+  title: "8. Tenvin",
+  description: "\u0130ki \xFCst\xFCn, iki esre, iki \xF6tre",
+  emoji: "\u08F0",
+  practiceMode: "visual",
+  gridCols: 3,
+  items: [
+    ...LETTERS.flatMap((l) => {
+      const v = harekeVowels(l.thick);
+      const defs = [
+        // iki üstün: harf + fethatan + elif (بًا) — elif kendisi yalnız "اً"
+        { suf: "ustun2", glyph: l.n === 1 ? "\u0627\u064B" : `${l.iso}\u064B\u0627`, read: `${l.cons}${v.a}n` },
+        { suf: "esre2", glyph: `${l.iso}\u064D`, read: `${l.cons}${v.i}n` },
+        { suf: "otre2", glyph: `${l.iso}\u064C`, read: `${l.cons}${v.u}n` }
+      ];
+      return defs.map((d) => ({
+        id: `l8-${pad2(l.n)}-${d.suf}`,
+        label: d.read,
+        speech: d.read,
+        lang: "tr",
+        emoji: d.glyph,
+        translit: d.read,
+        section: bolum(l.n)
+      }));
+    }),
+    ...TENVIN_EKSTRA.map(([ar, sp], i) => ({
+      id: `l8x-${pad2(i + 1)}`,
+      label: sp,
+      speech: sp,
+      lang: "tr",
+      emoji: ar,
+      translit: sp,
+      section: "Ekstralar"
+    }))
+  ]
+};
+var t9_zamir = {
+  id: "zamir-lafzatullah",
+  parent: P,
+  title: "9. Zamir ve Lafzatullah",
+  description: "Allah lafz\u0131n\u0131n okunu\u015Fu",
+  emoji: "\uFDF2",
+  practiceMode: "visual",
+  gridCols: 2,
+  noPractice: true,
+  video: "https://www.youtube.com/watch?v=btL_AHHnbaE",
+  items: [
+    { ar: "\u0627\u064E\u0644\u0644\u0651\u0670\u0647\u064F", sp: "All\xE2h" },
+    { ar: "\u0628\u0650\u0627\u0644\u0644\u0651\u0670\u0647\u0650", sp: "bill\xE2hi" },
+    { ar: "\u0645\u064E\u0639\u064E \u0627\u0644\u0644\u0651\u0670\u0647\u0650", sp: "meall\xE2hi" },
+    { ar: "\u0642\u064F\u0644\u0650 \u0627\u0644\u0644\u064E\u0651\u0647\u064F\u0645\u064E\u0651", sp: "kulill\xE2h\xFCmme" },
+    { ar: "\u0641\u064E\u0625\u0650\u0646\u064E\u0651 \u0627\u0644\u0644\u0651\u0670\u0647\u064E", sp: "feinnall\xE2he" },
+    { ar: "\u0644\u064E\u0647\u064F", sp: "leh\xFB" },
+    { ar: "\u0644\u064E\u0647\u064F\u0645\u0652", sp: "leh\xFCm" },
+    { ar: "\u0628\u0650\u0647\u0650", sp: "bih\xEE" }
+  ].map((it, i) => ({
+    id: `l9-${pad2(i + 1)}`,
+    label: it.sp,
+    speech: it.sp,
+    lang: "tr",
+    emoji: it.ar,
+    translit: it.sp
+  }))
+};
+var t10_elif_lam = {
+  id: "elif-lam-ra",
+  parent: P,
+  title: "10. Elif-L\xE2m Tak\u0131s\u0131 ve R\xE2",
+  description: "\u0627\u0644 tak\u0131s\u0131 ve r\xE2 harfinin okunu\u015Fu",
+  emoji: "\uFE8D\uFEDF",
+  practiceMode: "visual",
+  gridCols: 2,
+  noPractice: true,
+  video: "https://www.youtube.com/watch?v=kZ4R2CrWc3A",
+  items: [
+    { ar: "\u0627\u064E\u0644\u0652\u0628\u064E\u064A\u0652\u062A\u064F", sp: "el-beyt\xFC" },
+    { ar: "\u0627\u064E\u0644\u0634\u064E\u0651\u0645\u0652\u0633\u064F", sp: "e\u015F-\u015Fems\xFC" },
+    { ar: "\u0627\u064E\u0644\u0631\u064E\u0651\u062D\u0652\u0645\u0670\u0646\u064F", sp: "er-Rahm\xE2n" },
+    { ar: "\u0627\u064E\u0644\u0652\u062D\u064E\u0645\u0652\u062F\u064F", sp: "el-hamd\xFC" },
+    { ar: "\u0648\u064E\u064A\u064E\u0633\u0650\u0651\u0631\u0652 \u0644\u0650\u0649", sp: "ve yessir l\xEE" },
+    { ar: "\u0641\u064E\u0637\u064E\u0647\u0650\u0651\u0631\u0652", sp: "fetahhir" },
+    { ar: "\u0648\u064E\u0627\u0633\u0652\u062A\u064E\u063A\u0652\u0641\u0650\u0631\u0652\u0647\u064F", sp: "vesta\u011Ffirh\xFC" },
+    { ar: "\u0631\u064E\u0628\u0650\u0651", sp: "Rabbi" }
+  ].map((it, i) => ({
+    id: `l10-${pad2(i + 1)}`,
+    label: it.sp,
+    speech: it.sp,
+    lang: "tr",
+    emoji: it.ar,
+    translit: it.sp
+  }))
+};
+var elifbaTopics = [
+  t1_harfler,
+  t2_yazilislar,
+  t3_harekeler,
+  t4_cezm,
+  t5_sedde,
+  t6_med,
+  t7_asar,
+  t8_tenvin,
+  t9_zamir,
+  t10_elif_lam
+];
+
+// src/lib/mcp/tools/list-topics.ts
 var list_topics_default = defineTool({
   name: "list_topics",
   title: "Konular\u0131 listele",
@@ -32,7 +672,6 @@ var list_topics_default = defineTool({
 // src/lib/mcp/tools/get-topic.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.21.0";
 import { z } from "npm:zod@^3.25.76";
-import { elifbaTopics as elifbaTopics2 } from "npm:@/data/topics/elifba";
 var get_topic_default = defineTool2({
   name: "get_topic",
   title: "Konu detay\u0131",
@@ -42,9 +681,9 @@ var get_topic_default = defineTool2({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: ({ topicId }) => {
-    const topic = elifbaTopics2.find((t) => t.id === topicId);
+    const topic = elifbaTopics.find((t) => t.id === topicId);
     if (!topic) {
-      const known = elifbaTopics2.map((t) => t.id).join(", ");
+      const known = elifbaTopics.map((t) => t.id).join(", ");
       return {
         content: [
           { type: "text", text: `Konu bulunamad\u0131: ${topicId}. Mevcut konular: ${known}` }
@@ -77,7 +716,6 @@ var get_topic_default = defineTool2({
 // src/lib/mcp/tools/get-letter.ts
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.21.0";
 import { z as z2 } from "npm:zod@^3.25.76";
-import { elifbaTopics as elifbaTopics3 } from "npm:@/data/topics/elifba";
 var get_letter_default = defineTool3({
   name: "get_letter",
   title: "Harf bilgisi",
@@ -87,7 +725,7 @@ var get_letter_default = defineTool3({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: ({ query }) => {
-    const letters = elifbaTopics3.find((t) => t.id === "harfler")?.items ?? [];
+    const letters = elifbaTopics.find((t) => t.id === "harfler")?.items ?? [];
     const q = query.trim().toLocaleLowerCase("tr");
     const match = letters.find(
       (l) => l.label.toLocaleLowerCase("tr") === q || l.translit?.toLocaleLowerCase("tr") === q || l.emoji === query.trim()

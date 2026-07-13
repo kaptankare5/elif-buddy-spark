@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { elifbaTopics } from "@/data/topics/elifba";
+import { elifbaTopics } from "../../../data/topics/elifba";
 
 export default defineTool({
   name: "get_topic",
