@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { RouteHead } from "@/components/RouteHead";
 import { SUBJECTS } from "@/data/subjects";
 import { getTopicSrs, getNamespaceStats, getCloudSrsState, useSrsTick, type Level, type SrsState } from "@/data/srs";
 import { cn } from "@/lib/utils";
