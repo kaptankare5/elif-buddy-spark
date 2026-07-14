@@ -46,6 +46,11 @@ const Games = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-soft/40 to-background">
+      <RouteHead
+        title="Elifbâ Oyunları — ElifMim"
+        description="Balon Patlatma, Elif Ba Macerası, Hafıza Kartları ve daha fazlası: çocuklar Kur'an harflerini oyunlarla pekiştirir."
+        path="/oyunlar"
+      />
       <main className="container mx-auto max-w-3xl px-4 pb-20">
         <PageHeader title="🎮 Oyunlar" backTo="/" centered />
 
