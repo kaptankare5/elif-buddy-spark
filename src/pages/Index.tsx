@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Lock, Crown, TrendingUp, Gamepad2, Flame } from "lucide-react";
+import { RouteHead } from "@/components/RouteHead";
 
 import { SUBJECTS } from "@/data/subjects";
 
