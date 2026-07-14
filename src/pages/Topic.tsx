@@ -254,7 +254,7 @@ const Topic = () => {
                   <div className="mb-6 rounded-2xl border-2 border-dashed border-border bg-muted/40 p-5 text-center">
                     <Lock className="mx-auto mb-1 h-6 w-6 text-muted-foreground" />
                     <p className="text-xs font-bold text-muted-foreground">
-                      Önceki bölümdeki harfleri öğrenince açılır
+                      Alıştırma yaparak öğrenince açılır
                     </p>
                   </div>
                 )}

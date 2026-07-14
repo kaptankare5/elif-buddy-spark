@@ -133,7 +133,7 @@ const Index = () => {
                     {!isUnlocked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                   </h2>
                   <p className="text-xs font-medium text-muted-foreground truncate">
-                    {isUnlocked ? t.description : "Önceki konuyu tamamla"}
+                    {isUnlocked ? t.description : "Alıştırma yaparak öğrenince açılır"}
                   </p>
                   {/* İlerleme çubuğu — görünür ilerleme motivasyonu güçlendirir */}
                   {isUnlocked && !t.noPractice && (() => {
