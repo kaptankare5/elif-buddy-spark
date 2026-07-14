@@ -1,8 +1,14 @@
 import { Link } from "react-router-dom";
+import { RouteHead } from "@/components/RouteHead";
 
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-background px-4 py-8">
+      <RouteHead
+        title="Gizlilik Politikası — ElifMim"
+        description="ElifMim'in çocuklara yönelik gizlilik politikası: hangi verileri işliyoruz, nasıl saklıyoruz ve haklarınız."
+        path="/privacy-policy"
+      />
       <main className="container mx-auto max-w-2xl">
         <Link to="/" className="text-primary text-sm font-semibold underline">← Ana sayfa</Link>
         <h1 className="mt-4 mb-2 text-3xl font-extrabold text-primary">Gizlilik Politikası</h1>
