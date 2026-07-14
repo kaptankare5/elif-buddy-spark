@@ -173,6 +173,11 @@ const Topic = () => {
   if (mode === "browse") {
     return (
       <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 to-background">
+        <RouteHead
+          title={`${topic.title} — Elifbâ | ElifMim`}
+          description={`${topic.title}: ${topic.description} — çocuklar için sesli Elifbâ dersi.`}
+          path={`/konu/${subjectId}/${topicId}`}
+        />
         <main className="container mx-auto max-w-2xl px-4 pb-24">
           <PageHeader title={topic.title} backTo="/" centered />
 
