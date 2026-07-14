@@ -66,7 +66,7 @@ const Index = () => {
         <div className="mb-6 text-center animate-bounce-in">
           <div className="text-7xl font-arabic mb-2 text-emerald-700">ﺇﻗﺮﺃ</div>
           <h1 className="mb-1 text-4xl font-extrabold tracking-tight text-primary text-shadow-soft">
-            Elifbâ
+            Elifbâ — Kur'an-ı Kerim'i Öğreniyorum
           </h1>
           <p className="text-sm font-semibold text-muted-foreground">
             Kur'an-ı Kerim'i Öğreniyorum • Diyanet Müfredatı

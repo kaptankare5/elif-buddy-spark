@@ -146,6 +146,7 @@ const Topic = () => {
     <button
       key={it.id}
       onClick={() => playItem(it)}
+      aria-label={it.translit || it.label || "harf"}
       className="aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
     >
       {/* Glif bölgesi — hareke işaretleri taşsa bile alttaki etiket bandına binemez */}
