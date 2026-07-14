@@ -2517,12 +2517,12 @@ const PlatformGame = () => {
                       className={cn(
                         "flex flex-col items-center justify-center rounded-2xl border-2 px-1 py-1.5 w-[54px] sm:w-16 transition-bouncy",
                         locked
-                          ? "bg-muted/50 border-border opacity-60"
+                          ? "bg-muted/50 border-border text-muted-foreground"
                           : "bg-card border-warning/50 shadow-soft active:scale-95 hover:-translate-y-0.5",
                       )}
                     >
                       <span className="text-xl sm:text-2xl leading-none">{locked ? "🔒" : t.emoji}</span>
-                      <span className="text-[11px] font-extrabold text-foreground mt-0.5">{lv}</span>
+                      <span className={cn("text-[11px] font-extrabold mt-0.5", locked ? "text-muted-foreground" : "text-foreground")}>{lv}</span>
                     </button>
                   );
                 })}

@@ -123,14 +123,14 @@ const ProgressPage = () => {
                             return (
                               <div key={it.id} className={cn(
                                 "flex items-center gap-2 rounded-lg px-2 py-1 text-xs bg-card border",
-                                lv === 0 && "border-border/40 opacity-60",
+                                lv === 0 && "border-border/40 text-muted-foreground",
                                 lv === 1 && "border-info/40",
                                 lv === 2 && "border-warning/40",
                                 lv === 3 && "border-secondary",
                                 lv === 4 && "border-success/40",
                               )}>
                                 <span className="text-lg">{it.emoji}</span>
-                                <span className="flex-1 truncate font-semibold">{it.label}</span>
+                                <span className={cn("flex-1 truncate font-semibold", lv === 0 && "text-muted-foreground")}>{it.label}</span>
                                 {lv > 0 && (
                                   <span className={cn("text-[9px] font-bold rounded px-1",
                                     lv === 1 && "bg-info/20 text-info",

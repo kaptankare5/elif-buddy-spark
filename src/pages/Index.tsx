@@ -116,7 +116,7 @@ const Index = () => {
                   "flex items-center gap-3 rounded-2xl bg-card p-4 border-2 shadow-card transition-bouncy animate-bounce-in",
                   isUnlocked
                     ? "border-primary/30 hover:-translate-y-1 hover:shadow-elegant"
-                    : "border-border/40 opacity-60 cursor-not-allowed",
+                    : "border-border/40 bg-muted/40 cursor-not-allowed",
                 )}
                 style={{ animationDelay: `${i * 50}ms` }}
               >
