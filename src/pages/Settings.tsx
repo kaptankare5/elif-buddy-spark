@@ -126,7 +126,7 @@ const Settings = () => {
                 )}
               >
                 🎮 Normal
-                <div className="text-[10px] font-bold opacity-80 mt-1">Arada test sorusu</div>
+                <div className="text-[10px] font-bold text-muted-foreground mt-1">Arada test sorusu</div>
               </button>
               <button
                 onClick={() => setMode("super")}
@@ -138,7 +138,7 @@ const Settings = () => {
                 )}
               >
                 ⚡ Süper Öğrenme
-                <div className="text-[10px] font-bold opacity-80 mt-1">Her zaman test, hep ilerleme</div>
+                <div className="text-[10px] font-bold text-muted-foreground mt-1">Her zaman test, hep ilerleme</div>
               </button>
             </div>
             <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
