@@ -290,6 +290,11 @@ const Topic = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 to-background">
+      <RouteHead
+        title={`${topic.title} Testi — Elifbâ | ElifMim`}
+        description={`${topic.title} konusunu test ederek pekiştir. ${topic.description}`}
+        path={`/konu/${subjectId}/${topicId}`}
+      />
       <main className="container mx-auto max-w-xl px-4 pb-24">
         <PageHeader
           title={`${topic.title} • Test`}
