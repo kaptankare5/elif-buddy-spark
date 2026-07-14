@@ -382,7 +382,7 @@ const SnakeGame = () => {
             >
               <div className="text-7xl mb-3 animate-bounce">🐍</div>
               <div className="text-2xl font-black text-success mb-2 drop-shadow-sm">Hazır mısın?</div>
-              <div className="text-xs font-extrabold text-foreground/80 px-6 text-center max-w-[80%]">
+              <div className="text-xs font-extrabold text-muted-foreground px-6 text-center max-w-[80%]">
                 Ekrana parmağını sürükle ↑↓←→
               </div>
               <div className="mt-4 px-6 py-2.5 rounded-full bg-gradient-to-r from-success to-emerald-600 text-white font-black text-sm shadow-elegant">
@@ -394,7 +394,7 @@ const SnakeGame = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/80 to-rose-100/90 backdrop-blur-sm">
               <div className="text-7xl mb-2 animate-bounce-in">😵</div>
               <div className="text-3xl font-black text-destructive mb-1 drop-shadow-sm">Oyun Bitti!</div>
-              <div className="text-sm font-extrabold text-foreground/70 mb-4">⭐ Puan: {score}</div>
+              <div className="text-sm font-extrabold text-muted-foreground mb-4">⭐ Puan: {score}</div>
               <button onClick={reset} className="rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-7 py-3 font-black shadow-elegant border-2 border-white/40 active:scale-95">
                 🔄 Tekrar Oyna
               </button>
