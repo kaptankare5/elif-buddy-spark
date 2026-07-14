@@ -122,7 +122,7 @@ const Paywall = () => {
             <div className="rounded-3xl bg-gradient-to-br from-warning to-primary p-6 text-white text-center shadow-elegant mb-5 animate-bounce-in">
               <Crown className="h-14 w-14 mx-auto mb-2" />
               <h1 className="text-3xl font-extrabold text-shadow-soft mb-1">Endless Mum Pro</h1>
-              <p className="text-sm font-bold opacity-90">Tek abonelik — her şey açık.</p>
+              <p className="text-sm font-bold text-white">Tek abonelik — her şey açık.</p>
             </div>
 
             <div className="rounded-3xl bg-card p-5 shadow-card border-4 border-primary/30 mb-5">
@@ -132,7 +132,7 @@ const Paywall = () => {
               </div>
               <ul className="space-y-2">
                 {FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm font-semibold text-foreground/90">
+                  <li key={f} className="flex items-start gap-2 text-sm font-semibold text-foreground">
                     <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
                     <span>{f}</span>
                   </li>
