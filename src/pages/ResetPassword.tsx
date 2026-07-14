@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { RouteHead } from "@/components/RouteHead";
 
 // /sifre-sifirla — kullanıcı şifre sıfırlama e-postasındaki bağlantıyla buraya gelir.
 // Supabase, hash'teki recovery token'ı otomatik işleyip onAuthStateChange("PASSWORD_RECOVERY")
