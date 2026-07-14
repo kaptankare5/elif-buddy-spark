@@ -70,6 +70,12 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary/30 to-background">
+      <RouteHead
+        title="Ayarlar — ElifMim"
+        description="Ses, titreşim, oyun modu, hoca modu ve gizlilik tercihlerini yönet."
+        path="/ayarlar"
+        noindex
+      />
       <main className="container mx-auto max-w-xl px-4 pb-16">
         <PageHeader title="⚙️ Ayarlar" backTo="/" centered />
 
