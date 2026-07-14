@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { RouteHead } from "@/components/RouteHead";
 import { SUBJECTS } from "@/data/subjects";
 import { getTopicSrs, getNamespaceStats, getCloudSrsState, useSrsTick, type Level, type SrsState } from "@/data/srs";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,11 @@ const ProgressPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary/30 to-background">
+      <RouteHead
+        title="İlerlemem — ElifMim"
+        description="Öğrendiğin harfleri, ustalık seviyeni ve günlük seri sayacını gör."
+        path="/ilerleme"
+      />
       <main className="container mx-auto max-w-2xl px-4 pb-16">
         <PageHeader title="📈 İlerleme" backTo="/" centered />
 

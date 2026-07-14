@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { getSubject, getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
+import { RouteHead } from "@/components/RouteHead";
 import { playItem, playFeedback } from "@/lib/audio";
 import { Volume2, Layers, Zap, Lock, Gamepad2 } from "lucide-react";
 import type { ContentItem, SubjectId } from "@/data/types";
@@ -172,6 +173,11 @@ const Topic = () => {
   if (mode === "browse") {
     return (
       <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 to-background">
+        <RouteHead
+          title={`${topic.title} — Elifbâ | ElifMim`}
+          description={`${topic.title}: ${topic.description} — çocuklar için sesli Elifbâ dersi.`}
+          path={`/konu/${subjectId}/${topicId}`}
+        />
         <main className="container mx-auto max-w-2xl px-4 pb-24">
           <PageHeader title={topic.title} backTo="/" centered />
 
@@ -284,6 +290,11 @@ const Topic = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 to-background">
+      <RouteHead
+        title={`${topic.title} Testi — Elifbâ | ElifMim`}
+        description={`${topic.title} konusunu test ederek pekiştir. ${topic.description}`}
+        path={`/konu/${subjectId}/${topicId}`}
+      />
       <main className="container mx-auto max-w-xl px-4 pb-24">
         <PageHeader
           title={`${topic.title} • Test`}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Lock, Crown, TrendingUp, Gamepad2, Flame } from "lucide-react";
+import { RouteHead } from "@/components/RouteHead";
 
 import { SUBJECTS } from "@/data/subjects";
 
@@ -45,6 +46,11 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-emerald-50 via-background to-teal-50">
+      <RouteHead
+        title="ElifMim — Çocuklar için Elifbâ Öğrenme Uygulaması"
+        description="ElifMim ile 3-8 yaş çocuklar Kur'an harflerini, harekeleri ve okuma kurallarını eğlenceli oyunlarla ve gerçek hoca sesiyle öğrenir."
+        path="/"
+      />
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden opacity-30">
         <div className="absolute top-10 left-6 text-6xl font-arabic text-emerald-700/60">ﷲ</div>
         <div className="absolute top-40 right-8 text-5xl font-arabic text-teal-700/40">ﺍﻟﻘﺮﺁﻥ</div>
