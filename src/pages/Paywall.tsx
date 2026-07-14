@@ -91,6 +91,11 @@ const Paywall = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-warning/20 via-background to-primary-soft/30">
+      <RouteHead
+        title="Premium Abonelik — ElifMim"
+        description="Tüm konuları, tüm oyunları ve reklamsız deneyimi ElifMim Premium ile aç."
+        path="/abonelik"
+      />
       <main className="container mx-auto max-w-xl px-4 pb-24">
         <PageHeader title="✨ Premium" backTo="/" centered />
 
