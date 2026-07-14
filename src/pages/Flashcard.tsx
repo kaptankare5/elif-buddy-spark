@@ -123,6 +123,11 @@ const Flashcard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 to-background">
+      <RouteHead
+        title={`${topic.title} Flashcard — Elifbâ | ElifMim`}
+        description={`${topic.title} için flashcard alıştırması: aralıklı tekrar ile harfleri kalıcı öğren.`}
+        path={`/konu/${subjectId}/${topicId}/flashcard`}
+      />
       <main className="container mx-auto max-w-lg px-4 pb-24">
         <PageHeader
           title={`${topic.title} • Flashcard`}
