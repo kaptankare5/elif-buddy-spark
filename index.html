@@ -45,6 +45,48 @@
   <meta name="twitter:title" content="ElifMim — Çocuklar için Eğitici Elif Ba Oyunları">
   <meta property="og:description" content="ElifMim: çocuklar için Elif Ba'yı eğlenceli oyunlarla öğreten uygulama.">
   <meta name="twitter:description" content="ElifMim: çocuklar için Elif Ba'yı eğlenceli oyunlarla öğreten uygulama.">
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://elifmim.com/#website",
+          "url": "https://elifmim.com/",
+          "name": "ElifMim",
+          "description": "Çocuklar için Elif Ba öğrenme uygulaması",
+          "publisher": { "@id": "https://elifmim.com/#organization" },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://elifmim.com/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          },
+          "inLanguage": "tr"
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://elifmim.com/#organization",
+          "name": "ElifMim",
+          "alternateName": "Endless Mum",
+          "url": "https://elifmim.com/",
+          "logo": "https://elifmim.com/favicon.png",
+          "sameAs": []
+        },
+        {
+          "@type": "Course",
+          "@id": "https://elifmim.com/#course",
+          "name": "Elifbâ Öğrenme Programı",
+          "description": "Diyanet müfredatına uygun, gerçek hoca sesleriyle 28 Kur'an harfini ve okuma kurallarını öğreten interaktif elifba programı.",
+          "provider": { "@id": "https://elifmim.com/#organization" },
+          "educationalLevel": "Okul öncesi ve ilkokul",
+          "inLanguage": "tr",
+          "teaches": "Kur'an harfleri, harekeler, cezm, şedde, med, tenvin",
+          "courseMode": "online"
+        }
+      ]
+    }
+  </script>
 </head>
   <body>
     <div id="root"></div>
