@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
+import { RouteHead } from "@/components/RouteHead";
 import { useGameMode, SUPER_MODE_GAMES } from "@/lib/gameMode";
 
 type Diff = "kolay" | "zor";
