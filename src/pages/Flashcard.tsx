@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
+import { RouteHead } from "@/components/RouteHead";
 import { playItem, playFeedback } from "@/lib/audio";
 import { Volume2, Check, X, Eye, SkipForward } from "lucide-react";
 import {
