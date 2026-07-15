@@ -74,6 +74,7 @@ interface Theme {
   hillA: string;
   hillB: string;
   soil: string;
+  pit: string;         // yeraltı/uçurum içi rengi (çukurlar gökyüzü göstermez)
   grassA: string;      // çim üst ton
   grassB: string;      // çim alt ton
   tree: "tree" | "pine" | "palm" | "cactus" | "snowtree" | "candy" | "none";
@@ -90,16 +91,16 @@ interface Theme {
 }
 
 const THEMES: Theme[] = [
-  { name: "Çayır", emoji: "🌼", skyTop: "#7ec3f0", skyBottom: "#eaf8ff", hillA: "#8fd889", hillB: "#a7e3a0", soil: "#c07a35", grassA: "#5ec46a", grassB: "#3f9d45", tree: "tree", treeLeaf: "#4cae5b", trunk: "#8a5a34", celestial: "sun", cloud: "#ffffff", flower1: "#f472b6", flower2: "#facc15", birds: true },
-  { name: "Orman", emoji: "🌲", skyTop: "#74b9e8", skyBottom: "#dff2fd", hillA: "#6fbf73", hillB: "#8fd889", soil: "#8a5a2c", grassA: "#4caf50", grassB: "#357a38", tree: "pine", treeLeaf: "#2f855a", trunk: "#6b4226", celestial: "sun", cloud: "#ffffff", flower1: "#fb7185", flower2: "#a3e635", birds: true },
-  { name: "Sahil", emoji: "🏖️", skyTop: "#67c7f5", skyBottom: "#f3fbff", hillA: "#7dd3fc", hillB: "#a5e7ff", soil: "#d8ab60", grassA: "#f2d489", grassB: "#e0b96b", tree: "palm", treeLeaf: "#3fae5f", trunk: "#a9713d", celestial: "sun", cloud: "#ffffff", flower1: "#fda4af", flower2: "#fef08a", birds: true },
-  { name: "Çöl", emoji: "🌵", skyTop: "#f7b267", skyBottom: "#ffe8c7", hillA: "#e8c07d", hillB: "#f2d49b", soil: "#c9945a", grassA: "#eec97f", grassB: "#d9a95f", tree: "cactus", treeLeaf: "#3f9d45", trunk: "#3f9d45", celestial: "sun", cloud: "#fff7ed", flower1: "#f87171", flower2: "#fbbf24", birds: true },
-  { name: "Gün Batımı", emoji: "🌇", skyTop: "#8b5cf6", skyBottom: "#fb923c", hillA: "#6d28d9", hillB: "#8b5cf6", soil: "#7c4a24", grassA: "#4d9e57", grassB: "#3b7f44", tree: "tree", treeLeaf: "#2f6b4f", trunk: "#573418", celestial: "sun", cloud: "#ffe4e6", flower1: "#fb7185", flower2: "#fdba74", birds: true },
-  { name: "Kar", emoji: "❄️", skyTop: "#b8def5", skyBottom: "#f0faff", hillA: "#e6f3fb", hillB: "#ffffff", soil: "#8fa5ba", grassA: "#ffffff", grassB: "#dcedf8", tree: "snowtree", treeLeaf: "#2f855a", trunk: "#6b4226", celestial: "sun", cloud: "#ffffff", flower1: "#93c5fd", flower2: "#e0f2fe", snow: true },
-  { name: "Gece", emoji: "🌙", skyTop: "#1e293b", skyBottom: "#3b5578", hillA: "#14532d", hillB: "#166534", soil: "#5e3d1d", grassA: "#3f7d4a", grassB: "#2f5e38", tree: "tree", treeLeaf: "#1f7a44", trunk: "#3f2a14", celestial: "moon", cloud: "rgba(148,163,184,0.55)", flower1: "#a78bfa", flower2: "#f0abfc", stars: true, fireflies: true },
-  { name: "Şeker", emoji: "🍭", skyTop: "#fbc7e4", skyBottom: "#fff0f7", hillA: "#f9a8d4", hillB: "#fbcfe8", soil: "#8d5b41", grassA: "#7fe3c3", grassB: "#4cc9a6", tree: "candy", treeLeaf: "#f472b6", trunk: "#fefce8", celestial: "none", cloud: "#ffffff", flower1: "#f472b6", flower2: "#38bdf8", birds: true },
-  { name: "Uzay", emoji: "🪐", skyTop: "#241b4d", skyBottom: "#4c3a8c", hillA: "#5b4a9e", hillB: "#7263b8", soil: "#565073", grassA: "#9d94c4", grassB: "#7a71a8", tree: "none", treeLeaf: "#67e8f9", trunk: "#67e8f9", celestial: "planet", cloud: null, flower1: "#67e8f9", flower2: "#c084fc", stars: true },
-  { name: "Gökkuşağı", emoji: "🌈", skyTop: "#7ec3f0", skyBottom: "#eaf8ff", hillA: "#86efac", hillB: "#fde68a", soil: "#c07a35", grassA: "#5ec46a", grassB: "#3f9d45", tree: "tree", treeLeaf: "#4cae5b", trunk: "#8a5a34", celestial: "rainbow", cloud: "#ffffff", flower1: "#f43f5e", flower2: "#facc15", birds: true },
+  { name: "Çayır", emoji: "🌼", skyTop: "#7ec3f0", skyBottom: "#eaf8ff", hillA: "#8fd889", hillB: "#a7e3a0", soil: "#c07a35", pit: "#4a2c12", grassA: "#5ec46a", grassB: "#3f9d45", tree: "tree", treeLeaf: "#4cae5b", trunk: "#8a5a34", celestial: "sun", cloud: "#ffffff", flower1: "#f472b6", flower2: "#facc15", birds: true },
+  { name: "Orman", emoji: "🌲", skyTop: "#74b9e8", skyBottom: "#dff2fd", hillA: "#6fbf73", hillB: "#8fd889", soil: "#8a5a2c", pit: "#3b2410", grassA: "#4caf50", grassB: "#357a38", tree: "pine", treeLeaf: "#2f855a", trunk: "#6b4226", celestial: "sun", cloud: "#ffffff", flower1: "#fb7185", flower2: "#a3e635", birds: true },
+  { name: "Sahil", emoji: "🏖️", skyTop: "#67c7f5", skyBottom: "#f3fbff", hillA: "#7dd3fc", hillB: "#a5e7ff", soil: "#d8ab60", pit: "#5d4322", grassA: "#f2d489", grassB: "#e0b96b", tree: "palm", treeLeaf: "#3fae5f", trunk: "#a9713d", celestial: "sun", cloud: "#ffffff", flower1: "#fda4af", flower2: "#fef08a", birds: true },
+  { name: "Çöl", emoji: "🌵", skyTop: "#f7b267", skyBottom: "#ffe8c7", hillA: "#e8c07d", hillB: "#f2d49b", soil: "#c9945a", pit: "#5f3f1e", grassA: "#eec97f", grassB: "#d9a95f", tree: "cactus", treeLeaf: "#3f9d45", trunk: "#3f9d45", celestial: "sun", cloud: "#fff7ed", flower1: "#f87171", flower2: "#fbbf24", birds: true },
+  { name: "Gün Batımı", emoji: "🌇", skyTop: "#8b5cf6", skyBottom: "#fb923c", hillA: "#6d28d9", hillB: "#8b5cf6", soil: "#7c4a24", pit: "#35200f", grassA: "#4d9e57", grassB: "#3b7f44", tree: "tree", treeLeaf: "#2f6b4f", trunk: "#573418", celestial: "sun", cloud: "#ffe4e6", flower1: "#fb7185", flower2: "#fdba74", birds: true },
+  { name: "Kar", emoji: "❄️", skyTop: "#b8def5", skyBottom: "#f0faff", hillA: "#e6f3fb", hillB: "#ffffff", soil: "#8fa5ba", pit: "#3d4f63", grassA: "#ffffff", grassB: "#dcedf8", tree: "snowtree", treeLeaf: "#2f855a", trunk: "#6b4226", celestial: "sun", cloud: "#ffffff", flower1: "#93c5fd", flower2: "#e0f2fe", snow: true },
+  { name: "Gece", emoji: "🌙", skyTop: "#1e293b", skyBottom: "#3b5578", hillA: "#14532d", hillB: "#166534", soil: "#5e3d1d", pit: "#1c1206", grassA: "#3f7d4a", grassB: "#2f5e38", tree: "tree", treeLeaf: "#1f7a44", trunk: "#3f2a14", celestial: "moon", cloud: "rgba(148,163,184,0.55)", flower1: "#a78bfa", flower2: "#f0abfc", stars: true, fireflies: true },
+  { name: "Şeker", emoji: "🍭", skyTop: "#fbc7e4", skyBottom: "#fff0f7", hillA: "#f9a8d4", hillB: "#fbcfe8", soil: "#8d5b41", pit: "#41241a", grassA: "#7fe3c3", grassB: "#4cc9a6", tree: "candy", treeLeaf: "#f472b6", trunk: "#fefce8", celestial: "none", cloud: "#ffffff", flower1: "#f472b6", flower2: "#38bdf8", birds: true },
+  { name: "Uzay", emoji: "🪐", skyTop: "#241b4d", skyBottom: "#4c3a8c", hillA: "#5b4a9e", hillB: "#7263b8", soil: "#565073", pit: "#241f38", grassA: "#9d94c4", grassB: "#7a71a8", tree: "none", treeLeaf: "#67e8f9", trunk: "#67e8f9", celestial: "planet", cloud: null, flower1: "#67e8f9", flower2: "#c084fc", stars: true },
+  { name: "Gökkuşağı", emoji: "🌈", skyTop: "#7ec3f0", skyBottom: "#eaf8ff", hillA: "#86efac", hillB: "#fde68a", soil: "#c07a35", pit: "#4a2c12", grassA: "#5ec46a", grassB: "#3f9d45", tree: "tree", treeLeaf: "#4cae5b", trunk: "#8a5a34", celestial: "rainbow", cloud: "#ffffff", flower1: "#f43f5e", flower2: "#facc15", birds: true },
 ];
 
 // Bölüm zorluk ayarı — seviye arttıkça uzar, canavar türü çeşitlenir
@@ -996,9 +997,10 @@ function drawMosque(g: CanvasRenderingContext2D, x: number, time: number) {
   g.fill();
 }
 
-// Uçurum: kenarlarda kaya duvarı gölgesi + solda uyarı tabelası
+// Uçurum: kenarlarda ışık alan kaya duvarları + dipte siluet kayalar +
+// solda uyarı tabelası (yeraltı katmanının üstüne çizilir)
 function drawCliff(g: CanvasRenderingContext2D, x: number, w: number) {
-  g.fillStyle = "rgba(62,38,18,0.4)";
+  g.fillStyle = "rgba(196,132,72,0.35)";
   g.beginPath();
   g.moveTo(x, GROUND_Y);
   g.lineTo(x + 13, GROUND_Y + 34);
@@ -1013,8 +1015,8 @@ function drawCliff(g: CanvasRenderingContext2D, x: number, w: number) {
   g.lineTo(x + w, VH + 20);
   g.closePath();
   g.fill();
-  // dipte sivri kayalar
-  g.fillStyle = "rgba(50,30,14,0.45)";
+  // dipte sivri siluet kayalar
+  g.fillStyle = "#0c0703";
   const n = Math.max(2, Math.floor(w / 22));
   for (let i = 0; i < n; i++) {
     const rx = x + 6 + (i + 0.5) * ((w - 12) / n);
@@ -2178,6 +2180,22 @@ const PlatformGame = () => {
       g.save();
       g.translate(-s.camX, 0);
       const l = s.camX - 70, r = s.camX + view.w + 70;
+
+      // YERALTI KATMANI: zemin çizgisinin altı her yerde koyu kaya — çukur ve
+      // uçurumlar gökyüzünü/tepe yarım dairelerini değil mağara karanlığını
+      // gösterir; zemin parçaları bunun üstüne çizilir.
+      const ug = g.createLinearGradient(0, GROUND_Y, 0, VH + 40);
+      ug.addColorStop(0, theme.pit);
+      ug.addColorStop(1, "#120b04");
+      g.fillStyle = ug;
+      g.fillRect(l, GROUND_Y, r - l, VH - GROUND_Y + 40);
+      // yeraltı kaya dokusu (deterministik)
+      g.fillStyle = "rgba(0,0,0,0.28)";
+      for (let i = Math.floor(l / 46); i <= Math.ceil(r / 46); i++) {
+        const rx = i * 46 + hash01(i * 3) * 30;
+        const ry = GROUND_Y + 16 + hash01(i * 7) * (VH - GROUND_Y - 20);
+        g.fillRect(rx, ry, 7, 4);
+      }
 
       for (const so of w.solids) {
         if (so.x + so.w < l || so.x > r) continue;
