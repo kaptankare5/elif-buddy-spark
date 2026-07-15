@@ -221,7 +221,7 @@ const LaneRunnerGame = () => {
 
         <div className="rounded-2xl p-3 mb-3 border-2 bg-warning/15 border-warning/50 text-center min-h-[64px]">
           <p className="text-xs font-bold text-muted-foreground">🎯 Doğru yola geç, topla!</p>
-          <p className="text-3xl mt-1"><EmojiView value={target?.emoji ?? "—"} /> <span className="text-base font-bold text-foreground/70">{target?.label ?? ""}</span></p>
+          <p className="text-3xl mt-1"><EmojiView value={target?.emoji ?? "—"} /> <span className="text-base font-bold text-muted-foreground">{target?.label ?? ""}</span></p>
         </div>
 
         <div

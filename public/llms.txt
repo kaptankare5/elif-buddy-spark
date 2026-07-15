@@ -1,0 +1,13 @@
+# ElifMim
+
+> Çocuklar için Elif Ba (Kur'an harfleri) öğreten eğlenceli oyunlar, flashcard'lar ve ilerlemeli alıştırmalar sunan interaktif bir eğitim uygulaması.
+
+ElifMim, 3-8 yaş arası çocuklara Arapça harfleri ve sesleri öğretmek için tasarlanmıştır. Uygulama; gerçek hoca ses kayıtları, seviyeli tekrar sistemi (SRS), konu kilidi, hoca modu (cihazda öğrenci profilleri) ve çeşitli oyunlar (Tren Sörfü, Elif Ba Macerası, Yılan, Uzay, Balon, Hafıza, Kutu Boşalt, Uçan Kuş, Hızlı Quiz vb.) içerir. Kullanıcı verisi anonim olarak toplanır; kimlik bilgisi saklanmaz.
+
+## Pages
+
+- [/](/): Ana sayfa — konuları, oyunları ve ilerleme özeti.
+- [/oyunlar](/oyunlar): Oyunlar listesi — Kolay ve Zor oyun kategorileri.
+- [/konu/elifba/1](/konu/elifba/1): Örnek Elif Ba konusu — harfleri sesli dinleme ve alıştırma.
+- [/konu/elifba/1/flashcard](/konu/elifba/1/flashcard): Örnek flashcard çalışması.
+- [/privacy-policy](/privacy-policy): Gizlilik politikası ve veri kullanımı açıklaması.

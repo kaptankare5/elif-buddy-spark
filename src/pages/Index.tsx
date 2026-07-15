@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Lock, Crown, TrendingUp, Gamepad2, Flame, BookOpenCheck } from "lucide-react";
+import { RouteHead } from "@/components/RouteHead";
 
 import { SUBJECTS } from "@/data/subjects";
 
@@ -45,6 +46,11 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-emerald-50 via-background to-teal-50">
+      <RouteHead
+        title="ElifMim — Çocuklar için Elifbâ Öğrenme Uygulaması"
+        description="ElifMim ile 3-8 yaş çocuklar Kur'an harflerini, harekeleri ve okuma kurallarını eğlenceli oyunlarla ve gerçek hoca sesiyle öğrenir."
+        path="/"
+      />
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden opacity-30">
         <div className="absolute top-10 left-6 text-6xl font-arabic text-emerald-700/60">ﷲ</div>
         <div className="absolute top-40 right-8 text-5xl font-arabic text-teal-700/40">ﺍﻟﻘﺮﺁﻥ</div>
@@ -60,7 +66,7 @@ const Index = () => {
         <div className="mb-6 text-center animate-bounce-in">
           <div className="text-7xl font-arabic mb-2 text-emerald-700">ﺇﻗﺮﺃ</div>
           <h1 className="mb-1 text-4xl font-extrabold tracking-tight text-primary text-shadow-soft">
-            Elifbâ
+            Elifbâ — Kur'an-ı Kerim'i Öğreniyorum
           </h1>
           <p className="text-sm font-semibold text-muted-foreground">
             Kur'an-ı Kerim'i Öğreniyorum • Diyanet Müfredatı
@@ -110,7 +116,7 @@ const Index = () => {
                   "flex items-center gap-3 rounded-2xl bg-card p-4 border-2 shadow-card transition-bouncy animate-bounce-in",
                   isUnlocked
                     ? "border-primary/30 hover:-translate-y-1 hover:shadow-elegant"
-                    : "border-border/40 opacity-60 cursor-not-allowed",
+                    : "border-border/40 bg-muted/40 cursor-not-allowed",
                 )}
                 style={{ animationDelay: `${i * 50}ms` }}
               >
@@ -127,7 +133,7 @@ const Index = () => {
                     {!isUnlocked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                   </h2>
                   <p className="text-xs font-medium text-muted-foreground truncate">
-                    {isUnlocked ? t.description : "Önceki konuyu tamamla"}
+                    {isUnlocked ? t.description : "Alıştırma yaparak öğrenince açılır"}
                   </p>
                   {/* İlerleme çubuğu — görünür ilerleme motivasyonu güçlendirir */}
                   {isUnlocked && !t.noPractice && (() => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { RouteHead } from "@/components/RouteHead";
 import { Switch } from "@/components/ui/switch";
 import { useSettings } from "@/lib/settings";
 import { playFeedback } from "@/lib/audio";
@@ -69,6 +70,12 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary/30 to-background">
+      <RouteHead
+        title="Ayarlar — ElifMim"
+        description="Ses, titreşim, oyun modu, hoca modu ve gizlilik tercihlerini yönet."
+        path="/ayarlar"
+        noindex
+      />
       <main className="container mx-auto max-w-xl px-4 pb-16">
         <PageHeader title="⚙️ Ayarlar" backTo="/" centered />
 
@@ -119,7 +126,7 @@ const Settings = () => {
                 )}
               >
                 🎮 Normal
-                <div className="text-[10px] font-bold opacity-80 mt-1">Arada test sorusu</div>
+                <div className="text-[10px] font-bold text-muted-foreground mt-1">Arada test sorusu</div>
               </button>
               <button
                 onClick={() => setMode("super")}
@@ -131,7 +138,7 @@ const Settings = () => {
                 )}
               >
                 ⚡ Süper Öğrenme
-                <div className="text-[10px] font-bold opacity-80 mt-1">Her zaman test, hep ilerleme</div>
+                <div className="text-[10px] font-bold text-muted-foreground mt-1">Her zaman test, hep ilerleme</div>
               </button>
             </div>
             <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
