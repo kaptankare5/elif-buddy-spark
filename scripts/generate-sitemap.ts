@@ -3,6 +3,7 @@
 import { writeFileSync } from "fs";
 import { resolve } from "path";
 import { elifbaTopics } from "../src/data/topics/elifba.ts";
+import { SURAS } from "../src/data/ezber.ts";
 
 const BASE_URL = "https://elifmim.com";
 
@@ -31,6 +32,7 @@ const GAME_IDS = [
 const staticEntries: SitemapEntry[] = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
   { path: "/oyunlar", changefreq: "weekly", priority: "0.8" },
+  { path: "/ezber", changefreq: "weekly", priority: "0.8" },
   { path: "/ilerleme", changefreq: "weekly", priority: "0.6" },
   { path: "/ayarlar", changefreq: "monthly", priority: "0.4" },
   { path: "/giris", changefreq: "monthly", priority: "0.4" },
@@ -57,6 +59,13 @@ const entries: SitemapEntry[] = [
   })),
   ...GAME_IDS.map((id) => ({
     path: `/oyunlar/${id}`,
+    changefreq: "weekly" as const,
+    priority: "0.7",
+    lastmod: today,
+  })),
+  // Ezber: sure/dua çalışma sayfaları
+  ...SURAS.map((s) => ({
+    path: `/ezber/${s.id}`,
     changefreq: "weekly" as const,
     priority: "0.7",
     lastmod: today,
