@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound.tsx";
 import { AuthProvider } from "@/hooks/useAuth";
 import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { BottomNav } from "@/components/BottomNav";
+import { DebugHud } from "@/components/DebugHud";
 import { ConsentModal } from "@/components/ConsentModal";
 import { CapacitorBackHandler } from "@/components/CapacitorBackHandler";
 
@@ -69,6 +70,7 @@ const AppShell = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
+            <DebugHud />
             <ConsentModal />
           </SubscriptionProvider>
         </AuthProvider>

@@ -14,6 +14,7 @@ import {
 } from "@/data/srs";
 import { isTopicUnlocked, getUnlockedItemsOf } from "@/lib/unlock";
 import { cn } from "@/lib/utils";
+import { LevelBadge } from "@/components/LevelBadge";
 import type { ContentItem, SubjectId } from "@/data/types";
 
 const NS = "quiz" as const;
@@ -176,6 +177,7 @@ const Flashcard = () => {
               >
                 {/* Ön yüz */}
                 <div className="absolute inset-0 backface-hidden rounded-3xl bg-card border-4 border-primary/25 shadow-elegant flex flex-col overflow-hidden">
+                  <LevelBadge itemId={current.id} topicId={topic!.id} className="absolute right-2 top-2" />
                   <div className="flex-1 min-h-0 flex items-center justify-center px-4">
                     <span className="font-arabic text-emerald-800 leading-[1.6] text-[clamp(5rem,24vw,8rem)]">
                       {current.emoji}
