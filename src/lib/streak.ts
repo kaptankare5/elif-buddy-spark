@@ -37,24 +37,35 @@ function saveState(s: StreakState) {
 }
 
 // Her cevapta çağrılır (srs.ts). Aynı gün içinde no-op — ucuz.
+//
+// AFFEDİCİ SERİ (1 gün otomatik af): çocuk dostu — bir gün kaçırmak seriyi
+// SIFIRLAMAZ, sadece o tur büyümez (korunur). İki+ gün kaçırınca sıfırlanır.
+// Böylece en büyük churn sebebi (tek gün kaçırıp "her şeyi kaybettim" hissi)
+// yok olur. Etik: donduruma "satış" yok; af sessiz ve otomatik. Günlük gelen
+// çocuk büyür; bir gün kaçıran korur ama büyümez — düzenliliği ödüllendirir.
 export function recordStreakActivity() {
   if (typeof window === "undefined") return;
   const s = loadState();
   const today = dayStr(new Date());
   if (s.last === today) return;
   const yesterday = dayStr(new Date(Date.now() - 86_400_000));
-  const count = s.last === yesterday ? s.count + 1 : 1;
+  const twoAgo = dayStr(new Date(Date.now() - 2 * 86_400_000));
+  let count: number;
+  if (s.last === yesterday) count = s.count + 1;              // günlük → büyü
+  else if (s.last === twoAgo && s.count > 0) count = s.count; // 1 gün af → korunur
+  else count = 1;                                             // 2+ gün → sıfırla
   saveState({ last: today, count, best: Math.max(s.best, count) });
 }
 
-// Görüntüleme: bugün veya dün aktifse seri yaşıyor; daha eskiyse 0 göster.
+// Görüntüleme: son 2 gün içinde aktifse seri yaşıyor (1 gün af penceresi).
 export function getStreak(): { count: number; best: number; activeToday: boolean } {
   if (typeof window === "undefined") return { count: 0, best: 0, activeToday: false };
   const s = loadState();
   const today = dayStr(new Date());
   const yesterday = dayStr(new Date(Date.now() - 86_400_000));
+  const twoAgo = dayStr(new Date(Date.now() - 2 * 86_400_000));
   if (s.last === today) return { count: s.count, best: s.best, activeToday: true };
-  if (s.last === yesterday) return { count: s.count, best: s.best, activeToday: false };
+  if (s.last === yesterday || s.last === twoAgo) return { count: s.count, best: s.best, activeToday: false };
   return { count: 0, best: s.best, activeToday: false };
 }
 
