@@ -2575,7 +2575,9 @@ const PlatformGame = () => {
               <div className="text-4xl mb-1">🕌</div>
               <div className="text-2xl font-extrabold text-success mb-1">Bölüm {level} Tamam!</div>
               <div className="text-2xl mb-1">{"⭐".repeat(Math.max(1, Math.min(3, lives)))}</div>
-              <div className="text-sm font-bold text-muted-foreground mb-4">Camiye ulaştın! Puan: {score}</div>
+              <div className="text-sm font-bold text-muted-foreground mb-2">Camiye ulaştın! Puan: {score}</div>
+              {/* yüksek notada bitiş — bahçe teşviki */}
+              <div className="mb-4 rounded-xl bg-success/10 border-2 border-success/30 px-3 py-1.5 text-xs font-extrabold text-success">🌸 Bahçende yeni çiçekler açtı!</div>
               <div className="flex gap-2">
                 {level < LEVEL_COUNT ? (
                   <button

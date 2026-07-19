@@ -30,6 +30,19 @@ const Ezber = () => {
           </p>
         </div>
 
+        {/* Kur'an Provası — mushaf'tan okuma köprüsü */}
+        <Link
+          to="/prova"
+          className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-primary to-info p-4 text-white shadow-card transition-bouncy hover:-translate-y-1 hover:shadow-elegant"
+        >
+          <span className="text-3xl">📖</span>
+          <div className="flex-1">
+            <div className="text-base font-extrabold text-shadow-soft">Kur'an Provası</div>
+            <div className="text-[11px] font-semibold opacity-90">Ezberlediğini Mushaf'tan, okunuşsuz oku! 🕌</div>
+          </div>
+          <span className="text-xl">→</span>
+        </Link>
+
         <div className="space-y-3">
           {SURAS.map((s, i) => {
             const pct = suraMasteryPct(s);
