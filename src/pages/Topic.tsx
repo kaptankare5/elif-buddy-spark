@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { isTopicUnlocked, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
+import { LevelBadge } from "@/components/LevelBadge";
 
 type Mode = "browse" | "test";
 
@@ -150,8 +151,9 @@ const Topic = () => {
       key={it.id}
       onClick={() => playItem(it)}
       aria-label={it.translit || it.label || "harf"}
-      className="aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
+      className="relative aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
     >
+      <LevelBadge itemId={it.id} topicId={topic.id} className="absolute right-1 top-1" />
       {/* Glif bölgesi — hareke işaretleri taşsa bile alttaki etiket bandına binemez */}
       <span className="flex-1 min-h-0 flex w-full items-center justify-center px-1">
         <span className={cn(
@@ -334,7 +336,8 @@ const Topic = () => {
 
         {q && (
           <>
-            <div className="bg-card rounded-3xl p-6 shadow-card border-4 border-primary/20 mb-4 text-center animate-bounce-in" key={q.target.id}>
+            <div className="relative bg-card rounded-3xl p-6 shadow-card border-4 border-primary/20 mb-4 text-center animate-bounce-in" key={q.target.id}>
+              <LevelBadge itemId={q.target.id} topicId={topic.id} className="absolute right-2 top-2" />
               <button
                 onClick={() => playItem(q.target)}
                 className="inline-flex items-center gap-3 rounded-full bg-primary px-8 py-5 text-primary-foreground font-extrabold shadow-soft transition-bouncy hover:scale-105"
@@ -354,11 +357,12 @@ const Topic = () => {
                     key={opt.id}
                     onClick={() => choose(opt)}
                     className={cn(
-                      "aspect-square rounded-3xl flex flex-col items-center justify-center gap-1 shadow-card border-4 transition-bouncy bg-card border-primary/20 hover:-translate-y-1 p-3",
+                      "relative aspect-square rounded-3xl flex flex-col items-center justify-center gap-1 shadow-card border-4 transition-bouncy bg-card border-primary/20 hover:-translate-y-1 p-3",
                       isCorrect && "bg-success border-success animate-pop",
                       isWrong && "bg-destructive border-destructive animate-shake",
                     )}
                   >
+                    <LevelBadge itemId={opt.id} topicId={topic.id} className="absolute right-1.5 top-1.5" />
                     <span className={cn(
                       "font-arabic text-5xl leading-[1.5]",
                       (isCorrect || isWrong) ? "text-white" : "text-emerald-800",

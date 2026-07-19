@@ -27,6 +27,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem } from "@/lib/audio";
 import { gamePool, pickN, shuffle } from "./_shared";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
+import { isTestUnlockActive } from "@/lib/testUnlock";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
@@ -2171,6 +2172,7 @@ const PlatformGame = () => {
     // --- çizim ---
     const draw = () => {
       const g = ctx;
+      const testActive = isTestUnlockActive(); // test modunda blok seviyesi göster
       g.setTransform(dpr * kScale, 0, 0, dpr * kScale, 0, 0);
       const grad = g.createLinearGradient(0, 0, 0, VH);
       grad.addColorStop(0, theme.skyTop);
@@ -2292,6 +2294,16 @@ const PlatformGame = () => {
             ? glyphSprite(b.item.emoji || "?", "block")
             : glyphSprite("?", "mystery");
           g.drawImage(sprite, bx, by, BLOCK, BLOCK);
+          // TEST MODU: bloğun köşesinde SRS seviyesi (elle doğrulama)
+          if (testActive && t.announced && b.item) {
+            const lv = getGameItemLevel(b.item);
+            g.fillStyle = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e"][Math.min(4, lv)];
+            g.fillRect(bx + BLOCK - 16, by, 16, 13);
+            g.fillStyle = "#000";
+            g.font = "bold 10px system-ui, sans-serif";
+            g.textAlign = "center";
+            g.fillText(`L${lv}`, bx + BLOCK - 8, by + 10);
+          }
           g.globalAlpha = 1;
         }
       }
