@@ -280,12 +280,17 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
   const filled: Level[] = ([1, 2, 3, 4] as Level[]).filter((l) => byLevel[l].length > 0);
   if (filled.length === 0) return letterIds[Math.floor(Math.random() * letterIds.length)];
   const w = waterfallWeights(filled);
-  // Uyarlanır zorluk: son doğruluk düşükse üst (bilinen) seviyeleri, yüksekse
-  // alt (zayıf/yeni) seviyeleri öne çıkar → ~%85 akış kanalını korur.
+  // Isınma + uyarlanır zorluk (seans yayı): ~%85 akış kanalını korur.
   const acc = recentAccuracy();
-  if (acc !== null && filled.length > 1) {
-    if (acc < 0.70) { w[1] *= 0.55; w[2] *= 0.85; w[3] *= 1.4; w[4] *= 1.8; }
-    else if (acc > 0.92) { w[1] *= 1.5; w[2] *= 1.2; w[3] *= 0.9; w[4] *= 0.55; }
+  if (filled.length > 1) {
+    if (_recent.length < 4) {
+      // ISINMA (seans başı, fresh açılış): kolay galibiyetler — alışkanlık
+      // bilimi: en zor kısım BAŞLAMAK; düşük aktivasyon enerjisi = güçlü alışkanlık.
+      w[1] *= 0.75; w[3] *= 1.2; w[4] *= 1.4;
+    } else if (acc !== null) {
+      if (acc < 0.70) { w[1] *= 0.55; w[2] *= 0.85; w[3] *= 1.4; w[4] *= 1.8; }   // zorlanıyor → kolaylaş
+      else if (acc > 0.92) { w[1] *= 1.5; w[2] *= 1.2; w[3] *= 0.9; w[4] *= 0.55; } // uçuyor → zorlaş
+    }
   }
   const total = filled.reduce((acc2, l) => acc2 + w[l], 0);
   let r = Math.random() * total;
