@@ -13,6 +13,7 @@ import Progress from "./pages/Progress.tsx";
 import Settings from "./pages/Settings.tsx";
 import Ezber from "./pages/Ezber.tsx";
 import EzberCalis from "./pages/EzberCalis.tsx";
+import Bahce from "./pages/Bahce.tsx";
 import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import Paywall from "./pages/Paywall.tsx";
@@ -53,6 +54,7 @@ const AppShell = () => {
               <Route path="/oyunlar/:gameId" element={<Game />} />
               <Route path="/ezber" element={<Ezber />} />
               <Route path="/ezber/:suraId" element={<EzberCalis />} />
+              <Route path="/bahce" element={<Bahce />} />
               <Route path="/ilerleme" element={<Progress />} />
               <Route path="/ayarlar" element={<Settings />} />
               <Route path="/admin" element={<Admin />} />
