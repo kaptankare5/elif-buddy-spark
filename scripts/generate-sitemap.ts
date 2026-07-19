@@ -33,6 +33,7 @@ const staticEntries: SitemapEntry[] = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
   { path: "/oyunlar", changefreq: "weekly", priority: "0.8" },
   { path: "/ezber", changefreq: "weekly", priority: "0.8" },
+  { path: "/bahce", changefreq: "weekly", priority: "0.6" },
   { path: "/ilerleme", changefreq: "weekly", priority: "0.6" },
   { path: "/ayarlar", changefreq: "monthly", priority: "0.4" },
   { path: "/giris", changefreq: "monthly", priority: "0.4" },

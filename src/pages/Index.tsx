@@ -157,6 +157,19 @@ const Index = () => {
           })}
         </div>
 
+        {/* Bahçe — günlük dönüş kancası, belirgin hero kart */}
+        <Link
+          to="/bahce"
+          className="mb-3 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-4 text-white shadow-card transition-bouncy hover:-translate-y-1 hover:shadow-elegant"
+        >
+          <span className="text-4xl">🌳</span>
+          <div className="flex-1">
+            <div className="text-lg font-extrabold text-shadow-soft">Harf Bahçem</div>
+            <div className="text-xs font-semibold opacity-90">Öğrendikçe çiçekler açar — bugün bahçeni büyüt! 🌸</div>
+          </div>
+          <span className="text-2xl">→</span>
+        </Link>
+
         <div className="grid grid-cols-3 gap-3">
           <Link
             to="/oyunlar"
