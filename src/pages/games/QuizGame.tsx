@@ -3,7 +3,9 @@ import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
-import { Volume2 } from "lucide-react";
+import { Volume2, Sprout } from "lucide-react";
+import { Link } from "react-router-dom";
+import { gardenTease } from "@/lib/sessionEnd";
 import { gamePool, shuffle } from "./_shared";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
@@ -23,6 +25,7 @@ const QuizGame = () => {
   const [score, setScore] = useState(0);
   const [time, setTime] = useState(60);
   const questionStartRef = useRef<number>(Date.now());
+  const teaseRef = useRef(gardenTease()); // yüksek notada bitiş — sabit tek cümle
 
   useEffect(() => {
     const t = setInterval(() => setTime((s) => Math.max(0, s - 1)), 1000);
@@ -74,8 +77,17 @@ const QuizGame = () => {
           <div className="rounded-3xl bg-card p-8 text-center shadow-card border-4 border-success/40 animate-bounce-in">
             <div className="text-7xl mb-3">🏆</div>
             <h2 className="text-2xl font-extrabold text-foreground mb-2">Tebrikler!</h2>
-            <p className="text-lg text-muted-foreground mb-4">Skorun: <span className="text-success font-extrabold">{score}</span></p>
-            <button onClick={reset} className="rounded-full bg-primary px-6 py-3 font-bold text-primary-foreground shadow-card transition-bouncy hover:scale-105">Tekrar Oyna</button>
+            <p className="text-lg text-muted-foreground mb-3">Skorun: <span className="text-success font-extrabold">{score}</span></p>
+            {/* Yüksek notada bitiş — Zeigarnik + bahçe teşviki (yarın geri getirir) */}
+            <div className="mb-4 rounded-2xl bg-success/10 border-2 border-success/30 px-4 py-2.5 text-sm font-extrabold text-success">
+              {teaseRef.current}
+            </div>
+            <div className="flex justify-center gap-2">
+              <button onClick={reset} className="rounded-full bg-primary px-5 py-3 font-bold text-primary-foreground shadow-card transition-bouncy hover:scale-105">Tekrar Oyna</button>
+              <Link to="/bahce" className="inline-flex items-center gap-1.5 rounded-full bg-success px-5 py-3 font-bold text-success-foreground shadow-card transition-bouncy hover:scale-105">
+                <Sprout className="h-5 w-5" /> Bahçem
+              </Link>
+            </div>
           </div>
         ) : (
           <>
