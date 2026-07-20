@@ -18,6 +18,8 @@ import {
 } from "@/lib/placement";
 import { getUnlockedTopicIds } from "@/lib/unlock";
 import { pickReviewItem } from "@/lib/review";
+import { pickDistractors, letterNumOf } from "@/lib/confusables";
+import { getTopicSrs } from "@/data/srs";
 import { getAllTopics } from "@/data/subjects";
 
 const topics = getAllTopics();
@@ -141,6 +143,48 @@ describe("serpiştirilmiş bakım (pickReviewItem)", () => {
 
   it("ilk konuda (öncesi yok) bakım gelmez", () => {
     for (let i = 0; i < 40; i++) expect(pickReviewItem(practice[0].id, "quiz")).toBeNull();
+  });
+});
+
+// --- KARIŞAN HARF AYRIMI: çeldiriciler hedefin karışanlarından ---
+describe("karışan harf çeldiricileri (pickDistractors)", () => {
+  const harfler = topics[0].items; // l1-01..l1-28
+  it("Be (ب) için çeldiriciler karışan harflerden gelir (ت ث ن ي)", () => {
+    const be = harfler.find((i) => i.id === "l1-02")!;
+    const confN = [3, 4, 25, 28]; // Te Se Nun Ye
+    // 20 denemede de 3 çeldirici de karışan kümesinden (4 aday, 3 seçilir).
+    for (let k = 0; k < 20; k++) {
+      const wrongs = pickDistractors(harfler, be, 3);
+      expect(wrongs).toHaveLength(3);
+      expect(wrongs.every((w) => confN.includes(letterNumOf(w.id)!))).toBe(true);
+      expect(wrongs.some((w) => w.id === be.id)).toBe(false);
+    }
+  });
+
+  it("karışanı olmayan/eşleşmeyen id'de sorunsuz rastgeleye düşer", () => {
+    const fake = { id: "extra-x", label: "x", speech: "x", lang: "tr" as const };
+    const wrongs = pickDistractors(harfler, fake, 3);
+    expect(wrongs).toHaveLength(3);
+  });
+});
+
+// --- AKICILIK (tepki süresi): yavaş-doğru L4'ü engeller + kırılgan işaretler ---
+describe("akıcılık / latency (responseMs)", () => {
+  it("yavaş-doğru L3'te tutar; hızlı-doğru L4'e çıkarır", async () => {
+    const rec = (correct: boolean, ms?: number) =>
+      recordSrsAnswer("quiz", "harfler", "l1-05", correct, ms !== undefined ? { responseMs: ms } : {});
+    await rec(true, 1000); // L1→L2
+    await rec(true, 1000); // L2→L3
+    expect(getTopicSrs("quiz", "harfler")["l1-05"].level).toBe(3);
+    await rec(true, 9000); // YAVAŞ doğru → L3'te kalır, kırılgan
+    const e1 = getTopicSrs("quiz", "harfler")["l1-05"];
+    expect(e1.level).toBe(3);
+    expect(e1.fragile).toBe(true);
+    expect(e1.lastMs).toBe(9000);
+    await rec(true, 1200); // HIZLI doğru → L4
+    const e2 = getTopicSrs("quiz", "harfler")["l1-05"];
+    expect(e2.level).toBe(4);
+    expect(e2.fragile).toBe(false);
   });
 });
 
