@@ -17,7 +17,8 @@ import {
 } from "@/data/srs";
 import { cn } from "@/lib/utils";
 import { isTopicUnlocked, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
-import { isTopicSkipped, pickBackCheckTopic, recordBackCheck } from "@/lib/placement";
+import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
+import { pickReviewItem } from "@/lib/review";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
 import { SkipTest } from "@/components/SkipTest";
 import { LevelBadge } from "@/components/LevelBadge";
@@ -96,17 +97,15 @@ const Topic = () => {
       return;
     }
 
-    // 2) ARA-KONTROL: önceki atlanmış konulardan yoklama gelsin mi? (deneme
-    //    süresi / zayıflık oranına göre). Gelirse soru O konudan kurulur ve
-    //    gerçek SRS'e o konuya işlenir — dürüst seviye oluşur.
-    const bcTopicId = pickBackCheckTopic(topic.id);
-    if (bcTopicId) {
-      const bcTopic = getTopic("elifba", bcTopicId);
-      if (bcTopic && bcTopic.items.length >= 2) {
-        const bcIds = bcTopic.items.map((i) => i.id);
-        const bcTid = pickNextLetter(NS, bcTopicId, bcIds);
-        backCheckRef.current = bcTopicId;
-        setQ(buildQuestion(bcTopic.items, bcTid));
+    // 2) SERPİŞTİRİLMİŞ BAKIM + ara-kontrol: soru eski bir açık konudan gelsin
+    //    mi? (taban ~%22 bakım; zayıf/atlanmış konu varsa daha yüksek). Gelirse
+    //    soru O konudan kurulur ve gerçek SRS'e o konuya işlenir.
+    const rev = pickReviewItem(topic.id, NS);
+    if (rev) {
+      const rt = getTopic("elifba", rev.topicId);
+      if (rt && rt.items.length >= 2) {
+        backCheckRef.current = rev.topicId;
+        setQ(buildQuestion(rt.items, rev.itemId));
         setPicked(null);
         questionStartRef.current = Date.now();
         return;
@@ -355,10 +354,11 @@ const Topic = () => {
     const responseMs = questionStartRef.current ? Date.now() - questionStartRef.current : undefined;
     const bcTopic = backCheckRef.current;
     if (bcTopic) {
-      // Ara-kontrol: cevabı O konuya işle (dürüst seviye) + konu-düzeyi yoklama
-      // durumunu güncelle. Yabancı harf hemen tekrar sorulmaz.
+      // Bakım/ara-kontrol: cevabı O konuya işle (dürüst seviye). Atlanmış konuysa
+      // ayrıca konu-düzeyi yoklama durumunu güncelle (deneme/zayıflık). Yabancı
+      // harf hemen tekrar sorulmaz.
       await recordSrsAnswer(NS, bcTopic, q.target.id, correct, { responseMs });
-      recordBackCheck(bcTopic, correct);
+      if (isTopicSkipped(bcTopic)) recordBackCheck(bcTopic, correct);
       retryIdRef.current = null;
     } else {
       await recordSrsAnswer(NS, topic.id, q.target.id, correct, { responseMs });
