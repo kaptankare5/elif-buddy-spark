@@ -17,9 +17,11 @@ import {
   getPlacementDebug,
 } from "@/lib/placement";
 import { getUnlockedTopicIds } from "@/lib/unlock";
+import { pickReviewItem } from "@/lib/review";
 import { getAllTopics } from "@/data/subjects";
 
 const topics = getAllTopics();
+const practice = topics.filter((t) => !t.noPractice);
 const ids = topics[0].items.map((i) => i.id); // "harfler" harf id'leri
 
 const seenAt = (level: number): TopicSrs[string] => ({
@@ -106,6 +108,39 @@ describe("Problem 2 — yerleştirme ve ara-kontrol", () => {
   it("ilk konudayken (öncesi yok) ara-kontrol gelmez", () => {
     markTopicSkipped(topics[0].id);
     for (let i = 0; i < 50; i++) expect(pickBackCheckTopic(topics[0].id)).toBeNull();
+  });
+});
+
+// --- SERPİŞTİRİLMİŞ BAKIM: Test/Flashcard eski açık konulardan da sorar ---
+describe("serpiştirilmiş bakım (pickReviewItem)", () => {
+  it("ilk konu tamamlanınca, sonraki konuda ~%22 ESKİ konudan bakım gelir", () => {
+    const t0 = practice[0], t1 = practice[1];
+    // t0'ı tamamla (tüm öğeler L3), 5 gün bayat.
+    const state: Record<string, Record<string, unknown>> = { [t0.id]: {} };
+    for (const it of t0.items) {
+      state[t0.id][it.id] = { level: 3, correct: 3, total: 3, seen: 3, lastSeen: Date.now() - 5 * 86_400_000 };
+    }
+    localStorage.setItem("elifba-srs-quiz-guest-v1", JSON.stringify(state));
+    expect(getUnlockedTopicIds().has(t1.id)).toBe(true);
+
+    const t0ids = new Set(t0.items.map((i) => i.id));
+    const t1ids = new Set(t1.items.map((i) => i.id));
+    let review = 0, frontier = 0;
+    for (let i = 0; i < 400; i++) {
+      const r = pickReviewItem(t1.id, "quiz");
+      if (r === null) { frontier++; continue; }
+      review++;
+      expect(t0ids.has(r.itemId)).toBe(true);   // yalnız eski konudan
+      expect(t1ids.has(r.itemId)).toBe(false);  // frontier'ın kendi öğesi değil
+      expect(r.topicId).toBe(t0.id);
+    }
+    expect(review).toBeGreaterThan(0);   // bakım geliyor
+    expect(frontier).toBeGreaterThan(0); // ama çoğunlukla frontier (~%78)
+    expect(review).toBeLessThan(200);    // ~%22 → 400'de ~88; yarıdan az
+  });
+
+  it("ilk konuda (öncesi yok) bakım gelmez", () => {
+    for (let i = 0; i < 40; i++) expect(pickReviewItem(practice[0].id, "quiz")).toBeNull();
   });
 });
 
