@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ContentTopic } from "@/data/types";
 import { playItem, playFeedback } from "@/lib/audio";
 import { markTopicSkipped } from "@/lib/placement";
+import { pickDistractors } from "@/lib/confusables";
 import { cn } from "@/lib/utils";
 import { Volume2, X } from "lucide-react";
 
@@ -41,7 +42,7 @@ export function SkipTest({ topic, onClose, onPass }: {
     const rest = shuffle(pool.filter((it) => !bias.includes(it))).slice(0, N_Q - bias.length);
     const targets = shuffle([...bias, ...rest]).slice(0, Math.min(N_Q, pool.length));
     return targets.map((target) => {
-      const wrongs = shuffle(pool.filter((it) => it.id !== target.id)).slice(0, 3);
+      const wrongs = pickDistractors(pool, target, 3);
       return { target, options: shuffle([target, ...wrongs]) };
     });
   }, [topic.id]); // eslint-disable-line react-hooks/exhaustive-deps

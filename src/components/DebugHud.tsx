@@ -144,7 +144,10 @@ export function DebugHud() {
                 </span>
                 <span className="text-white/80">bilet <b>{pick.ticket}</b></span>
               </div>
-              <div className="text-white/60 text-[10px]">sıklık {pick.weight} × bayat {pick.stale} · {pick.days}g</div>
+              <div className="text-white/60 text-[10px]">
+                sıklık {pick.weight} × bayat {pick.stale}{pick.fragile ? " × kırılgan1.5" : ""} · {pick.days}g
+              </div>
+              {pick.fragile && <div className="text-amber-400 text-[10px]">⚠ yavaş-doğru (akıcılık düşük)</div>}
             </>
           ) : <div className="text-white/40">henüz seçim yok</div>}
         </div>
