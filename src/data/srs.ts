@@ -30,6 +30,14 @@ export interface LetterSrsEntry {
   // hatırlamayı öngörür (Pavlik & Anderson; erişim gücü, Bjork).
   lastMs?: number;         // son cevap süresi (ms)
   fragile?: boolean;       // doğru ama yavaş → önce geri getir (bakım önceliği)
+
+  // FSRS-lite (yarı-ömür modeli, Duolingo HLR / FSRS DSR'den sadeleştirilmiş):
+  // stab = hafızanın YARI-ÖMRÜ (gün): hatırlama olasılığı R = 2^(−geçenGün/stab).
+  // Doğru geri getirme stab'ı BÜYÜTÜR — tam unutmak üzereyken (R düşük) doğruysa
+  // ÇOK büyütür (istenen zorluk, Bjork); taze tekrarda az büyür (ezber kramponu
+  // işe yaramaz). Yanlış stab'ı küçültür. Seçici bileti (1−R)'ye göre verir →
+  // "en unutulmak üzere olan önce". Seviye merdiveni UI/kilit için aynen kalır.
+  stab?: number;           // yarı-ömür (gün)
 }
 
 export type TopicSrs = Record<string, LetterSrsEntry>;
@@ -297,8 +305,48 @@ export function getAdaptiveDebug(): AdaptiveDebug {
 // Çocuk sesi dinleyip dokunuyor → taban ~2sn; 5sn üstü gerçekten tereddüt.
 const FLUENT_MS = 5000;
 
-// Son seçilen öğenin "neden seçildiği": seviye + bilet (sıklık × bayatlık × kırılganlık).
-export interface LastPickInfo { id: string; level: number; weight: number; stale: number; ticket: number; days: number; fragile?: boolean }
+// ---- FSRS-lite (yarı-ömür) parametreleri ----
+const HL_MIN = 0.25;        // gün — dip (yanlış sonrası bile sıfırlanmaz)
+const HL_MAX = 90;          // gün — tavan
+const HL_FIRST_FLUENT = 0.7;   // ilk başarılı geri getirme (hızlı)
+const HL_FIRST_SLOW = 0.4;     // ilk başarılı geri getirme (yavaş)
+const HL_FIRST_WRONG = 0.25;   // ilk karşılaşma yanlış
+const HL_GROWTH = 2.2;      // büyüme katsayısı: S *= 1 + G·(1−R)·akıcılık
+const HL_MIN_GROWTH = 1.15; // taze tekrarda bile küçük ilerleme (kaçış payı)
+const HL_WRONG_SHRINK = 0.3;
+
+// Eski kayıtlarda stab yok → seviyeden makul yarı-ömür türet (göç köprüsü).
+function deriveStab(e: LetterSrsEntry | undefined): number {
+  if (!e) return HL_MIN;
+  if (typeof e.stab === "number" && e.stab > 0) return e.stab;
+  return e.level >= 4 ? 7 : e.level === 3 ? 3 : e.level === 2 ? 1 : 0.4;
+}
+
+// Şu anki hatırlama olasılığı R (0..1). Hiç görülmemişse 0 (en acil).
+export function retrievabilityOf(e: LetterSrsEntry | undefined, now: number): number {
+  if (!e || !e.lastSeen || (e.seen ?? 0) === 0) return 0;
+  const days = Math.max(0, (now - e.lastSeen) / 86_400_000);
+  const r = Math.pow(2, -days / deriveStab(e));
+  return r < 0 ? 0 : r > 1 ? 1 : r;
+}
+
+// ---- Akış bandı (tek merkez) — seçici, K kapısı ve bakım payı bunu kullanır ----
+export type FlowBand = "warmup" | "struggling" | "normal" | "flying";
+export function getFlowBand(): FlowBand {
+  if (_recent.length < 4) return "warmup";
+  const acc = recentAccuracy();
+  if (acc === null) return "warmup";
+  if (acc < 0.70) return "struggling";
+  if (acc > 0.92) return "flying";
+  return "normal";
+}
+
+// Son seçilen öğenin "neden seçildiği": seviye + bilet (sıklık × aciliyet × kırılganlık).
+// stale alanı artık ACİLİYET çarpanıdır (1 + 2·(1−R)); retr/hl FSRS-lite gözlemi.
+export interface LastPickInfo {
+  id: string; level: number; weight: number; stale: number; ticket: number; days: number;
+  fragile?: boolean; retr?: number; hl?: number;
+}
 let _lastPickInfo: LastPickInfo | null = null;
 export function getLastPickInfo(): LastPickInfo | null { return _lastPickInfo; }
 
@@ -342,14 +390,17 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
     seenCount++;
     if (((e?.level ?? 1) as Level) < 3) inProgress++;
   }
-  const accGate = recentAccuracy();
-  const struggling = accGate !== null && accGate < 0.70;
+  const band = getFlowBand();
+  const struggling = band === "struggling";
+  // DİNAMİK K: uçarken (yüksek doğruluk) set genişler → yeni harf daha erken
+  // gelir (zorlaşma = taze içerik); normalde 3. Zorlanırken kapı zaten kapalı.
+  const effK = band === "flying" ? LEARNING_SET_K + 2 : LEARNING_SET_K;
   // Set dolu veya zorlanıyorsa yeni harf tanıtma. Ama hiç görülmüş harf yoksa
   // (taze konu) kapı çalışmaz — başlamak için ilk harf her zaman tanıtılır.
-  const gateNew = seenCount > 0 && (inProgress >= LEARNING_SET_K || struggling);
+  const gateNew = seenCount > 0 && (inProgress >= effK || struggling);
   const introduce = firstUnseen !== null && !gateNew;
   _introGate = {
-    inProgress, k: LEARNING_SET_K, struggling,
+    inProgress, k: effK, struggling,
     gated: firstUnseen !== null && gateNew, nextUnseen: firstUnseen,
   };
   if (introduce && firstUnseen) {
@@ -402,24 +453,20 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
     if (ea.seen !== eb.seen) return ea.seen - eb.seen;
     return ea.lastSeen - eb.lastSeen; // en uzun süredir görülmeyen önce (aralık etkisi)
   });
-  // En taze yarıdan çekiliş. Bilet = Kur'an sıklığı × BAYATLIK çarpanı.
-  // Bayatlık, seviye sistemine "zaman" kazandırır (gerçek aralıklı tekrar):
-  // uzun süredir sorulmayan öğe daha çok bilet alır → unutulmadan geri gelir.
-  // Çarpan 0 günde 1, ~3.5 günde 2, 7+ günde 3 (üst sınır). Aynı seviyedeki
-  // "uykuda" L4 öğeleri uyandıran bakım tekrarı budur; seviye seçimi değişmez.
+  // En taze yarıdan çekiliş. Bilet = Kur'an sıklığı × ACİLİYET çarpanı.
+  // FSRS-lite: aciliyet = 1 + 2·(1−R); R = 2^(−gün/yarıÖmür). Yani "en
+  // unutulmak üzere olan" öğe en çok bileti alır — sabit takvim (3.5 gün)
+  // yerine ÖĞEYE ÖZEL unutma eğrisi. Zayıf öğe (kısa yarı-ömür) saatler
+  // içinde acilleşir; sağlam öğe (uzun yarı-ömür) haftalarca beklerse de
+  // unutulmadan tam vaktinde geri gelir. Seviye seçimi değişmez.
   const now = Date.now();
-  const staleMult = (id: string): number => {
-    const ls = topic[id]?.lastSeen ?? 0;
-    if (!ls) return 3;
-    const days = (now - ls) / 86_400_000;
-    return 1 + Math.min(2, days / 3.5);
-  };
+  const urgMult = (id: string): number => 1 + 2 * (1 - retrievabilityOf(topic[id], now));
   // Kırılganlık çarpanı: doğru ama YAVAŞ ustalaşan öğe (fragile) daha çok bilet
   // alır → otomatiklik oturana kadar önce geri gelir (erişim gücü bakımı).
   const fragileMult = (id: string): number => (topic[id]?.fragile ? 1.5 : 1);
   const top = Math.max(1, Math.ceil(candidates.length * 0.5));
   const pool = candidates.slice(0, top);
-  const tickets = pool.map((id) => itemWeight(id) * staleMult(id) * fragileMult(id));
+  const tickets = pool.map((id) => itemWeight(id) * urgMult(id) * fragileMult(id));
   let rw = Math.random() * tickets.reduce((a, b) => a + b, 0);
   let pick = pool[pool.length - 1];
   for (let i = 0; i < pool.length; i++) {
@@ -431,9 +478,10 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
   const pdays = pe?.lastSeen ? (now - pe.lastSeen) / 86_400_000 : 0;
   _lastPickInfo = {
     id: pick, level: pe?.level ?? 1, weight: itemWeight(pick),
-    stale: +staleMult(pick).toFixed(2),
-    ticket: +(itemWeight(pick) * staleMult(pick) * fragileMult(pick)).toFixed(1),
+    stale: +urgMult(pick).toFixed(2),
+    ticket: +(itemWeight(pick) * urgMult(pick) * fragileMult(pick)).toFixed(1),
     days: +pdays.toFixed(1), fragile: !!pe?.fragile,
+    retr: +retrievabilityOf(pe, now).toFixed(2), hl: +deriveStab(pe).toFixed(1),
   };
   return pick;
 }
@@ -460,6 +508,9 @@ function recordLocalSrsAnswer(
   const s = load(ns);
   const e = ensureEntry(s, topicId, letterId);
   const prevLevel = e.level;
+  // FSRS-lite: cevap ANINDAKİ hatırlama olasılığı — lastSeen güncellenmeden ÖNCE.
+  const wasFirst = (e.seen ?? 0) === 0;
+  const prevR = retrievabilityOf(e, Date.now());
   pushRecent(correct); // uyarlanır zorluk sinyali (son 12 cevap)
   e.total += 1;
   e.seen += 1;
@@ -470,6 +521,17 @@ function recordLocalSrsAnswer(
     ? Math.min(meta.responseMs, 60_000) : undefined;
   if (rt !== undefined) { e.totalMs = (e.totalMs || 0) + rt; e.lastMs = rt; }
   const fluent = rt === undefined || rt <= FLUENT_MS;
+  // Yarı-ömür güncellemesi: ilk karşılaşmada başlangıç değeri; sonra doğruda
+  // (1−R) oranında büyüme (unutmak üzereyken kurtarılan iz en çok güçlenir,
+  // taze tekrar az kazandırır), yanlışta küçülme. Yavaş-doğru yarım kazanır.
+  if (wasFirst) {
+    e.stab = correct ? (fluent ? HL_FIRST_FLUENT : HL_FIRST_SLOW) : HL_FIRST_WRONG;
+  } else if (correct) {
+    const growth = Math.max(HL_MIN_GROWTH, 1 + HL_GROWTH * (1 - prevR) * (fluent ? 1 : 0.5));
+    e.stab = Math.min(HL_MAX, deriveStab(e) * growth);
+  } else {
+    e.stab = Math.max(HL_MIN, deriveStab(e) * HL_WRONG_SHRINK);
+  }
   if (correct) {
     e.correct += 1;
     e.consecutiveCorrect = (e.consecutiveCorrect || 0) + 1;
