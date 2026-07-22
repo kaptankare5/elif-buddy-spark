@@ -2178,6 +2178,7 @@ const PlatformGame = () => {
             const v = 2 * (s.x2T > 0 ? 2 : 1);
             score += v;
             setScore(score);
+            playSfx("coin");
             w.pops.push({ x: cn.x, y: cn.y - 12, vx: 0, vy: -60, t: 0, life: 0.7, color: "#b45309", text: `+${v}` });
           }
         }
