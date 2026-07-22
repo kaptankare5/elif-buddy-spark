@@ -83,7 +83,7 @@ const MemoryGame = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-topic-pink/30 to-background">
       <main className="container mx-auto max-w-xl px-4 pb-16">
-        <PageHeader title="🃏 Hafıza Kartları" backTo="/oyunlar" centered onReset={reset} />
+        <PageHeader title="🧠 Hafıza Kartları" backTo="/oyunlar" centered onReset={reset} />
 
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-card p-3 text-center shadow-card border-2 border-primary/30">

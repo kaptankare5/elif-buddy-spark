@@ -1,4 +1,4 @@
-// 🃏 Harf Kartlarım — koleksiyon meta-oyunu (kozmetik katman).
+// 🗂️ Harf Kartlarım — koleksiyon meta-oyunu (kozmetik katman).
 // Her harf toplanabilir bir kart: kilitli (hiç görülmedi) → normal (L1-L3)
 // → ALTIN (L4, parıltılı). Sahiplenme/koleksiyon psikolojisi: ilerleme görünür
 // ve biriktirilebilir olunca değerlenir. SRS'i DEĞİŞTİRMEZ — yalnız okur.
@@ -61,7 +61,7 @@ const Koleksiyon = () => {
         path="/koleksiyon"
       />
       <main className="container mx-auto max-w-2xl px-4 pb-24">
-        <PageHeader title="🃏 Harf Kartlarım" backTo="/" centered />
+        <PageHeader title="🗂️ Harf Kartlarım" backTo="/" centered />
 
         <div className="mb-4">
           <BuddyWithBubble pose={goldCount > 0 ? "celebrate" : "point"} say={buddyLine} size={84} />
