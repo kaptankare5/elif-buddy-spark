@@ -24,10 +24,9 @@
 // dpr'a duyarlı tek <canvas>, arka planda otomatik durur, DT_MAX kelepçesi.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { playFeedback, playItem } from "@/lib/audio";
+import { playFeedback, playItem, playSfx } from "@/lib/audio";
 import { gamePool, pickN, shuffle } from "./_shared";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
-import { gameMusic } from "@/lib/gameMusic";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
