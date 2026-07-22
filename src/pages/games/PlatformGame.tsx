@@ -2120,6 +2120,7 @@ const PlatformGame = () => {
             s.vy = -430;
             s.grounded = false;
             m.calmT = 1.1;
+            playSfx("stomp");
             spawnDust(m.x + mw / 2, m.y);
           } else if (s.ghostT <= 0 && m.calmT <= 0) {
             hurt();
