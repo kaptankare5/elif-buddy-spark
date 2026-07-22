@@ -1316,15 +1316,7 @@ const PlatformGame = () => {
   // 🌟 Bu koşuda bulunan altın güvercinler (kozmetik sürpriz)
   const goldenRef = useRef(0);
   const [goldenRun, setGoldenRun] = useState(0);
-  // 🎵 Ambiyans müziği aç/kapa (kalıcı tercih)
-  const [musicMuted, setMusicMuted] = useState(() => gameMusic.isMuted());
 
-  // Müzik: oyun gerçekten akarken çalar; duraklama/bitiş/ayrılışta susar.
-  useEffect(() => {
-    if (started && !paused && !gameOver && !won) gameMusic.start(level);
-    else gameMusic.stop();
-    return () => gameMusic.stop();
-  }, [started, paused, gameOver, won, level]);
 
   useEffect(() => {
     controls.current.paused = paused || gameOver || won;
