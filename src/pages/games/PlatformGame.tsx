@@ -2499,14 +2499,7 @@ const PlatformGame = () => {
               />
             </div>
             <span className="text-sm">🕌</span>
-            {/* 🎵 ambiyans müziği aç/kapa — tercih kalıcı */}
-            <button
-              onClick={() => { const m = !musicMuted; setMusicMuted(m); gameMusic.setMuted(m); }}
-              aria-label={musicMuted ? "Müziği aç" : "Müziği kapat"}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-card border border-border text-sm shadow-soft active:scale-90"
-            >
-              {musicMuted ? "🔇" : "🎵"}
-            </button>
+
           </div>
         )}
 
