@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { BookOpen, Gamepad2, TrendingUp, Home, Shield, Sprout } from "lucide-react";
+import { Settings, Gamepad2, TrendingUp, Home, Shield, Sprout } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/useSubscription";
 
@@ -16,7 +16,7 @@ export function BottomNav() {
     { to: "/oyunlar", label: "Oyunlar", icon: Gamepad2, show: true },
     { to: "/ilerleme", label: "İlerleme", icon: TrendingUp, show: true },
     { to: "/admin", label: "Admin", icon: Shield, show: isAdmin },
-    { to: "/ayarlar", label: "Ayarlar", icon: BookOpen, show: true },
+    { to: "/ayarlar", label: "Ayarlar", icon: Settings, show: true },
   ].filter((i) => i.show);
 
   return (
@@ -35,13 +35,22 @@ export function BottomNav() {
             end={to === "/"}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-bold transition-colors",
+                "group flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-bold transition-colors",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )
             }
           >
-            <Icon className="h-5 w-5" />
-            <span>{label}</span>
+            {({ isActive }) => (
+              <>
+                <span className={cn(
+                  "flex h-7 w-11 items-center justify-center rounded-full transition-colors",
+                  isActive && "bg-primary/12",
+                )}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span>{label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </div>

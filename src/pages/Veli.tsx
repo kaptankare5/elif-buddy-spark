@@ -18,6 +18,33 @@ function startOfToday(): number {
   const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime();
 }
 
+// Pazartesi 00:00 — haftalık sayaçların başlangıcı
+function startOfWeek(): number {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const day = (d.getDay() + 6) % 7; // Pzt=0
+  d.setDate(d.getDate() - day);
+  return d.getTime();
+}
+
+// Bir öğrencinin SRS verisini (aktif kapsamdan bağımsız) doğrudan anahtardan
+// okuyup bu haftaki çalışmayı sayar — Hoca Modu karşılaştırması için.
+function studentWeekly(studentId: string): { practiced: number; learned: number } {
+  const t0 = startOfWeek();
+  let practiced = 0, learned = 0;
+  try {
+    const raw = localStorage.getItem(`elifba-srs-quiz-student-${studentId}-v1`);
+    if (!raw) return { practiced, learned };
+    const state = JSON.parse(raw) as Record<string, Record<string, { lastSeen?: number; learnedAt?: number }>>;
+    for (const topic of Object.values(state)) {
+      for (const e of Object.values(topic)) {
+        if ((e.lastSeen ?? 0) >= t0) practiced++;
+        if ((e.learnedAt ?? 0) >= t0) learned++;
+      }
+    }
+  } catch { /* ignore */ }
+  return { practiced, learned };
+}
+
 function computeSummary() {
   const t0 = startOfToday();
   const topics = getAllTopics().filter((t) => !t.noPractice && t.items.length > 0);
@@ -42,8 +69,13 @@ function computeSummary() {
 
 const Veli = () => {
   useSrsTick("quiz");
-  const { active } = useStudents();
+  const { active, students } = useStudents();
   const s = computeSummary();
+  // Haftalık dostane karşılaştırma (Hoca Modu, 2+ öğrenci): kutlama dili,
+  // utandırma yok — herkesin emeği görünür, tatlı rekabet çalışmayı artırır.
+  const weekly = students
+    .map((st) => ({ st, ...studentWeekly(st.id) }))
+    .sort((a, b) => b.practiced - a.practiced);
   const streak = getStreak();
   const name = active?.name || "Çocuğunuz";
   const activeToday = s.practicedToday > 0;
@@ -132,6 +164,31 @@ const Veli = () => {
             <div className="h-full rounded-full bg-gradient-to-r from-info to-success transition-all duration-500" style={{ width: `${pct}%` }} />
           </div>
         </div>
+
+        {/* 🌟 BU HAFTA — kardeşler/öğrenciler arası dostane kutlama (Hoca Modu) */}
+        {weekly.length >= 2 && (
+          <div className="mb-4 rounded-2xl bg-card border-2 border-gold/40 p-4 shadow-card">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-extrabold text-foreground">🌟 Bu Hafta Yıldızlar</span>
+              <span className="text-[10px] font-bold text-muted-foreground">Pazartesiden beri</span>
+            </div>
+            <div className="space-y-1.5">
+              {weekly.map(({ st, practiced, learned }, i) => (
+                <div key={st.id} className="flex items-center gap-2 rounded-xl bg-muted/40 px-3 py-2">
+                  <span className="text-base" aria-hidden>{["🥇", "🥈", "🥉"][i] ?? "⭐"}</span>
+                  <span className="text-lg" aria-hidden>{st.emoji}</span>
+                  <span className="flex-1 truncate text-sm font-extrabold text-foreground">{st.name}</span>
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {practiced} harf çalıştı{learned > 0 ? ` · ${learned} yeni 🌟` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-center text-[11px] font-bold text-success">
+              Hepsi harika gidiyor — her birine ayrı ayrı "aferin" demeyi unutmayın! 💚
+            </p>
+          </div>
+        )}
 
         {/* detay linkleri */}
         <div className="grid grid-cols-2 gap-2">

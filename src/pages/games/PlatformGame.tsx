@@ -27,6 +27,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem } from "@/lib/audio";
 import { gamePool, pickN, shuffle } from "./_shared";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
+import { gameMusic } from "@/lib/gameMusic";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
@@ -153,6 +154,7 @@ interface MonsterEnt {
   groundY: number;    // üzerinde durduğu zeminin üst yüzeyi (teraslar için)
   calmT: number;      // üstüne basılınca sersemleme (zarar yok)
   freedT: number;     // Nur ile güvercine dönüşüp uçma (yok etme değil)
+  golden?: boolean;   // 🌟 nadir ALTIN güvercin (~%3) — kozmetik sürpriz, bonus puan
 }
 interface SpringEnt { id: number; x: number; y: number; t: number }
 interface BlockEnt { x: number; y: number; item: ContentItem | null; isTarget: boolean; state?: "good" | "bad" | "fade" }
@@ -628,8 +630,9 @@ function drawSpring(g: CanvasRenderingContext2D, sp: SpringEnt) {
 
 // ---- canavarlar (sevimli, şiddetsiz) ----
 
-// Nur ile dönüşen güvercin — yukarı süzülüp kaybolur (kimse zarar görmez)
-function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number, k: number, time: number) {
+// Nur ile dönüşen güvercin — yukarı süzülüp kaybolur (kimse zarar görmez).
+// golden=true: nadir ALTIN güvercin — altın tüyler + parıltı izi (kozmetik).
+function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number, k: number, time: number, golden = false) {
   const dx = x + k * 46 * dir;
   const dy = y - k * 82;
   g.save();
@@ -640,11 +643,25 @@ function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number
   if (k < 0.25) {
     g.globalAlpha = (0.25 - k) * 3;
     g.fillStyle = "#fde047";
-    g.beginPath(); g.arc(0, 0, 20 * (1 - k), 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(0, 0, (golden ? 26 : 20) * (1 - k), 0, Math.PI * 2); g.fill();
     g.globalAlpha = Math.max(0, 1 - k * 0.85);
   }
+  // altın güvercin: arkasında süzülen parıltı izi
+  if (golden) {
+    g.fillStyle = "#fde047";
+    for (let i = 1; i <= 4; i++) {
+      const a = time * 7 + i * 1.7;
+      g.globalAlpha = Math.max(0, (1 - k * 0.85) * (0.5 - i * 0.1));
+      g.beginPath();
+      g.arc(-10 - i * 7, Math.sin(a) * 4 + i * 3, 2.6 - i * 0.4, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.globalAlpha = Math.max(0, 1 - k * 0.85);
+  }
+  const body = golden ? "#fcd34d" : "#ffffff";
+  const wing = golden ? "#fbbf24" : "#f1f5f9";
   // gövde + kuyruk
-  g.fillStyle = "#ffffff";
+  g.fillStyle = body;
   g.beginPath();
   g.ellipse(0, 0, 10, 6.2, -0.15, 0, Math.PI * 2);
   g.fill();
@@ -656,7 +673,7 @@ function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number
   g.fill();
   // baş + gaga + göz
   g.beginPath(); g.arc(9, -4, 4.2, 0, Math.PI * 2); g.fill();
-  g.fillStyle = "#f59e0b";
+  g.fillStyle = golden ? "#d97706" : "#f59e0b";
   g.beginPath();
   g.moveTo(12.5, -4.5); g.lineTo(16.5, -3.4); g.lineTo(12.5, -2.2);
   g.closePath(); g.fill();
@@ -664,7 +681,7 @@ function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number
   g.beginPath(); g.arc(10, -4.6, 1, 0, Math.PI * 2); g.fill();
   // çırpan kanat
   const wf = Math.sin(time * 18) * 0.9;
-  g.fillStyle = "#f1f5f9";
+  g.fillStyle = wing;
   g.save();
   g.translate(-1, -2);
   g.rotate(-0.5 + wf * 0.55);
@@ -688,7 +705,7 @@ function drawDizzyStars(g: CanvasRenderingContext2D, cx: number, cy: number, tim
 
 function drawMonster(g: CanvasRenderingContext2D, m: MonsterEnt, time: number) {
   if (m.freedT > 0) {
-    drawDove(g, m.x + MW[m.kind] / 2, m.y + MH[m.kind] / 2, m.dir, 1 - m.freedT / FREED_DUR, time);
+    drawDove(g, m.x + MW[m.kind] / 2, m.y + MH[m.kind] / 2, m.dir, 1 - m.freedT / FREED_DUR, time, m.golden);
     return;
   }
   const w = MW[m.kind], h = MH[m.kind];
@@ -1297,6 +1314,18 @@ const PlatformGame = () => {
   const [flash, setFlash] = useState(false); // normal modda doğru cevapta ışık
   const [resetTick, setResetTick] = useState(0);
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 🌟 Bu koşuda bulunan altın güvercinler (kozmetik sürpriz)
+  const goldenRef = useRef(0);
+  const [goldenRun, setGoldenRun] = useState(0);
+  // 🎵 Ambiyans müziği aç/kapa (kalıcı tercih)
+  const [musicMuted, setMusicMuted] = useState(() => gameMusic.isMuted());
+
+  // Müzik: oyun gerçekten akarken çalar; duraklama/bitiş/ayrılışta susar.
+  useEffect(() => {
+    if (started && !paused && !gameOver && !won) gameMusic.start(level);
+    else gameMusic.stop();
+    return () => gameMusic.stop();
+  }, [started, paused, gameOver, won, level]);
 
   useEffect(() => {
     controls.current.paused = paused || gameOver || won;
@@ -1341,6 +1370,7 @@ const PlatformGame = () => {
     setGameOver(false); setWon(false);
     setQuestion(null); setBanner(null); setFlash(false); setProgress(0);
     setPu({ nur: 0, mag: 0, x2: 0 });
+    goldenRef.current = 0; setGoldenRun(0);
     controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, paused: false, over: false };
     trioRef.current = null;
     setStarted(true);
@@ -2072,10 +2102,27 @@ const PlatformGame = () => {
           if (s.nurT > 0) {
             // NUR: canavar güvercine dönüşüp özgürce uçar — kimse zarar görmez
             m.freedT = FREED_DUR;
-            score += 5 * (s.x2T > 0 ? 2 : 1);
+            // 🌟 Nadir ALTIN güvercin (%3): kozmetik sürpriz + bonus puan.
+            // "Acaba bugün çıkar mı?" merakı — kazanma şartı yine doğru oyun.
+            m.golden = Math.random() < 0.03;
+            const gain = m.golden ? 25 : 5;
+            score += gain * (s.x2T > 0 ? 2 : 1);
             setScore(score);
+            if (m.golden) {
+              goldenRef.current += 1;
+              setGoldenRun(goldenRef.current);
+              try {
+                const k = "elifba-golden-doves-v1";
+                localStorage.setItem(k, String(parseInt(localStorage.getItem(k) || "0", 10) + 1));
+              } catch { /* ignore */ }
+              spawnSparkles(m.x + mw / 2, m.y + mh / 2);
+              spawnSparkles(m.x + mw / 2, m.y);
+            }
             spawnSparkles(m.x + mw / 2, m.y + mh / 2);
-            w.pops.push({ x: m.x + mw / 2, y: m.y - 10, vx: 0, vy: -70, t: 0, life: 0.8, color: "#0891b2", text: "🕊️ +5" });
+            w.pops.push({
+              x: m.x + mw / 2, y: m.y - 10, vx: 0, vy: -70, t: 0, life: m.golden ? 1.2 : 0.8,
+              color: m.golden ? "#d97706" : "#0891b2", text: m.golden ? "✨🕊️ ALTIN +25" : "🕊️ +5",
+            });
           } else if (s.vy > 0 && prevFeet <= m.y + 9) {
             // üstüne basmak zarar vermez: oyuncu seker, canavar sersemler
             s.vy = -430;
@@ -2461,6 +2508,14 @@ const PlatformGame = () => {
               />
             </div>
             <span className="text-sm">🕌</span>
+            {/* 🎵 ambiyans müziği aç/kapa — tercih kalıcı */}
+            <button
+              onClick={() => { const m = !musicMuted; setMusicMuted(m); gameMusic.setMuted(m); }}
+              aria-label={musicMuted ? "Müziği aç" : "Müziği kapat"}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-card border border-border text-sm shadow-soft active:scale-90"
+            >
+              {musicMuted ? "🔇" : "🎵"}
+            </button>
           </div>
         )}
 
@@ -2588,6 +2643,12 @@ const PlatformGame = () => {
               <div className="text-2xl font-extrabold text-success mb-1">Bölüm {level} Tamam!</div>
               <div className="text-2xl mb-1">{"⭐".repeat(Math.max(1, Math.min(3, lives)))}</div>
               <div className="text-sm font-bold text-muted-foreground mb-2">Camiye ulaştın! Puan: {score}</div>
+              {/* 🌟 nadir altın güvercin bulunduysa kutla */}
+              {goldenRun > 0 && (
+                <div className="mb-2 rounded-xl bg-gradient-gold px-3 py-1.5 text-xs font-extrabold text-gold-foreground shadow-soft animate-pop">
+                  ✨🕊️ ALTIN GÜVERCİN buldun! ×{goldenRun}
+                </div>
+              )}
               {/* yüksek notada bitiş — bahçe teşviki */}
               <div className="mb-4 rounded-xl bg-success/10 border-2 border-success/30 px-3 py-1.5 text-xs font-extrabold text-success">🌸 Bahçende yeni çiçekler açtı!</div>
               <div className="flex gap-2">

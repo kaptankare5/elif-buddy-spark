@@ -287,10 +287,29 @@ function tone(freq: number, dur: number, type: OscillatorType, startOffset = 0, 
   osc.stop(t0 + dur + 0.02);
 }
 
+// Doğru-cevap melodileri — monotonluğu kırmak için varyasyon (1000. dinleyişte
+// de taze kalsın). Hepsi kısa/majör/parlak; rastgele seçilir. Nadiren (%8)
+// "özel" arpej çalar — değişken sürpriz, ama HER doğru cevap yine ödüllenir.
+// Yanlış sesi SABİT kalır: olumsuz sinyalin tutarlılığı öğretici (karışmaz).
+const SUCCESS_MELODIES: Array<Array<[number, number, number, number]>> = [
+  // [freq, dur, startOffset, gain]
+  [[880, 0.12, 0, 0.2], [1318, 0.16, 0.09, 0.2]],                       // klasik ding
+  [[784, 0.1, 0, 0.18], [988, 0.1, 0.08, 0.18], [1318, 0.16, 0.16, 0.2]], // yükselen üçlü
+  [[1046, 0.09, 0, 0.18], [1568, 0.18, 0.08, 0.2]],                     // parlak beşli
+  [[659, 0.09, 0, 0.16], [880, 0.09, 0.07, 0.18], [1108, 0.14, 0.14, 0.2]], // majör arpej
+  [[988, 0.08, 0, 0.16], [784, 0.08, 0.07, 0.16], [1175, 0.16, 0.14, 0.2]],  // zıplayan
+];
+const SUCCESS_SPECIAL: Array<[number, number, number, number]> = [
+  [659, 0.09, 0, 0.18], [830, 0.09, 0.08, 0.18], [988, 0.09, 0.16, 0.19],
+  [1318, 0.22, 0.24, 0.22], [1975, 0.3, 0.34, 0.14],
+];
+
 export async function playFeedback(positive: boolean) {
   if (positive) {
-    tone(880, 0.12, "triangle", 0, 0.2);
-    tone(1318, 0.16, "triangle", 0.09, 0.2);
+    const notes = Math.random() < 0.08
+      ? SUCCESS_SPECIAL
+      : SUCCESS_MELODIES[Math.floor(Math.random() * SUCCESS_MELODIES.length)];
+    for (const [f, d, o, g] of notes) tone(f, d, "triangle", o, g);
   } else {
     tone(220, 0.18, "square", 0, 0.14);
     tone(160, 0.22, "square", 0.08, 0.12);
