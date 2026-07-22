@@ -24,10 +24,9 @@
 // dpr'a duyarlı tek <canvas>, arka planda otomatik durur, DT_MAX kelepçesi.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { playFeedback, playItem } from "@/lib/audio";
+import { playFeedback, playItem, playSfx } from "@/lib/audio";
 import { gamePool, pickN, shuffle } from "./_shared";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
-import { gameMusic } from "@/lib/gameMusic";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
@@ -1317,15 +1316,7 @@ const PlatformGame = () => {
   // 🌟 Bu koşuda bulunan altın güvercinler (kozmetik sürpriz)
   const goldenRef = useRef(0);
   const [goldenRun, setGoldenRun] = useState(0);
-  // 🎵 Ambiyans müziği aç/kapa (kalıcı tercih)
-  const [musicMuted, setMusicMuted] = useState(() => gameMusic.isMuted());
 
-  // Müzik: oyun gerçekten akarken çalar; duraklama/bitiş/ayrılışta susar.
-  useEffect(() => {
-    if (started && !paused && !gameOver && !won) gameMusic.start(level);
-    else gameMusic.stop();
-    return () => gameMusic.stop();
-  }, [started, paused, gameOver, won, level]);
 
   useEffect(() => {
     controls.current.paused = paused || gameOver || won;
@@ -2102,6 +2093,7 @@ const PlatformGame = () => {
           if (s.nurT > 0) {
             // NUR: canavar güvercine dönüşüp özgürce uçar — kimse zarar görmez
             m.freedT = FREED_DUR;
+            playSfx("dove");
             // 🌟 Nadir ALTIN güvercin (%3): kozmetik sürpriz + bonus puan.
             // "Acaba bugün çıkar mı?" merakı — kazanma şartı yine doğru oyun.
             m.golden = Math.random() < 0.03;
@@ -2128,6 +2120,7 @@ const PlatformGame = () => {
             s.vy = -430;
             s.grounded = false;
             m.calmT = 1.1;
+            playSfx("stomp");
             spawnDust(m.x + mw / 2, m.y);
           } else if (s.ghostT <= 0 && m.calmT <= 0) {
             hurt();
@@ -2185,6 +2178,7 @@ const PlatformGame = () => {
             const v = 2 * (s.x2T > 0 ? 2 : 1);
             score += v;
             setScore(score);
+            playSfx("coin");
             w.pops.push({ x: cn.x, y: cn.y - 12, vx: 0, vy: -60, t: 0, life: 0.7, color: "#b45309", text: `+${v}` });
           }
         }
@@ -2508,14 +2502,7 @@ const PlatformGame = () => {
               />
             </div>
             <span className="text-sm">🕌</span>
-            {/* 🎵 ambiyans müziği aç/kapa — tercih kalıcı */}
-            <button
-              onClick={() => { const m = !musicMuted; setMusicMuted(m); gameMusic.setMuted(m); }}
-              aria-label={musicMuted ? "Müziği aç" : "Müziği kapat"}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-card border border-border text-sm shadow-soft active:scale-90"
-            >
-              {musicMuted ? "🔇" : "🎵"}
-            </button>
+
           </div>
         )}
 
