@@ -315,3 +315,23 @@ export async function playFeedback(positive: boolean) {
     tone(160, 0.22, "square", 0.08, 0.12);
   }
 }
+
+// Kısa oyun sfx — müzik yerine tek atımlık tonlar (İslami hassasiyet: müzik
+// yok, sadece bildirim/geri bildirim sesleri). Coin: parlak iki nota;
+// stomp: yumuşak "puf"; hurt: alçak buzz.
+export function playSfx(kind: "coin" | "stomp" | "hurt" | "dove") {
+  if (kind === "coin") {
+    tone(1320, 0.06, "triangle", 0, 0.16);
+    tone(1760, 0.10, "triangle", 0.05, 0.16);
+  } else if (kind === "stomp") {
+    tone(180, 0.09, "square", 0, 0.14);
+    tone(110, 0.12, "sine", 0.05, 0.12);
+  } else if (kind === "dove") {
+    tone(1174, 0.09, "triangle", 0, 0.16);
+    tone(1568, 0.10, "triangle", 0.07, 0.16);
+    tone(2093, 0.14, "triangle", 0.15, 0.14);
+  } else {
+    tone(200, 0.14, "square", 0, 0.14);
+  }
+}
+
