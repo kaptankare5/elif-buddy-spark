@@ -2093,6 +2093,7 @@ const PlatformGame = () => {
           if (s.nurT > 0) {
             // NUR: canavar güvercine dönüşüp özgürce uçar — kimse zarar görmez
             m.freedT = FREED_DUR;
+            playSfx("dove");
             // 🌟 Nadir ALTIN güvercin (%3): kozmetik sürpriz + bonus puan.
             // "Acaba bugün çıkar mı?" merakı — kazanma şartı yine doğru oyun.
             m.golden = Math.random() < 0.03;
