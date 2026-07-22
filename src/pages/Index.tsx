@@ -206,7 +206,7 @@ const Index = () => {
             to="/koleksiyon"
             className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-gold p-4 text-gold-foreground shadow-card transition-bouncy hover:-translate-y-1"
           >
-            <span className="text-xl" aria-hidden>🃏</span>
+            <span className="text-xl" aria-hidden>🗂️</span>
             <span className="text-sm font-extrabold">Kartlarım</span>
           </Link>
           <Link
