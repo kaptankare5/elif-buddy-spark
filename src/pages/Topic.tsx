@@ -22,8 +22,18 @@ import { pickReviewItem } from "@/lib/review";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
 import { SkipTest } from "@/components/SkipTest";
 import { LevelBadge } from "@/components/LevelBadge";
+import { BuddyWithBubble } from "@/components/Buddy";
 import { pickDistractors } from "@/lib/confusables";
 import { Rocket } from "lucide-react";
+
+// Mim'in test tepkileri — kısa, sıcak, çeşitli (soruya göre deterministik seçilir)
+const PRAISE = ["Maşallah, bildin! 🌟", "Harikasın!", "Aferin sana! 👏", "Süpersin, devam!", "İşte bu! ⭐"];
+const COMFORT = ["Olsun, bir daha deneyelim!", "Çok yaklaştın, tekrar dinle!", "Sorun değil, birlikte öğreniyoruz!", "Bir daha dinleyelim mi? 🎧"];
+const phraseIdx = (id: string, len: number) => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return Math.abs(h) % len;
+};
 
 type Mode = "browse" | "test";
 
@@ -454,6 +464,18 @@ const Topic = () => {
                   </button>
                 );
               })}
+            </div>
+
+            {/* Mim'in tepkisi — doğruda kutlar, yanlışta şefkatle teşvik eder.
+                Sabit yükseklik: cevap gelince ekran zıplamaz. */}
+            <div className="mt-3 flex h-24 items-center justify-center">
+              {picked && (
+                picked === q.target.id ? (
+                  <BuddyWithBubble pose="celebrate" size={72} say={PRAISE[phraseIdx(q.target.id, PRAISE.length)]} />
+                ) : (
+                  <BuddyWithBubble pose="encourage" size={72} say={COMFORT[phraseIdx(q.target.id, COMFORT.length)]} />
+                )
+              )}
             </div>
           </>
         )}
