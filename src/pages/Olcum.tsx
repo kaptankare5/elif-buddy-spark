@@ -130,22 +130,20 @@ export default function Olcum() {
               <div
                 className={cn(ARABIC_FONT, "text-[9rem] leading-[1.5] text-foreground select-none")}
                 dir="rtl"
-                aria-label={current.translit ?? current.label}
               >
                 {current.emoji}
               </div>
-              <div className="text-sm font-extrabold text-muted-foreground">
-                Görünen: <b className="text-foreground">{current.translit ?? current.label}</b>
-              </div>
+              {/* Not: Harfin Türkçe adı gösterilmez — çocuk cevabı görmeden okumalı.
+                  Veli, "Doğru okunuş" düğmesiyle kontrol edebilir. */}
               <button
                 onClick={() => playItem(current)}
                 className="flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 text-xs font-extrabold shadow-soft active:scale-95"
                 aria-label="Doğru okunuşu dinle"
               >
-                <Volume2 className="h-4 w-4" /> Doğru okunuş
+                <Volume2 className="h-4 w-4" /> Doğru okunuş (veli için)
               </button>
               <div className="text-[11px] text-muted-foreground text-center">
-                Önce çocuk okusun; sonra dinleyip karşılaştırın.
+                Çocuk sesli okusun; siz duyduğunuza göre işaretleyin.
               </div>
             </div>
 
