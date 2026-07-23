@@ -28,10 +28,19 @@ export default function Olcum() {
   const allIds = useMemo(() => allItems.map((i) => i.id), [allItems]);
   const measure = useMeasure();
 
-  // Kuyruk: mevcut store'a göre kalan (henüz doğru/geçilmemiş) öğeler
+  // Kuyruk: mevcut store'a göre kalan (henüz doğru/geçilmemiş) öğeler.
+  // RASTGELE karıştırılır — çocuk sırayı ezberleyip "bir sonraki Elif"
+  // demesin. Tekrar sorulmama garantisi kuyruk mantığından gelir: doğru
+  // yapılan öğe kuyruktan çıkar; yanlış yapılan öğe kuyruğun SONUNA gider,
+  // yani kalan tüm harfler sorulmadan tekrar karşımıza çıkmaz.
   const buildQueue = () => {
     const s = loadMeasure();
-    return allItems.filter((it) => !s[it.id]?.done).map((it) => it.id);
+    const remaining = allItems.filter((it) => !s[it.id]?.done).map((it) => it.id);
+    for (let i = remaining.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+    }
+    return remaining;
   };
   const [queue, setQueue] = useState<string[]>(() => buildQueue());
   const [showReport, setShowReport] = useState(false);
@@ -121,22 +130,20 @@ export default function Olcum() {
               <div
                 className={cn(ARABIC_FONT, "text-[9rem] leading-[1.5] text-foreground select-none")}
                 dir="rtl"
-                aria-label={current.translit ?? current.label}
               >
                 {current.emoji}
               </div>
-              <div className="text-sm font-extrabold text-muted-foreground">
-                Görünen: <b className="text-foreground">{current.translit ?? current.label}</b>
-              </div>
+              {/* Not: Harfin Türkçe adı gösterilmez — çocuk cevabı görmeden okumalı.
+                  Veli, "Doğru okunuş" düğmesiyle kontrol edebilir. */}
               <button
                 onClick={() => playItem(current)}
                 className="flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 text-xs font-extrabold shadow-soft active:scale-95"
                 aria-label="Doğru okunuşu dinle"
               >
-                <Volume2 className="h-4 w-4" /> Doğru okunuş
+                <Volume2 className="h-4 w-4" /> Doğru okunuş (veli için)
               </button>
               <div className="text-[11px] text-muted-foreground text-center">
-                Önce çocuk okusun; sonra dinleyip karşılaştırın.
+                Çocuk sesli okusun; siz duyduğunuza göre işaretleyin.
               </div>
             </div>
 
