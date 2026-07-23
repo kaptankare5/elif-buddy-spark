@@ -15,7 +15,7 @@ import { clearLocalProgress, hydrateSrsFromCloud } from "@/data/srs";
 import { ConfirmDestructive } from "@/components/ConfirmDestructive";
 import { toast } from "sonner";
 import { useTestUnlock, tryUnlockWithCode } from "@/lib/testUnlock";
-import { KeyRound, Users } from "lucide-react";
+import { KeyRound, Users, Ruler } from "lucide-react";
 import { useStudents, addStudent, removeStudent, switchStudent } from "@/lib/students";
 
 
