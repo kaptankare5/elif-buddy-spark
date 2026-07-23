@@ -28,10 +28,19 @@ export default function Olcum() {
   const allIds = useMemo(() => allItems.map((i) => i.id), [allItems]);
   const measure = useMeasure();
 
-  // Kuyruk: mevcut store'a göre kalan (henüz doğru/geçilmemiş) öğeler
+  // Kuyruk: mevcut store'a göre kalan (henüz doğru/geçilmemiş) öğeler.
+  // RASTGELE karıştırılır — çocuk sırayı ezberleyip "bir sonraki Elif"
+  // demesin. Tekrar sorulmama garantisi kuyruk mantığından gelir: doğru
+  // yapılan öğe kuyruktan çıkar; yanlış yapılan öğe kuyruğun SONUNA gider,
+  // yani kalan tüm harfler sorulmadan tekrar karşımıza çıkmaz.
   const buildQueue = () => {
     const s = loadMeasure();
-    return allItems.filter((it) => !s[it.id]?.done).map((it) => it.id);
+    const remaining = allItems.filter((it) => !s[it.id]?.done).map((it) => it.id);
+    for (let i = remaining.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+    }
+    return remaining;
   };
   const [queue, setQueue] = useState<string[]>(() => buildQueue());
   const [showReport, setShowReport] = useState(false);
