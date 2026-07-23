@@ -95,6 +95,18 @@ const Settings = () => {
             </div>
           </Link>
 
+          {/* Ölçüm Modu — çocuk hangi harf hallerini önceden biliyor? */}
+          <Link
+            to="/olcum"
+            className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-warning to-topic-pink p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
+          >
+            <Ruler className="h-8 w-8 shrink-0" />
+            <div className="flex-1">
+              <div className="text-base font-extrabold text-shadow-soft">📏 Ölçüm Modu</div>
+              <div className="text-[11px] font-semibold opacity-90">Başta/ortada/sonda hallerinden hangilerini zaten biliyor? →</div>
+            </div>
+          </Link>
+
           <div className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">
             <Volume2 className="h-7 w-7 text-primary" />
             <div className="flex-1">
