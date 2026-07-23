@@ -16,7 +16,7 @@ import { Volume2, Check, X, HelpCircle, RotateCcw, Ruler } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ContentItem } from "@/data/types";
 
-const ARABIC_FONT = "font-arabic";
+const ARABIC_FONT = "font-arabic-naskh";
 
 function itemLabel(id: string, items: ContentItem[]) {
   return items.find((x) => x.id === id)?.translit ?? id;

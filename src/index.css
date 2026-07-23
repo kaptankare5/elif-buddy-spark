@@ -148,6 +148,14 @@
     font-family: "Amiri Quran", "Amiri", "Scheherazade New", "Traditional Arabic", serif;
     font-feature-settings: "kern", "liga", "calt";
   }
+  /* Diyanet Elifbâ'sındaki sade naskh görünümü — Ölçüm gibi ekranlarda
+   * temel harf ile başta/ortada/sonda halleri tutarlı çizilsin diye
+   * Scheherazade New öne alınır (Amiri Quran'ın Kur'ani süslemeleri
+   * bu ekranlarda kafa karıştırıyor). */
+  .font-arabic-naskh {
+    font-family: "Scheherazade New", "Traditional Arabic", "Amiri", serif;
+    font-feature-settings: "kern", "liga", "calt";
+  }
   /* İslami 8 köşeli yıldız deseni — kurumsal dokunuş, çok hafif.
    * -light: renkli hero/başlık zeminleri için beyaz; düz: açık zeminler için zümrüt. */
   .bg-pattern-star {
