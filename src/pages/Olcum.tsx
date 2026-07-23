@@ -209,22 +209,21 @@ export default function Olcum() {
 function ReportRow({
   color, label, ids, items, highlight,
 }: { color: string; label: string; ids: string[]; items: ContentItem[]; highlight?: boolean }) {
-  const [open, setOpen] = useState(false);
   return (
     <div className={cn("mb-2 rounded-xl border-2 p-2", highlight ? "border-success/30 bg-success/5" : "border-border")}>
-      <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center gap-3 text-left">
+      <div className="flex items-center gap-3">
         <span className={cn("h-3 w-3 rounded-full shrink-0", color)} />
         <span className="flex-1 text-xs font-extrabold text-foreground">{label}</span>
         <span className="text-sm font-extrabold text-foreground">{ids.length}</span>
-      </button>
-      {open && ids.length > 0 && (
+      </div>
+      {ids.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {ids.map((id) => {
             const it = items.find((x) => x.id === id);
             return (
-              <span key={id} className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2 py-0.5 text-[11px] font-bold">
-                <span className={cn(ARABIC_FONT, "text-base leading-none")} dir="rtl">{it?.emoji}</span>
-                <span className="text-muted-foreground">{itemLabel(id, items)}</span>
+              <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-card border border-border px-2 py-1 text-[11px] font-bold">
+                <span className={cn(ARABIC_FONT, "text-lg leading-none")} dir="rtl">{it?.emoji}</span>
+                <span className="text-foreground">{it?.translit ?? id}</span>
               </span>
             );
           })}
