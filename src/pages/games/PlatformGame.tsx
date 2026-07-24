@@ -27,6 +27,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem, playSfx } from "@/lib/audio";
 import { gamePool, pickN, shuffle } from "./_shared";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
+import { gameMusic } from "@/lib/gameMusic";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
@@ -1316,7 +1317,15 @@ const PlatformGame = () => {
   // 🌟 Bu koşuda bulunan altın güvercinler (kozmetik sürpriz)
   const goldenRef = useRef(0);
   const [goldenRun, setGoldenRun] = useState(0);
+  // 🎵 Ambiyans müziği aç/kapa (kalıcı tercih)
+  const [musicMuted, setMusicMuted] = useState(() => gameMusic.isMuted());
 
+  // Müzik: oyun gerçekten akarken çalar; duraklama/bitiş/ayrılışta susar.
+  useEffect(() => {
+    if (started && !paused && !gameOver && !won) gameMusic.start(level);
+    else gameMusic.stop();
+    return () => gameMusic.stop();
+  }, [started, paused, gameOver, won, level]);
 
   useEffect(() => {
     controls.current.paused = paused || gameOver || won;
@@ -2502,7 +2511,14 @@ const PlatformGame = () => {
               />
             </div>
             <span className="text-sm">🕌</span>
-
+            {/* 🎵 ambiyans müziği aç/kapa — tercih kalıcı */}
+            <button
+              onClick={() => { const m = !musicMuted; setMusicMuted(m); gameMusic.setMuted(m); }}
+              aria-label={musicMuted ? "Müziği aç" : "Müziği kapat"}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-card border border-border text-sm shadow-soft active:scale-90"
+            >
+              {musicMuted ? "🔇" : "🎵"}
+            </button>
           </div>
         )}
 
