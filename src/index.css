@@ -267,6 +267,63 @@
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
+/* ---- Yazılış hafıza yöntemi animasyonları ----
+ * KUYRUK SİLME döngüsü (4sn): 0-25% yalın hâl durur → 25-40% kuyruk bölgesi
+ * kırmızı kesikli çerçeveyle işaretlenir → 40-65% silgi soldan sağa süpürür ve
+ * yalın hâl solar, başta hâli belirir → 65-100% başta hâli durur.
+ * Üç öğe (yalın glif / başta glif / silgi) AYNI süreyi paylaşır ki senkron kalsın. */
+@keyframes tail-iso-out {
+  0%, 38% { opacity: 1; }
+  58%, 100% { opacity: 0; }
+}
+@keyframes tail-init-in {
+  0%, 42% { opacity: 0; }
+  62%, 100% { opacity: 1; }
+}
+/* Silgi, SAHNE genişliğinde bir sarmalayıcıyı hareket ettirir (yüzde, öğenin
+ * kendi genişliğine göredir — sarmalayıcı tam genişlik olunca yüzde = sahne
+ * yüzdesi). Böylece kuyruk bölgesini baştan sona süpürür. */
+@keyframes tail-eraser {
+  0%, 26% { opacity: 0; transform: translateX(2%) rotate(-8deg); }
+  32% { opacity: 1; transform: translateX(6%) rotate(-8deg); }
+  60% { opacity: 1; transform: translateX(58%) rotate(8deg); }
+  68%, 100% { opacity: 0; transform: translateX(58%) rotate(8deg); }
+}
+@keyframes tail-marker {
+  0%, 24% { opacity: 0; transform: scale(0.9); }
+  30%, 46% { opacity: 1; transform: scale(1); }
+  60%, 100% { opacity: 0; transform: scale(1.05); }
+}
+/* Nokta rozeti — sırayla parlar (gecikme inline verilir) */
+@keyframes dot-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 hsl(var(--warning) / 0.5); }
+  50% { transform: scale(1.12); box-shadow: 0 0 0 8px hsl(var(--warning) / 0); }
+}
+/* "Aynı iskelet" alt çizgisi soldan sağa çizilir */
+@keyframes skeleton-underline {
+  0% { transform: scaleX(0); }
+  60%, 100% { transform: scaleX(1); }
+}
+
+.animate-tail-iso { animation: tail-iso-out 4s ease-in-out infinite; }
+.animate-tail-init { animation: tail-init-in 4s ease-in-out infinite; }
+.animate-tail-eraser { animation: tail-eraser 4s ease-in-out infinite; }
+.animate-tail-marker { animation: tail-marker 4s ease-in-out infinite; }
+.animate-dot-pulse { animation: dot-pulse 2.2s ease-in-out infinite; }
+.animate-skeleton-underline { animation: skeleton-underline 1.8s ease-out both; transform-origin: right center; }
+
+/* Hareket azaltma tercihi: animasyonlar durur, son kare gösterilir (erişilebilirlik) */
+@media (prefers-reduced-motion: reduce) {
+  .animate-tail-iso, .animate-tail-init, .animate-tail-eraser,
+  .animate-tail-marker, .animate-dot-pulse, .animate-skeleton-underline {
+    animation: none;
+  }
+  .animate-tail-iso { opacity: 0; }
+  .animate-tail-init { opacity: 1; }
+  .animate-tail-eraser, .animate-tail-marker { opacity: 0; }
+  .animate-skeleton-underline { transform: scaleX(1); }
+}
+
 .animate-shimmer { animation: shimmer 2.6s ease-in-out infinite; }
 .animate-buddy-bob { animation: buddy-bob 3.2s ease-in-out infinite; }
 .animate-bubble-in { animation: bubble-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
