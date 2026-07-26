@@ -50,6 +50,15 @@ export interface TailRule {
   keepName: string;
   /** Tek cümlelik hafıza cümlesi. */
   say: string;
+  /** Kuyruğun harfin neresinde olduğu (sil-oyunu maskesi bunu kullanır).
+   *  dir="alt"  → mürekkebin alt (1-at) kadarı kuyruktur (aşağı sarkanlar).
+   *  dir="sol"  → mürekkebin sol (at) kadarı kuyruktur (sola uzayanlar).
+   *  `at`, harfin MÜREKKEP kutusuna göre orandır (0..1) — font boyutundan
+   *  bağımsız çalışır. Değerler ekran görüntüsüyle tek tek doğrulanmıştır.
+   *  NOT: Önce "yalın hâl eksi başta hâli" ile otomatik türetilmişti; ancak bu
+   *  fontlarda iki form farklı çizildiği için üst üste oturmuyor (ölçüldü:
+   *  örtüşme %21-56) ve baş da kuyruk sanılıyordu. Elle tanımlama güvenilir. */
+  zone: { dir: "alt" | "sol"; at: number };
 }
 
 /** 3) Nokta ile ayrılan gruplar. */
@@ -93,76 +102,91 @@ export const TAIL_RULES: TailRule[] = [
     n: 5, name: "Cim", iso: "ج", init: "ﺟ",
     tailName: "alt çanak", keepName: "baş",
     say: "Cim'in aşağı sarkan çanağını sil — geriye yalnız başı kalır.",
+    zone: { dir: "alt", at: 0.45 },
   },
   {
     n: 6, name: "Ha", iso: "ح", init: "ﺣ",
     tailName: "alt çanak", keepName: "baş",
     say: "Ha da aynı: çanağı silince başı kalır. (Cim ile tek farkı nokta!)",
+    zone: { dir: "alt", at: 0.42 },
   },
   {
     n: 7, name: "Hı", iso: "خ", init: "ﺧ",
     tailName: "alt çanak", keepName: "baş",
     say: "Hı da öyle — çanak gider, üstteki noktası kalır.",
+    zone: { dir: "alt", at: 0.52 },
   },
   {
     n: 12, name: "Sin", iso: "س", init: "ﺳ",
     tailName: "son çanak", keepName: "üç diş",
     say: "Sin'in sonundaki çanağı sil — üç dişi kalır.",
+    zone: { dir: "alt", at: 0.55 },
   },
   {
     n: 13, name: "Şin", iso: "ش", init: "ﺷ",
     tailName: "son çanak", keepName: "üç diş",
     say: "Şin de aynı; üstünde üç noktası vardır.",
+    zone: { dir: "alt", at: 0.7 },
   },
   {
     n: 14, name: "Sad", iso: "ص", init: "ﺻ",
     tailName: "kuyruk", keepName: "halka",
     say: "Sad'ın kuyruğunu sil — kocaman halkası kalır.",
+    zone: { dir: "sol", at: 0.58 },
   },
   {
     n: 15, name: "Dad", iso: "ض", init: "ﺿ",
     tailName: "kuyruk", keepName: "halka",
     say: "Dad da aynı; halkanın üstünde bir nokta var.",
+    zone: { dir: "sol", at: 0.58 },
   },
   {
     n: 18, name: "Ayn", iso: "ع", init: "ﻋ",
     tailName: "alt çanak", keepName: "baş",
     say: "Ayn'ın aşağıdaki çanağını sil — yalnız başı kalır.",
+    zone: { dir: "alt", at: 0.45 },
   },
   {
     n: 19, name: "Gayn", iso: "غ", init: "ﻏ",
     tailName: "alt çanak", keepName: "baş",
     say: "Gayn da aynı; üstünde noktası vardır.",
+    zone: { dir: "alt", at: 0.62 },
   },
   {
     n: 20, name: "Fe", iso: "ف", init: "ﻓ",
     tailName: "kuyruk", keepName: "halka",
     say: "Fe'nin kuyruğunu sil — halkası kalır.",
+    zone: { dir: "sol", at: 0.6 },
   },
   {
     n: 21, name: "Kaf", iso: "ق", init: "ﻗ",
     tailName: "derin çanak", keepName: "halka",
     say: "Kaf'ın derin çanağını sil — halkası kalır. (Fe'den farkı: 2 nokta!)",
+    zone: { dir: "alt", at: 0.66 },
   },
   {
     n: 2, name: "Be", iso: "ب", init: "ﺑ",
     tailName: "çanak", keepName: "diş",
     say: "Be'nin çanağını sil — küçük bir diş kalır.",
+    zone: { dir: "sol", at: 0.62 },
   },
   {
     n: 25, name: "Nun", iso: "ن", init: "ﻧ",
     tailName: "derin çanak", keepName: "diş",
     say: "Nun'un derin çanağını sil — diş kalır. (Başta Be'ye benzer, noktası üstte!)",
+    zone: { dir: "alt", at: 0.6 },
   },
   {
     n: 23, name: "Lem", iso: "ل", init: "ﻟ",
     tailName: "çanak", keepName: "uzun boy",
     say: "Lem'in çanağını sil — uzun boyu kalır.",
+    zone: { dir: "alt", at: 0.55 },
   },
   {
     n: 24, name: "Mim", iso: "م", init: "ﻣ",
     tailName: "sarkan kuyruk", keepName: "halka",
     say: "Mim'in aşağı sarkan kuyruğunu sil — yuvarlak başı kalır.",
+    zone: { dir: "alt", at: 0.45 },
   },
 ];
 
