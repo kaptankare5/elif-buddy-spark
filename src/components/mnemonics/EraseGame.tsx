@@ -19,49 +19,25 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { TailRule } from "@/data/writingMnemonics";
 import { playFeedback } from "@/lib/audio";
+import { buildTailMask, tailFontSpec, type TailMaskGeom } from "@/lib/tailMask";
 
 const W = 260;             // CSS px
 const H = 150;
 const S = 2;               // iç çözünürlük çarpanı (netlik)
 const CW = W * S, CH = H * S;
-const FONT_PX = 96 * S;    // glif boyu (iç çözünürlükte)
-const BASE_Y = Math.round(CH * 0.68); // taban çizgisi
 const BRUSH = 15 * S;      // silgi yarıçapı — çocuk parmağı için bol
 const SUCCESS_AT = 0.85;   // kuyruk mürekkebinin bu oranı silinince başarı
-const FONT = `${FONT_PX}px "Amiri Quran", "Amiri", "Scheherazade New", serif`;
+const GEOM: TailMaskGeom = {
+  cw: CW, ch: CH,
+  fontPx: 96 * S,                    // glif boyu (iç çözünürlükte)
+  baseY: Math.round(CH * 0.68),      // taban çizgisi
+};
 
 const mkCanvas = () => {
   const c = document.createElement("canvas");
   c.width = CW; c.height = CH;
   return c;
 };
-
-/** Glifi kendi kanvasına çizer; mürekkebin sağ kenarını (px) döndürür. */
-function drawGlyph(ch: string, dx: number, dy = 0): {
-  canvas: HTMLCanvasElement; right: number; ink: number; data: Uint8ClampedArray;
-} {
-  const c = mkCanvas();
-  const g = c.getContext("2d", { willReadFrequently: true })!;
-  g.font = FONT;
-  g.textAlign = "left";
-  g.textBaseline = "alphabetic";
-  g.fillStyle = "#134e3a";
-  g.fillText(ch, dx, BASE_Y + dy);
-  const d = g.getImageData(0, 0, CW, CH).data;
-  let right = -1, left = CW, top = CH, bottom = -1, ink = 0;
-  for (let y = 0; y < CH; y++) {
-    for (let x = 0; x < CW; x++) {
-      if (d[(y * CW + x) * 4 + 3] > 40) {
-        ink++;
-        if (x > right) right = x;
-        if (x < left) left = x;
-        if (y < top) top = y;
-        if (y > bottom) bottom = y;
-      }
-    }
-  }
-  return { canvas: c, right, left, top, bottom, ink, data: d };
-}
 
 export function EraseGame({ rule }: { rule: TailRule }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -131,124 +107,26 @@ export function EraseGame({ rule }: { rule: TailRule }) {
 
   /** Maskeleri kur (font yüklendikten sonra çağrılır) */
   const build = useCallback(() => {
-    // 1) yalın hâli çiz, ortala
-    const probe = drawGlyph(rule.iso, 0);
-    if (probe.right < 0) return;                       // font yok / boş glif
-    const isoDx = Math.round((CW - probe.right) / 2);  // yatayda ortala
-    const iso = drawGlyph(rule.iso, isoDx);
-    const d = iso.data;
-    const N = CW * CH;
+    // Kuyruk/baş ayrımı ORTAK modülden gelir (src/lib/tailMask.ts) — böylece
+    // oyun ile animasyon (TailErase) birebir aynı maskeyi gösterir, ayrışamaz.
+    const m = buildTailMask(rule, GEOM);
+    if (!m) return;                     // font yok / boş glif
 
-    // 2) mürekkep haritası + BAĞLI BİLEŞENLER
-    //    Neden: (a) NOKTALAR ayrı küçük lekelerdir ve başta hâlinde de bulunur
-    //    → asla silinmemeli (Cim'in ve Be'nin noktası siliniyordu). (b) Kuyruk
-    //    ucu yukarı kıvrıldığı için düz kesik çizgisinin üstünde kalıp yeşil
-    //    şerit bırakıyordu → kesikten sonra BAŞTAN KOPAN küçük parçalar da
-    //    kuyruğa katılır. İkisi de bileşen analiziyle çözülür.
-    const ink = new Uint8Array(N);
-    for (let i = 0; i < N; i++) ink[i] = d[i * 4 + 3] > 40 ? 1 : 0;
-
-    const labelComponents = (src: Uint8Array) => {
-      const comp = new Int32Array(N).fill(-1);
-      const sizes: number[] = [];
-      const stack = new Int32Array(N);
-      for (let start = 0; start < N; start++) {
-        if (!src[start] || comp[start] !== -1) continue;
-        const id = sizes.length;
-        let sp = 0, size = 0;
-        stack[sp++] = start;
-        comp[start] = id;
-        while (sp > 0) {
-          const i = stack[--sp];
-          size++;
-          const x = i % CW, y = (i / CW) | 0;
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              const nx = x + dx, ny = y + dy;
-              if (nx < 0 || ny < 0 || nx >= CW || ny >= CH) continue;
-              const j = ny * CW + nx;
-              if (src[j] && comp[j] === -1) { comp[j] = id; stack[sp++] = j; }
-            }
-          }
-        }
-        sizes.push(size);
-      }
-      let main = -1, best = -1;
-      for (let k = 0; k < sizes.length; k++) if (sizes[k] > best) { best = sizes[k]; main = k; }
-      return { comp, sizes, main };
-    };
-
-    // Ana gövde = en büyük bileşen; kalan küçük lekeler = NOKTALAR (korunur)
-    const c1 = labelComponents(ink);
-
-    // 3) kuyruk çekirdeği = ANA GÖVDE ∧ kuyruk bölgesi (noktalar hariç)
-    const bw = iso.right - iso.left, bh = iso.bottom - iso.top;
-    const cutY = Math.round(iso.top + bh * rule.zone.at);
-    const cutX = Math.round(iso.left + bw * rule.zone.at);
-    const tail = new Uint8Array(N);
-    for (let i = 0; i < N; i++) {
-      if (!ink[i] || c1.comp[i] !== c1.main) continue;   // nokta ise atla
-      const x = i % CW, y = (i / CW) | 0;
-      if (rule.zone.dir === "alt" ? y >= cutY : x <= cutX) tail[i] = 1;
-    }
-
-    // 4) kesikten sonra baştan KOPAN parçalar da kuyruktur (kıvrık uçlar)
-    const head0 = new Uint8Array(N);
-    for (let i = 0; i < N; i++) if (ink[i] && c1.comp[i] === c1.main && !tail[i]) head0[i] = 1;
-    const c2 = labelComponents(head0);
-    for (let i = 0; i < N; i++) {
-      if (head0[i] && c2.comp[i] !== c2.main) tail[i] = 1; // ana baştan kopmuş → kuyruk
-    }
-
-    // 4b) TERSİ: kuyruk gövdesinden KOPUK küçük kırmızı lekeler başa geri döner.
-    //     (Sad/Dad'ın halkasının sol ucu düz kesiğin soluna taşıp kopuk bir
-    //     kırmızı çentik bırakıyordu — harfin başı gibi görünmüyordu.)
-    const c3 = labelComponents(tail);
-    for (let i = 0; i < N; i++) {
-      if (tail[i] && c3.comp[i] !== c3.main) tail[i] = 0;
-    }
-
-    // 5) maske + kırmızı vurgu (glifin kendi yumuşak kenarları korunur)
-    const tailMask = mkCanvas();
-    const tmCtx = tailMask.getContext("2d")!;
-    const tImg = tmCtx.createImageData(CW, CH);
-    const tint = mkCanvas();
-    const tgCtx = tint.getContext("2d")!;
-    const rImg = tgCtx.createImageData(CW, CH);
-    let tailInk = 0, headInk = 0;
-    const headFlags = new Uint8Array(N);
-    for (let i = 0; i < N; i++) {
-      if (!ink[i]) continue;
-      const a = d[i * 4 + 3];
-      if (tail[i]) {
-        tailInk++;
-        tImg.data[i * 4] = d[i * 4]; tImg.data[i * 4 + 1] = d[i * 4 + 1];
-        tImg.data[i * 4 + 2] = d[i * 4 + 2]; tImg.data[i * 4 + 3] = a;
-        rImg.data[i * 4] = 220; rImg.data[i * 4 + 1] = 38;
-        rImg.data[i * 4 + 2] = 38; rImg.data[i * 4 + 3] = a;
-      } else {
-        headInk++;
-        headFlags[i] = 1;
-      }
-    }
-    tmCtx.putImageData(tImg, 0, 0);
-    tgCtx.putImageData(rImg, 0, 0);
-
-    glyphRef.current = iso.canvas;
-    tailTintRef.current = tint;
-    tailMaskRef.current = tailMask;
+    glyphRef.current = m.glyph;
+    tailTintRef.current = m.tailTint;
+    tailMaskRef.current = m.tailMask;
     strokeRef.current = mkCanvas();
     limitedRef.current = mkCanvas();
-    headMaskDataRef.current = headFlags;
-    tailInkRef.current = tailInk;
-    headInkRef.current = headInk;
+    headMaskDataRef.current = m.headFlags;
+    tailInkRef.current = m.tailInk;
+    headInkRef.current = m.headInk;
 
     solvedRef.current = false;
     setSolved(false);
     setProgress(0);
-    setReady(tailInk > 200); // anlamlı bir kuyruk çıkmadıysa oyunu gösterme
+    setReady(m.tailInk > 200); // anlamlı bir kuyruk çıkmadıysa oyunu gösterme
     compose();
-  }, [rule.iso, rule.zone.dir, rule.zone.at, compose]);
+  }, [rule, compose]);
 
   const reset = useCallback(() => {
     const s = strokeRef.current;
@@ -263,7 +141,7 @@ export function EraseGame({ rule }: { rule: TailRule }) {
     let alive = true;
     const run = async () => {
       try {
-        await document.fonts.load(FONT, rule.iso + rule.init);
+        await document.fonts.load(tailFontSpec(GEOM), rule.iso + rule.init);
         await document.fonts.ready;
       } catch { /* ignore */ }
       if (alive) build();
