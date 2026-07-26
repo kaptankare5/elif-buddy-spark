@@ -132,13 +132,13 @@ export const TAIL_RULES: TailRule[] = [
     n: 14, name: "Sad", iso: "ص", init: "ﺻ",
     tailName: "kuyruk", keepName: "halka",
     say: "Sad'ın kuyruğunu sil — kocaman halkası kalır.",
-    zone: { dir: "sol", at: 0.58 },
+    zone: { dir: "sol", at: 0.44 },
   },
   {
     n: 15, name: "Dad", iso: "ض", init: "ﺿ",
     tailName: "kuyruk", keepName: "halka",
     say: "Dad da aynı; halkanın üstünde bir nokta var.",
-    zone: { dir: "sol", at: 0.58 },
+    zone: { dir: "sol", at: 0.44 },
   },
   {
     n: 18, name: "Ayn", iso: "ع", init: "ﻋ",
@@ -180,7 +180,7 @@ export const TAIL_RULES: TailRule[] = [
     n: 23, name: "Lem", iso: "ل", init: "ﻟ",
     tailName: "çanak", keepName: "uzun boy",
     say: "Lem'in çanağını sil — uzun boyu kalır.",
-    zone: { dir: "alt", at: 0.55 },
+    zone: { dir: "alt", at: 0.72 },
   },
   {
     n: 24, name: "Mim", iso: "م", init: "ﻣ",
