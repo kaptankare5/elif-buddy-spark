@@ -71,7 +71,7 @@ export function EraseGame({ rule }: { rule: TailRule }) {
   const tailMaskRef = useRef<HTMLCanvasElement | null>(null);
   const strokeRef = useRef<HTMLCanvasElement | null>(null);
   const limitedRef = useRef<HTMLCanvasElement | null>(null);
-  const headMaskDataRef = useRef<Uint8ClampedArray | null>(null);
+  const headMaskDataRef = useRef<Uint8Array | null>(null);
   const tailInkRef = useRef(0);
   const headInkRef = useRef(0);
 
@@ -136,51 +136,110 @@ export function EraseGame({ rule }: { rule: TailRule }) {
     if (probe.right < 0) return;                       // font yok / boş glif
     const isoDx = Math.round((CW - probe.right) / 2);  // yatayda ortala
     const iso = drawGlyph(rule.iso, isoDx);
+    const d = iso.data;
+    const N = CW * CH;
 
-    // 2) KUYRUK BÖLGESİ — harfin MÜREKKEP kutusuna göre (font boyutundan
-    //    bağımsız). "alt": kutunun alt (1-at) kadarı; "sol": sol (at) kadarı.
+    // 2) mürekkep haritası + BAĞLI BİLEŞENLER
+    //    Neden: (a) NOKTALAR ayrı küçük lekelerdir ve başta hâlinde de bulunur
+    //    → asla silinmemeli (Cim'in ve Be'nin noktası siliniyordu). (b) Kuyruk
+    //    ucu yukarı kıvrıldığı için düz kesik çizgisinin üstünde kalıp yeşil
+    //    şerit bırakıyordu → kesikten sonra BAŞTAN KOPAN küçük parçalar da
+    //    kuyruğa katılır. İkisi de bileşen analiziyle çözülür.
+    const ink = new Uint8Array(N);
+    for (let i = 0; i < N; i++) ink[i] = d[i * 4 + 3] > 40 ? 1 : 0;
+
+    const labelComponents = (src: Uint8Array) => {
+      const comp = new Int32Array(N).fill(-1);
+      const sizes: number[] = [];
+      const stack = new Int32Array(N);
+      for (let start = 0; start < N; start++) {
+        if (!src[start] || comp[start] !== -1) continue;
+        const id = sizes.length;
+        let sp = 0, size = 0;
+        stack[sp++] = start;
+        comp[start] = id;
+        while (sp > 0) {
+          const i = stack[--sp];
+          size++;
+          const x = i % CW, y = (i / CW) | 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const nx = x + dx, ny = y + dy;
+              if (nx < 0 || ny < 0 || nx >= CW || ny >= CH) continue;
+              const j = ny * CW + nx;
+              if (src[j] && comp[j] === -1) { comp[j] = id; stack[sp++] = j; }
+            }
+          }
+        }
+        sizes.push(size);
+      }
+      let main = -1, best = -1;
+      for (let k = 0; k < sizes.length; k++) if (sizes[k] > best) { best = sizes[k]; main = k; }
+      return { comp, sizes, main };
+    };
+
+    // Ana gövde = en büyük bileşen; kalan küçük lekeler = NOKTALAR (korunur)
+    const c1 = labelComponents(ink);
+
+    // 3) kuyruk çekirdeği = ANA GÖVDE ∧ kuyruk bölgesi (noktalar hariç)
     const bw = iso.right - iso.left, bh = iso.bottom - iso.top;
     const cutY = Math.round(iso.top + bh * rule.zone.at);
     const cutX = Math.round(iso.left + bw * rule.zone.at);
+    const tail = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      if (!ink[i] || c1.comp[i] !== c1.main) continue;   // nokta ise atla
+      const x = i % CW, y = (i / CW) | 0;
+      if (rule.zone.dir === "alt" ? y >= cutY : x <= cutX) tail[i] = 1;
+    }
 
-    // 3) kuyruk maskesi = yalın mürekkep ∧ kuyruk bölgesi
+    // 4) kesikten sonra baştan KOPAN parçalar da kuyruktur (kıvrık uçlar)
+    const head0 = new Uint8Array(N);
+    for (let i = 0; i < N; i++) if (ink[i] && c1.comp[i] === c1.main && !tail[i]) head0[i] = 1;
+    const c2 = labelComponents(head0);
+    for (let i = 0; i < N; i++) {
+      if (head0[i] && c2.comp[i] !== c2.main) tail[i] = 1; // ana baştan kopmuş → kuyruk
+    }
+
+    // 4b) TERSİ: kuyruk gövdesinden KOPUK küçük kırmızı lekeler başa geri döner.
+    //     (Sad/Dad'ın halkasının sol ucu düz kesiğin soluna taşıp kopuk bir
+    //     kırmızı çentik bırakıyordu — harfin başı gibi görünmüyordu.)
+    const c3 = labelComponents(tail);
+    for (let i = 0; i < N; i++) {
+      if (tail[i] && c3.comp[i] !== c3.main) tail[i] = 0;
+    }
+
+    // 5) maske + kırmızı vurgu (glifin kendi yumuşak kenarları korunur)
     const tailMask = mkCanvas();
-    const tm = tailMask.getContext("2d", { willReadFrequently: true })!;
-    tm.drawImage(iso.canvas, 0, 0);
-    tm.globalCompositeOperation = "destination-out";
-    if (rule.zone.dir === "alt") tm.fillRect(0, 0, CW, cutY);        // üstü at
-    else tm.fillRect(cutX, 0, CW - cutX, CH);                        // sağı at
-    tm.globalCompositeOperation = "source-over";
-
-    // 5) kuyruk vurgusu (kırmızı) — nereyi sileceği bakışta belli olsun
+    const tmCtx = tailMask.getContext("2d")!;
+    const tImg = tmCtx.createImageData(CW, CH);
     const tint = mkCanvas();
-    const tg = tint.getContext("2d")!;
-    tg.drawImage(tailMask, 0, 0);
-    tg.globalCompositeOperation = "source-in";
-    tg.fillStyle = "#dc2626";
-    tg.fillRect(0, 0, CW, CH);
-    tg.globalCompositeOperation = "source-over";
-
-    // 6) mürekkep sayımları + baş maskesi (uyarı için)
-    const tmD = tm.getImageData(0, 0, CW, CH).data;
-    let tailInk = 0;
-    for (let i = 3; i < tmD.length; i += 4) if (tmD[i] > 40) tailInk++;
-    const head = mkCanvas();
-    const hg = head.getContext("2d", { willReadFrequently: true })!;
-    hg.drawImage(iso.canvas, 0, 0);
-    hg.globalCompositeOperation = "destination-out";
-    hg.drawImage(tailMask, 0, 0);
-    hg.globalCompositeOperation = "source-over";
-    const headData = hg.getImageData(0, 0, CW, CH).data;
-    let headInk = 0;
-    for (let i = 3; i < headData.length; i += 4) if (headData[i] > 40) headInk++;
+    const tgCtx = tint.getContext("2d")!;
+    const rImg = tgCtx.createImageData(CW, CH);
+    let tailInk = 0, headInk = 0;
+    const headFlags = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      if (!ink[i]) continue;
+      const a = d[i * 4 + 3];
+      if (tail[i]) {
+        tailInk++;
+        tImg.data[i * 4] = d[i * 4]; tImg.data[i * 4 + 1] = d[i * 4 + 1];
+        tImg.data[i * 4 + 2] = d[i * 4 + 2]; tImg.data[i * 4 + 3] = a;
+        rImg.data[i * 4] = 220; rImg.data[i * 4 + 1] = 38;
+        rImg.data[i * 4 + 2] = 38; rImg.data[i * 4 + 3] = a;
+      } else {
+        headInk++;
+        headFlags[i] = 1;
+      }
+    }
+    tmCtx.putImageData(tImg, 0, 0);
+    tgCtx.putImageData(rImg, 0, 0);
 
     glyphRef.current = iso.canvas;
     tailTintRef.current = tint;
     tailMaskRef.current = tailMask;
     strokeRef.current = mkCanvas();
     limitedRef.current = mkCanvas();
-    headMaskDataRef.current = headData;
+    headMaskDataRef.current = headFlags;
     tailInkRef.current = tailInk;
     headInkRef.current = headInk;
 
@@ -225,13 +284,20 @@ export function EraseGame({ rule }: { rule: TailRule }) {
     };
   };
 
-  /** O noktada BAŞ mı var? (uyarı için) */
+  /** O noktada BAŞ (kalacak kısım) mı var? — uyarı için. Fırça yarıçapı kadar
+   *  bir alan taranır ki çocuk başa değdiğinde hemen uyarılsın. */
   const overHead = (x: number, y: number) => {
-    const d = headMaskDataRef.current;
-    if (!d) return false;
-    const xi = Math.round(x), yi = Math.round(y);
-    if (xi < 0 || yi < 0 || xi >= CW || yi >= CH) return false;
-    return d[(yi * CW + xi) * 4 + 3] > 40;
+    const m = headMaskDataRef.current;
+    if (!m) return false;
+    const cx = Math.round(x), cy = Math.round(y), r = Math.round(BRUSH * 0.7);
+    for (let dy = -r; dy <= r; dy += 3) {
+      for (let dx = -r; dx <= r; dx += 3) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= CW || ny >= CH) continue;
+        if (m[ny * CW + nx]) return true;
+      }
+    }
+    return false;
   };
 
   const paintStroke = (from: { x: number; y: number } | null, to: { x: number; y: number }) => {
