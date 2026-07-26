@@ -268,6 +268,121 @@ export const DOT_GROUPS: DotGroup[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// 4) HAREKE HAFIZA YÖNTEMİ — TÜRKÇE ÖNCELİKLİ
+// ---------------------------------------------------------------------------
+// Bu uygulama TÜRK çocukları için. O yüzden birinci kanca, çocuğun ZATEN
+// bildiği Türkçe: harekelerin TÜRKÇE ADLARI bize bedava ipucu veriyor.
+//   • ÜSTÜN → adında "ÜST" var → ÜSTte durur.   (isim = YER)
+//   • ÖTRE  → adında "Ö" var, yuvarlak ağız → "Ü" okunur.  (isim = SES)
+//   • ESRE  → üstünün tam tersi → ALTta durur.  (zıtlık = YER)
+// Çocuk bu üç cümleyle üç harekeyi de yerinden ve sesinden tanır.
+//
+// İKİNCİ KATMAN (yapısal derinlik — hem kalıcılık hem de eğitimci/kurum gözü):
+// ÜSTÜN ve ÖTRE gerçekten kendi uzatma harflerinin minyatürüdür (Ebü'l-Esved
+// sisteminde harekeler küçültülmüş harflerdir): Üstün = yan yatmış küçük ELİF,
+// Ötre = küçülmüş VAV. AMA ESRE ŞEKİL OLARAK YE'YE BENZEMEZ (kullanıcı
+// düzeltmesi, doğru): esre çizgi olarak üstünle AYNI işarettir, yalnız satırın
+// ALTINA yazılır — yani esre, "üstünün ikizi/aynası"dır, ayrı bir harfin
+// minyatürü değil. "Esre + Ye = uzun î" ayrı bir gerçek: bu bir ŞEKİL
+// benzerliği değil, MED (uzatma) konusunda geçerli olan bir EŞLEŞME kuralı —
+// ikisini karıştırmamak için `future` alanında ayrı tutulur, animasyonda
+// gösterilmez.
+//
+// Bu bilgi ileride MED konusunda karşılığını verir: üstün+elif = â, esre+ye =
+// î, ötre+vav = û. Çocuğa şimdi "uzun hâli" yükü bindirilmez; yalnızca ileri
+// kanca (future) olarak, üstü kapalı bir bilgi notu şeklinde durur.
+
+export interface HarekeMnemonic {
+  id: "fetha" | "esre" | "otre";
+  name: string;          // Üstün / Esre / Ötre
+  mark: string;          // birleştirici + hareke (tek başına görünsün diye)
+  onLetter: string;      // örnek harf üzerinde (Be)
+  /** Türkçe ANA kanca — çocuğun ezberleyeceği tek cümle. */
+  hook: string;
+  /** Kancanın türü (rozet metni). */
+  hookKind: string;
+  position: "üstte" | "altta";
+  /** İnce harfte / kalın harfte Türkçe ses. */
+  soundThin: string;
+  soundThick: string;
+  /** Animasyonun "kaynak" şekli: gerçek harf mi (harf), yoksa üstünün kendi
+   *  işareti mi (isaret — esre bunu kullanır, sahte bir harf benzerliği
+   *  uydurmak yerine dürüstçe "aynı işaret, ters konum" gösterir). */
+  morphKind: "harf" | "isaret";
+  morphGlyph: string;    // ا / و (harf) ya da ◌َ (üstün işareti)
+  /** Dönüşüm cümlesi — üstteki başlık: "Elif küçülünce →" gibi. */
+  morphLabel: string;
+  /** Şekil bağı, çocuk diliyle (kart altında, uzun açıklama). */
+  shapeSay: string;
+  /** İleri kanca: med'de ne olacak (bilgi notu, yük değil — EŞLEŞME, şekil değil). */
+  future: string;
+  /** Animasyon parametreleri (CSS değişkenlerine geçer). */
+  rotate: number;    // derece
+  scale: number;     // hedef ölçek
+  translateY: number; // px — yalnız esre'de kullanılır (yukarıdan aşağı iner)
+}
+
+export const HAREKE_MNEMONICS: HarekeMnemonic[] = [
+  {
+    id: "fetha",
+    name: "Üstün",
+    mark: "◌َ",
+    onLetter: "بَ",
+    hook: "ÜSTÜN'ün adında ÜST var → harfin ÜSTünde durur.",
+    hookKind: "adı yerini söylüyor",
+    position: "üstte",
+    soundThin: "e",
+    soundThick: "a",
+    morphKind: "harf",
+    morphGlyph: "ا",
+    morphLabel: "Elif yan yatınca →",
+    shapeSay: "Elif dimdik durur; yan yatınca üstün olur — küçük bir yatak gibi.",
+    future: "İleride: üstün + Elif yan yana gelince ses uzar (â).",
+    rotate: -70,
+    scale: 0.26,
+    translateY: 0,
+  },
+  {
+    id: "esre",
+    name: "Esre",
+    mark: "◌ِ",
+    onLetter: "بِ",
+    hook: "ESRE, üstünün tam TERSİ → harfin ALTında durur.",
+    hookKind: "üstünün tersi",
+    position: "altta",
+    soundThin: "i",
+    soundThick: "ı",
+    morphKind: "isaret",
+    morphGlyph: "",
+    morphLabel: "Üstün aşağı inince →",
+    shapeSay: "Esre, üstünle AYNI çizgi — sadece harfin üstüne değil, altına yazılır. Bir harfin küçüğü değil, üstünün ikizi.",
+    future: "İleride: esre'den sonra Ye gelirse ses uzar (î) — bu bir eşleşme kuralı, şekil benzerliği değil.",
+    rotate: -12,
+    scale: 1,
+    translateY: 46,
+  },
+  {
+    id: "otre",
+    name: "Ötre",
+    mark: "◌ُ",
+    onLetter: "بُ",
+    hook: "ÖTRE'nin adında Ö var, ağzın yuvarlanır → Ü diye okunur.",
+    hookKind: "adı sesini söylüyor",
+    position: "üstte",
+    soundThin: "ü",
+    soundThick: "u",
+    morphKind: "harf",
+    morphGlyph: "و",
+    morphLabel: "Vav küçülünce →",
+    shapeSay: "Vav kıvrımlıdır; küçülünce ötre olur — minik bir kıvrım.",
+    future: "İleride: ötre + Vav yan yana gelince ses uzar (û).",
+    rotate: 0,
+    scale: 0.3,
+    translateY: 0,
+  },
+];
+
 /** Nokta rozeti metni: "1 nokta üstte" gibi. */
 export function dotLabel(dots: number, where: DotWhere): string {
   if (dots === 0 || where === "yok") return "nokta yok";

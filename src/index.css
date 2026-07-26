@@ -348,3 +348,24 @@
 .animate-road-dash { animation: road-dash 0.6s linear infinite; }
 .animate-speed-line { animation: speed-line 0.8s ease-out infinite; }
 
+
+/* ---- Hareke hafıza yöntemi: ana harf → hareke dönüşümü ----
+ * Elif dimdik durur → yan yatıp küçülür → üstün olur. Aynı mantık vav→ötre,
+ * ye→esre. Dönüş/ölçek değerleri harfe göre değiştiği için CSS değişkeniyle
+ * verilir (--mn-rot / --mn-scale), keyframe ortaktır. */
+@keyframes hareke-morph {
+  0%, 18% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  55% { transform: translateY(var(--mn-y, 0px)) rotate(var(--mn-rot, -70deg)) scale(var(--mn-scale, 0.3)); opacity: 1; }
+  70%, 100% { transform: translateY(var(--mn-y, 0px)) rotate(var(--mn-rot, -70deg)) scale(var(--mn-scale, 0.3)); opacity: 0; }
+}
+@keyframes hareke-target-in {
+  0%, 58% { opacity: 0; }
+  74%, 100% { opacity: 1; }
+}
+.animate-hareke-morph { animation: hareke-morph 4.2s ease-in-out infinite; }
+.animate-hareke-target { animation: hareke-target-in 4.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hareke-morph { animation: none; opacity: 0; }
+  .animate-hareke-target { animation: none; opacity: 1; }
+}

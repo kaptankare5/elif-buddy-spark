@@ -84,7 +84,7 @@ const Index = () => {
           </p>
           {/* Güven rozetleri — veli ve kurum gözüyle ilk bakışta */}
           <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
-            {["🎙️ Gerçek hoca sesi", "📖 Diyanet müfredatıyla uyumlu", "🚫 Reklamsız"].map((b) => (
+            {["🎙️ Gerçek hoca sesi", "📖 Diyanet müfredatıyla uyumlu", "🧠 Hafıza yöntemleri", "🚫 Reklamsız"].map((b) => (
               <span key={b} className="rounded-full border border-white/25 bg-white/15 px-2.5 py-0.5 text-[10px] font-extrabold text-white backdrop-blur-sm">
                 {b}
               </span>

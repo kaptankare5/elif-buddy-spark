@@ -11,13 +11,28 @@ import { PageHeader } from "@/components/PageHeader";
 import { RouteHead } from "@/components/RouteHead";
 import { BuddyWithBubble } from "@/components/Buddy";
 import { TailErase } from "@/components/mnemonics/TailErase";
+import { EraseGame } from "@/components/mnemonics/EraseGame";
 import { DotCompare } from "@/components/mnemonics/DotCompare";
-import { STABLE_GROUP, TAIL_RULES, DOT_GROUPS, writingItemIds } from "@/data/writingMnemonics";
+import { HarekeMnemo } from "@/components/mnemonics/HarekeMnemo";
+import { STABLE_GROUP, TAIL_RULES, DOT_GROUPS, HAREKE_MNEMONICS, writingItemIds } from "@/data/writingMnemonics";
 import { findItem } from "@/data/subjects";
 import { playItem } from "@/lib/audio";
 import { Zap } from "lucide-react";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 const YazilisHafiza = () => {
+  // Konu sayfasından "kuyruk-silme" / "hareke" gibi bir bölüme direkt atlanabilsin
+  // diye (Diyanet/veli konuya girip çıkarken tam anlatımı görsün).
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    const t = setTimeout(() => {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [hash]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/60 to-background">
       <RouteHead
@@ -37,7 +52,7 @@ const YazilisHafiza = () => {
         </div>
 
         {/* ---- 1) DEĞİŞMEYEN 6 HARF ---- */}
-        <section className="mb-5">
+        <section id="degismeyen" className="mb-5 scroll-mt-3">
           <div className="mb-2 flex items-center gap-2">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success text-sm font-extrabold text-success-foreground">1</span>
             <h2 className="text-base font-extrabold text-foreground">{STABLE_GROUP.title}</h2>
@@ -84,7 +99,7 @@ const YazilisHafiza = () => {
         </section>
 
         {/* ---- 2) KUYRUK SİLME ---- */}
-        <section className="mb-5">
+        <section id="kuyruk-silme" className="mb-5 scroll-mt-3">
           <div className="mb-2 flex items-center gap-2">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-primary-foreground">2</span>
             <h2 className="text-base font-extrabold text-foreground">Kuyruk Silme Kuralı</h2>
@@ -96,15 +111,28 @@ const YazilisHafiza = () => {
               <b> ezberlemene gerek yok</b> — kuyruğu sil, çıkar!
             </p>
           </div>
+
+          {/* Önce İZLE (bir kez, worked-example): nasıl silineceğini görsün */}
+          <div className="mb-3">
+            <p className="mb-1.5 text-center text-[11px] font-extrabold text-muted-foreground">
+              👀 Önce izle — Cim örneği
+            </p>
+            <TailErase rule={TAIL_RULES[0]} />
+          </div>
+
+          {/* Sonra SEN DENE — her harf için elle sil oyunu (kim 2 saat okur ki!) */}
+          <p className="mb-2 text-center text-[11px] font-extrabold text-muted-foreground">
+            ✋ Şimdi sıra sende — kuyruğu parmağınla sil!
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {TAIL_RULES.map((r) => (
-              <TailErase key={r.n} rule={r} />
+              <EraseGame key={r.n} rule={r} />
             ))}
           </div>
         </section>
 
         {/* ---- 3) NOKTA YÖNTEMİ ---- */}
-        <section className="mb-5">
+        <section id="nokta-yontemi" className="mb-5 scroll-mt-3">
           <div className="mb-2 flex items-center gap-2">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-warning text-sm font-extrabold text-warning-foreground">3</span>
             <h2 className="text-base font-extrabold text-foreground">Nokta Yöntemi</h2>
@@ -119,6 +147,30 @@ const YazilisHafiza = () => {
           <div className="space-y-3">
             {DOT_GROUPS.map((g) => (
               <DotCompare key={g.id} group={g} />
+            ))}
+          </div>
+        </section>
+
+        {/* ---- 4) HAREKE HAFIZA YÖNTEMİ (Türkçe öncelikli) ---- */}
+        <section id="hareke" className="mb-5 scroll-mt-3">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-info text-sm font-extrabold text-info-foreground">4</span>
+            <h2 className="text-base font-extrabold text-foreground">Hareke Hafıza Yöntemi</h2>
+          </div>
+          <div className="mb-3 rounded-2xl border-2 border-info/40 bg-info/5 p-3">
+            <p className="text-[12px] font-bold leading-snug text-foreground">
+              Üç harekenin <b className="text-info">TÜRKÇE ADI</b> zaten bize ipucu veriyor —
+              çocuk bunu ezberlemeden, sadece adını hatırlayarak bulur:
+            </p>
+            <ul className="mt-1.5 space-y-0.5 text-[12px] font-bold text-foreground">
+              <li>🔹 <b>ÜSTÜN</b> — adında &quot;ÜST&quot; var → <b className="text-info">üstte</b> durur.</li>
+              <li>🔹 <b>ÖTRE</b> — adında &quot;Ö&quot; var → <b className="text-info">Ü</b> diye okunur.</li>
+              <li>🔹 <b>ESRE</b> — üstünün <b className="text-info">tam tersi</b> → altta durur.</li>
+            </ul>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {HAREKE_MNEMONICS.map((m) => (
+              <HarekeMnemo key={m.id} m={m} />
             ))}
           </div>
         </section>
