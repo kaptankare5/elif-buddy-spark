@@ -5,8 +5,15 @@
 //
 // KONU İÇİ BÖLÜM (CHUNK) KİLİDİ — bilişsel yük teorisi (Sweller):
 // Çocuk çalışma belleği ~4 öğe kaldırır; 28 harfi bir anda sormak aşırı
-// yüklemedir. Uzun konular 4 harflik "Bölüm"lere ayrılır (item.section).
-// Bir bölümdeki TÜM öğeler L3+'a ulaşınca sıradaki bölüm açılır.
+// yüklemedir. Bölümler artık KARIŞAN HARF AİLELERİDİR (elifba.ts SECTIONS):
+// birbirine benzeyen harflerin hepsi aynı bölümde olur ki ayrım yan yana
+// öğrenilsin. Bir bölümdeki TÜM öğeler L3+'a ulaşınca sıradaki bölüm açılır.
+//
+// İKİNCİ KOŞUL — KARIŞIKLIK: seviyeler yükselmiş olsa bile çocuk hâlâ o
+// bölümün İÇİNDEKİ iki harfi birbirine karıştırıyorsa bölüm geçilmez.
+// "Bu bölümü biliyorum" demek, harfleri tek tek tanımak değil, BİRBİRİNDEN
+// ayırt edebilmek demektir. Isı üst üste 3 doğru ayrımda düştüğü için
+// (confusion.ts) kapı kilitli kalmaz — çocuk ayrımı gösterince açılır.
 // Önceki bölümler ASLA yeniden kilitlenmez — açık kalırlar ki SRS seçici
 // onları düşük oranda karıştırmaya devam etsin (aralıklı tekrar +
 // serpiştirme; Cepeda 2006, Rohrer & Taylor 2007).
@@ -15,8 +22,26 @@ import { getTopicSrs, type Level, type Namespace } from "@/data/srs";
 import type { ContentItem, ContentTopic } from "@/data/types";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { isTopicSkipped } from "@/lib/placement";
+import { heatBetween } from "@/lib/confusion";
 
 const NS: Namespace = "quiz";
+
+// Bölümü tutan karışıklık eşiği. Tek yanlış seçim ısıyı 0.34 yapar (kapı
+// açık kalır); iki kez aynı ikiliyi karıştırmak 0.68'e çıkarır → kapı kapanır.
+// Üç doğru ayrım ısıyı 0.5 düşürdüğü için kapı hemen tekrar açılır.
+const SECTION_CONFUSION_MAX = 0.6;
+
+/** Bu bölümün İÇİNDE hâlâ sıcak bir karışıklık var mı? (varsa hangi çift) */
+export function hotPairInSection(items: ContentItem[]): [ContentItem, ContentItem] | null {
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      if (heatBetween(items[i].id, items[j].id) >= SECTION_CONFUSION_MAX) {
+        return [items[i], items[j]];
+      }
+    }
+  }
+  return null;
+}
 
 export function isTopicCompleted(topic: ContentTopic): boolean {
   if (topic.noPractice) return true;
@@ -26,7 +51,10 @@ export function isTopicCompleted(topic: ContentTopic): boolean {
     const lvl = (srs[it.id]?.level ?? 1) as Level;
     if (lvl < 3) return false;
   }
-  return true;
+  // Bölüm kilidiyle aynı ilke: seviyeler tamam olsa da hâlâ karıştırdığı bir
+  // ikili varsa konu bitmiş sayılmaz (yoksa bölümler kilitliyken konu açılıp
+  // tutarsız bir durum çıkardı).
+  return !hotPairInSection(topic.items);
 }
 
 export function getUnlockedTopicIds(): Set<string> {
@@ -92,7 +120,9 @@ export function getUnlockedSections(topic: ContentTopic): Set<string> {
   for (const sec of order) {
     out.add(sec);
     const items = topic.items.filter((it) => it.section === sec);
-    const mastered = items.every((it) => ((srs[it.id]?.level ?? 1) as Level) >= 3);
+    const leveled = items.every((it) => ((srs[it.id]?.level ?? 1) as Level) >= 3);
+    // Seviye yetmez: bölüm içi karışıklık da sönmüş olmalı (ayrım şartı).
+    const mastered = leveled && !hotPairInSection(items);
     if (!mastered) break; // burası aktif bölüm — sonrakiler kilitli kalır
   }
   return out;

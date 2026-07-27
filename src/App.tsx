@@ -29,6 +29,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { BottomNav } from "@/components/BottomNav";
 import { DebugHud } from "@/components/DebugHud";
+import { RemedyOverlay } from "@/components/mnemonics/RemedyOverlay";
 import { ConsentModal } from "@/components/ConsentModal";
 import { CapacitorBackHandler } from "@/components/CapacitorBackHandler";
 
@@ -77,6 +78,7 @@ const AppShell = () => {
             </Routes>
             <BottomNav />
             <DebugHud />
+            <RemedyOverlay />
             <ConsentModal />
           </SubscriptionProvider>
         </AuthProvider>

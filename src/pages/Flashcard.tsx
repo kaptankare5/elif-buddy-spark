@@ -16,6 +16,7 @@ import { isTopicUnlocked, getUnlockedItemsOf } from "@/lib/unlock";
 import { pickReviewItem } from "@/lib/review";
 import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
 import { pickContrastId, recordDiscrimination, recordMiss } from "@/lib/confusion";
+import { considerRemedy, showRemedy } from "@/lib/remedial";
 import { cn } from "@/lib/utils";
 import { LevelBadge } from "@/components/LevelBadge";
 import type { ContentItem, SubjectId } from "@/data/types";
@@ -110,6 +111,11 @@ const Flashcard = () => {
       if (correct) recordDiscrimination(current.id, [prevIdRef.current]);
     }
     if (!correct) recordMiss(current.id);
+    // TELAFİ: ısrarlı hatada harfin hafıza yöntemi açılır (her yanlışta değil).
+    if (!correct) {
+      const r = considerRemedy(current.id, prevIdRef.current ?? undefined);
+      if (r) setTimeout(() => showRemedy(r), 900);
+    }
     prevIdRef.current = current.id;
     if (reviewTopicRef.current && isTopicSkipped(reviewTopicRef.current)) {
       recordBackCheck(reviewTopicRef.current, correct);

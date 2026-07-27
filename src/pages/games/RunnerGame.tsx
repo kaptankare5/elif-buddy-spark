@@ -29,6 +29,7 @@ ShipSvg.displayName = "ShipSvg";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem } from "@/lib/audio";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
+import { useRemedyOnGameOver } from "@/lib/remedial";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
@@ -77,6 +78,8 @@ const RunnerGame = () => {
   const [combo, setCombo] = useState(0);
   const [lives, setLives] = useState(3);
   const [gameOver, setGameOver] = useState(false);
+  // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
+  useRemedyOnGameOver(gameOver);
   const [paused, setPaused] = useState(true);
   const [pops, setPops] = useState<Pop[]>([]);
   const [flash, setFlash] = useState<"good" | "bad" | null>(null);

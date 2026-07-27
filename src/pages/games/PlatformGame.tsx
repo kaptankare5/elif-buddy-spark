@@ -26,6 +26,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem, playSfx } from "@/lib/audio";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
+import { useRemedyOnGameOver } from "@/lib/remedial";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { gameMusic } from "@/lib/gameMusic";
 import { isTestUnlockActive } from "@/lib/testUnlock";
@@ -1306,6 +1307,8 @@ const PlatformGame = () => {
   const [paused, setPaused] = useState(true);
   const [started, setStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
+  useRemedyOnGameOver(gameOver);
   const [won, setWon] = useState(false);
   const [progress, setProgress] = useState(0);
   const [question, setQuestion] = useState<string | null>(null);

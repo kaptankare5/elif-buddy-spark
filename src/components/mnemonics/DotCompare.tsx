@@ -40,8 +40,10 @@ function DotDiagram({ dots, where }: { dots: number; where: MnemonicLetter["wher
   );
 }
 
-export function DotCompare({ group }: { group: DotGroup }) {
-  const [form, setForm] = useState<Form>("init");
+// `initialForm`: telafi ekranında çocuğun HATA YAPTIĞI hâlle açılır — yanlış
+// yaptığı hâl gözünün önünde olsun diye (varsayılan: başta).
+export function DotCompare({ group, initialForm = "init" }: { group: DotGroup; initialForm?: Form }) {
+  const [form, setForm] = useState<Form>(initialForm);
 
   return (
     <div className="rounded-2xl border-2 border-warning/40 bg-card p-3 shadow-card">

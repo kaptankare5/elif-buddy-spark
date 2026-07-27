@@ -12,6 +12,7 @@ import * as THREE from "three";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
+import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
@@ -909,6 +910,8 @@ const SubwayGame = () => {
   const [paused, setPaused] = useState(true);
   const [started, setStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
+  useRemedyOnGameOver(gameOver);
   const [question, setQuestion] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad" | "power" } | null>(null);
   const [pu, setPu] = useState<{ jet: number; x2: number; mag: number }>({ jet: 0, x2: 0, mag: 0 });

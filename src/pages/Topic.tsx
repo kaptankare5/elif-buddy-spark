@@ -24,6 +24,8 @@ import { SkipTest } from "@/components/SkipTest";
 import { LevelBadge } from "@/components/LevelBadge";
 import { BuddyWithBubble } from "@/components/Buddy";
 import { pickDistractors, recordConfusionPick, recordDiscrimination } from "@/lib/confusion";
+import { hotPairInSection } from "@/lib/unlock";
+import { considerRemedy, showRemedy } from "@/lib/remedial";
 import { Rocket, Brain } from "lucide-react";
 import { STABLE_GROUP, TAIL_RULES, HAREKE_MNEMONICS } from "@/data/writingMnemonics";
 
@@ -294,10 +296,16 @@ const Topic = () => {
             </div>
           )}
 
-          {sectionOrder.map((sec) => {
+          {sectionOrder.map((sec, secIdx) => {
             const open = unlockedSecs.has(sec);
             const { done, total } = sectionMastery(sec);
             const isExtra = sec === "Ekstralar";
+            // Bu bölüm kilitliyse kapıyı tutan sebep bir önceki bölümdedir:
+            // ya seviyeler eksik ya da orada hâlâ karıştırılan bir ikili var.
+            const prevSec = secIdx > 0 ? sectionOrder[secIdx - 1] : null;
+            const blockingPair = !open && prevSec
+              ? hotPairInSection(items.filter((it) => it.section === prevSec))
+              : null;
             return (
               <div key={sec}>
                 <h3 className="mb-2 flex items-center justify-center gap-2 text-center font-extrabold text-foreground">
@@ -325,8 +333,23 @@ const Topic = () => {
                   <div className="mb-6 rounded-2xl border-2 border-dashed border-border bg-muted/40 p-5 text-center">
                     <Lock className="mx-auto mb-1 h-6 w-6 text-muted-foreground" />
                     <p className="text-xs font-bold text-muted-foreground">
-                      Alıştırma yaparak öğrenince açılır
+                      {blockingPair
+                        ? "Önceki bölümde iki harf hâlâ karışıyor"
+                        : "Alıştırma yaparak öğrenince açılır"}
                     </p>
+                    {/* Kapıyı tutan sebep gizli kalmasın: hangi ikili karışıyor? */}
+                    {blockingPair && (
+                      <p className="mt-1.5 text-[11px] font-extrabold text-warning" dir="rtl">
+                        <span className="font-arabic text-lg leading-[1.5]">{blockingPair[0].emoji}</span>
+                        <span className="mx-1" dir="ltr">↔</span>
+                        <span className="font-arabic text-lg leading-[1.5]">{blockingPair[1].emoji}</span>
+                      </p>
+                    )}
+                    {blockingPair && (
+                      <p className="mt-0.5 text-[10px] font-bold text-muted-foreground">
+                        Bu ikiliyi üst üste doğru ayırınca açılır
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -390,6 +413,12 @@ const Topic = () => {
       retryIdRef.current = correct ? null : q.target.id;
     }
     await playFeedback(correct);
+    // TELAFİ: başta/ortada/sonda hâlinde ısrarlı hata → hafıza yöntemi açılır.
+    // Politika remedial.ts'te (her yanlışta değil; soğuma + seans tavanı).
+    if (!correct) {
+      const r = considerRemedy(q.target.id, opt.id);
+      if (r) setTimeout(() => showRemedy(r), 1200);
+    }
     setTimeout(() => setQ(null), correct ? 700 : 2000);
   };
 
