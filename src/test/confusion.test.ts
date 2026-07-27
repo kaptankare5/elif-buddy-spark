@@ -195,30 +195,37 @@ describe("SRS seçimi: karışan harf daha sık gelir", () => {
   });
 });
 
-// --- BÖLÜM = KARIŞAN HARF AİLESİ + ayrım şartlı kilit ---
+// --- BÖLÜMLEME: aile gruplaması YALNIZ 2. konuda; ayrım şartlı kilit ---
 describe("bölümler ve kilit", () => {
   const yaz = topics.find((t) => t.id === "yazilislar")!;
 
-  it("her karışma ailesi TEK bir bölümün içinde kalır", () => {
-    const secOf = new Map<number, string>();
-    for (const it of harfler) {
-      const n = letterNumOf(it.id)!;
-      secOf.set(n, it.section!);
+  const sectionMap = (items: typeof harfler) => {
+    const m = new Map<number, string>();
+    for (const it of items) {
+      const n = letterNumOf(it.id);
+      if (n != null && !m.has(n)) m.set(n, it.section!);
     }
-    // confusables.ts'teki 12 öbek — hepsi tek bölümde olmalı
-    const families = [
-      [2, 3, 4, 25, 28], [5, 6, 7], [8, 9], [10, 11], [12, 13], [14, 15],
-      [16, 17], [18, 19], [20, 21], [1, 23], [22, 23], [24, 27],
-    ];
-    for (const fam of families) {
+    return m;
+  };
+
+  // confusables.ts'teki 12 karışma öbeği
+  const FAMILIES = [
+    [2, 3, 4, 25, 28], [5, 6, 7], [8, 9], [10, 11], [12, 13], [14, 15],
+    [16, 17], [18, 19], [20, 21], [1, 23], [22, 23], [24, 27],
+  ];
+
+  it("2. konuda (başta/ortada/sonda) her karışma ailesi TEK bölümde kalır", () => {
+    const secOf = sectionMap(yaz.items);
+    for (const fam of FAMILIES) {
       const secs = new Set(fam.map((n) => secOf.get(n)));
       expect(secs.size, `aile ${fam.join(",")} bölündü: ${[...secs].join(" / ")}`).toBe(1);
     }
   });
 
-  it("bölümler 3-5 harf arası (bilişsel yük)", () => {
+  it("2. konu bölümleri 3-5 harf, toplam 28 harf", () => {
+    const secOf = sectionMap(yaz.items);
     const count = new Map<string, number>();
-    for (const it of harfler) count.set(it.section!, (count.get(it.section!) ?? 0) + 1);
+    for (const sec of secOf.values()) count.set(sec, (count.get(sec) ?? 0) + 1);
     for (const [sec, n] of count) {
       expect(n, `${sec} = ${n} harf`).toBeGreaterThanOrEqual(3);
       expect(n, `${sec} = ${n} harf`).toBeLessThanOrEqual(5);
@@ -226,28 +233,36 @@ describe("bölümler ve kilit", () => {
     expect([...count.values()].reduce((a, b) => a + b, 0)).toBe(28);
   });
 
-  it("aynı bölümleme yazılışlar konusunda da geçerli", () => {
-    const s1 = yaz.items.filter((i) => i.id === "l2-01-init" || i.id === "l2-23-init");
-    expect(s1[0].section).toBe(s1[1].section); // Elif ve Lem aynı bölümde
+  it("DİĞER konular geleneksel 4'erli bölümlemeyi korur (elif be te se…)", () => {
+    const secOf = sectionMap(harfler);
+    expect(secOf.get(1)).toBe("1. Bölüm");   // Elif
+    expect(secOf.get(4)).toBe("1. Bölüm");   // Se — ilk dörtlü
+    expect(secOf.get(5)).toBe("2. Bölüm");   // Cim
+    expect(secOf.get(23)).toBe("6. Bölüm");  // Lem — Elif'le AYNI bölümde DEĞİL
+    expect(secOf.get(28)).toBe("7. Bölüm");  // Ye
+  });
+
+  it("bölüm adları sade ('N. Bölüm'), aile etiketi yok", () => {
+    for (const it of [...harfler, ...yaz.items]) {
+      expect(it.section).toMatch(/^\d+\. Bölüm$/);
+    }
   });
 
   it("bölüm içi karışıklık sıcakken bölüm ustalaşmış sayılmaz", () => {
-    const sec1 = harfler.filter((it) => it.section === harfler[0].section);
+    const sec1 = yaz.items.filter((it) => it.section === yaz.items[0].section);
     expect(hotPairInSection(sec1)).toBeNull();
-    recordConfusionPick(ELIF, LEM);   // 0.34 — tek hata kapıyı kapatmaz
+    recordConfusionPick("l2-01-init", "l2-23-init"); // 0.34 — tek hata kapıyı kapatmaz
     expect(hotPairInSection(sec1)).toBeNull();
-    recordConfusionPick(ELIF, LEM);   // 0.68 — ısrarlı karışıklık → kapı kapanır
-    const pair = hotPairInSection(sec1);
-    expect(pair).not.toBeNull();
-    expect([pair![0].id, pair![1].id].sort()).toEqual([ELIF, LEM].sort());
+    recordConfusionPick("l2-01-init", "l2-23-init"); // 0.68 — ısrarlı → kapı kapanır
+    expect(hotPairInSection(sec1)).not.toBeNull();
   });
 
   it("üst üste 3 doğru ayrımdan sonra kapı yeniden açılır (kilitlenip kalmaz)", () => {
-    const sec1 = harfler.filter((it) => it.section === harfler[0].section);
-    recordConfusionPick(ELIF, LEM);
-    recordConfusionPick(ELIF, LEM);
+    const sec1 = yaz.items.filter((it) => it.section === yaz.items[0].section);
+    recordConfusionPick("l2-01-init", "l2-23-init");
+    recordConfusionPick("l2-01-init", "l2-23-init");
     expect(hotPairInSection(sec1)).not.toBeNull();
-    for (let i = 0; i < 3; i++) recordDiscrimination(ELIF, [LEM]);
+    for (let i = 0; i < 3; i++) recordDiscrimination("l2-01-init", ["l2-23-init"]);
     expect(hotPairInSection(sec1)).toBeNull();
   });
 });

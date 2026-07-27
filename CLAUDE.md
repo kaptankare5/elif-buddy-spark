@@ -15,18 +15,18 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
   kutlamaları kaldırıldı — `playFeedback(true/false)` (ding/buzz) kullan.
 
 ### Veri: `src/data/topics/elifba.ts`
-- **Bölümler = karışan harf aileleri** (`SECTIONS`, elifba.ts): 4'erli
-  kesim harf ailelerini bölüyordu (Elif 1., Lem 6. bölümdeydi). Artık 7
-  bölüm var (Dikey çizgiler ا ك ل · Diş ailesi ب ت ث ن ي · Çanaklılar ·
-  Kancalılar · Taraklı-ilmekli · Halkalılar · Son grup) ve 12 karışma
-  öbeğinin hepsi tek bölümün içinde. Harf sırası (LETTERS) değişmedi,
-  yalnız bölüm SINIRLARI aileye göre. Bütün l1/l2/l3… konuları `bolum()`
-  üzerinden aynı bölümlemeyi kullanır.
+- İki ayrı bölümleme var: `bolum()` = geleneksel 4'erli ("1. Bölüm" =
+  elif be te se) — 1., 3. ve sonraki BÜTÜN konular bunu kullanır.
+  `bolumYazilis()` = YALNIZ 2. konu (başta/ortada/sonda): karışabilen
+  harfler aynı bölümde toplanır (ا ك ل · ب ت ث ن ي · ج ح خ · د ذ ر ز ·
+  س ش ص ض · ط ظ ع غ · ف ق م و ه), 12 karışma öbeğinin hepsi tek bölümde.
+  Bölüm ADLARI iki tarafta da sade ("N. Bölüm") — aile etiketi YOK
+  (kullanıcı şartı). Harf sırası (LETTERS) hiç değişmedi.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
   hareke okunuşları üretilir (kalın 7 harf a/ı/u; Râ karışık ra/ri/ru;
   gerisi e/i/ü). Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
 - 10 konu; 7/9/10 video'lu (`topic.video`, YouTube gömme Topic.tsx'te).
-- `item.section` = aile bölümü adı (yukarı bak) veya "Ekstralar"
+- `item.section` = "N. Bölüm" (yukarı bak) veya "Ekstralar"
   (Diyanet PDF alıştırmalarından). CRLF satır sonları — çok satırlı Edit
   eşleşmesi başarısız olursa nedeni bu (tek satır anchor veya node kullan).
 
