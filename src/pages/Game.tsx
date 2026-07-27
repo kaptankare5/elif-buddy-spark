@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { useGameSession } from "@/hooks/useGameSession";
 import { useGameMode } from "@/lib/gameMode";
+import { releaseRemedy } from "@/lib/remedial";
 import { RouteHead } from "@/components/RouteHead";
 import QuizGame from "./games/QuizGame";
 import MemoryGame from "./games/MemoryGame";
@@ -50,6 +51,10 @@ const TrackedGame = ({ gameId }: { gameId: string }) => {
   // Normal modda oyun cevabı "arada test" olarak sayıldığında kısa olumlu
   // sinyal — çocuğa ilerlediğini hissettirir, akışı bölmez. (Süper modda ve
   // Quiz oyununda her cevap zaten sayıldığı için bu bildirim gösterilmez.)
+  // Bitiş durumu OLMAYAN oyunlarda (balon, hafıza, kutu, üçlü…) telafi anı
+  // = çocuğun oyundan çıktığı andır. Oyun içinde asla açılmaz.
+  useEffect(() => () => { releaseRemedy(); }, []);
+
   useEffect(() => {
     if (mode === "super" || gameId === "quiz") return;
     const onTest = () => toast("📝 Test sorusu sayıldı! İlerliyorsun ✨", { duration: 1400 });

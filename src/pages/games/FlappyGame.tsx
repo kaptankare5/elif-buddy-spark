@@ -3,6 +3,7 @@ import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle, pickWrongs } from "./_shared";
+import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
@@ -52,6 +53,8 @@ const FlappyGame = () => {
   const [eaten, setEaten] = useState(0);
   const [lives, setLives] = useState(3);
   const [gameOver, setGameOver] = useState(false);
+  // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
+  useRemedyOnGameOver(gameOver);
   const [paused, setPaused] = useState(true);
 
   const tickRef = useRef(0);

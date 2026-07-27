@@ -67,11 +67,33 @@ const pad2 = (n: number) => (n < 10 ? `0${n}` : String(n));
 const audioPath = (name: string) => `/audio/elifba/${name}`;
 const byName = new Map(LETTERS.map((l) => [l.name, l]));
 
-// Bilişsel yük teorisi: çocuklarda çalışma belleği ~4 öğe kaldırır.
-// Uzun konular harf numarasına göre 4'erli bölümlere ayrılır; bölümdeki tüm
-// öğeler seviye 3+'a ulaşınca sıradaki bölüm açılır (unlock.ts). Bölüm adları
-// tüm konularda aynı harf grubunu işaret eder (tutarlı zihinsel harita).
-const bolum = (n: number) => `${Math.floor((n - 1) / 4) + 1}. Bölüm`;
+// BÖLÜMLER = KARIŞAN HARF AİLELERİ (rasm öbekleri).
+//
+// Eskiden bölümler harf numarasına göre 4'erli kesiliyordu (1-4, 5-8, …).
+// Bu, birbirine benzeyen harfleri BÖLÜYORDU: Elif (1) 1. bölümde, Lem (23)
+// 6. bölümde; Dal/Zel 2 ile 3'e, Sin/Şin 3 ile 4'e bölünüyordu. Oysa ayrım
+// öğrenmenin tek yolu benzerleri YAN YANA görmektir (Kornell & Bjork 2008;
+// Birnbaum, Kornell, Bjork & Bjork 2013). Ayrı öğrenilen ب ile ن sonradan
+// karışır; birlikte öğrenilince ayırt edici işaret (nokta) kodlanır.
+//
+// Artık her bölüm, karışabilen harflerin TAMAMINI içerir — 12 karışma
+// öbeğinin hepsi tek bir bölümün içinde kalır. Bölüm içi sıra geleneksel
+// elifbâ sırasıdır; yalnız bölüm SINIRLARI aileye göre çizilir.
+// Bilişsel yük (Sweller) için bölümler 3-5 harfte tutuldu.
+const SECTIONS: { name: string; letters: number[] }[] = [
+  { name: "1. Bölüm · Dikey çizgiler",   letters: [1, 22, 23] },              // ا ك ل
+  { name: "2. Bölüm · Diş ailesi",       letters: [2, 3, 4, 25, 28] },        // ب ت ث ن ي
+  { name: "3. Bölüm · Çanaklılar",       letters: [5, 6, 7] },                // ج ح خ
+  { name: "4. Bölüm · Kancalılar",       letters: [8, 9, 10, 11] },           // د ذ ر ز
+  { name: "5. Bölüm · Taraklı-ilmekli",  letters: [12, 13, 14, 15] },         // س ش ص ض
+  { name: "6. Bölüm · Halkalılar",       letters: [16, 17, 18, 19] },         // ط ظ ع غ
+  { name: "7. Bölüm · Son grup",         letters: [20, 21, 24, 26, 27] },     // ف ق م و ه
+];
+
+const SECTION_OF = new Map<number, string>();
+for (const s of SECTIONS) for (const n of s.letters) SECTION_OF.set(n, s.name);
+
+const bolum = (n: number) => SECTION_OF.get(n) ?? "Ekstralar";
 
 // Elifba konusu (10 alt konu)
 const P = "elifba" as const;

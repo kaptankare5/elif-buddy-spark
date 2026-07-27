@@ -15,11 +15,18 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
   kutlamaları kaldırıldı — `playFeedback(true/false)` (ding/buzz) kullan.
 
 ### Veri: `src/data/topics/elifba.ts`
+- **Bölümler = karışan harf aileleri** (`SECTIONS`, elifba.ts): 4'erli
+  kesim harf ailelerini bölüyordu (Elif 1., Lem 6. bölümdeydi). Artık 7
+  bölüm var (Dikey çizgiler ا ك ل · Diş ailesi ب ت ث ن ي · Çanaklılar ·
+  Kancalılar · Taraklı-ilmekli · Halkalılar · Son grup) ve 12 karışma
+  öbeğinin hepsi tek bölümün içinde. Harf sırası (LETTERS) değişmedi,
+  yalnız bölüm SINIRLARI aileye göre. Bütün l1/l2/l3… konuları `bolum()`
+  üzerinden aynı bölümlemeyi kullanır.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
   hareke okunuşları üretilir (kalın 7 harf a/ı/u; Râ karışık ra/ri/ru;
   gerisi e/i/ü). Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
 - 10 konu; 7/9/10 video'lu (`topic.video`, YouTube gömme Topic.tsx'te).
-- `item.section` = "N. Bölüm" (4 harflik gruplar) veya "Ekstralar"
+- `item.section` = aile bölümü adı (yukarı bak) veya "Ekstralar"
   (Diyanet PDF alıştırmalarından). CRLF satır sonları — çok satırlı Edit
   eşleşmesi başarısız olursa nedeni bu (tek satır anchor veya node kullan).
 
@@ -28,8 +35,10 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
   değişmez). L3→L4 = üst üste 2 doğru (`consecutiveCorrect`). Seçici:
   görülmemişler müfredat sırasıyla, art arda aynı öğe yok, ağırlıklar
   L1 %55…L4 %15 (%85 başarı kuralı).
-- Bölüm kilidi `src/lib/unlock.ts`: konu içi section'lar sıralı açılır
-  (bölümdeki tüm öğeler L3+ → sonraki açılır; eskiler açık kalır).
+- Bölüm kilidi `src/lib/unlock.ts`: konu içi section'lar sıralı açılır.
+  Açılma şartı İKİ tane: (1) bölümdeki tüm öğeler L3+, (2) bölüm içinde
+  sıcak karışıklık kalmamış (`hotPairInSection`, eşik 0.6). Eskiler açık
+  kalır. `isTopicCompleted` de aynı iki şarta bakar.
   Test/Flashcard/oyun havuzu (`gamePool`) YALNIZ açık öğeleri sorar
   (`getUnlockedItemsOf` / `getUnlockedItemIdSet`).
 - Konu kilidi: konudaki tüm öğeler L3+ → sonraki konu. Ayarlar'da test
@@ -54,6 +63,17 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
   (`chosenId`/`shownIds` meta'sı — moddan bağımsız her cevapta işler),
   Flashcard (ardışık kart partnerse doğru cevap = ayrım).
 - Debug HUD'da "Karışıklık Isısı" bölümü çifti okunur gösterir (Elif↔Lem).
+
+### Telafi (`src/lib/remedial.ts` + `RemedyOverlay`)
+- Yalnız `l2-*` (başta/ortada/sonda) hatalarında; harfin hafıza yöntemi
+  tam ekran açılır. Yöntem HATANIN EKSENİNE göre: farklı harf karıştırdıysa
+  nokta (`DotCompare`, hata yapılan hâlle açılır), aynı harfin başka hâliyle
+  karıştırdıysa kuyruk (`EraseGame`) ya da "hiç değişmez".
+- **Her yanlışta çıkmaz**: ısı ≥ 0.5 (tek hata yetmez) + aynı harf 30 dk,
+  herhangi bir telafi 4 dk soğuma + seansta en fazla 3.
+- Test/Flashcard'da hemen; OYUNLARDA ASLA ortada — `queueRemedy` ile
+  kuyruğa alınır, `useRemedyOnGameOver` (ölünce/süre bitince) ya da
+  Game.tsx unmount'ta (bitişi olmayan oyunlar) açılır.
 
 ### Oyun modları (`src/lib/gameMode.ts`)
 - Varsayılan **süper** ("super"); kullanıcı Ayarlar'dan normale döner.
