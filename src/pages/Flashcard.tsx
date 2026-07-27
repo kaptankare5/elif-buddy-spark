@@ -15,6 +15,7 @@ import {
 import { isTopicUnlocked, getUnlockedItemsOf } from "@/lib/unlock";
 import { pickReviewItem } from "@/lib/review";
 import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
+import { pickContrastId, recordDiscrimination, recordMiss } from "@/lib/confusion";
 import { cn } from "@/lib/utils";
 import { LevelBadge } from "@/components/LevelBadge";
 import type { ContentItem, SubjectId } from "@/data/types";
@@ -43,10 +44,28 @@ const Flashcard = () => {
   const [busy, setBusy] = useState(false);
   // Şu anki kart bir BAKIM/ara-kontrol (eski açık konu) ise o konunun id'si.
   const reviewTopicRef = useRef<string | null>(null);
+  // KARIŞIKLIK KARŞITLIĞI: bir önceki kart ve o çiftle kaç kart üst üste geldi.
+  // Çocuk Elif'i Lem'le karıştırıyorsa kartlar arka arkaya gelmeli — karşıtlık
+  // ancak yan yana çalışır (Kornell & Bjork). Zincir 3 kartla sınırlı ki
+  // çocuk aynı ikilide sıkışıp kalmasın.
+  const prevIdRef = useRef<string | null>(null);
+  const chainRef = useRef(0);
 
   const pickNext = () => {
     if (itemIds.length === 0) return;
-    // Serpiştirilmiş bakım: ~%22 eski açık konudan (zayıf/atlanmışsa daha çok).
+    // 1) Karışan partner: az önceki kartla ısınmış bir çift varsa onu göster.
+    const contrast = pickContrastId(prevIdRef.current, itemIds, chainRef.current);
+    if (contrast) {
+      chainRef.current += 1;
+      reviewTopicRef.current = null;
+      setCurrentId(contrast);
+      setFlipped(false);
+      setDrag(0);
+      startRef.current = Date.now();
+      return;
+    }
+    chainRef.current = 0;
+    // 2) Serpiştirilmiş bakım: ~%22 eski açık konudan (zayıf/atlanmışsa daha çok).
     const rev = pickReviewItem(topic!.id, NS);
     if (rev) {
       reviewTopicRef.current = rev.topicId;
@@ -84,6 +103,14 @@ const Flashcard = () => {
     const responseMs = Date.now() - startRef.current;
     const recTopic = reviewTopicRef.current ?? topic!.id;
     await recordSrsAnswer(NS, recTopic, current.id, correct, { responseMs });
+    // Karışıklık ölçümü: flashcard'da şık yok, karşıtlık ARDIŞIKTIR — bir
+    // önceki kart partnerse doğru cevap gerçek bir ayrımdır. Yanlışta hangi
+    // harfle karıştırdığı bilinemez → a-priori partnerlere hafif ısı.
+    if (prevIdRef.current && prevIdRef.current !== current.id) {
+      if (correct) recordDiscrimination(current.id, [prevIdRef.current]);
+    }
+    if (!correct) recordMiss(current.id);
+    prevIdRef.current = current.id;
     if (reviewTopicRef.current && isTopicSkipped(reviewTopicRef.current)) {
       recordBackCheck(reviewTopicRef.current, correct);
     }

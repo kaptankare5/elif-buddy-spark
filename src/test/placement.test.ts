@@ -21,7 +21,8 @@ import {
 } from "@/lib/placement";
 import { getUnlockedTopicIds } from "@/lib/unlock";
 import { pickReviewItem } from "@/lib/review";
-import { pickDistractors, letterNumOf } from "@/lib/confusables";
+import { letterNumOf } from "@/lib/confusables";
+import { pickDistractors } from "@/lib/confusion";
 import { getTopicSrs } from "@/data/srs";
 import { getAllTopics } from "@/data/subjects";
 

@@ -5,14 +5,14 @@ import { InGameQuiz } from "@/components/InGameQuiz";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { useGameMode } from "@/lib/gameMode";
-import { gamePool, pickN, shuffle } from "./_shared";
+import { gamePool, pickCluster, shuffle } from "./_shared";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 
 interface Card { uid: string; item: ContentItem; flipped: boolean; matched: boolean; variant: "a" | "b"; }
 
 function buildBoard(pairs: number): Card[] {
-  const items = pickN(gamePool(), pairs);
+  const items = pickCluster(gamePool(), pairs);
   const cards: Card[] = [];
   items.forEach((it) => {
     cards.push({ uid: `${it.id}-a`, item: it, flipped: false, matched: false, variant: "a" });

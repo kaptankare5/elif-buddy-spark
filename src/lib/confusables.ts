@@ -1,12 +1,17 @@
-// KARIŞAN HARF AYRIMI (discriminative-contrast). Bilim: karıştırılan
-// kategorileri ayırt etmenin en güçlü yolu onları YAN YANA görmektir
-// (Kornell & Bjork; Birnbaum, Kornell, Bjork & Bjork 2013; Kang & Pashler).
-// Elifbâ'da harfler çoğunlukla AYNI iskeleti (rasm) paylaşıp yalnız noktayla
-// ayrılır: ب/ت/ث/ن/ي, ج/ح/خ, د/ذ, ر/ز, س/ش, ص/ض, ط/ظ, ع/غ, ف/ق. Çoktan
-// seçmeli testte çeldiricileri RASTGELE değil, hedefin KARIŞANLARINDAN
-// seçersek test artık gerçekten ayrım eğitir (yalnız fark kalır → çocuk farkı
-// yakalar). Hareke/cezm gibi konularda da işler: id kalıbı `lN-NN-...` temel
-// harf numarasını taşır, karışıklık o numara üzerinden bulunur.
+// KARIŞAN HARF BİLGİSİ (statik) — hangi öğeler birbirine benzediği için
+// karıştırılabilir? Burada YALNIZ değişmeyen bilgi durur; çocuğun GERÇEKTEN
+// neyi karıştırdığı `src/lib/confusion.ts` içinde ölçülür.
+//
+// Bilim: karıştırılan kategorileri ayırt etmenin en güçlü yolu onları YAN YANA
+// görmektir (Kornell & Bjork; Birnbaum, Kornell, Bjork & Bjork 2013; Kang &
+// Pashler). Elifbâ'da iki ayrı karışma ekseni var:
+//
+//  1) HARF ekseni — aynı iskeleti (rasm) paylaşıp yalnız noktayla ayrılanlar:
+//     ب/ت/ث/ن/ي, ج/ح/خ, د/ذ, ر/ز, س/ش, ص/ض, ط/ظ, ع/غ, ف/ق; ayrıca dikey
+//     çizgililer ا/ل, uzun boylular ك/ل, ilmekliler م/ه.
+//  2) FORM ekseni — AYNI harfin başta/ortada/sonda hâlleri. "Yazılışlar"
+//     konusunun bütün derdi budur: çocuk جـ (başta) ile ـجـ (ortada) hâlini
+//     karıştırır. Bu yüzden aynı harfin diğer hâlleri de karışan sayılır.
 import type { ContentItem } from "@/data/types";
 
 // Karışan harf öbekleri (harf no 1..28). Simetrik komşuluk üretilir.
@@ -33,20 +38,45 @@ for (const g of GROUPS) {
   }
 }
 
-// id → temel harf numarası (l1-02 → 2, l3-14-a → 14). Eşleşmezse null (Ekstralar).
+/** Bir harfin karıştığı harf numaraları (yoksa boş küme). */
+export function confusableLetters(n: number): ReadonlySet<number> {
+  return CONFUSABLE[n] ?? new Set<number>();
+}
+
+/** id → temel harf numarası (l1-02 → 2, l3-14-a → 14). Eşleşmezse null (Ekstralar). */
 export function letterNumOf(id: string): number | null {
   const m = id.match(/^l\d+-(\d{2})/);
   return m ? parseInt(m[1], 10) : null;
 }
 
-// id → temel harf sonrası ek (hareke/koda), örn "l3-14-a" → "a". Aynı ekli
-// karışanları öne almak için (yalnız HARF farkı kalsın → saf ayrım).
-function suffixOf(id: string): string {
+/** id → temel harf sonrası ek (hareke/koda/yazılış), örn "l3-14-a" → "a",
+ *  "l2-05-init" → "init". Aynı ekli karışanları öne almak için. */
+export function suffixOf(id: string): string {
   const m = id.match(/^l\d+-\d{2}-(.+)$/);
   return m ? m[1] : "";
 }
 
-function shuffle<T>(a: T[]): T[] {
+/** id → başta/ortada/sonda hâli (yalnız "Yazılışlar" konusu, l2-NN-...). */
+export function formOf(id: string): "init" | "med" | "fin" | null {
+  const m = id.match(/^l2-\d{2}-(init|med|fin)$/);
+  return m ? (m[1] as "init" | "med" | "fin") : null;
+}
+
+/**
+ * İki öğe doğası gereği karışabilir mi? (ölçümden bağımsız, a priori bilgi)
+ * - farklı harfler, aynı karışma öbeğinde → evet
+ * - AYNI harfin farklı yazılış hâlleri (başta/ortada/sonda) → evet
+ */
+export function baseConfusable(aId: string, bId: string): boolean {
+  if (aId === bId) return false;
+  const na = letterNumOf(aId), nb = letterNumOf(bId);
+  if (na == null || nb == null) return false;
+  if (na !== nb) return CONFUSABLE[na]?.has(nb) ?? false;
+  const fa = formOf(aId), fb = formOf(bId);
+  return fa != null && fb != null && fa !== fb;
+}
+
+export function shuffle<T>(a: T[]): T[] {
   const r = [...a];
   for (let i = r.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -55,22 +85,12 @@ function shuffle<T>(a: T[]): T[] {
   return r;
 }
 
-// Hedefe çeldirici seç: önce KARIŞAN harfler (aynı ek/hareke önce), sonra
-// diğer karışanlar, en son rastgele doldurma. Karışan yoksa/az ise sorunsuz
-// rastgeleye düşer (eski davranış).
-export function pickDistractors(pool: ContentItem[], target: ContentItem, count = 3): ContentItem[] {
-  const others = pool.filter((it) => it.id !== target.id);
-  const tn = letterNumOf(target.id);
-  if (tn == null || !CONFUSABLE[tn]) return shuffle(others).slice(0, count);
-  const conf = CONFUSABLE[tn];
-  const tsuf = suffixOf(target.id);
-  const isConf = (it: ContentItem) => {
-    const n = letterNumOf(it.id);
-    return n != null && conf.has(n);
-  };
-  const confItems = others.filter(isConf);
-  const sameSuf = shuffle(confItems.filter((it) => suffixOf(it.id) === tsuf));
-  const otherConf = shuffle(confItems.filter((it) => suffixOf(it.id) !== tsuf));
-  const rest = shuffle(others.filter((it) => !isConf(it)));
-  return [...sameSuf, ...otherConf, ...rest].slice(0, count);
+/** Aynı ek/hareke mi? (yalnız HARF farkı kalsın → saf ayrım) */
+export function sameSuffix(aId: string, bId: string): boolean {
+  return suffixOf(aId) === suffixOf(bId);
+}
+
+/** Havuzdaki a-priori karışanlar (çeldirici sıralamasının iskeleti). */
+export function baseConfusablesOf(pool: ContentItem[], target: ContentItem): ContentItem[] {
+  return pool.filter((it) => it.id !== target.id && baseConfusable(target.id, it.id));
 }
