@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { Volume2 } from "lucide-react";
-import { gamePool, shuffle, pickN } from "./_shared";
+import { gamePool, shuffle, pickWrongs } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
@@ -36,7 +36,7 @@ const BalloonGame = () => {
     const pool = gamePool();
     const tgt = pickNextGameItem(pool) || pool[0];
     setTarget(tgt);
-    const distractors = pickN(pool.filter((p) => p.id !== tgt.id), 4);
+    const distractors = pickWrongs(pool, tgt, 4);
     const all = shuffle([tgt, ...distractors]);
     setBalloons(all.map((it, i) => ({
       uid: `${it.id}-${Date.now()}-${i}`,
@@ -85,7 +85,10 @@ const BalloonGame = () => {
     setBalloons((bs) => bs.map((x) => x.uid === b.uid ? { ...x, popped: true } : x));
     const correct = b.item.id === target.id;
     recordLetterMastery(target.id, correct);
-    recordGameAnswer(target, correct);
+    // Karışıklık ölçümü: hangi balonu patlattı + ekranda hangileri vardı
+    recordGameAnswer(target, correct, {
+      chosenId: b.item.id, shownIds: balloons.map((x) => x.item.id),
+    });
     if (correct) {
       setScore((s) => s + 1);
       setFlash(true); setTimeout(() => setFlash(false), 450); // ışık parlaması

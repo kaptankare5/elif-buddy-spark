@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { findTopicOfItem, flattenItems } from "@/data/subjects";
+import { itemHeat, setConfusionScope } from "@/lib/confusion";
 
 export type Level = 1 | 2 | 3 | 4;
 export type Namespace = "quiz" | "games";
@@ -75,6 +76,8 @@ try {
 
 export function setActiveStudentScope(sid: string | null) {
   _activeStudent = sid || null;
+  // Karışıklık ısısı da öğrenciye özeldir (bağımlılık tek yönlü: srs → confusion)
+  setConfusionScope(_activeStudent);
   if (typeof window === "undefined") return;
   try {
     if (sid) localStorage.setItem("elifba-active-student-v1", sid);
@@ -262,6 +265,10 @@ let _lastPickedId: string | null = null;
 // yalnız Ekstralar item.weight ile 2/1'e iner. Seviye şelalesini DEĞİŞTİRMEZ —
 // ağırlık sadece aynı seviyedeki adaylar arasında bilet sayısını belirler
 // (en fazla 3:1; zayıflık her zaman daha güçlü bilet).
+// Karışıklık biletine etki gücü: ısı 1.0 iken öğe ~2.6× daha sık gelir.
+// Aciliyet (1..3×) ile aynı büyüklük sırasında — baskın değil, belirgin.
+const CONFUSION_BOOST = 1.6;
+
 let _weightMap: Map<string, number> | null = null;
 function itemWeight(id: string): number {
   if (!_weightMap) {
@@ -343,9 +350,10 @@ export function getFlowBand(): FlowBand {
 
 // Son seçilen öğenin "neden seçildiği": seviye + bilet (sıklık × aciliyet × kırılganlık).
 // stale alanı artık ACİLİYET çarpanıdır (1 + 2·(1−R)); retr/hl FSRS-lite gözlemi.
+// conf = karışıklık ısısı (0..1) — bu harf başka bir harfle karıştırılıyor mu.
 export interface LastPickInfo {
   id: string; level: number; weight: number; stale: number; ticket: number; days: number;
-  fragile?: boolean; retr?: number; hl?: number;
+  fragile?: boolean; retr?: number; hl?: number; conf?: number;
 }
 let _lastPickInfo: LastPickInfo | null = null;
 export function getLastPickInfo(): LastPickInfo | null { return _lastPickInfo; }
@@ -464,9 +472,14 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
   // Kırılganlık çarpanı: doğru ama YAVAŞ ustalaşan öğe (fragile) daha çok bilet
   // alır → otomatiklik oturana kadar önce geri gelir (erişim gücü bakımı).
   const fragileMult = (id: string): number => (topic[id]?.fragile ? 1.5 : 1);
+  // KARIŞIKLIK çarpanı: çocuk bu harfi bir başkasıyla gerçekten karıştırıyorsa
+  // (ölçülmüş ısı) daha çok bilet alır → test/oyun/flashcard'da daha SIK gelir.
+  // Isı, ayrım üst üste yapıldıkça düşer; yani sorular çözüldükçe sıklık da
+  // kendiliğinden normale döner. (lib/confusion.ts)
+  const confMult = (id: string): number => 1 + CONFUSION_BOOST * itemHeat(id);
   const top = Math.max(1, Math.ceil(candidates.length * 0.5));
   const pool = candidates.slice(0, top);
-  const tickets = pool.map((id) => itemWeight(id) * urgMult(id) * fragileMult(id));
+  const tickets = pool.map((id) => itemWeight(id) * urgMult(id) * fragileMult(id) * confMult(id));
   let rw = Math.random() * tickets.reduce((a, b) => a + b, 0);
   let pick = pool[pool.length - 1];
   for (let i = 0; i < pool.length; i++) {
@@ -479,7 +492,8 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
   _lastPickInfo = {
     id: pick, level: pe?.level ?? 1, weight: itemWeight(pick),
     stale: +urgMult(pick).toFixed(2),
-    ticket: +(itemWeight(pick) * urgMult(pick) * fragileMult(pick)).toFixed(1),
+    ticket: +(itemWeight(pick) * urgMult(pick) * fragileMult(pick) * confMult(pick)).toFixed(1),
+    conf: +itemHeat(pick).toFixed(2),
     days: +pdays.toFixed(1), fragile: !!pe?.fragile,
     retr: +retrievabilityOf(pe, now).toFixed(2), hl: +deriveStab(pe).toFixed(1),
   };

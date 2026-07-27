@@ -25,7 +25,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem, playSfx } from "@/lib/audio";
-import { gamePool, pickN, shuffle } from "./_shared";
+import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { gameMusic } from "@/lib/gameMusic";
 import { isTestUnlockActive } from "@/lib/testUnlock";
@@ -1788,7 +1788,7 @@ const PlatformGame = () => {
       t.announced = true;
       const pool = gamePool();
       const target = pool.length >= 3 ? (pickNextGameItem(pool) || pool[0]) : null;
-      const wrongs = target ? pickN(pool.filter((p) => p.id !== target.id && p.emoji !== target.emoji), 2) : [];
+      const wrongs = pickWrongs(pool, target, 2, { distinctEmoji: true });
       if (!target || wrongs.length < 2) {
         t.resolved = { correct: false, missed: true };
         for (const b of t.blocks) b.state = "fade";
@@ -1855,7 +1855,11 @@ const PlatformGame = () => {
       const correct = b.isTarget;
       t.resolved = { correct };
       t.doneT = 0;
-      recordGameAnswer(target, correct, { gameId: "platform" });
+      recordGameAnswer(target, correct, {
+        gameId: "platform",
+        chosenId: b.item?.id,
+        shownIds: t.blocks.map((o) => o.item?.id).filter((x): x is string => !!x),
+      });
       if (correct) {
         playFeedback(true);
         streak += 1;

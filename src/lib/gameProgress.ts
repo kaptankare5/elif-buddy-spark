@@ -12,6 +12,7 @@
 import { getTopicSrs, pickNextLetterFromTopic, recordSrsAnswer, type Level, type TopicSrs } from "@/data/srs";
 import { findTopicOfItem } from "@/data/subjects";
 import { getGameMode } from "@/lib/gameMode";
+import { recordConfusionPick, recordDiscrimination, recordMiss } from "@/lib/confusion";
 import type { ContentItem } from "@/data/types";
 
 const NS = "quiz" as const;
@@ -22,11 +23,17 @@ const GAME_TEST_EVENT = "elifba-game-test-counted";
 export function recordGameAnswer(
   item: ContentItem | undefined | null,
   correct: boolean,
-  meta?: { responseMs?: number; gameId?: string },
+  meta?: { responseMs?: number; gameId?: string; chosenId?: string; shownIds?: string[] },
 ) {
   if (!item) return;
   const t = findTopicOfItem(item.id);
   if (!t) return;
+
+  // KARIŞIKLIK ÖLÇÜMÜ moddan BAĞIMSIZ çalışır: normal modda cevapların 2/3'ü
+  // SRS'e sayılmaz ama çocuk yine de karıştırmıştır — o bilgi kaybolmamalı.
+  // Oyun hangi harfi seçtiğini bildirdiyse kesin sinyal, bildirmediyse
+  // a-priori benzerlere hafif ısı dağıtılır.
+  recordConfusionSignal(item.id, correct, meta?.chosenId, meta?.shownIds);
 
   // Süper mod veya gerçek Quiz oyunu → her zaman say. Normal mod → her 3'te 1.
   const alwaysCount = getGameMode() === "super" || meta?.gameId === "quiz";
@@ -44,11 +51,31 @@ export function recordGameAnswer(
 
 // Oyun-içi GERÇEK mini test (çoktan seçmeli soru). Moddan bağımsız her zaman
 // ilerlemeye yazılır — çünkü bu bir testtir (normal modda oyunlar arasında çıkar).
-export function recordInGameTest(item: ContentItem | undefined | null, correct: boolean) {
+export function recordInGameTest(
+  item: ContentItem | undefined | null,
+  correct: boolean,
+  meta?: { chosenId?: string; shownIds?: string[] },
+) {
   if (!item) return;
   const t = findTopicOfItem(item.id);
   if (!t) return;
+  recordConfusionSignal(item.id, correct, meta?.chosenId, meta?.shownIds);
   try { recordSrsAnswer(NS, t.topicId, item.id, correct); } catch { /* ignore */ }
+}
+
+/** Oyun cevabını karışıklık motoruna aktar (tek merkez). */
+function recordConfusionSignal(
+  targetId: string, correct: boolean, chosenId?: string, shownIds?: string[],
+) {
+  try {
+    if (correct) {
+      if (shownIds?.length) recordDiscrimination(targetId, shownIds);
+    } else if (chosenId && chosenId !== targetId) {
+      recordConfusionPick(targetId, chosenId);
+    } else {
+      recordMiss(targetId);
+    }
+  } catch { /* ölçüm oyunu bozmasın */ }
 }
 
 export function getGameItemLevel(item: ContentItem | undefined | null): Level {

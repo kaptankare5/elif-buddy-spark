@@ -35,6 +35,26 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 - Konu kilidi: konudaki tüm öğeler L3+ → sonraki konu. Ayarlar'da test
   kilidi: kod **1234** her şeyi açar (`src/lib/testUnlock.ts`).
 
+### Karışan harfler (`confusables.ts` + `confusion.ts`)
+- `confusables.ts` = STATİK bilgi (import etmez, yapraktır): rasm öbekleri
+  (ب/ت/ث/ن/ي…, ا/ل, ك/ل, م/ه) **ve** aynı harfin başta/ortada/sonda hâlleri
+  (`l2-NN-init|med|fin`) da karışan sayılır.
+- `confusion.ts` = ÖLÇÜLEN karışıklık ısısı (0..1, localStorage, öğrenciye
+  özel, yarı ömür 21 gün). Yanlış şık seçimi +0.34; şık bilinmiyorsa
+  a-priori partnerlere +0.12; partner ortadayken **üst üste 3 doğru** ayrım
+  → −0.5. Harf ısısı BÜTÜN hâllere/harekelere taşınır (Elif↔Lem ısınınca
+  `l2-01-fin` de ısınır), form ısısı yalnız o harfin hâlleri arasında kalır.
+- Isının üç etkisi: **sıklık** (srs.ts biletinde `1 + 1.6·ısı`),
+  **birliktelik** (`pickDistractors` → oyunlarda `pickWrongs`/`pickCluster`),
+  **ardışıklık** (`pickContrastId` → Flashcard'da partner hemen sonra gelir,
+  zincir en fazla 3).
+- Katman sırası tek yönlü: `confusables → confusion → srs/sayfalar/oyunlar`.
+  `pickDistractors` **confusion.ts'ten** gelir (confusables'ta değil).
+- Ölçüm noktaları: Topic testi (`choose`), `gameProgress.recordGameAnswer`
+  (`chosenId`/`shownIds` meta'sı — moddan bağımsız her cevapta işler),
+  Flashcard (ardışık kart partnerse doğru cevap = ayrım).
+- Debug HUD'da "Karışıklık Isısı" bölümü çifti okunur gösterir (Elif↔Lem).
+
 ### Oyun modları (`src/lib/gameMode.ts`)
 - Varsayılan **süper** ("super"); kullanıcı Ayarlar'dan normale döner.
 - Süper: her oyun cevabı SRS'e sayılır; ipucu halkası yalnız L1'de.

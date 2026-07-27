@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ContentTopic } from "@/data/types";
 import { playItem, playFeedback } from "@/lib/audio";
 import { markTopicSkipped } from "@/lib/placement";
-import { pickDistractors } from "@/lib/confusables";
+import { pickDistractors } from "@/lib/confusion";
 import { cn } from "@/lib/utils";
 import { Volume2, X } from "lucide-react";
 

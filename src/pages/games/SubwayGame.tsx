@@ -11,7 +11,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
-import { gamePool, pickN, shuffle } from "./_shared";
+import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
@@ -960,7 +960,7 @@ const SubwayGame = () => {
     const pool = gamePool();
     if (pool.length < 3) { gateActive.current = false; return; }
     const target = pickNextGameItem(pool) || pool[0];
-    const wrongs = pickN(pool.filter((p) => p.id !== target.id && p.emoji !== target.emoji), 2);
+    const wrongs = pickWrongs(pool, target, 2, { distinctEmoji: true });
     if (wrongs.length < 2) { gateActive.current = false; return; }
     const items = shuffle([target, ...wrongs]);
     const targetLane = items.findIndex((i) => i.id === target.id);
@@ -1078,7 +1078,10 @@ const SubwayGame = () => {
     const lane = nearestLane(s.x);
     const correct = lane === gate.targetLane;
     recordLetterMastery(gate.target!.id, correct);
-    recordGameAnswer(gate.target!, correct);
+    recordGameAnswer(gate.target!, correct, {
+      chosenId: gate.items?.[lane]?.id,
+      shownIds: gate.items?.map((i) => i.id),
+    });
     setEnts((prev) => prev.map((e) => (e.id === gateId ? { ...e, resolution: { lane, correct } } : e)));
     gateActive.current = false;
 
