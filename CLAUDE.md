@@ -2,7 +2,14 @@
 
 Çocuklara Kur'an harflerini öğreten React uygulaması. Vite + React 18 + TS +
 Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
-(port 8080, `.claude/launch.json` var). Doğrulama: `npx tsc --noEmit` + eslint.
+(port 8080, `.claude/launch.json` var).
+
+**DOĞRULAMA — dikkat:** `npx tsc --noEmit` HİÇBİR ŞEYİ denetlemez! Kök
+`tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
+sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
+(+ `npx eslint src/` + `npx vitest run`). Bilinen 4 hata Lovable'ın
+`src/lib/mcp/` dosyalarında (`@lovable.dev/mcp-js` paketi kurulu değil) —
+bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
 
 ## Mimari — kritik kurallar
 
@@ -108,6 +115,15 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 ### Oyunlar
 - 11 oyun `src/pages/games/`; kayıt: Game.tsx (route) + Games.tsx (liste,
   Kolay/Zor gruplu) + `SUPER_MODE_GAMES` (gameMode.ts) + Settings metni.
+- "Elif Ba Macerası" (`PlatformGame.tsx`, id "platform"): 10 bölüm, cami
+  finali. **Şiddetsiz tasarım korunacak** — canavar öldürülmez, Nur'a değen
+  canavar güvercine dönüşüp uçar. ✨ **Nur ışığı atışı**: Nur açıkken ✨
+  düğmesi (klavye J/F) ışık fırlatır; değdiği canavar yine güvercin olur —
+  silah değil, ışık. 🌑 **Karanlık Bulut** yalnız 10. bölümde, caminin
+  önünde: öldürülmez, 5 ışıkla AYDINLATILIR, dağılınca yuttuğu harfler
+  saçılır. Arenaya girince kandil yanar (nur sürekli tazelenir); ışık
+  perdesi bulut dağılmadan camiye geçirmez. Bulut yalnız yavaş "gölge
+  damlası" gönderir (kaçılacak engel).
 - "ElifBa Koşusu" (`SubwayGame.tsx`, id "subway"): R3F 3D koşu. Arapça
   harfler canvas dokusuyla (troika değil), pano dokusu ölçüp sığdırır
   (derin çanaklı harfler kesilmez), fog'dan muaf. Tasarım:

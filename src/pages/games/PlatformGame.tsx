@@ -60,6 +60,24 @@ const MAG_TIME = 10;          // 🧲 mıknatıs: harf paraları oyuncuya akar
 const X2_TIME = 12;           // ⭐ 2X puan
 const FREED_DUR = 1.0;        // güvercine dönüşüp uçma animasyonu
 
+// ✨ NUR IŞIĞI (atış) — "silah" değil, ışık. Mario'daki ateş topunun yerini
+// tutar ama hiçbir şeyi yok etmez: değdiği canavar tıpkı Nur'a dokunmuş gibi
+// GÜVERCİNE dönüşüp uçar. Elifbâ öğreten bir oyunda silah/öldürme olmasın
+// diye bilinçli tercih (oyunun şiddetsiz canavar tasarımıyla aynı çizgi).
+const SHOT_SPEED = 460;
+const SHOT_CD = 0.32;         // atışlar arası bekleme
+const SHOT_LIFE = 1.5;
+const SHOT_R = 9;
+
+// 🌑 BÖLÜM SONU: "Karanlık Bulut" — son bölümde (10) caminin önünü kapatan
+// dev bulut. Öldürülmez, AYDINLATILIR: 5 nur ışığı değince dağılıp içinden
+// yuttuğu harfler ve bir güvercin sürüsü çıkar, yol açılır. Saldırısı da
+// şiddet değil: yavaş "gölge damlaları" gönderir, çocuk onlardan kaçar.
+const BOSS_HP = 5;
+const BOSS_W = 132, BOSS_H = 96;
+const BOSS_SHOT_CD = 1.6;
+const BOSS_DIE_DUR = 2.2;
+
 // canavar çarpışma kutuları (tür bazlı)
 type MonsterKind = "walker" | "hopper" | "floater" | "flyer";
 const MW: Record<MonsterKind, number> = { walker: 30, hopper: 26, floater: 26, flyer: 26 };
@@ -171,6 +189,14 @@ interface TrioEnt {
   doneT: number;
 }
 interface CoinEnt { id: number; x: number; y: number; glyph: string; taken: boolean; heart?: boolean }
+/** Uçan ışık (oyuncunun nuru) ya da bulutun gölge damlası */
+interface ShotEnt { id: number; x: number; y: number; vx: number; vy: number; t: number; dark: boolean }
+interface BossEnt {
+  x: number; baseY: number; y: number; t: number;
+  hp: number; hitT: number; deadT: number; shotCd: number;
+  /** oyuncu arenaya girdi mi (girmeden uyumaya devam eder) */
+  woke: boolean;
+}
 interface Pop { x: number; y: number; vx: number; vy: number; t: number; life: number; color: string; text?: string; grav?: boolean }
 interface World {
   solids: SolidEnt[];
@@ -179,6 +205,8 @@ interface World {
   trios: TrioEnt[];
   coins: CoinEnt[];
   pops: Pop[];
+  shots: ShotEnt[];
+  boss: BossEnt | null;
   cliffs: { x: number; w: number }[];   // geniş uçurumlar (görsel kaya duvarı + tabela)
   genX: number;
 }
@@ -633,6 +661,114 @@ function drawSpring(g: CanvasRenderingContext2D, sp: SpringEnt) {
 
 // Nur ile dönüşen güvercin — yukarı süzülüp kaybolur (kimse zarar görmez).
 // golden=true: nadir ALTIN güvercin — altın tüyler + parıltı izi (kozmetik).
+/** ✨ Nur ışığı — parlayan altın küre + hâle. Silah değil, ışık. */
+function drawNurShot(g: CanvasRenderingContext2D, sh: ShotEnt, time: number) {
+  g.save();
+  g.translate(sh.x, sh.y);
+  if (sh.dark) {
+    // 🌑 gölge damlası — kaçılacak engel
+    g.globalAlpha = 0.85;
+    g.fillStyle = "#312e5b";
+    g.beginPath();
+    g.arc(0, 0, SHOT_R, 0, Math.PI * 2);
+    g.fill();
+    g.globalAlpha = 0.35;
+    g.fillStyle = "#6d28d9";
+    g.beginPath();
+    g.arc(0, 0, SHOT_R + 4 + Math.sin(time * 9) * 1.5, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    return;
+  }
+  const pulse = 1 + Math.sin(time * 14) * 0.12;
+  g.globalAlpha = 0.32;
+  g.fillStyle = "#fde68a";
+  g.beginPath();
+  g.arc(0, 0, (SHOT_R + 7) * pulse, 0, Math.PI * 2);
+  g.fill();
+  g.globalAlpha = 1;
+  const gr = g.createRadialGradient(0, 0, 1, 0, 0, SHOT_R);
+  gr.addColorStop(0, "#fffbeb");
+  gr.addColorStop(0.6, "#fcd34d");
+  gr.addColorStop(1, "#f59e0b");
+  g.fillStyle = gr;
+  g.beginPath();
+  g.arc(0, 0, SHOT_R * pulse, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
+}
+
+/** 🌑 Karanlık Bulut — öldürülmez, aydınlatılır. Işık aldıkça açılır. */
+function drawBoss(g: CanvasRenderingContext2D, b: BossEnt, time: number) {
+  const dying = b.deadT > 0;
+  const k = dying ? b.deadT / BOSS_DIE_DUR : 1;          // 1 → 0 dağılma
+  const lit = 1 - b.hp / BOSS_HP;                         // aydınlanma oranı
+  g.save();
+  g.translate(b.x + BOSS_W / 2, b.y + BOSS_H / 2);
+  if (dying) g.scale(0.6 + k * 0.4, 0.6 + k * 0.4);
+  g.globalAlpha = dying ? k : 1;
+  // vurulunca beyaz parlar
+  const flash = b.hitT > 0 ? b.hitT / 0.35 : 0;
+  // gövde: üst üste binen kabarcıklar
+  const puffs: [number, number, number][] = [
+    [-46, 6, 34], [-16, -12, 42], [20, -6, 38], [48, 10, 30], [0, 18, 36],
+  ];
+  for (const [px, py, pr] of puffs) {
+    const wob = Math.sin(time * 1.6 + px * 0.05) * 3;
+    const gr = g.createRadialGradient(px, py + wob, 4, px, py + wob, pr);
+    // aydınlandıkça morlaşan gri → açık leylak
+    gr.addColorStop(0, flash > 0 ? "#ffffff" : `rgb(${70 + lit * 90}, ${64 + lit * 80}, ${110 + lit * 90})`);
+    gr.addColorStop(1, flash > 0 ? "#e9d5ff" : `rgb(${40 + lit * 70}, ${36 + lit * 60}, ${72 + lit * 80})`);
+    g.fillStyle = gr;
+    g.beginPath();
+    g.arc(px, py + wob, pr, 0, Math.PI * 2);
+    g.fill();
+  }
+  // gözler — çizgi göz, korkutucu değil
+  g.globalAlpha = dying ? k * 0.9 : 0.9;
+  g.strokeStyle = "#fde68a";
+  g.lineWidth = 4;
+  g.lineCap = "round";
+  const eo = Math.sin(time * 2) * 2;
+  g.beginPath();
+  g.moveTo(-24, -8 + eo); g.lineTo(-10, -8 + eo);
+  g.moveTo(12, -8 + eo);  g.lineTo(26, -8 + eo);
+  g.stroke();
+  // yuttuğu harfler içinde parıldar
+  g.globalAlpha = (dying ? k : 0.5 + lit * 0.4) * 0.9;
+  g.fillStyle = "#fef3c7";
+  g.font = "700 20px 'Amiri Quran', serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  const glyphs = ["ا", "ب", "ج", "م", "ن"];
+  for (let i = 0; i < glyphs.length; i++) {
+    const a = time * 0.9 + i * 1.25;
+    g.fillText(glyphs[i], Math.cos(a) * 44, Math.sin(a * 1.3) * 22 + 4);
+  }
+  g.restore();
+}
+
+/** Işık perdesi — bulut dağılmadan camiye geçilemez. */
+function drawLightGate(g: CanvasRenderingContext2D, x: number, time: number) {
+  g.save();
+  g.globalAlpha = 0.42 + Math.sin(time * 3) * 0.12;
+  const gr = g.createLinearGradient(x - 10, 0, x + 10, 0);
+  gr.addColorStop(0, "rgba(253,230,138,0)");
+  gr.addColorStop(0.5, "rgba(252,211,77,0.95)");
+  gr.addColorStop(1, "rgba(253,230,138,0)");
+  g.fillStyle = gr;
+  g.fillRect(x - 10, 0, 20, GROUND_Y);
+  g.globalAlpha = 0.8;
+  for (let i = 0; i < 5; i++) {
+    const yy = ((time * 46 + i * 78) % (GROUND_Y + 40)) - 20;
+    g.fillStyle = "rgba(255,255,255,0.75)";
+    g.beginPath();
+    g.arc(x, yy, 3.5, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.restore();
+}
+
 function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number, k: number, time: number, golden = false) {
   const dx = x + k * 46 * dir;
   const dy = y - k * 82;
@@ -1295,7 +1431,7 @@ const PlatformGame = () => {
 
   const boxRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const controls = useRef({ moveDir: 0 as -1 | 0 | 1, jumpQueued: false, jumpHeld: false, paused: true, over: false });
+  const controls = useRef({ moveDir: 0 as -1 | 0 | 1, jumpQueued: false, jumpHeld: false, shootQueued: false, paused: true, over: false });
   const trioRef = useRef<TrioEnt | null>(null); // aktif soru — ses tekrarı için
   const levelRef = useRef(1);
 
@@ -1314,6 +1450,8 @@ const PlatformGame = () => {
   const [question, setQuestion] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad" | "power" } | null>(null);
   const [pu, setPu] = useState<{ nur: number; mag: number; x2: number }>({ nur: 0, mag: 0, x2: 0 });
+  // 🌑 Karanlık Bulut canı (0 = yok/dağıldı) — HUD'da kalan ışık sayısı
+  const [bossHp, setBossHp] = useState(0);
   const [flash, setFlash] = useState(false); // normal modda doğru cevapta ışık
   const [resetTick, setResetTick] = useState(0);
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1370,11 +1508,11 @@ const PlatformGame = () => {
     levelRef.current = lv;
     setLevel(lv);
     setScore(0); setStreak(0); setLives(3);
-    setGameOver(false); setWon(false);
+    setGameOver(false); setWon(false); setBossHp(0);
     setQuestion(null); setBanner(null); setFlash(false); setProgress(0);
     setPu({ nur: 0, mag: 0, x2: 0 });
     goldenRef.current = 0; setGoldenRun(0);
-    controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, paused: false, over: false };
+    controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, shootQueued: false, paused: false, over: false };
     trioRef.current = null;
     setStarted(true);
     setPaused(false);
@@ -1385,7 +1523,7 @@ const PlatformGame = () => {
     setStarted(false); setPaused(true); setGameOver(false); setWon(false);
     setQuestion(null); setBanner(null); setProgress(0);
     setPu({ nur: 0, mag: 0, x2: 0 });
-    controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, paused: true, over: false };
+    controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, shootQueued: false, paused: true, over: false };
     trioRef.current = null;
     setResetTick((t) => t + 1);
   }, []);
@@ -1404,11 +1542,11 @@ const PlatformGame = () => {
     const s = {
       x: 80, y: GROUND_Y - PH, vy: 0, grounded: true, facing: 1 as 1 | -1,
       coyote: 0, jumpBuf: 0, ghostT: 0, camX: 0, safeX: 80, anim: 0, time: 0,
-      nurT: 0, magT: 0, x2T: 0,
+      nurT: 0, magT: 0, x2T: 0, shootCd: 0,
     };
     const w: World = {
       solids: [{ x: -240, y: GROUND_Y, w: 1040, oneWay: false }],
-      monsters: [], springs: [], trios: [], coins: [], pops: [], cliffs: [],
+      monsters: [], springs: [], trios: [], coins: [], pops: [], shots: [], boss: null, cliffs: [],
       genX: 800,
     };
     let score = 0, streak = 0, lives = 3, over = false;
@@ -1695,6 +1833,26 @@ const PlatformGame = () => {
     const finishX = mosqueX + 85;          // cami kapısı — hedef
     w.genX += 860;
 
+    // 🌑 SON BÖLÜM: caminin önünde Karanlık Bulut. Dağılmadan kapıya
+    // geçilemez (ışık perdesi tutar). Arenaya girince KANDİL yanar ve nur
+    // kalıcı olur — çocuk bol bol ışık atabilsin.
+    const isBossLevel = lv >= LEVEL_COUNT;
+    // Sıra ÖNEMLİ: çocuk soldan gelir → önce IŞIK PERDESİ durdurur, bulut
+    // perdenin SAĞINDA süzülür. Böylece çocuk buluta bakarak ışık atar.
+    // (Bulut perdenin solunda kalırsa çocuk yanından geçip arkasında kalıyor.)
+    const bossGateX = isBossLevel ? mosqueX - 430 : null;
+    const arenaX = isBossLevel ? mosqueX - 660 : null;
+    if (isBossLevel) {
+      w.boss = {
+        // Alçak süzülür ki yerden atılan ışık da değsin (çocuk zıplamak
+        // zorunda kalmasın); yine de üstünden geçilemeyecek kadar büyük.
+        x: mosqueX - 326, baseY: GROUND_Y - 132, y: GROUND_Y - 132,
+        t: 0, hp: BOSS_HP, hitT: 0, deadT: 0, shotCd: BOSS_SHOT_CD, woke: false,
+      };
+      // arenada canavar olmasın — sahne bulutun olsun
+      w.monsters = w.monsters.filter((m) => m.maxX < mosqueX - 700);
+    }
+
     // GİZLİ KAPI + bonus bahçe (2, 5 ve 8. bölümlerde): kapı bir çalının
     // arkasında saklıdır; giren çocuk cami arkasındaki gizli bahçeye ışınlanır
     // (bol harf parası + can kalbi), çıkış kapısıyla kaldığı yere döner.
@@ -1931,6 +2089,138 @@ const PlatformGame = () => {
       if (s.nurT > 0) s.nurT = Math.max(0, s.nurT - dt);
       if (s.magT > 0) s.magT = Math.max(0, s.magT - dt);
       if (s.x2T > 0) s.x2T = Math.max(0, s.x2T - dt);
+
+      // ---- ✨ NUR IŞIĞI ATIŞI ----
+      // Nur açıkken çocuk ışık fırlatabilir. Değdiği canavar güvercine
+      // dönüşür — dokunmakla aynı sonuç, uzaktan hâli.
+      if (s.shootCd > 0) s.shootCd = Math.max(0, s.shootCd - dt);
+      const canShoot = s.nurT > 0 && !winning;
+      if (c.shootQueued) {
+        c.shootQueued = false;
+        if (canShoot && s.shootCd <= 0) {
+          s.shootCd = SHOT_CD;
+          w.shots.push({
+            id: UID++, x: s.x + PW / 2 + s.facing * 14, y: s.y + PH * 0.3,
+            vx: s.facing * SHOT_SPEED, vy: 0, t: 0, dark: false,
+          });
+          playSfx("coin");
+          w.pops.push({
+            x: s.x + PW / 2 + s.facing * 16, y: s.y + PH * 0.3,
+            vx: 0, vy: -20, t: 0, life: 0.25, color: "#fde68a",
+          });
+        }
+      }
+
+      const boss = w.boss;
+
+      for (let i = w.shots.length - 1; i >= 0; i--) {
+        const sh = w.shots[i];
+        sh.t += dt;
+        sh.x += sh.vx * dt;
+        sh.y += sh.vy * dt;
+        if (sh.dark) sh.vy += 120 * dt;               // gölge damlası hafif düşer
+        if (sh.t >= SHOT_LIFE || sh.y > GROUND_Y + 20) { w.shots.splice(i, 1); continue; }
+        // ışık izi
+        if (!sh.dark && Math.random() < 0.6) {
+          w.pops.push({ x: sh.x, y: sh.y, vx: 0, vy: 0, t: 0, life: 0.22, color: "#fef3c7" });
+        }
+        if (sh.dark) {
+          // gölge damlası oyuncuya değerse can gider (hayalet süresi korur)
+          if (s.ghostT <= 0 && Math.abs(sh.x - (s.x + PW / 2)) < SHOT_R + PW / 2
+              && Math.abs(sh.y - (s.y + PH / 2)) < SHOT_R + PH / 2) {
+            w.shots.splice(i, 1);
+            hurt();
+          }
+          continue;
+        }
+        // nur ışığı: canavarları özgür bırakır
+        let hit = false;
+        for (const m of w.monsters) {
+          if (m.freedT > 0) continue;
+          const mw2 = MW[m.kind], mh2 = MH[m.kind];
+          if (sh.x > m.x && sh.x < m.x + mw2 && sh.y > m.y && sh.y < m.y + mh2) {
+            m.freedT = FREED_DUR;
+            playSfx("dove");
+            score += 5 * (s.x2T > 0 ? 2 : 1);
+            setScore(score);
+            spawnSparkles(m.x + mw2 / 2, m.y + mh2 / 2);
+            hit = true;
+            break;
+          }
+        }
+        // Karanlık Bulut'u aydınlatır
+        if (!hit && boss && boss.deadT <= 0 && boss.hp > 0
+            && sh.x > boss.x - SHOT_R && sh.x < boss.x + BOSS_W + SHOT_R
+            // dikeyde cömert kutu: yerden atılan ışık da isabet etsin
+            && sh.y > boss.y - 16 && sh.y < boss.y + BOSS_H + 22) {
+          hit = true;
+          boss.hp -= 1;
+          boss.hitT = 0.35;
+          playSfx("coin");
+          spawnSparkles(sh.x, sh.y);
+          score += 20 * (s.x2T > 0 ? 2 : 1);
+          setScore(score);
+          setBossHp(boss.hp);
+          if (boss.hp <= 0) {
+            boss.deadT = BOSS_DIE_DUR;
+            playFeedback(true);
+            // içinden yuttuğu harfler ve güvercinler saçılır
+            for (let k = 0; k < 14; k++) {
+              spawnConfetti(boss.x + BOSS_W / 2 + (Math.random() - 0.5) * BOSS_W,
+                            boss.y + BOSS_H / 2 + (Math.random() - 0.5) * BOSS_H);
+            }
+          }
+        }
+        if (hit) w.shots.splice(i, 1);
+      }
+
+      // ---- 🌑 KARANLIK BULUT ----
+      if (boss) {
+        boss.t += dt;
+        if (boss.hitT > 0) boss.hitT = Math.max(0, boss.hitT - dt);
+        // uyanış: oyuncu arenaya girince kandil yanar, nur kalıcı olur
+        if (!boss.woke && arenaX !== null && s.x > arenaX) {
+          boss.woke = true;
+          setBossHp(boss.hp);
+          w.pops.push({
+            x: s.x + PW / 2, y: s.y - 24, vx: 0, vy: -30, t: 0, life: 1.4,
+            color: "#fbbf24", text: "KANDİL YANDI!",
+          });
+        }
+        if (boss.woke && boss.deadT <= 0) s.nurT = Math.max(s.nurT, 3);  // nur sürekli tazelenir
+        // süzülme
+        boss.y = boss.baseY + Math.sin(boss.t * 1.25) * 26;
+        if (boss.deadT > 0) {
+          boss.deadT = Math.max(0, boss.deadT - dt);
+          if (Math.random() < 0.5) {
+            spawnSparkles(boss.x + BOSS_W / 2 + (Math.random() - 0.5) * BOSS_W,
+                          boss.y + BOSS_H / 2 + (Math.random() - 0.5) * BOSS_H);
+          }
+          if (boss.deadT <= 0) { w.boss = null; setBossHp(0); }
+        } else if (boss.woke) {
+          // gölge damlası — saldırı değil, kaçılacak engel
+          boss.shotCd -= dt;
+          if (boss.shotCd <= 0) {
+            boss.shotCd = BOSS_SHOT_CD;
+            const dir = s.x < boss.x ? -1 : 1;
+            w.shots.push({
+              id: UID++, x: boss.x + BOSS_W / 2, y: boss.y + BOSS_H - 8,
+              vx: dir * 120, vy: 40, t: 0, dark: true,
+            });
+          }
+          // gövdesine değmek can götürür (yandan canavara değmek gibi)
+          if (s.ghostT <= 0
+              && s.x + PW > boss.x + 12 && s.x < boss.x + BOSS_W - 12
+              && s.y + PH > boss.y + 10 && s.y < boss.y + BOSS_H - 10) {
+            hurt();
+          }
+        }
+      }
+
+      // ışık perdesi: bulut dağılmadan camiye geçilemez
+      if (bossGateX !== null && w.boss && w.boss.deadT <= 0 && s.x + PW > bossGateX) {
+        s.x = bossGateX - PW;   // oyuncunun yatay hızı yok, konum kelepçesi yeter
+      }
 
       // yatay hareket (geri gitmek serbest ama kamera geri dönmez)
       const mv = winning ? 0 : c.moveDir;
@@ -2370,6 +2660,16 @@ const PlatformGame = () => {
         drawMonster(g, m, s.time);
       }
 
+      // 🌑 Karanlık Bulut + ışık perdesi (yalnız son bölüm)
+      if (w.boss) drawBoss(g, w.boss, s.time);
+      if (bossGateX !== null && w.boss && w.boss.deadT <= 0 && bossGateX > l - 40 && bossGateX < r + 40) {
+        drawLightGate(g, bossGateX, s.time);
+      }
+      // ✨ uçan ışıklar / gölge damlaları
+      for (const sh of w.shots) {
+        if (sh.x < l - 30 || sh.x > r + 30) continue;
+        drawNurShot(g, sh, s.time);
+      }
       drawPlayerChar(g, s.x, s.y, s.facing, s.anim, s.grounded, s.ghostT, s.nurT, s.time);
 
       for (const p of w.pops) {
@@ -2426,7 +2726,8 @@ const PlatformGame = () => {
   // klavye (masaüstü)
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.code === "ArrowLeft" || e.code === "KeyA") { e.preventDefault(); controls.current.moveDir = -1; }
+      if (e.code === "KeyJ" || e.code === "KeyF") { e.preventDefault(); if (!e.repeat) controls.current.shootQueued = true; }
+      else if (e.code === "ArrowLeft" || e.code === "KeyA") { e.preventDefault(); controls.current.moveDir = -1; }
       else if (e.code === "ArrowRight" || e.code === "KeyD") { e.preventDefault(); controls.current.moveDir = 1; }
       else if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") {
         e.preventDefault();
@@ -2499,10 +2800,22 @@ const PlatformGame = () => {
               ))}
             </div>
           </div>
-          <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-warning/30">
-            <div className="text-[10px] font-bold text-muted-foreground">Seri</div>
-            <div className="text-xl font-extrabold text-warning">🔥{streak}</div>
-          </div>
+          {bossHp > 0 ? (
+            /* 🌑 Boss sırasında seri yerine kalan ışık sayısı gösterilir */
+            <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-primary/40">
+              <div className="text-[10px] font-bold text-muted-foreground">Bulut</div>
+              <div className="mt-1 flex justify-center gap-0.5">
+                {Array.from({ length: BOSS_HP }).map((_, i) => (
+                  <span key={i} className={cn("text-xs", i < bossHp ? "opacity-100" : "opacity-25")}>🌑</span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-warning/30">
+              <div className="text-[10px] font-bold text-muted-foreground">Seri</div>
+              <div className="text-xl font-extrabold text-warning">🔥{streak}</div>
+            </div>
+          )}
         </div>
 
         {/* bölüm + ilerleme çubuğu (hedef: cami) */}
@@ -2745,6 +3058,16 @@ const PlatformGame = () => {
           >
             <ArrowUp className="h-7 w-7" /> Zıpla
           </button>
+          {/* ✨ Nur ışığı atma — yalnız Nur açıkken belirir (silah değil, ışık) */}
+          {pu.nur > 0 && (
+            <button
+              onPointerDown={(e) => { e.preventDefault(); controls.current.shootQueued = true; }}
+              aria-label="Nur ışığı at"
+              className="flex-1 rounded-2xl bg-warning text-warning-foreground py-5 text-2xl font-extrabold shadow-soft active:scale-95 flex items-center justify-center touch-none select-none animate-pop"
+            >
+              ✨
+            </button>
+          )}
         </div>
 
         {started && paused && !gameOver && !won && (
