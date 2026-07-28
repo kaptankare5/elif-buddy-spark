@@ -18,8 +18,9 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 - İki ayrı bölümleme var: `bolum()` = geleneksel 4'erli ("1. Bölüm" =
   elif be te se) — 1., 3. ve sonraki BÜTÜN konular bunu kullanır.
   `bolumYazilis()` = YALNIZ 2. konu (başta/ortada/sonda): karışabilen
-  harfler aynı bölümde toplanır (ا ك ل · ب ت ث ن ي · ج ح خ · د ذ ر ز ·
-  س ش ص ض · ط ظ ع غ · ف ق م و ه), 12 karışma öbeğinin hepsi tek bölümde.
+  harfler aynı bölümde ama bölümler EN FAZLA 3 harf — orada bir harf ÜÇ yeni
+  şekil demek, 4 harflik bölüm 12 yeni şekle çıkıyordu (13 bölüm: ا ك ل ·
+  ب ت ث · ج ح خ · د ذ · ر ز · س ش · ص ض · ط ظ · ع غ · ف ق · م ه · ن ي · و).
   Bölüm ADLARI iki tarafta da sade ("N. Bölüm") — aile etiketi YOK
   (kullanıcı şartı). Harf sırası (LETTERS) hiç değişmedi.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
@@ -43,6 +44,13 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
   (`getUnlockedItemsOf` / `getUnlockedItemIdSet`).
 - Konu kilidi: konudaki tüm öğeler L3+ → sonraki konu. Ayarlar'da test
   kilidi: kod **1234** her şeyi açar (`src/lib/testUnlock.ts`).
+- Soru kaynağı `src/lib/questionSource.ts` (Topic testi): retry / bakım /
+  frontier önceliği. Yanlış harf en fazla **BİR kez** tekrar sorulur (eskiden
+  sınırsızdı → çocuk aynı harfte kilitlenip bakım kanalına hiç sıra
+  gelmiyordu). **Zorlanma bandında bakım, retry'nin önüne geçer** — kolay
+  soru konu içinde yok, önceki konunun bilinen harflerindedir. Flashcard'da
+  da aynı kurtarma karşıtlık zincirinin önünde. Bakım sorusunun ÇELDİRİCİLERİ
+  de yalnız açık bölümlerden gelir.
 
 ### Karışan harfler (`confusables.ts` + `confusion.ts`)
 - `confusables.ts` = STATİK bilgi (import etmez, yapraktır): rasm öbekleri
@@ -88,7 +96,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
   çoktan seçmeli, `recordInGameTest` her zaman sayar) çıkar; Balon/Koşu'da
   doğru cevapta ışık + ipucu halkası hep görünür.
 - Topic Test + Flashcard recordSrsAnswer'ı doğrudan çağırır → hep sayılır;
-  testte yanlış cevaplanan soru hemen tekrar sorulur (`retryIdRef`).
+  testte yanlış cevaplanan soru bir kez tekrar sorulur (questionSource.ts).
 
 ### Hoca Modu (`src/lib/students.ts`)
 - Cihazda öğrenci profilleri; `setActiveStudentScope` (srs.ts) localStorage
