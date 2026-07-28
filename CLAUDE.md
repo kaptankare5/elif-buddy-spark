@@ -53,6 +53,11 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
   a-priori partnerlere +0.12; partner ortadayken **üst üste 3 doğru** ayrım
   → −0.5. Harf ısısı BÜTÜN hâllere/harekelere taşınır (Elif↔Lem ısınınca
   `l2-01-fin` de ısınır), form ısısı yalnız o harfin hâlleri arasında kalır.
+- **AYNI SESLİ öğe asla çeldirici olamaz** (`sameSound`): sorular sesle
+  sorulur, Fe'nin yalın/başta/ortada/sonda hâllerinin dördü de
+  `basic-20.mp3` çalar → ikisi şıkka girerse sorunun İKİ doğru cevabı olur.
+  `pickDistractors` ve `pickCluster` bunu eler (küme üyeleri birbirine de
+  benzemez). Sonuç: sesle sorulan çoktan seçmeliyle form ayrımı SORULAMAZ.
 - Isının üç etkisi: **sıklık** (srs.ts biletinde `1 + 1.6·ısı`),
   **birliktelik** (`pickDistractors` → oyunlarda `pickWrongs`/`pickCluster`),
   **ardışıklık** (`pickContrastId` → Flashcard'da partner hemen sonra gelir,
