@@ -9,6 +9,7 @@ import {
   pickNextLetterFromTopic,
   recordSrsAnswer,
   getTopicSrs,
+  getFlowBand,
   useSrsTick,
   type Level,
 } from "@/data/srs";
@@ -54,6 +55,22 @@ const Flashcard = () => {
 
   const pickNext = () => {
     if (itemIds.length === 0) return;
+    // 0) ZORLANIYORSA ÖNCE KURTARMA. Karşıtlık zinciri de bakım kanalını aç
+    //    bırakabiliyordu: çocuk üst üste yanlış yaparken kartlar hep bu
+    //    konunun (hepsi L1) zor harfleri arasında dönüyordu. Kolay olan eski
+    //    konunun bilinen harfleridir; zorlanma bandında ona öncelik verilir.
+    if (getFlowBand() === "struggling") {
+      const rescue = pickReviewItem(topic!.id, NS);
+      if (rescue) {
+        chainRef.current = 0;
+        reviewTopicRef.current = rescue.topicId;
+        setCurrentId(rescue.itemId);
+        setFlipped(false);
+        setDrag(0);
+        startRef.current = Date.now();
+        return;
+      }
+    }
     // 1) Karışan partner: az önceki kartla ısınmış bir çift varsa onu göster.
     const contrast = pickContrastId(prevIdRef.current, itemIds, chainRef.current);
     if (contrast) {

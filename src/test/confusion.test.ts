@@ -235,21 +235,29 @@ describe("bölümler ve kilit", () => {
     [16, 17], [18, 19], [20, 21], [1, 23], [22, 23], [24, 27],
   ];
 
-  it("2. konuda (başta/ortada/sonda) her karışma ailesi TEK bölümde kalır", () => {
+  // Bölüm = karışan harflerin bir arada durduğu KÜÇÜK grup. Bir harf burada
+  // ÜÇ yeni öğe (başta/ortada/sonda) demek, o yüzden gruplar küçük tutulur.
+  it("2. konuda bölümdeki harfler birbiriyle karışabilir (kopuk grup yok)", () => {
     const secOf = sectionMap(yaz.items);
-    for (const fam of FAMILIES) {
-      const secs = new Set(fam.map((n) => secOf.get(n)));
-      expect(secs.size, `aile ${fam.join(",")} bölündü: ${[...secs].join(" / ")}`).toBe(1);
+    const bySec = new Map<string, number[]>();
+    for (const [n, sec] of secOf) bySec.set(sec, [...(bySec.get(sec) ?? []), n]);
+    for (const [sec, letters] of bySec) {
+      if (letters.length < 2) continue;
+      // Grup, karışabilirlik grafiğinde BAĞLI olmalı: her harfin gruptan
+      // en az bir karıştığı komşusu bulunmalı.
+      for (const n of letters) {
+        const linked = letters.some((m) => m !== n && baseConfusable(`l1-${String(n).padStart(2, "0")}`, `l1-${String(m).padStart(2, "0")}`));
+        expect(linked, `${sec}: ${n} numaralı harf gruptaki hiçbir harfle karışmıyor`).toBe(true);
+      }
     }
   });
 
-  it("2. konu bölümleri 3-5 harf, toplam 28 harf", () => {
+  it("2. konu bölümleri EN FAZLA 3 harf (harf başına 3 yeni şekil)", () => {
     const secOf = sectionMap(yaz.items);
     const count = new Map<string, number>();
     for (const sec of secOf.values()) count.set(sec, (count.get(sec) ?? 0) + 1);
     for (const [sec, n] of count) {
-      expect(n, `${sec} = ${n} harf`).toBeGreaterThanOrEqual(3);
-      expect(n, `${sec} = ${n} harf`).toBeLessThanOrEqual(5);
+      expect(n, `${sec} = ${n} harf = ${n * 3} yeni şekil`).toBeLessThanOrEqual(3);
     }
     expect([...count.values()].reduce((a, b) => a + b, 0)).toBe(28);
   });
