@@ -296,15 +296,27 @@ const t3_harekeler: ContentTopic = {
 // 4. KONU — CEZM: her harf (Elif hariç, Kef için ses yok)
 const CEZM_MISSING = new Set([22]); // 22=Kef ses yok
 
-// Sayfa 13 alıştırmalarından 2 harfli cezm heceleri (lem-yelid → lem + lid)
-const CEZM_EKSTRA: Array<[string, string]> = [
-  ["مِنْ", "min"], ["هُمْ", "hüm"], ["لَمْ", "lem"], ["قُلْ", "kul"],
-  ["يَوْ", "yev"], ["كُمْ", "küm"], ["كَيْ", "key"], ["قَبْ", "kab"],
-  ["اَنْ", "en"], ["اَكْ", "ek"], ["اَرْ", "er"], ["كُنْ", "kün"],
-  ["تُمْ", "tüm"], ["لِدْ", "lid"], ["اِسْ", "is"], ["تَكْ", "tek"],
-  ["لَسْ", "les"], ["نَعْ", "na'"], ["حَتْ", "het"], ["لَيْ", "ley"],
-  ["هِمْ", "him"], ["اَيْ", "ey"], ["تَوْ", "tev"], ["قَوْ", "kav"],
-  ["تُنْ", "tün"], ["ذِرْ", "zir"], ["ذَرْ", "zer"], ["اَفْ", "ef"],
+// Kur'an sıklığına göre seçilmiş cezm heceleri (tam Kur'an taraması,
+// engine5 sayımı — Hafs/Âsım, Türk mushafı kuralı: idgamlı işaretsiz
+// ünsüzler cezimli sayılır). Seçim kuralları:
+// - aynı hareke+koda sonundan yalnız EN SIK örnek ("hüm" varken "küm" yok)
+// - hamza başlangıçlılar hariç (çekirdek eb/ib/üb serisi zaten öğretiyor)
+// - az geçenler elendi. 3. alan = SRS bilet ağırlığı (3 çok sık / 2 sık).
+const CEZM_EKSTRA: Array<[string, string, number]> = [
+  ["هُمْ", "hüm", 3],  // 2.577
+  ["مِنْ", "min", 3],  // 2.281
+  ["لَيْ", "ley", 3],  // 1.224
+  ["هِمْ", "him", 3],  //   919
+  ["مَنْ", "men", 3],  //   837
+  ["بِلْ", "bil", 3],  //   585 — harf-i tarif okuyuşu (bi + el → bil)
+  ["قَوْ", "kav", 3],  //   509
+  ["يَعْ", "ye'", 3],  //   403
+  ["قَدْ", "kad", 2],  //   398
+  ["لَمْ", "lem", 2],  //   385
+  ["قُلْ", "kul", 2],  //   350
+  ["كُنْ", "kün", 2],  //   329
+  ["قَبْ", "kab", 2],  //   248
+  ["يَسْ", "yes", 2],  //   237
 ];
 
 const t4_cezm: ContentTopic = {
@@ -342,28 +354,39 @@ const t4_cezm: ContentTopic = {
         };
       });
     }),
-    ...CEZM_EKSTRA.map(([ar, sp], i) => ({
-      id: `l4x-${pad2(i + 1)}`,
+    ...CEZM_EKSTRA.map(([ar, sp, w], i) => ({
+      id: `l4e-${pad2(i + 1)}`,
       label: sp,
       speech: sp.replace(/'/g, ""),
       lang: "tr" as const,
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
+      weight: w,
     })),
   ],
 };
 
 // 5. KONU — ŞEDDE: her harf (Elif hariç) × 3 hareke
 
-// Sayfa 15 alıştırmalarından 2 harfli şedde heceleri
-const SEDDE_EKSTRA: Array<[string, string]> = [
-  ["زَيَّ", "zeyye"], ["عَلَّ", "alle"], ["حَقُّ", "hakku"], ["كُلُّ", "küllü"],
-  ["نَزَّ", "nezze"], ["ظُنُّ", "zunnü"], ["سَبِّ", "sebbi"], ["جَنَّ", "cenne"],
-  ["مُدَّ", "müdde"], ["هَنَّ", "henne"], ["فَصَّ", "fassa"], ["شَرِّ", "şerri"],
-  ["فُصِّ", "fussı"], ["اِتَّ", "itte"], ["بَشِّ", "beşşi"], ["وَجَّ", "vecce"],
-  ["وَكَّ", "vekke"], ["كَذِّ", "kezzi"], ["بَيِّ", "beyyi"], ["نَبِّ", "nebbi"],
-  ["لَنَّ", "lenne"],
+// Kur'an sıklığına göre seçilmiş şedde heceleri (engine5 sayımı). Aynı
+// hareke + şeddeli harf + son hareke kombinasyonundan yalnız EN SIK örnek
+// alınır; az geçenler elendi. 3. alan = SRS bilet ağırlığı (3/2/1).
+const SEDDE_EKSTRA: Array<[string, string, number]> = [
+  ["اِنَّ", "inne", 3],   // 1.513 — Kur'an'ın en sık şeddeli hecesi
+  ["اِلَّ", "ille", 3],   //   665
+  ["رَبِّ", "rabbi", 3],  //   609
+  ["اَنَّ", "enne", 3],   //   408
+  ["ثُمَّ", "sümme", 2],  //   338
+  ["رَبَّ", "rabbe", 2],  //   210
+  ["كُلِّ", "külli", 2],  //   192
+  ["اَيُّ", "eyyü", 2],   //   172
+  ["رَبُّ", "rabbü", 2],  //   171
+  ["لَمَّ", "lemme", 2],  //   165
+  ["مِمَّ", "mimme", 2],  //   159
+  ["عَلَّ", "alle", 2],   //   153
+  ["اِنِّ", "inni", 2],   //   151
+  ["حَتَّ", "hatte", 1],  //   142
 ];
 
 const t5_sedde: ContentTopic = {
@@ -399,26 +422,39 @@ const t5_sedde: ContentTopic = {
         };
       });
     }),
-    ...SEDDE_EKSTRA.map(([ar, sp], i) => ({
-      id: `l5x-${pad2(i + 1)}`,
+    ...SEDDE_EKSTRA.map(([ar, sp, w], i) => ({
+      id: `l5e-${pad2(i + 1)}`,
       label: sp,
       speech: sp,
       lang: "tr" as const,
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
+      weight: w,
     })),
   ],
 };
 
 // 6. KONU — MED HARFLERİ (uzatma). PDF sayfa 16-17 örneklerinden.
 
-// Sayfa 17 alıştırmalarından 2 harfli med heceleri (temel kartlarda olmayanlar)
-const MED_EKSTRA: Array<[string, string]> = [
-  ["قَا", "kâ"], ["كَا", "kâ"], ["وَا", "vâ"], ["ضَا", "dâ"], ["مَا", "mâ"],
-  ["خِى", "hî"], ["دِى", "dî"], ["ظِى", "zî"], ["مِى", "mî"], ["قِى", "kî"],
-  ["طِى", "tî"], ["نِى", "nî"], ["لُو", "lû"], ["كُو", "kû"], ["نُو", "nû"],
-  ["عُو", "û"], ["سُو", "sû"], ["مُو", "mû"], ["رُو", "rû"], ["دُو", "dû"],
+// Kur'an sıklığına göre seçilmiş med heceleri (engine5 sayımı; çekirdek
+// kartlarda olmayanlardan en sık geçenler — hepsi 1.000+ kez). 3. alan =
+// SRS bilet ağırlığı (tümü çok sık: 3).
+const MED_EKSTRA: Array<[string, string, number]> = [
+  ["لَا", "lâ", 3],   // 4.019
+  ["مَا", "mâ", 3],   // 3.890
+  ["نَا", "nâ", 3],   // 3.351
+  ["وَا", "vâ", 3],   // 2.641
+  ["آ", "â", 3],      // 2.244 — medli elif (uzatmalı hemze)
+  ["هَا", "hâ", 3],   // 1.956
+  ["فِي", "fî", 3],   // 1.794
+  ["لُو", "lû", 3],   // 1.563
+  ["ذِي", "zî", 3],   // 1.470
+  ["هُو", "hû", 3],   // 1.338
+  ["يَا", "yâ", 3],   // 1.185
+  ["رُو", "rû", 3],   // 1.184
+  ["نُو", "nû", 3],   // 1.097
+  ["هِي", "hî", 3],   // 1.091
 ];
 
 const t6_med: ContentTopic = {
@@ -449,14 +485,15 @@ const t6_med: ContentTopic = {
       // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
       section: `${Math.floor(i / 6) + 1}. Bölüm`,
     })),
-    ...MED_EKSTRA.map(([ar, sp], i) => ({
-      id: `l6x-${pad2(i + 1)}`,
+    ...MED_EKSTRA.map(([ar, sp, w], i) => ({
+      id: `l6e-${pad2(i + 1)}`,
       label: sp,
       speech: sp,
       lang: "tr" as const,
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
+      weight: w,
     })),
   ],
 };

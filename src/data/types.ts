@@ -22,6 +22,11 @@ export interface ContentItem {
   audioGain?: number;
   // Konu sayfasında ayrı başlık altında gösterilecek grup (örn. "Ekstralar")
   section?: string;
+  // Kur'an sıklığı ağırlığı (SRS bilet çarpanı): 3 = çok sık (varsayılan —
+  // çekirdek müfredatın tamamı yüksek ve eşit), 2 = sık, 1 = normal.
+  // Yalnız Ekstralar öğelerinde 1-2 kullanılır; seviye seçimini değiştirmez,
+  // aynı seviyedeki adaylar arasında bilet sayısını belirler.
+  weight?: number;
 }
 
 export interface ContentTopic {

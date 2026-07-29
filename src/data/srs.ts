@@ -6,7 +6,7 @@
 // - Sadece "biliyordu = false" olan harflerin soru süresi öğrenme gücüne katkı verir.
 
 import { useEffect, useState } from "react";
-import { findTopicOfItem } from "@/data/subjects";
+import { findTopicOfItem, flattenItems } from "@/data/subjects";
 
 export type Level = 1 | 2 | 3 | 4;
 export type Namespace = "quiz" | "games";
@@ -234,6 +234,19 @@ export function pickNextLetter(ns: Namespace, topicId: string, letterIds: string
 // test/flashcard/oyunlar ardışık çağırdığı için tek değer yeterli.
 let _lastPickedId: string | null = null;
 
+// Kur'an sıklığı biletleri: çekirdek müfredat öğeleri 3 (yüksek ve eşit);
+// yalnız Ekstralar item.weight ile 2/1'e iner. Seviye şelalesini DEĞİŞTİRMEZ —
+// ağırlık sadece aynı seviyedeki adaylar arasında bilet sayısını belirler
+// (en fazla 3:1; zayıflık her zaman daha güçlü bilet).
+let _weightMap: Map<string, number> | null = null;
+function itemWeight(id: string): number {
+  if (!_weightMap) {
+    _weightMap = new Map();
+    for (const it of flattenItems()) if (it.weight) _weightMap.set(it.id, it.weight);
+  }
+  return _weightMap.get(id) ?? 3;
+}
+
 export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): string {
   // 1) Hiç karşılaşılmamış öğe varsa MÜFREDAT SIRASIYLA tanıt (i+1 ilkesi:
   //    yeni bilgi öngörülebilir sırayla gelir; elif'ten önce ye sorulmaz).
@@ -270,8 +283,17 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
     if (ea.seen !== eb.seen) return ea.seen - eb.seen;
     return ea.lastSeen - eb.lastSeen; // en uzun süredir görülmeyen önce (aralık etkisi)
   });
-  const top = Math.max(1, Math.ceil(candidates.length * 0.3));
-  const pick = candidates[Math.floor(Math.random() * top)];
+  // En taze yarıdan (az görülen + uzun süredir görülmeyen) Kur'an sıklığı
+  // biletleriyle çekiliş: sık hece 3 bilet, normal 1 — seviye zaten seçildi.
+  const top = Math.max(1, Math.ceil(candidates.length * 0.5));
+  const pool = candidates.slice(0, top);
+  const tickets = pool.map((id) => itemWeight(id));
+  let rw = Math.random() * tickets.reduce((a, b) => a + b, 0);
+  let pick = pool[pool.length - 1];
+  for (let i = 0; i < pool.length; i++) {
+    rw -= tickets[i];
+    if (rw <= 0) { pick = pool[i]; break; }
+  }
   _lastPickedId = pick;
   return pick;
 }
