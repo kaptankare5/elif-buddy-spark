@@ -146,6 +146,21 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   - **Soru kapıları seyrek** ve çevrelerinde `GATE_CLEAR` (40 birim) yarıçapında
     HİÇ engel yok — kullanıcı şartı: çocuk harfi seçerken aynı anda çekiçten
     kaçmak zorunda kalmasın, "biraz dinlensin". Kapı sesi de o mesafede çalar.
+    Aynı anda yalnız SIRADAKİ kapı görünür (iki kapı üst üste görününce çocuk
+    hangisine cevap vereceğini şaşırıyor).
+  - **Kontrol hyper-casual**: canvas'ta parmağı basılı tutup KAYDIRINCA karakter
+    parmağı takip eder (`ctrl.dragX`). Subway Surfers gibi "swipe = şerit atla"
+    DEĞİL — hareket sürekli. Kaydırmadan kısa dokunuş (<260 ms) = zıpla.
+    Düğmeler YÜZER (alt bara sabitlenirse parmak oraya takılıp kaydırma bozulur).
+  - **Tek özel güç** (kullanıcı şartı): doğru kapı RASTGELE bir güç verir
+    (🚀 roket · ⭐ süper zıplama · 🕸️ ağ · 🛡️ kalkan), slot tektir, yenisi
+    eskisinin üstüne yazar. Tek düğmeyle kullanılır. **Güç ışıkla anlatılır**:
+    kazanınca karakter parlar (`glowT`), etkinken gövde `emissive` + aura küresi
+    + ekran kenarı parıltısı. emissive'i 0.4'ün üstüne çıkarma — karakterin
+    kendi rengi kaybolur.
+  - **Botlar kapıyı RASTGELE seçer** (kullanıcı şartı). Eskiden `skill`'e göre
+    çoğunlukla doğruyu buluyorlardı; çocuk doğru cevap verse bile öne
+    geçemiyordu. Bot `skill`'i artık yalnız ENGELDEN KAÇMA (`dodge`) içindir.
   - **Zıplama bir kaçış aracıdır**: normal zıplama tepe ≈4.3 birim, ⭐ kozu
     ≈13 birim. Her engelin `clear` eşiği var (çekiç 4.4, sarkaç 4.2, silindir
     2.4, çubuk 1.5) — üstünden geçilebilir.

@@ -33,7 +33,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
-import { ArrowLeft, ArrowRight, Volume2, Maximize2, Lock } from "lucide-react";
+import { Volume2, Maximize2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
@@ -59,7 +59,6 @@ const GRAVITY = 30;
 // (tepe ≈ 4.3 birim → sarkaç topunun ve çekicin üstünden geçilebilir),
 // ⭐ kozu ise ondan çok daha yükseğe (tepe ≈ 13 birim) fırlatır.
 const JUMP_V = 16;
-const SUPER_JUMP_MUL = 1.75;
 const JUMP_CLEAR = 1.5;        // dönen çubuk bu yükseklikten sonra değmez
 const HAMMER_CLEAR = 4.4;      // çekiç kafasının üstü
 const PEND_CLEAR = 4.2;        // sarkaç topunun üstü
@@ -228,6 +227,25 @@ function nameTexture(name: string, color: string): THREE.CanvasTexture {
 // ================= tipler =================
 type Phase = "levels" | "race" | "finish";
 
+// ---- özel güçler ----
+// Çocuk aynı anda YALNIZCA BİR güç taşır (kullanıcı şartı) ve hangisini
+// alacağı RASTGELEDİR — sürpriz, oyunu her turda farklı kılar. Kazanınca
+// karakter parlar, kullanınca ışıklı aura açılır: çocuk gücü aldığını ve
+// kullandığını yazıyı okumadan, sadece bakarak anlar.
+type PowerKind = "rocket" | "jump" | "net" | "shield";
+const POWERS: Record<PowerKind, { emoji: string; label: string; got: string; hex: number }> = {
+  rocket: { emoji: "🚀", label: "Roket", got: "🚀 ROKET kazandın!", hex: 0xff7a18 },
+  jump:   { emoji: "⭐", label: "Süper Zıplama", got: "⭐ SÜPER ZIPLAMA kazandın!", hex: 0xfacc15 },
+  net:    { emoji: "🕸️", label: "Ağ", got: "🕸️ AĞ kazandın!", hex: 0x38bdf8 },
+  shield: { emoji: "🛡️", label: "Kalkan", got: "🛡️ KALKAN kazandın!", hex: 0x22d3ee },
+};
+const POWER_KINDS: PowerKind[] = ["rocket", "jump", "net", "shield"];
+const randomPower = (): PowerKind => POWER_KINDS[Math.floor(Math.random() * POWER_KINDS.length)];
+
+const ROCKET_TIME = 5.0;       // 🚀 doğru cevabın verdiği normal hızdan uzun
+const SHIELD_TIME = 6.0;       // 🛡️ bu süre boyunca hiçbir engel çarpmaz
+const SUPER_JUMP_MUL = 1.75;   // ⭐ normal zıplamanın kaç katı
+
 /** Parkur engelleri — hepsi z ekseninde sıralı, çarpışması basit geometri */
 type Obstacle =
   /** Dönen çekiç: direkte dönen kol, ucunda kafa. Kafaya değersen takla. */
@@ -263,7 +281,9 @@ interface Racer {
   mudT: number;
   netT: number;
   hitT: number;           // takla süresi
-  skill: number;          // 0..1 — bot kapı/engel becerisi
+  shieldT: number;        // 🛡️ aktifken hiçbir engel çarpmaz
+  glowT: number;          // güç kazanma parlaması (kısa)
+  dodge: number;          // 0..1 — botun ENGELDEN kaçma becerisi
   targetX: number;
   homeX: number;
   gateChoice: number | null;
@@ -273,6 +293,8 @@ interface Racer {
   body: THREE.Group;      // gövde + yüz + şapka (birlikte eğilir/takla atar)
   legs: [THREE.Object3D, THREE.Object3D];
   arms: [THREE.Object3D, THREE.Object3D];
+  bodyMat: THREE.MeshLambertMaterial;   // parlama için emissive'i değişir
+  aura: THREE.Mesh | null;              // güç aktifken açılan ışık küresi
 }
 
 const PartyGame = () => {
@@ -284,7 +306,9 @@ const PartyGame = () => {
   const [phase, setPhase] = useState<Phase>("levels");
   const [level, setLevel] = useState(1);              // oynanan bölüm (1..10)
   const [unlocked, setUnlocked] = useState(() => getUnlockedLevel());
-  const [hud, setHud] = useState({ place: 1, pct: 0, nets: 0, jumps: 0, correct: 0, wrong: 0 });
+  const [hud, setHud] = useState({ place: 1, pct: 0, correct: 0, wrong: 0 });
+  const [power, setPower] = useState<PowerKind | null>(null);      // taşınan tek güç
+  const [activePower, setActivePower] = useState<PowerKind | null>(null); // şu an etkin
   const [prompt, setPrompt] = useState<ContentItem | null>(null);
   const [flash, setFlash] = useState<{ k: number; text: string; good: boolean } | null>(null);
   const [result, setResult] = useState<{ place: number; correct: number; wrong: number } | null>(null);
@@ -297,9 +321,15 @@ const PartyGame = () => {
   const gatesRef = useRef<Gate[]>([]);
   const obsRef = useRef<Obstacle[]>([]);
   const netsRef = useRef<{ mesh: THREE.Object3D; x: number; z: number; from: number }[]>([]);
-  const ctrlRef = useRef({ dir: 0 as -1 | 0 | 1, jump: false, useNet: false, useJump: false, running: false });
-  const netCountRef = useRef(0);
-  const jumpCountRef = useRef(0);
+  // dir: klavye (masaüstü). dragX: parmakla sürüklemenin hedeflediği x.
+  const ctrlRef = useRef({
+    dir: 0 as -1 | 0 | 1,
+    dragX: null as number | null,
+    jump: false,
+    usePower: false,
+    running: false,
+  });
+  const powerRef = useRef<PowerKind | null>(null);
   const statsRef = useRef({ correct: 0, wrong: 0 });
   const flashK = useRef(0);
   const promptIdRef = useRef<string | null>(null);
@@ -317,7 +347,10 @@ const PartyGame = () => {
     setResult(null);
     setPrompt(null);
     promptIdRef.current = null;
-    setHud({ place: 1, pct: 0, nets: 0, jumps: 0, correct: 0, wrong: 0 });
+    setHud({ place: 1, pct: 0, correct: 0, wrong: 0 });
+    setPower(null);
+    setActivePower(null);
+    powerRef.current = null;
     setPhase("race");
     wrapRef.current?.requestFullscreen?.().catch(() => { /* izin yoksa sorun değil */ });
   }, []);
@@ -698,15 +731,31 @@ const PartyGame = () => {
         arrow.name = "marker";
         group.add(arrow);
       }
+      // Işık aurası — güç kazanınca/aktifken açılır. Çocuk gücü aldığını
+      // yazıyı okumadan, sadece karakterin parlamasından anlar.
+      let aura: THREE.Mesh | null = null;
+      if (isPlayer) {
+        aura = new THREE.Mesh(
+          track(new THREE.SphereGeometry(1.55, 18, 14)),
+          track(new THREE.MeshBasicMaterial({
+            color: 0xffffff, transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, depthWrite: false,
+          })),
+        );
+        aura.position.y = 1.3;
+        aura.visible = false;
+        group.add(aura);
+      }
       scene.add(group);
       return {
         id, name, isPlayer, z: 0, x: homeX, y: 0, vy: 0,
-        boostT: 0, mudT: 0, netT: 0, hitT: 0,
-        skill: isPlayer ? 1 : def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0]),
+        boostT: 0, mudT: 0, netT: 0, hitT: 0, shieldT: 0, glowT: 0,
+        dodge: isPlayer ? 1 : def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0]),
         targetX: homeX, homeX, gateChoice: null, finished: null,
         hop: Math.random() * 6, group, body,
         legs: legs as [THREE.Object3D, THREE.Object3D],
         arms: arms as [THREE.Object3D, THREE.Object3D],
+        bodyMat: mat, aura,
       };
     };
 
@@ -719,8 +768,7 @@ const PartyGame = () => {
       racers[i + 1].z = -1.6 - 1.1 * i;   // başlangıç ızgarası: oyuncunun hafif gerisinde
     }
     racersRef.current = racers;
-    netCountRef.current = 0;
-    jumpCountRef.current = 0;
+    powerRef.current = null;
     statsRef.current = { correct: 0, wrong: 0 };
     netsRef.current = [];
 
@@ -738,6 +786,45 @@ const PartyGame = () => {
     resize();
     window.addEventListener("resize", resize);
 
+    // ---------- hyper-casual sürükleme kontrolü ----------
+    // Parmağını basılı tutup sağa/sola KAYDIRIR, karakter parmağı takip eder.
+    // Subway Surfers gibi "swipe = şerit atla" DEĞİL: hareket sürekli, çocuk
+    // istediği noktaya milimetrik gidebilir. Kısa dokunuş (kaydırmadan) = ZIPLA.
+    let dragId: number | null = null;
+    let dragStartPx = 0;
+    let dragStartX = 0;
+    let dragMoved = false;
+    let dragDownAt = 0;
+    /** Ekran pikseli → yol birimi. Ekranın yarısını kaydırmak yolun yarısını geçirir. */
+    const pxToUnits = () => (ROAD_HALF * 2.2) / Math.max(1, wrap.clientWidth);
+
+    const onDown = (e: PointerEvent) => {
+      if (dragId !== null) return;
+      dragId = e.pointerId;
+      dragStartPx = e.clientX;
+      dragStartX = racersRef.current[0]?.x ?? 0;
+      dragMoved = false;
+      dragDownAt = performance.now();
+      ctrlRef.current.dragX = dragStartX;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (dragId !== e.pointerId) return;
+      const dpx = e.clientX - dragStartPx;
+      if (Math.abs(dpx) > 8) dragMoved = true;
+      ctrlRef.current.dragX = Math.max(-ROAD_HALF + 0.7, Math.min(ROAD_HALF - 0.7, dragStartX + dpx * pxToUnits()));
+    };
+    const onUp = (e: PointerEvent) => {
+      if (dragId !== e.pointerId) return;
+      dragId = null;
+      ctrlRef.current.dragX = null;
+      // kaydırmadan kısa dokunuş → zıpla (ayrı düğmeye basmaya gerek yok)
+      if (!dragMoved && performance.now() - dragDownAt < 260) ctrlRef.current.jump = true;
+    };
+    canvas.addEventListener("pointerdown", onDown);
+    canvas.addEventListener("pointermove", onMove);
+    canvas.addEventListener("pointerup", onUp);
+    canvas.addEventListener("pointercancel", onUp);
+
     // ---------- yardımcılar ----------
     const player = racers[0];
     const laneOf = (x: number) => Math.max(0, Math.min(2, Math.floor(((x + ROAD_HALF) / (ROAD_HALF * 2)) * 3)));
@@ -746,6 +833,10 @@ const PartyGame = () => {
     /** Çekiç/sarkaç/çubuk vurdu mu? Vurulan takla atar, geri kayar. */
     const knock = (r: Racer, push: number) => {
       if (r.hitT > 0) return;
+      if (r.shieldT > 0) {           // 🛡️ kalkan: engel çarpmaz, sadece ışık
+        if (r.isPlayer) { playSfx("coin"); r.glowT = Math.max(r.glowT, 0.3); }
+        return;
+      }
       r.hitT = HIT_TIME;
       r.z = Math.max(0, r.z - push);
       r.vy = 5.5;
@@ -826,29 +917,42 @@ const PartyGame = () => {
         else if (o.kind === "roller") o.body.position.x = Math.sin(o.t * o.sp) * o.span;
       }
 
-      // --- ağ atma ---
-      if (ctrlRef.current.useNet) {
-        ctrlRef.current.useNet = false;
-        if (netCountRef.current > 0 && player.finished === null) {
-          netCountRef.current -= 1;
-          const mesh = new THREE.Mesh(netGeo, netMat);
-          mesh.position.set(player.x, 1.1, wz(player.z + 1));
-          scene.add(mesh);
-          netsRef.current.push({ mesh, x: player.x, z: player.z + 1, from: 0 });
-          playSfx("coin");
-        }
-      }
-
-      // --- süper zıplama ---
-      if (ctrlRef.current.useJump) {
-        ctrlRef.current.useJump = false;
-        if (jumpCountRef.current > 0 && player.finished === null && player.y <= 0.02) {
-          jumpCountRef.current -= 1;
-          player.vy = JUMP_V * SUPER_JUMP_MUL;
-          player.mudT = 0;
-          player.hitT = 0;
-          playSfx("dove");
-          showFlash("⭐ SÜPER ZIPLAMA!", true);
+      // --- ÖZEL GÜÇ kullanımı (tek düğme, taşınan tek güç) ---
+      if (ctrlRef.current.usePower) {
+        ctrlRef.current.usePower = false;
+        const k = powerRef.current;
+        if (k && player.finished === null) {
+          // ⭐ ancak yerdeyken kullanılabilir; boşa gitmesin diye güç durur
+          if (k === "jump" && player.y > 0.02) {
+            // yerde değil → gücü harcamadan geç
+          } else {
+            powerRef.current = null;
+            setPower(null);
+            if (k === "rocket") {
+              player.boostT = ROCKET_TIME;
+              playSfx("dove");
+              showFlash("🚀 ROKET!", true);
+            } else if (k === "jump") {
+              player.vy = JUMP_V * SUPER_JUMP_MUL;
+              player.mudT = 0;
+              player.hitT = 0;
+              playSfx("dove");
+              showFlash("⭐ SÜPER ZIPLAMA!", true);
+            } else if (k === "net") {
+              const mesh = new THREE.Mesh(netGeo, netMat);
+              mesh.position.set(player.x, 1.1, wz(player.z + 1));
+              scene.add(mesh);
+              netsRef.current.push({ mesh, x: player.x, z: player.z + 1, from: 0 });
+              playSfx("coin");
+              showFlash("🕸️ AĞ ATTIN!", true);
+            } else {
+              player.shieldT = SHIELD_TIME;
+              player.mudT = 0;
+              player.hitT = 0;
+              playSfx("dove");
+              showFlash("🛡️ KALKAN!", true);
+            }
+          }
         }
       }
 
@@ -888,20 +992,34 @@ const PartyGame = () => {
         if (r.mudT > 0) r.mudT = Math.max(0, r.mudT - dt);
         if (r.netT > 0) r.netT = Math.max(0, r.netT - dt);
         if (r.hitT > 0) r.hitT = Math.max(0, r.hitT - dt);
+        if (r.shieldT > 0) r.shieldT = Math.max(0, r.shieldT - dt);
+        if (r.glowT > 0) r.glowT = Math.max(0, r.glowT - dt);
 
         // yatay yönelim
         if (r.isPlayer) {
-          if (r.hitT <= 0) r.x += ctrlRef.current.dir * STEER * dt;
+          if (r.hitT <= 0) {
+            // Hyper-casual kontrol: parmak ekranda sürüklendikçe karakter
+            // ONU TAKİP EDER (şerit atlamalı "swipe" değil — çocuk istediği
+            // yere milimetrik gidebilsin). dragX parmağın hedeflediği x'tir;
+            // karaktere yumuşatarak yaklaşırız ki takılmalı görünmesin.
+            const dx = ctrlRef.current.dragX;
+            if (dx !== null) {
+              const d = dx - r.x;
+              r.x += Math.sign(d) * Math.min(Math.abs(d), STEER * 2.2 * dt);
+            } else {
+              r.x += ctrlRef.current.dir * STEER * dt;   // klavye (masaüstü)
+            }
+          }
         } else {
-          // Bot: kapı yakınsa seçtiği şeride, değilse kendi şeridine.
-          // Ayrıca becerisine göre yaklaşan engelden kaçmaya çalışır.
+          // Bot: kapıda RASTGELE şerit seçer (kullanıcı şartı — botlar hep
+          // doğruyu bulunca çocuk doğru cevap verse bile öne geçemiyordu;
+          // artık doğru cevap gerçek bir avantaj). Engellerden kaçma becerisi
+          // ayrı tutulur: yarış yine de çekişmeli olsun.
           const g = gatesRef.current.find((gg) => gg.z > r.z - 1 && !gg.botDone.has(r.id));
           if (g && g.z - r.z < 26) {
             if (r.gateChoice !== g.z) {
               r.gateChoice = g.z;
-              const correctIdx = g.options.findIndex((o) => o.id === g.target.id);
-              const pickIdx = Math.random() < r.skill ? correctIdx : Math.floor(Math.random() * 3);
-              r.targetX = laneX(pickIdx);
+              r.targetX = laneX(Math.floor(Math.random() * 3));
             }
           } else {
             r.targetX = r.homeX;
@@ -910,7 +1028,7 @@ const PartyGame = () => {
               const hz = hazardOf(o);
               if (!hz) continue;
               const ahead = hz.z - r.z;
-              if (ahead > 0 && ahead < 14 && Math.abs(hz.x - r.x) < 3.0 && Math.random() < r.skill) {
+              if (ahead > 0 && ahead < 14 && Math.abs(hz.x - r.x) < 3.0 && Math.random() < r.dodge) {
                 r.targetX = hz.x > 0 ? hz.x - 4.2 : hz.x + 4.2;
                 break;
               }
@@ -925,7 +1043,7 @@ const PartyGame = () => {
             for (const o of obsRef.current) {
               if (o.kind !== "spinner") continue;
               const ahead = o.z - r.z;
-              if (ahead > 0 && ahead < 6.5 && Math.random() < r.skill) { r.vy = JUMP_V; break; }
+              if (ahead > 0 && ahead < 6.5 && Math.random() < r.dodge) { r.vy = JUMP_V; break; }
             }
           }
         }
@@ -995,11 +1113,18 @@ const PartyGame = () => {
       }
 
       // --- soru kapıları ---
+      // Aynı anda YALNIZCA SIRADAKİ kapı görünür: iki kapı üst üste görününce
+      // çocuk hangisine cevap vereceğini şaşırıyor.
+      const nextGate = gatesRef.current.find((g) => !g.done);
       for (const g of gatesRef.current) {
-        // Geçilen kapı kameranın ÖNÜNDE kalıyor (kamera oyuncunun 15 birim
+        // Geçilen kapı kameranın ÖNÜNDE kalıyor (kamera oyuncunun 17 birim
         // gerisinde) ve ekranın altını tamamen kapatıyordu. Doğru/yanlış
         // rengini görecek kadar bekleyip gizle.
-        if (g.done && g.group.visible && player.z > g.z + 6) g.group.visible = false;
+        if (g.done) {
+          if (g.group.visible && player.z > g.z + 6) g.group.visible = false;
+        } else {
+          g.group.visible = g === nextGate;
+        }
         if (!g.done && player.finished === null && player.z >= g.z) {
           g.done = true;
           const idx = laneOf(player.x);
@@ -1016,14 +1141,13 @@ const PartyGame = () => {
           if (correct) {
             statsRef.current.correct += 1;
             player.boostT = BOOST_TIME;
-            // Ödül dönüşümlü: bir ağ, bir süper zıplama — çocuk koz biriktirir
-            if (statsRef.current.correct % 2 === 1) {
-              netCountRef.current = Math.min(3, netCountRef.current + 1);
-              showFlash("✅ Doğru! 🚀 hız + 🕸️ ağ", true);
-            } else {
-              jumpCountRef.current = Math.min(3, jumpCountRef.current + 1);
-              showFlash("✅ Doğru! 🚀 hız + ⭐ zıplama", true);
-            }
+            // Ödül: hız + RASTGELE bir özel güç (tek slot, üstüne yazar).
+            // Hangisinin geleceği belli değil → her doğru cevap bir sürpriz.
+            const k = randomPower();
+            powerRef.current = k;
+            setPower(k);
+            player.glowT = 1.1;                  // karakter parlayarak "aldım" der
+            showFlash(POWERS[k].got, true);
             playFeedback(true);
           } else {
             statsRef.current.wrong += 1;
@@ -1043,14 +1167,13 @@ const PartyGame = () => {
       // --- sıradaki kapının sesi ---
       // Ses çalma YAN ETKİDİR: setState güncelleyicisinin içine konulamaz
       // (StrictMode güncelleyiciyi iki kez çağırır → ses çift çalar).
-      const next = gatesRef.current.find((g) => !g.done);
-      const d = next ? next.z - player.z : Infinity;
+      const d = nextGate ? nextGate.z - player.z : Infinity;
       // Kapı GATE_CLEAR kadar önceden engelsiz — ses de o anda çalsın ki
       // çocuğun dinleyip şerit seçmeye bol vakti olsun.
-      const wantId = next && d > 0 && d < GATE_CLEAR ? next.target.id : null;
+      const wantId = nextGate && d > 0 && d < GATE_CLEAR ? nextGate.target.id : null;
       if (wantId !== promptIdRef.current) {
         promptIdRef.current = wantId;
-        if (next && wantId) { setPrompt(next.target); playItem(next.target); }
+        if (nextGate && wantId) { setPrompt(nextGate.target); playItem(nextGate.target); }
         else setPrompt(null);
       }
 
@@ -1076,6 +1199,39 @@ const PartyGame = () => {
       // Geride kalan yarışmacı kameranın önüne girip ekranı kapatıyordu:
       // kameraya çok yakın olanı gizle (yarışta hâlâ koşmaya devam eder).
       for (const r of racers) r.group.visible = wz(r.z) < camera.position.z - 5.5;
+
+      // --- GÜÇ IŞIĞI: karakter parlar, aura açılır ---
+      // Üç durum, üç renk: kalkan (camgöbeği), roket/hız (turuncu),
+      // güç kazanma flaşı (beyaz-altın). Sözle değil ışıkla anlatılır.
+      const auraMat = player.aura?.material as THREE.MeshBasicMaterial | undefined;
+      let glowHex = 0;
+      let glowAmt = 0;
+      // Işık karakterin KENDİ rengini yutmamalı (emissive fazla olunca yeşil
+      // oyuncu tamamen sarıya dönüyordu) — parlasın ama kim olduğu belli kalsın.
+      if (player.shieldT > 0) {
+        glowHex = POWERS.shield.hex;
+        glowAmt = 0.40 + Math.sin(tNow * 9) * 0.10;
+      } else if (player.boostT > 0) {
+        glowHex = POWERS.rocket.hex;
+        glowAmt = 0.30 + Math.sin(tNow * 14) * 0.10;
+      } else if (player.glowT > 0) {
+        glowHex = 0xfff3b0;
+        glowAmt = Math.min(1, player.glowT) * 0.5;
+      }
+      if (glowAmt > 0) {
+        player.bodyMat.emissive.setHex(glowHex);
+        player.bodyMat.emissiveIntensity = glowAmt;
+        if (player.aura && auraMat) {
+          player.aura.visible = true;
+          auraMat.color.setHex(glowHex);
+          auraMat.opacity = glowAmt * 0.42;
+          const s = 1 + Math.sin(tNow * 7) * 0.07;
+          player.aura.scale.setScalar(s);
+        }
+      } else {
+        player.bodyMat.emissive.setHex(0x000000);
+        if (player.aura) player.aura.visible = false;
+      }
     };
 
     // ---------- döngü ----------
@@ -1083,7 +1239,7 @@ const PartyGame = () => {
     let last = performance.now();
     let hudT = 0;
     const ctrl = ctrlRef.current;
-    ctrl.dir = 0; ctrl.jump = false; ctrl.useNet = false; ctrl.useJump = false;
+    ctrl.dir = 0; ctrl.dragX = null; ctrl.jump = false; ctrl.usePower = false;
     ctrl.running = true;
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
@@ -1098,11 +1254,11 @@ const PartyGame = () => {
         setHud({
           place: ahead + 1,
           pct: Math.min(100, Math.round((player.z / FINISH_Z) * 100)),
-          nets: netCountRef.current,
-          jumps: jumpCountRef.current,
           correct: statsRef.current.correct,
           wrong: statsRef.current.wrong,
         });
+        // Etkin gücü HUD'a bildir (düğme rengi + rozet buna göre yanar)
+        setActivePower(player.shieldT > 0 ? "shield" : player.boostT > 0 ? "rocket" : null);
       }
     };
     raf = requestAnimationFrame(frame);
@@ -1110,6 +1266,10 @@ const PartyGame = () => {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      canvas.removeEventListener("pointerdown", onDown);
+      canvas.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerup", onUp);
+      canvas.removeEventListener("pointercancel", onUp);
       ctrl.running = false;
       // WebGL kaynakları elle bırakılır: yarış tekrar başlatıldığında
       // sahne sıfırdan kurulur, eskisi sızmamalı.
@@ -1130,8 +1290,7 @@ const PartyGame = () => {
       if (e.code === "ArrowLeft" || e.code === "KeyA") ctrlRef.current.dir = -1;
       else if (e.code === "ArrowRight" || e.code === "KeyD") ctrlRef.current.dir = 1;
       else if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") { e.preventDefault(); ctrlRef.current.jump = true; }
-      else if (e.code === "KeyJ") ctrlRef.current.useNet = true;
-      else if (e.code === "KeyX") ctrlRef.current.useJump = true;
+      else if (e.code === "KeyX" || e.code === "KeyJ") ctrlRef.current.usePower = true;
     };
     const up = (e: KeyboardEvent) => {
       if ((e.code === "ArrowLeft" || e.code === "KeyA") && ctrlRef.current.dir === -1) ctrlRef.current.dir = 0;
@@ -1141,13 +1300,6 @@ const PartyGame = () => {
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, []);
-
-  const hold = (dir: -1 | 1) => ({
-    onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); ctrlRef.current.dir = dir; },
-    onPointerUp: () => { if (ctrlRef.current.dir === dir) ctrlRef.current.dir = 0; },
-    onPointerCancel: () => { if (ctrlRef.current.dir === dir) ctrlRef.current.dir = 0; },
-    onPointerLeave: () => { if (ctrlRef.current.dir === dir) ctrlRef.current.dir = 0; },
-  });
 
   const exit = () => {
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
@@ -1178,8 +1330,8 @@ const PartyGame = () => {
               </div>
             </div>
             <div className="rounded-2xl bg-white/85 px-2 py-1.5 text-center shadow-card backdrop-blur">
-              <div className="text-[10px] font-bold text-muted-foreground">Koz</div>
-              <div className="text-sm font-extrabold text-info">🕸️{hud.nets} <span className="text-warning">⭐{hud.jumps}</span></div>
+              <div className="text-[10px] font-bold text-muted-foreground">Güç</div>
+              <div className="text-lg leading-tight">{power ? POWERS[power].emoji : "—"}</div>
             </div>
           </div>
 
@@ -1203,46 +1355,55 @@ const PartyGame = () => {
             </div>
           )}
 
-          {/* mobil kontroller */}
-          <div className="absolute inset-x-0 bottom-0 z-20 flex items-stretch gap-2 bg-white/80 p-2 backdrop-blur">
-            <button {...hold(-1)} aria-label="Sola"
-              className="flex flex-1 touch-none select-none items-center justify-center rounded-2xl bg-primary py-5 text-primary-foreground shadow-soft active:scale-95">
-              <ArrowLeft className="h-8 w-8" />
-            </button>
-            <button {...hold(1)} aria-label="Sağa"
-              className="flex flex-1 touch-none select-none items-center justify-center rounded-2xl bg-primary py-5 text-primary-foreground shadow-soft active:scale-95">
-              <ArrowRight className="h-8 w-8" />
-            </button>
+          {/* Kontroller yüzer: ekranın geri kalanı SÜRÜKLEME alanıdır.
+              Alt bara sabit düğme koyulunca parmak oraya takılıyor ve
+              hyper-casual "kaydır" hissi kayboluyordu. */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between p-4">
             <button
-              onPointerDown={(e) => { e.preventDefault(); ctrlRef.current.jump = true; }}
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); ctrlRef.current.jump = true; }}
               aria-label="Zıpla"
-              className="flex flex-[1.1] touch-none select-none flex-col items-center justify-center rounded-2xl bg-success py-5 text-success-foreground shadow-soft active:scale-95">
-              <span className="text-2xl leading-none">🦘</span>
+              className="pointer-events-auto flex h-20 w-20 touch-none select-none flex-col items-center justify-center rounded-full bg-success/90 text-success-foreground shadow-card backdrop-blur active:scale-90"
+            >
+              <span className="text-3xl leading-none">🦘</span>
               <span className="text-[10px] font-extrabold">ZIPLA</span>
             </button>
+
+            <div className="pointer-events-none flex flex-col items-center gap-1">
+              <span className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-extrabold text-muted-foreground backdrop-blur">
+                👆 parmağını kaydır
+              </span>
+            </div>
+
+            {/* TEK özel güç düğmesi — dolu olduğunda parlar ve titrer */}
             <button
-              onPointerDown={(e) => { e.preventDefault(); ctrlRef.current.useNet = true; }}
-              disabled={hud.nets === 0}
-              aria-label="Ağ at"
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); ctrlRef.current.usePower = true; }}
+              disabled={!power}
+              aria-label={power ? `${POWERS[power].label} kullan` : "Özel güç yok"}
               className={cn(
-                "flex flex-[0.75] touch-none select-none flex-col items-center justify-center rounded-2xl py-5 text-xl shadow-soft active:scale-95",
-                hud.nets > 0 ? "bg-info text-info-foreground" : "bg-muted text-muted-foreground opacity-50",
+                "pointer-events-auto flex h-24 w-24 touch-none select-none flex-col items-center justify-center rounded-full border-4 shadow-card transition-bouncy active:scale-90",
+                power
+                  ? "animate-pulse border-white bg-warning text-warning-foreground ring-4 ring-warning/50"
+                  : "border-white/60 bg-white/70 text-muted-foreground opacity-70 backdrop-blur",
               )}
             >
-              🕸️<span className="text-[10px] font-extrabold">{hud.nets}</span>
-            </button>
-            <button
-              onPointerDown={(e) => { e.preventDefault(); ctrlRef.current.useJump = true; }}
-              disabled={hud.jumps === 0}
-              aria-label="Süper zıplama"
-              className={cn(
-                "flex flex-[0.75] touch-none select-none flex-col items-center justify-center rounded-2xl py-5 text-xl shadow-soft active:scale-95",
-                hud.jumps > 0 ? "bg-warning text-warning-foreground" : "bg-muted text-muted-foreground opacity-50",
-              )}
-            >
-              ⭐<span className="text-[10px] font-extrabold">{hud.jumps}</span>
+              <span className="text-4xl leading-none">{power ? POWERS[power].emoji : "✨"}</span>
+              <span className="mt-0.5 text-[10px] font-extrabold">
+                {power ? POWERS[power].label : "GÜÇ YOK"}
+              </span>
             </button>
           </div>
+
+          {/* Güç ETKİNKEN ekran kenarı da parlar — çocuk gücünün çalıştığını görür */}
+          {activePower && (
+            <div
+              className="pointer-events-none absolute inset-0 z-10 animate-pulse"
+              // İnce bir çerçeve parıltısı yeter: geniş yayılınca (90px)
+              // parkurun yarısını boyayıp oyunu görünmez hâle getiriyordu.
+              style={{
+                boxShadow: `inset 0 0 34px 5px ${activePower === "shield" ? "rgba(34,211,238,0.55)" : "rgba(255,122,24,0.5)"}`,
+              }}
+            />
+          )}
         </>
       )}
 
@@ -1292,10 +1453,11 @@ const PartyGame = () => {
           </div>
 
           <div className="mx-auto mt-3 grid w-full max-w-sm gap-1.5 text-left text-xs font-bold">
-            <div className="rounded-xl border-2 border-destructive/30 bg-destructive/10 px-3 py-2">🔨 Dönen çekiç → değersen takla atarsın</div>
+            <div className="rounded-xl border-2 border-primary/30 bg-primary/10 px-3 py-2">👆 Parmağını ekrana bas ve sağa/sola KAYDIR</div>
             <div className="rounded-xl border-2 border-info/30 bg-info/10 px-3 py-2">🦘 ZIPLA → çubuğun, hatta çekicin üstünden geç</div>
-            <div className="rounded-xl border-2 border-success/30 bg-success/10 px-3 py-2">✅ Doğru kapı → 🚀 hız + koz</div>
-            <div className="rounded-xl border-2 border-warning/30 bg-warning/10 px-3 py-2">🕸️ Ağ at / ⭐ süper zıpla</div>
+            <div className="rounded-xl border-2 border-destructive/30 bg-destructive/10 px-3 py-2">🔨 Dönen çekiç → değersen takla atarsın</div>
+            <div className="rounded-xl border-2 border-success/30 bg-success/10 px-3 py-2">✅ Doğru kapı → 🚀 hız + SÜRPRİZ güç</div>
+            <div className="rounded-xl border-2 border-warning/30 bg-warning/10 px-3 py-2">✨ Güç düğmesi: 🚀 roket · ⭐ zıplama · 🕸️ ağ · 🛡️ kalkan</div>
           </div>
 
           <button
