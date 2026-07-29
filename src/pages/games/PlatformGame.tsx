@@ -102,7 +102,7 @@ const THEMES: Theme[] = [
   { name: "Gökkuşağı", emoji: "🌈", skyTop: "#7ec3f0", skyBottom: "#eaf8ff", hillA: "#86efac", hillB: "#fde68a", soil: "#c07a35", grassA: "#5ec46a", grassB: "#3f9d45", tree: "tree", treeLeaf: "#4cae5b", trunk: "#8a5a34", celestial: "rainbow", cloud: "#ffffff", flower1: "#f43f5e", flower2: "#facc15", birds: true },
 ];
 
-// Bölüm zorluk ayarı — seviye arttıkça uzar ve sıklaşır
+// Bölüm zorluk ayarı — seviye arttıkça uzar, canavar türü çeşitlenir
 function levelConf(lv: number) {
   const kinds: MonsterKind[] = ["walker"];
   if (lv >= 2) kinds.push("hopper");
@@ -110,13 +110,8 @@ function levelConf(lv: number) {
   if (lv >= 4) kinds.push("flyer");
   return {
     len: 2900 + lv * 380,
-    gapChance: lv === 1 ? 0.22 : Math.min(0.5, 0.24 + lv * 0.028),
-    gapMin: 58,
-    gapMax: 84 + Math.min(38, lv * 4),
-    monsterChance: Math.min(0.72, 0.3 + lv * 0.045),
     monsterKinds: kinds,
     springs: lv >= 2,
-    movers: lv >= 3,
     questions: Math.min(8, 4 + Math.ceil(lv / 2)),
   };
 }
@@ -153,6 +148,7 @@ interface MonsterEnt {
   vy: number;         // hopper
   grounded: boolean;  // hopper
   hopT: number;       // hopper: bir sonraki zıplamaya kalan süre
+  groundY: number;    // üzerinde durduğu zeminin üst yüzeyi (teraslar için)
   calmT: number;      // üstüne basılınca sersemleme (zarar yok)
   freedT: number;     // Nur ile güvercine dönüşüp uçma (yok etme değil)
 }
@@ -1422,22 +1418,22 @@ const PlatformGame = () => {
       }
     };
 
-    const spawnMonster = (kind: MonsterKind, rx0: number, rx1: number) => {
+    const spawnMonster = (kind: MonsterKind, rx0: number, rx1: number, groundY = GROUND_Y) => {
       const cx = (rx0 + rx1) / 2;
       const base: MonsterEnt = {
-        id: UID++, kind, x: cx, y: GROUND_Y - MH[kind],
+        id: UID++, kind, x: cx, y: groundY - MH[kind],
         dir: Math.random() < 0.5 ? -1 : 1,
         minX: rx0, maxX: rx1, homeX: cx,
-        baseY: GROUND_Y - MH[kind], amp: 0, t: Math.random() * 6,
+        baseY: groundY - MH[kind], amp: 0, t: Math.random() * 6,
         vy: 0, grounded: true, hopT: 0.5 + Math.random() * 0.6,
-        calmT: 0, freedT: 0,
+        groundY, calmT: 0, freedT: 0,
       };
       if (kind === "floater") {
-        base.baseY = GROUND_Y - 104 - Math.random() * 30;
+        base.baseY = groundY - 104 - Math.random() * 30;
         base.amp = 42 + Math.random() * 20;
         base.y = base.baseY;
       } else if (kind === "flyer") {
-        base.baseY = GROUND_Y - 118 - Math.random() * 36;
+        base.baseY = groundY - 118 - Math.random() * 36;
         base.amp = 20 + Math.random() * 14;
         base.y = base.baseY;
       }
@@ -1445,112 +1441,219 @@ const PlatformGame = () => {
     };
 
     // Soru üçlüsü: bloklar şimdi yerleştirilir, HARFLER görünürken seçilir
-    const placeTrio = (baseX: number) => {
-      const hs = shuffle([84, 138, 84]); // blok alt kenarının zeminden yüksekliği
-      const blocks: BlockEnt[] = hs.map((h, i) => ({
-        x: baseX + i * 122,
-        y: GROUND_Y - h - BLOCK,
-        item: null,
-        isTarget: false,
-      }));
+    const placeTrioAt = (pos: { x: number; y: number }[]) => {
+      const blocks: BlockEnt[] = pos.map((p) => ({ x: p.x, y: p.y, item: null, isTarget: false }));
       w.trios.push({
         id: UID++, target: null, blocks,
-        left: baseX, right: baseX + 2 * 122 + BLOCK,
+        left: Math.min(...pos.map((p) => p.x)),
+        right: Math.max(...pos.map((p) => p.x)) + BLOCK,
         announced: false, hint: false, resolved: null, doneT: 0,
       });
     };
-
-    const genChunk = (wantQ: boolean): boolean => {
-      let x = w.genX;
-      if (!wantQ && x > 1150 && Math.random() < conf.gapChance) {
-        // bazen dar çukur, bazen (2. bölümden itibaren) GENİŞ UÇURUM
-        const cliff = lv >= 2 && Math.random() < 0.3;
-        const gw = cliff
-          ? 100 + Math.random() * 26
-          : conf.gapMin + Math.random() * (conf.gapMax - conf.gapMin);
-        if (cliff) w.cliffs.push({ x, w: gw });
-        // üstüne para yayı — zıplarken toplanır (uçurumda daha yüksek)
-        const glyph = randGlyph();
-        if (glyph) {
-          for (let i = 0; i < 4; i++) {
-            const k = (i + 0.5) / 4;
-            w.coins.push({
-              id: UID++,
-              x: x + gw * k,
-              y: GROUND_Y - (cliff ? 84 : 66) - Math.sin(k * Math.PI) * (cliff ? 44 : 34),
-              glyph, taken: false,
-            });
-          }
-        }
-        x += gw;
-      }
-      const len = wantQ ? 480 + Math.random() * 150 : 300 + Math.random() * 340;
-      w.solids.push({ x, y: GROUND_Y, w: len, oneWay: false });
-      let placed = false;
-      if (wantQ) {
-        placeTrio(x + 90);
-        placed = true;
-      } else {
-        const r = Math.random();
-        if (len >= 250 && r < 0.78) {
-          if (conf.movers && r < 0.25) {
-            // hareketli platform (aşağı-yukarı süzülür)
-            const pw2 = 84 + Math.random() * 36;
-            const px = x + 50 + Math.random() * Math.max(1, len - pw2 - 100);
-            const baseY = GROUND_Y - 112;
-            w.solids.push({
-              x: px, y: baseY, w: pw2, oneWay: true,
-              mover: { baseY, range: 26 + Math.random() * 16, speed: 1.1 + Math.random() * 0.7, phase: Math.random() * 6.28 },
-            });
-            addCoinRow(px + pw2 / 2, baseY - 36, 3);
-          } else if (r < 0.5 && len >= 330) {
-            // merdiven: 2-3 basamak
-            const steps = 2 + (Math.random() < 0.5 ? 1 : 0);
-            const sx = x + 40 + Math.random() * Math.max(1, len - steps * 95 - 120);
-            for (let k = 0; k < steps; k++) {
-              w.solids.push({ x: sx + k * 90, y: GROUND_Y - 78 - k * 52, w: 80, oneWay: true });
-            }
-            addCoinRow(sx + (steps - 1) * 90 + 40, GROUND_Y - 78 - (steps - 1) * 52 - 30, 3);
-          } else {
-            const pw2 = 90 + Math.random() * 70;
-            const px = x + 40 + Math.random() * Math.max(1, len - pw2 - 80);
-            const py = GROUND_Y - (78 + Math.random() * 34);
-            w.solids.push({ x: px, y: py, w: pw2, oneWay: true });
-            if (Math.random() < 0.8) addCoinRow(px + pw2 / 2, py - 28, 3);
-          }
-        }
-        // zıplama yayı + üstüne dikey para dizisi
-        if (conf.springs && len >= 240 && Math.random() < 0.34) {
-          const spx = x + 60 + Math.random() * Math.max(1, len - 300);
-          w.springs.push({ id: UID++, x: spx, y: GROUND_Y, t: 0 });
-          addCoinColumn(spx);
-        }
-        // yerde para sırası
-        if (Math.random() < 0.45) addCoinRow(x + len / 2, GROUND_Y - 26, 4);
-        // canavarlar — tür çeşidi bölümle artar
-        if (len >= 240 && Math.random() < conf.monsterChance) {
-          const kinds = conf.monsterKinds;
-          const kind = kinds[Math.floor(Math.random() * kinds.length)];
-          spawnMonster(kind, x + 26, x + len - 26);
-          if (len >= 430 && Math.random() < 0.45) {
-            const kind2 = kinds[Math.floor(Math.random() * kinds.length)];
-            spawnMonster(kind2, x + len * 0.55, x + len - 26);
-          }
-        }
-      }
-      w.genX = x + len;
-      return placed;
+    const placeTrio = (baseX: number) => {
+      const hs = shuffle([84, 138, 84]); // blok alt kenarının zeminden yüksekliği
+      placeTrioAt(hs.map((h, i) => ({ x: baseX + i * 122, y: GROUND_Y - h - BLOCK })));
     };
 
-    // Bölümü baştan sona üret: sorular eşit aralıklı, sonda düzlük + CAMİ
+    // ---- dünya inşa tuğlaları ----
+    const ground = (x: number, wd: number, y = GROUND_Y) => {
+      w.solids.push({ x, y, w: wd, oneWay: false });
+      return x + wd;
+    };
+    const plat = (x: number, wd: number, y: number, mover = false) => {
+      if (mover) {
+        w.solids.push({
+          x, y, w: wd, oneWay: true,
+          mover: { baseY: y, range: 26 + Math.random() * 16, speed: 1.1 + Math.random() * 0.6, phase: Math.random() * 6.28 },
+        });
+      } else {
+        w.solids.push({ x, y, w: wd, oneWay: true });
+      }
+    };
+    // çukur: genişse uçurum görseli; üstünde yol gösteren para yayı
+    const gap = (x: number, wd: number, coinH = 66) => {
+      if (wd >= 90) w.cliffs.push({ x, w: wd });
+      const glyph = randGlyph();
+      if (glyph) {
+        for (let i = 0; i < 4; i++) {
+          const k = (i + 0.5) / 4;
+          w.coins.push({ id: UID++, x: x + wd * k, y: GROUND_Y - coinH - Math.sin(k * Math.PI) * 40, glyph, taken: false });
+        }
+      }
+      return x + wd;
+    };
+    const springAt = (x: number) => {
+      w.springs.push({ id: UID++, x, y: GROUND_Y, t: 0 });
+    };
+    const kindPick = () => conf.monsterKinds[Math.floor(Math.random() * conf.monsterKinds.length)];
+
+    // ---- DESEN KÜTÜPHANESİ ----
+    // Klasik platform oyunlarının kanıtlanmış bölüm tasarım KALIPLARINDAN
+    // esinlenildi (kademeli teraslar, ada atlamaları, piramit tepeler, yay
+    // uçuşları, hareketli feribotlar, ritim çukurları, canavar koridorları,
+    // çift katlı yollar, bölüm sonu merdiveni). Kalıplar mekaniktir — telifli
+    // grafik/karakter/isim kopyalanmadı; tüm çizimler özgün.
+    interface Pattern { minLv: number; build: (x: number) => number }
+    const PATTERNS: Pattern[] = [
+      // teraslar: kademeli yükselen zemin, tepede paralar + bekçi canavar
+      { minLv: 1, build: (x) => {
+        let cx = ground(x, 110);
+        cx = ground(cx, 105, GROUND_Y - 44);
+        addCoinRow(cx - 52, GROUND_Y - 44 - 26, 2);
+        cx = ground(cx, 125, GROUND_Y - 88);
+        addCoinRow(cx - 62, GROUND_Y - 88 - 26, 3);
+        if (lv >= 2) spawnMonster("walker", cx - 118, cx - 6, GROUND_Y - 88);
+        cx = ground(cx, 105, GROUND_Y - 44);
+        return ground(cx, 110);
+      } },
+      // canavar koridoru: düzlükte 2-3 karışık canavar, üstte para hattı
+      { minLv: 1, build: (x) => {
+        const wd = 430 + Math.random() * 90;
+        const e = ground(x, wd);
+        spawnMonster(kindPick(), x + 30, x + wd * 0.55);
+        spawnMonster(kindPick(), x + wd * 0.45, x + wd - 30);
+        if (lv >= 4) spawnMonster(kindPick(), x + wd * 0.3, x + wd * 0.85);
+        addCoinRow(x + wd / 2, GROUND_Y - 96, 5); // canavarların üstünden zıpla-topla
+        return e;
+      } },
+      // ritim çukurları: kısa zemin + çukur ×2-3 (para yayları yol gösterir)
+      { minLv: 1, build: (x) => {
+        let cx = ground(x, 130);
+        const n = lv >= 4 ? 3 : 2;
+        for (let i = 0; i < n; i++) {
+          cx = gap(cx, 64 + Math.random() * 22 + Math.min(20, lv * 2));
+          cx = ground(cx, 112 + Math.random() * 50);
+        }
+        return cx;
+      } },
+      // çift katlı yol: altta canavarlar, üstte paralı uzun platform (seçim!)
+      { minLv: 2, build: (x) => {
+        const wd = 400;
+        const e = ground(x, wd);
+        plat(x + 70, 250, GROUND_Y - 108);
+        addCoinRow(x + 195, GROUND_Y - 108 - 28, 5);
+        spawnMonster(kindPick(), x + 40, x + wd - 40);
+        if (lv >= 5) spawnMonster(kindPick(), x + wd * 0.5, x + wd - 30);
+        return e;
+      } },
+      // yay uçuşu: yaya bas, büyük uçurumun üzerinden uç (para sütunu)
+      { minLv: 2, build: (x) => {
+        let cx = ground(x, 170);
+        springAt(cx - 60);
+        addCoinColumn(cx - 60);
+        cx = gap(cx, 120 + Math.min(40, lv * 5), 96);
+        return ground(cx, 150);
+      } },
+      // ada atlamaları: geniş uçurumda 3 küçük ada + üstte devriye kuşu
+      { minLv: 2, build: (x) => {
+        let cx = ground(x, 130);
+        for (let i = 0; i < 3; i++) {
+          cx = gap(cx, 60 + Math.random() * 16, 60);
+          cx = ground(cx, 100 + Math.random() * 30);
+        }
+        if (conf.monsterKinds.includes("flyer")) spawnMonster("flyer", x + 150, cx - 40);
+        cx = gap(cx, 66, 60);
+        return ground(cx, 140);
+      } },
+      // merdiven + tepe atlayışı: basamaklarla çık, tepedeki boşluğu atla, in
+      { minLv: 3, build: (x) => {
+        let cx = ground(x, 110);
+        cx = ground(cx, 95, GROUND_Y - 44);
+        cx = ground(cx, 95, GROUND_Y - 88);
+        addCoinRow(cx - 48, GROUND_Y - 88 - 26, 2);
+        const glyph = randGlyph();
+        if (glyph) {
+          for (let i = 0; i < 3; i++) {
+            w.coins.push({ id: UID++, x: cx + 16 + i * 30, y: GROUND_Y - 88 - 58, glyph, taken: false });
+          }
+        }
+        cx += 92; // tepe boşluğu — düşersen aşağısı yok
+        cx = ground(cx, 95, GROUND_Y - 88);
+        cx = ground(cx, 95, GROUND_Y - 44);
+        return ground(cx, 110);
+      } },
+      // hareketli feribot: dev uçurumu süzülen platformla geç (zamanlama!)
+      { minLv: 3, build: (x) => {
+        let cx = ground(x, 150);
+        const gw = 170 + Math.min(50, lv * 6);
+        plat(cx + gw * 0.5 - 45, 90, GROUND_Y - 96, true);
+        cx = gap(cx, gw, 120);
+        return ground(cx, 150);
+      } },
+      // piramit: kademeli tepe, zirvede para tacı + bekçi baloncuk
+      { minLv: 4, build: (x) => {
+        let cx = ground(x, 100);
+        cx = ground(cx, 85, GROUND_Y - 44);
+        cx = ground(cx, 85, GROUND_Y - 88);
+        cx = ground(cx, 100, GROUND_Y - 132);
+        addCoinRow(cx - 50, GROUND_Y - 132 - 28, 3);
+        if (conf.monsterKinds.includes("floater")) spawnMonster("floater", cx - 92, cx - 8);
+        cx = ground(cx, 85, GROUND_Y - 88);
+        cx = ground(cx, 85, GROUND_Y - 44);
+        return ground(cx, 100);
+      } },
+    ];
+
+    // ---- soru arenaları: sorular da desenlerin içinde ----
+    const qaClassic = (x: number) => {
+      const e = ground(x, 520);
+      placeTrio(x + 90);
+      return e;
+    };
+    // adalar arenası: her blok kendi adasının üstünde — zıpla, seç
+    const qaIslands = (x: number) => {
+      let cx = ground(x, 140);
+      const pos: { x: number; y: number }[] = [];
+      for (let i = 0; i < 3; i++) {
+        pos.push({ x: cx + 75 - BLOCK / 2, y: GROUND_Y - 84 - BLOCK });
+        cx = ground(cx, 150);
+        if (i < 2) cx = gap(cx, 58, 56);
+      }
+      placeTrioAt(pos);
+      return ground(cx, 140);
+    };
+
+    // ---- bölümü desenlerden kur: soru arenaları araya serpiştirilir,
+    // desen çantası (bag) tekrarları önler, aralara nefes düzlükleri girer ----
     placeTrio(460); // ilk soru başlangıç düzlüğünde hazır
     const qStep = (conf.len - 1600) / Math.max(1, conf.questions - 1);
     const qXs = Array.from({ length: conf.questions }, (_, i) => 900 + i * qStep);
     let qi = 0;
-    while (w.genX < conf.len) {
-      const wantQ = qi < qXs.length && w.genX >= qXs[qi];
-      if (genChunk(wantQ)) qi++;
+    let bag: Pattern[] = [];
+    const nextPattern = () => {
+      if (!bag.length) bag = shuffle(PATTERNS.filter((p) => p.minLv <= lv));
+      return bag.pop()!;
+    };
+    let bx = 800;
+    let lastWasQ = false;
+    while (bx < conf.len) {
+      if (!lastWasQ && qi < qXs.length && bx >= qXs[qi]) {
+        bx = lv >= 4 && Math.random() < 0.5 ? qaIslands(bx) : qaClassic(bx);
+        qi++;
+        lastWasQ = true;
+      } else {
+        bx = nextPattern().build(bx);
+        lastWasQ = false;
+      }
+      // bağlantı düzlüğü: kısa nefes — bazen para, bazen canavar, bazen yay
+      const cw = 130 + Math.random() * 110;
+      if (Math.random() < 0.5) addCoinRow(bx + cw / 2, GROUND_Y - 26, 3);
+      else if (Math.random() < 0.45) spawnMonster(kindPick(), bx + 24, bx + cw - 24);
+      if (conf.springs && Math.random() < 0.18) {
+        springAt(bx + cw / 2);
+        addCoinColumn(bx + cw / 2);
+      }
+      bx = ground(bx, cw);
     }
+    // final: kutlama merdiveni (paralı basamaklar) → cami avlusuna atla
+    bx = ground(bx, 120);
+    bx = ground(bx, 90, GROUND_Y - 44);
+    addCoinRow(bx - 45, GROUND_Y - 44 - 26, 2);
+    bx = ground(bx, 90, GROUND_Y - 88);
+    addCoinRow(bx - 45, GROUND_Y - 88 - 26, 3);
+    bx = ground(bx, 110, GROUND_Y - 132);
+    addCoinRow(bx - 55, GROUND_Y - 132 - 28, 3);
+    w.genX = bx;
     w.solids.push({ x: w.genX, y: GROUND_Y, w: 860, oneWay: false });
     const mosqueX = w.genX + 300;          // cami sol kenarı
     const finishX = mosqueX + 85;          // cami kapısı — hedef
@@ -1563,7 +1666,7 @@ const PlatformGame = () => {
     const bonusExitX = bonusX + 660;
     let doorX: number | null = null;
     if (lv % 3 === 2) {
-      const cands = w.solids.filter((so) => !so.oneWay && so.x > 1000 && so.x + so.w < conf.len && so.w >= 300);
+      const cands = w.solids.filter((so) => !so.oneWay && so.y === GROUND_Y && so.x > 1000 && so.x + so.w < conf.len && so.w >= 300);
       if (cands.length) {
         const so = cands[Math.floor(cands.length / 2)];
         doorX = so.x + so.w - 96;
@@ -1590,10 +1693,11 @@ const PlatformGame = () => {
     };
 
     const respawnX = () => {
+      // yalnız DÜZ zemine (GROUND_Y) doğar — teras üstüne/içine doğmasın
       const minX = s.camX + 20;
       let best: number | null = null;
       for (const so of w.solids) {
-        if (so.oneWay) continue;
+        if (so.oneWay || so.y !== GROUND_Y) continue;
         const rx = Math.max(so.x + 12, minX);
         if (rx + PW + 12 <= so.x + so.w && (best === null || rx < best)) best = rx;
       }
@@ -1787,6 +1891,14 @@ const PlatformGame = () => {
       if (mv !== 0) s.facing = mv;
       s.x += mv * RUN_SPEED * dt;
       if (s.x < s.camX + 14) s.x = s.camX + 14;
+      // yükseltilmiş zeminlerin (teras/piramit) YAN YÜZLERİ katıdır —
+      // içinden yürünmez, üstüne zıplayarak çıkılır (klasik platform kuralı)
+      for (const so of w.solids) {
+        if (so.oneWay || so.y >= GROUND_Y) continue;
+        if (s.y + PH <= so.y + 6) continue;                 // üstündeyiz
+        if (s.x + PW <= so.x || s.x >= so.x + so.w) continue;
+        s.x = s.x + PW / 2 < so.x + so.w / 2 ? so.x - PW : so.x + so.w;
+      }
       s.anim += dt * (mv !== 0 && s.grounded ? 1 : 0.2);
 
       // zıplama: tampon + coyote — çocuklar için affedici
@@ -1924,7 +2036,7 @@ const PlatformGame = () => {
                 m.x += m.dir * 118 * dt;
                 if (m.x < m.minX) { m.x = m.minX; m.dir = 1; }
                 if (m.x + mw > m.maxX) { m.x = m.maxX - mw; m.dir = -1; }
-                const gy = GROUND_Y - mh;
+                const gy = m.groundY - mh;
                 if (m.y >= gy) {
                   m.y = gy;
                   m.vy = 0;
