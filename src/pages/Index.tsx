@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Lock, Crown, TrendingUp, Gamepad2, Flame, BookOpenCheck } from "lucide-react";
-import { RouteHead } from "@/components/RouteHead";
-import { BuddyWithBubble } from "@/components/Buddy";
+import { Lock, Crown, TrendingUp, Gamepad2, Flame } from "lucide-react";
 
 import { SUBJECTS } from "@/data/subjects";
 
@@ -45,22 +43,8 @@ const Index = () => {
 
   const topics = SUBJECTS[0].topics;
 
-  // Mim'in selamı — saate ve seriye göre sıcak, kısa karşılama
-  const buddySay = useMemo(() => {
-    const h = new Date().getHours();
-    const selam = h < 11 ? "Günaydın! ☀️" : h < 18 ? "Selâmünaleyküm! 👋" : "İyi akşamlar! 🌙";
-    if (streak.count >= 3) return `${selam} Maşallah, ${streak.count} günlük serin var — bugün de devam!`;
-    if (streak.count > 0 && !streak.activeToday) return `${selam} Serini korumak için bugün de biraz çalışalım mı?`;
-    return `${selam} Bugün hangi harfleri öğrenelim?`;
-  }, [streak.count, streak.activeToday]);
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-emerald-50 via-background to-teal-50">
-      <RouteHead
-        title="ElifMim — Çocuklar için Elifbâ Öğrenme Uygulaması"
-        description="ElifMim ile 3-8 yaş çocuklar Kur'an harflerini, harekeleri ve okuma kurallarını eğlenceli oyunlarla ve gerçek hoca sesiyle öğrenir."
-        path="/"
-      />
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden opacity-30">
         <div className="absolute top-10 left-6 text-6xl font-arabic text-emerald-700/60">ﷲ</div>
         <div className="absolute top-40 right-8 text-5xl font-arabic text-teal-700/40">ﺍﻟﻘﺮﺁﻥ</div>
@@ -73,32 +57,18 @@ const Index = () => {
           {/* Hesap/Giriş butonu şimdilik gizli — Ayarlar alt menüden erişilebilir */}
         </div>
 
-        {/* Marka + hero — İslami yıldız desenli zümrüt bant */}
-        <div className="mb-4 -mx-4 rounded-b-3xl bg-hero-emerald px-4 pb-5 pt-14 text-center shadow-card animate-bounce-in">
-          <div className="text-6xl font-arabic mb-1 leading-[1.3] text-white/95 text-shadow-soft">ﺇﻗﺮﺃ</div>
-          <h1 className="mb-0.5 text-4xl font-extrabold tracking-tight text-white text-shadow-soft">
+        <div className="mb-6 text-center animate-bounce-in">
+          <div className="text-7xl font-arabic mb-2 text-emerald-700">ﺇﻗﺮﺃ</div>
+          <h1 className="mb-1 text-4xl font-extrabold tracking-tight text-primary text-shadow-soft">
             Elifbâ
           </h1>
-          <p className="text-[13px] font-bold text-white/90">
-            Kur'an-ı Kerim'i Öğreniyorum
+          <p className="text-sm font-semibold text-muted-foreground">
+            Kur'an-ı Kerim'i Öğreniyorum • Diyanet Müfredatı
           </p>
-          {/* Güven rozetleri — veli ve kurum gözüyle ilk bakışta */}
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
-            {["🎙️ Gerçek hoca sesi", "📖 Diyanet müfredatıyla uyumlu", "🚫 Reklamsız"].map((b) => (
-              <span key={b} className="rounded-full border border-white/25 bg-white/15 px-2.5 py-0.5 text-[10px] font-extrabold text-white backdrop-blur-sm">
-                {b}
-              </span>
-            ))}
-          </div>
         </div>
 
-        {/* Mim'in selamı — çocuğa sıcak karşılama */}
-        <div className="mb-4">
-          <BuddyWithBubble pose="wave" say={buddySay} size={88} />
-        </div>
-
-        <div className="mb-4 rounded-2xl bg-card border-2 border-primary/20 p-4 text-center shadow-card">
-          <p className="text-sm font-bold text-foreground mb-1 font-arabic text-2xl">رَبِّ يَسِّرْ وَلَا تُعَسِّرْ</p>
+        <div className="mb-4 rounded-2xl bg-card border-2 border-primary/20 p-4 shadow-card text-center">
+          <p className="text-sm font-bold text-foreground mb-1 font-arabic text-2xl">رَبِّ يَسِّرْ وَلَا تُعَسِّرْ</p>
           <p className="text-xs text-muted-foreground">Rabbim, kolaylaştır zorlaştırma</p>
         </div>
 
@@ -140,7 +110,7 @@ const Index = () => {
                   "flex items-center gap-3 rounded-2xl bg-card p-4 border-2 shadow-card transition-bouncy animate-bounce-in",
                   isUnlocked
                     ? "border-primary/30 hover:-translate-y-1 hover:shadow-elegant"
-                    : "border-border/40 bg-muted/40 cursor-not-allowed",
+                    : "border-border/40 opacity-60 cursor-not-allowed",
                 )}
                 style={{ animationDelay: `${i * 50}ms` }}
               >
@@ -157,7 +127,7 @@ const Index = () => {
                     {!isUnlocked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                   </h2>
                   <p className="text-xs font-medium text-muted-foreground truncate">
-                    {isUnlocked ? t.description : "Alıştırma yaparak öğrenince açılır"}
+                    {isUnlocked ? t.description : "Önceki konuyu tamamla"}
                   </p>
                   {/* İlerleme çubuğu — görünür ilerleme motivasyonu güçlendirir */}
                   {isUnlocked && !t.noPractice && (() => {
@@ -181,57 +151,25 @@ const Index = () => {
           })}
         </div>
 
-        {/* Bahçe — günlük dönüş kancası, belirgin hero kart */}
-        <Link
-          to="/bahce"
-          className="mb-3 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-4 text-white shadow-card transition-bouncy hover:-translate-y-1 hover:shadow-elegant"
-        >
-          <span className="text-4xl">🌳</span>
-          <div className="flex-1">
-            <div className="text-lg font-extrabold text-shadow-soft">Harf Bahçem</div>
-            <div className="text-xs font-semibold opacity-90">Öğrendikçe çiçekler açar — bugün bahçeni büyüt! 🌸</div>
-          </div>
-          <span className="text-2xl">→</span>
-        </Link>
-
         <div className="grid grid-cols-2 gap-3">
           <Link
             to="/oyunlar"
-            className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-warning to-topic-pink p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
+            className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-gradient-to-br from-warning to-topic-pink p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
           >
-            <Gamepad2 className="h-6 w-6" />
+            <Gamepad2 className="h-7 w-7" />
             <span className="text-sm font-extrabold text-shadow-soft">Oyunlar</span>
           </Link>
           <Link
-            to="/koleksiyon"
-            className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-gold p-4 text-gold-foreground shadow-card transition-bouncy hover:-translate-y-1"
-          >
-            <span className="text-xl" aria-hidden>🃏</span>
-            <span className="text-sm font-extrabold">Kartlarım</span>
-          </Link>
-          <Link
-            to="/ezber"
-            className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-success to-emerald-600 p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
-          >
-            <BookOpenCheck className="h-6 w-6" />
-            <span className="text-sm font-extrabold text-shadow-soft">Ezber</span>
-          </Link>
-          <Link
             to="/ilerleme"
-            className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-info to-primary p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
+            className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-gradient-to-br from-info to-primary p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
           >
-            <TrendingUp className="h-6 w-6" />
+            <TrendingUp className="h-7 w-7" />
             <span className="text-sm font-extrabold text-shadow-soft">İlerleme</span>
           </Link>
         </div>
 
-        <footer className="mt-6 space-y-1 text-center text-[11px] font-semibold text-muted-foreground">
-          <p>Diyanet "Kur'an Öğreniyorum" müfredatıyla uyumlu · Gerçek hoca kayıtları</p>
-          <p>
-            <Link to="/veli" className="underline hover:text-primary">Veli Paneli</Link>
-            {" · "}
-            <Link to="/privacy-policy" className="underline hover:text-primary">Gizlilik Politikası</Link>
-          </p>
+        <footer className="mt-6 text-center text-xs text-muted-foreground">
+          <Link to="/privacy-policy" className="underline hover:text-primary">Gizlilik Politikası</Link>
         </footer>
       </main>
     </div>

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
-import { getTopic, findItem } from "@/data/subjects";
+import { getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
-import { RouteHead } from "@/components/RouteHead";
 import { playItem, playFeedback } from "@/lib/audio";
 import { Volume2, Check, X, Eye, SkipForward } from "lucide-react";
 import {
@@ -13,10 +12,7 @@ import {
   type Level,
 } from "@/data/srs";
 import { isTopicUnlocked, getUnlockedItemsOf } from "@/lib/unlock";
-import { pickReviewItem } from "@/lib/review";
-import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
 import { cn } from "@/lib/utils";
-import { LevelBadge } from "@/components/LevelBadge";
 import type { ContentItem, SubjectId } from "@/data/types";
 
 const NS = "quiz" as const;
@@ -41,21 +37,12 @@ const Flashcard = () => {
   const dragStartRef = useRef<number | null>(null);
   const lastDragRef = useRef(0);
   const [busy, setBusy] = useState(false);
-  // Şu anki kart bir BAKIM/ara-kontrol (eski açık konu) ise o konunun id'si.
-  const reviewTopicRef = useRef<string | null>(null);
 
   const pickNext = () => {
     if (itemIds.length === 0) return;
-    // Serpiştirilmiş bakım: ~%22 eski açık konudan (zayıf/atlanmışsa daha çok).
-    const rev = pickReviewItem(topic!.id, NS);
-    if (rev) {
-      reviewTopicRef.current = rev.topicId;
-      setCurrentId(rev.itemId);
-    } else {
-      reviewTopicRef.current = null;
-      const srs = getTopicSrs(NS, topic!.id);
-      setCurrentId(pickNextLetterFromTopic(srs, itemIds));
-    }
+    const srs = getTopicSrs(NS, topic!.id);
+    const id = pickNextLetterFromTopic(srs, itemIds);
+    setCurrentId(id);
     setFlipped(false);
     setDrag(0);
     startRef.current = Date.now();
@@ -67,9 +54,7 @@ const Flashcard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topicId]);
 
-  // Bakım kartı başka konudan gelebilir → tüm içerikte ara.
-  const current: ContentItem | undefined =
-    items.find((i) => i.id === currentId) || (currentId ? findItem(currentId) : undefined);
+  const current: ContentItem | undefined = items.find((i) => i.id === currentId);
 
   // Kartı çevir; cevap görünürken sesi otomatik çal (bir dokunuş azalır)
   const flip = () => {
@@ -82,11 +67,7 @@ const Flashcard = () => {
     if (!current || busy) return;
     setBusy(true);
     const responseMs = Date.now() - startRef.current;
-    const recTopic = reviewTopicRef.current ?? topic!.id;
-    await recordSrsAnswer(NS, recTopic, current.id, correct, { responseMs });
-    if (reviewTopicRef.current && isTopicSkipped(reviewTopicRef.current)) {
-      recordBackCheck(reviewTopicRef.current, correct);
-    }
+    await recordSrsAnswer(NS, topic!.id, current.id, correct, { responseMs });
     await playFeedback(correct);
     setDone((d) => d + 1);
     setDrag(correct ? 600 : -600);
@@ -132,8 +113,7 @@ const Flashcard = () => {
     flip();
   };
 
-  const curTopicId = reviewTopicRef.current ?? topic!.id;
-  const level = current ? (getTopicSrs(NS, curTopicId)[current.id]?.level || 1) as Level : 1;
+  const level = current ? (getTopicSrs(NS, topic!.id)[current.id]?.level || 1) as Level : 1;
   const dragOpacity = Math.min(Math.abs(drag) / 120, 1);
 
   if (!topic) return <Navigate to="/" replace />;
@@ -142,11 +122,6 @@ const Flashcard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 to-background">
-      <RouteHead
-        title={`${topic.title} Flashcard — Elifbâ | ElifMim`}
-        description={`${topic.title} için flashcard alıştırması: aralıklı tekrar ile harfleri kalıcı öğren.`}
-        path={`/konu/${subjectId}/${topicId}/flashcard`}
-      />
       <main className="container mx-auto max-w-lg px-4 pb-24">
         <PageHeader
           title={`${topic.title} • Flashcard`}
@@ -195,7 +170,6 @@ const Flashcard = () => {
               >
                 {/* Ön yüz */}
                 <div className="absolute inset-0 backface-hidden rounded-3xl bg-card border-4 border-primary/25 shadow-elegant flex flex-col overflow-hidden">
-                  <LevelBadge itemId={current.id} topicId={curTopicId} className="absolute right-2 top-2" />
                   <div className="flex-1 min-h-0 flex items-center justify-center px-4">
                     <span className="font-arabic text-emerald-800 leading-[1.6] text-[clamp(5rem,24vw,8rem)]">
                       {current.emoji}

@@ -1,12 +1,10 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { RouteHead } from "@/components/RouteHead";
 import { SUBJECTS } from "@/data/subjects";
 import { getTopicSrs, getNamespaceStats, getCloudSrsState, useSrsTick, type Level, type SrsState } from "@/data/srs";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { EmojiView } from "@/components/EmojiView";
 
 const NS = "quiz" as const;
 
@@ -35,11 +33,6 @@ const ProgressPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary/30 to-background">
-      <RouteHead
-        title="İlerlemem — ElifMim"
-        description="Öğrendiğin harfleri, ustalık seviyeni ve günlük seri sayacını gör."
-        path="/ilerleme"
-      />
       <main className="container mx-auto max-w-2xl px-4 pb-16">
         <PageHeader title="📈 İlerleme" backTo="/" centered />
 
@@ -49,6 +42,12 @@ const ProgressPage = () => {
           </span>
           {/* Giriş yap butonu şimdilik gizli */}
         </div>
+
+        {false && (
+          <div className="mb-3 text-center text-xs font-bold text-muted-foreground animate-pulse">
+            ☁️ Hesap verisi yükleniyor…
+          </div>
+        )}
 
         <div className="mb-4 grid grid-cols-3 gap-2">
           <Stat label="Toplam Cevap" value={showCloudLoading ? "…" : stats.total} color="text-primary" />
@@ -87,7 +86,7 @@ const ProgressPage = () => {
                   return (
                     <details key={t.id} className="group rounded-2xl bg-muted/50 overflow-hidden">
                       <summary className="flex items-center gap-3 p-3 cursor-pointer list-none transition-bouncy hover:bg-muted">
-                        <span className="text-2xl text-emerald-800"><EmojiView value={t.emoji} /></span>
+                        <span className="text-2xl">{t.emoji}</span>
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-sm truncate">{t.title}</div>
                           <div className="mt-1 h-2 rounded-full bg-background overflow-hidden">
@@ -117,15 +116,15 @@ const ProgressPage = () => {
                             const lv = topicLoading ? 0 : ((e?.level as Level) ?? 0);
                             return (
                               <div key={it.id} className={cn(
-                                "flex min-h-11 items-center gap-2 rounded-lg px-2 py-1 text-xs bg-card border",
-                                lv === 0 && "border-border/40 text-muted-foreground",
+                                "flex items-center gap-2 rounded-lg px-2 py-1 text-xs bg-card border",
+                                lv === 0 && "border-border/40 opacity-60",
                                 lv === 1 && "border-info/40",
                                 lv === 2 && "border-warning/40",
                                 lv === 3 && "border-secondary",
                                 lv === 4 && "border-success/40",
                               )}>
-                                <span className="w-8 shrink-0 text-center text-xl text-emerald-800"><EmojiView value={it.emoji} className="leading-[1.9]" /></span>
-                                <span className={cn("flex-1 truncate font-semibold", lv === 0 && "text-muted-foreground")}>{it.label}</span>
+                                <span className="text-lg">{it.emoji}</span>
+                                <span className="flex-1 truncate font-semibold">{it.label}</span>
                                 {lv > 0 && (
                                   <span className={cn("text-[9px] font-bold rounded px-1",
                                     lv === 1 && "bg-info/20 text-info",

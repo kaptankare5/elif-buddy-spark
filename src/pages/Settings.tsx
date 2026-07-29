@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { RouteHead } from "@/components/RouteHead";
 import { Switch } from "@/components/ui/switch";
 import { useSettings } from "@/lib/settings";
 import { playFeedback } from "@/lib/audio";
 import { Volume2, Vibrate, GraduationCap, Shield, Trash2, Smartphone } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useGameMode } from "@/lib/gameMode";
 import { cn } from "@/lib/utils";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
@@ -71,30 +69,12 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary/30 to-background">
-      <RouteHead
-        title="Ayarlar — ElifMim"
-        description="Ses, titreşim, oyun modu, hoca modu ve gizlilik tercihlerini yönet."
-        path="/ayarlar"
-        noindex
-      />
       <main className="container mx-auto max-w-xl px-4 pb-16">
         <PageHeader title="⚙️ Ayarlar" backTo="/" centered />
 
         {/* <AccountCard /> — hesap UI şimdilik gizli */}
 
         <div className="space-y-3">
-          {/* Veli Paneli — veliye yönelik günlük özet + övgü tetikleyicisi */}
-          <Link
-            to="/veli"
-            className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-info to-primary p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
-          >
-            <span className="text-3xl">👪</span>
-            <div className="flex-1">
-              <div className="text-base font-extrabold text-shadow-soft">Veli Paneli</div>
-              <div className="text-[11px] font-semibold opacity-90">Çocuğunuz bugün ne öğrendi? Günlük özet →</div>
-            </div>
-          </Link>
-
           <div className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">
             <Volume2 className="h-7 w-7 text-primary" />
             <div className="flex-1">
@@ -139,7 +119,7 @@ const Settings = () => {
                 )}
               >
                 🎮 Normal
-                <div className="text-[10px] font-bold text-muted-foreground mt-1">Arada test sorusu</div>
+                <div className="text-[10px] font-bold opacity-80 mt-1">Arada test sorusu</div>
               </button>
               <button
                 onClick={() => setMode("super")}
@@ -151,11 +131,11 @@ const Settings = () => {
                 )}
               >
                 ⚡ Süper Öğrenme
-                <div className="text-[10px] font-bold text-muted-foreground mt-1">Her zaman test, hep ilerleme</div>
+                <div className="text-[10px] font-bold opacity-80 mt-1">Her zaman test, hep ilerleme</div>
               </button>
             </div>
             <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
-              Süper modda sadece şu oyunlar gösterilir: Tren Sörfü, Elif Ba Macerası, Yılan, Uzay, Balon, Kutu Boşalt, Uçan Kuş, Hızlı Quiz. İpucu halkası yalnız seviye 1'de görünür.
+              Süper modda sadece şu oyunlar gösterilir: Tren Sörfü, Harf Macerası, Yılan, Uzay, Balon, Kutu Boşalt, Uçan Kuş, Hızlı Quiz. İpucu halkası yalnız seviye 1'de görünür.
             </p>
           </div>
 

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
-import { RouteHead } from "@/components/RouteHead";
 import { useGameMode, SUPER_MODE_GAMES } from "@/lib/gameMode";
 
 type Diff = "kolay" | "zor";
@@ -18,7 +17,7 @@ const GAMES: GameDef[] = [
   { id: "quiz", title: "Hızlı Quiz", emoji: "⚡", color: "from-topic-doga to-success", desc: "60 saniyede skor", diff: "kolay" },
   // — Zor —
   { id: "subway", title: "ElifBa Koşusu", emoji: "🏃", color: "from-sky-500 to-emerald-500", desc: "3D koşu! Doğru harfin rayına geç", diff: "zor" },
-  { id: "platform", title: "Elif Ba Macerası", emoji: "🕌", color: "from-red-500 to-orange-400", desc: "10 bölüm! Zıpla, koş, harf topla", diff: "zor" },
+  { id: "platform", title: "Harf Macerası", emoji: "🍄", color: "from-red-500 to-orange-400", desc: "10 bölüm! Zıpla, koş, harf topla", diff: "zor" },
   { id: "flappy", title: "Uçan Kuş", emoji: "🐤", color: "from-info to-primary", desc: "Doğru harfi yut, sorulara cevap ver", diff: "zor" },
   { id: "snake", title: "Yılan Oyunu", emoji: "🐍", color: "from-success to-topic-doga", desc: "Harfleri ye, sınavı geç", diff: "zor" },
   { id: "runner", title: "Uzay Savaşı", emoji: "🚀", color: "from-indigo-500 to-fuchsia-500", desc: "Doğru hedefi vur, yanlışı vurma", diff: "zor" },
@@ -46,11 +45,6 @@ const Games = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-soft/40 to-background">
-      <RouteHead
-        title="Elifbâ Oyunları — ElifMim"
-        description="Balon Patlatma, Elif Ba Macerası, Hafıza Kartları ve daha fazlası: çocuklar Kur'an harflerini oyunlarla pekiştirir."
-        path="/oyunlar"
-      />
       <main className="container mx-auto max-w-3xl px-4 pb-20">
         <PageHeader title="🎮 Oyunlar" backTo="/" centered />
 
@@ -58,26 +52,26 @@ const Games = () => {
           {mode === "super" ? "⚡ Süper Öğrenme Modu — sıkı çalış!" : "Hangi oyunu oynamak istersin?"}
         </p>
 
-        {zor.length > 0 && (
-          <>
-            <h3 className="mb-2 flex items-center gap-2 font-extrabold text-destructive">
-              <span className="text-lg">🔴</span> Zor Oyunlar
-              <span className="text-[11px] font-bold text-muted-foreground">— hızlı & refleks</span>
-            </h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-              {zor.map((g, i) => <Card key={g.id} g={g} i={i} />)}
-            </div>
-          </>
-        )}
-
         {kolay.length > 0 && (
           <>
             <h3 className="mb-2 flex items-center gap-2 font-extrabold text-success">
               <span className="text-lg">🟢</span> Kolay Oyunlar
               <span className="text-[11px] font-bold text-muted-foreground">— sakin & eğlenceli</span>
             </h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
               {kolay.map((g, i) => <Card key={g.id} g={g} i={i} />)}
+            </div>
+          </>
+        )}
+
+        {zor.length > 0 && (
+          <>
+            <h3 className="mb-2 flex items-center gap-2 font-extrabold text-destructive">
+              <span className="text-lg">🔴</span> Zor Oyunlar
+              <span className="text-[11px] font-bold text-muted-foreground">— hızlı & refleks</span>
+            </h3>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {zor.map((g, i) => <Card key={g.id} g={g} i={i} />)}
             </div>
           </>
         )}
