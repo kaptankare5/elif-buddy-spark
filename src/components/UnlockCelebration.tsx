@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Buddy } from "@/components/Buddy";
 
 // Yeni bölüm/başarı kutlaması — kısa, coşkulu, kendiliğinden kaybolur.
 // Öğrenme bilimi: anlık, belirgin ödül sinyali yetkinlik algısını güçlendirir
@@ -33,7 +34,9 @@ export function UnlockCelebration({ title, subtitle, onDone }: {
         </span>
       ))}
       <div className="rounded-3xl bg-card border-4 border-warning px-8 py-6 text-center shadow-elegant animate-bounce-in">
-        <div className="text-5xl mb-2">🎉</div>
+        <div className="mb-1 flex justify-center">
+          <Buddy pose="celebrate" size={84} bob={false} />
+        </div>
         <div className="text-xl font-extrabold text-foreground">{title}</div>
         {subtitle && <div className="text-sm font-bold text-warning mt-1">{subtitle}</div>}
       </div>

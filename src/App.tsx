@@ -14,6 +14,7 @@ import Settings from "./pages/Settings.tsx";
 import Ezber from "./pages/Ezber.tsx";
 import EzberCalis from "./pages/EzberCalis.tsx";
 import Bahce from "./pages/Bahce.tsx";
+import Koleksiyon from "./pages/Koleksiyon.tsx";
 import Prova from "./pages/Prova.tsx";
 import Veli from "./pages/Veli.tsx";
 import Auth from "./pages/Auth.tsx";
@@ -58,6 +59,7 @@ const AppShell = () => {
               <Route path="/ezber" element={<Ezber />} />
               <Route path="/ezber/:suraId" element={<EzberCalis />} />
               <Route path="/bahce" element={<Bahce />} />
+              <Route path="/koleksiyon" element={<Koleksiyon />} />
               <Route path="/prova" element={<Prova />} />
               <Route path="/prova/:suraId" element={<Prova />} />
               <Route path="/veli" element={<Veli />} />
