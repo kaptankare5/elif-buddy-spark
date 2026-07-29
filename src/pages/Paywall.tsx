@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
+import { RouteHead } from "@/components/RouteHead";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 import { Check, Lock, Crown, Sparkles } from "lucide-react";
@@ -90,6 +91,11 @@ const Paywall = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-warning/20 via-background to-primary-soft/30">
+      <RouteHead
+        title="Premium Abonelik — ElifMim"
+        description="Tüm konuları, tüm oyunları ve reklamsız deneyimi ElifMim Premium ile aç."
+        path="/abonelik"
+      />
       <main className="container mx-auto max-w-xl px-4 pb-24">
         <PageHeader title="✨ Premium" backTo="/" centered />
 
@@ -116,7 +122,7 @@ const Paywall = () => {
             <div className="rounded-3xl bg-gradient-to-br from-warning to-primary p-6 text-white text-center shadow-elegant mb-5 animate-bounce-in">
               <Crown className="h-14 w-14 mx-auto mb-2" />
               <h1 className="text-3xl font-extrabold text-shadow-soft mb-1">Endless Mum Pro</h1>
-              <p className="text-sm font-bold opacity-90">Tek abonelik — her şey açık.</p>
+              <p className="text-sm font-bold text-white">Tek abonelik — her şey açık.</p>
             </div>
 
             <div className="rounded-3xl bg-card p-5 shadow-card border-4 border-primary/30 mb-5">
@@ -126,7 +132,7 @@ const Paywall = () => {
               </div>
               <ul className="space-y-2">
                 {FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm font-semibold text-foreground/90">
+                  <li key={f} className="flex items-start gap-2 text-sm font-semibold text-foreground">
                     <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
                     <span>{f}</span>
                   </li>

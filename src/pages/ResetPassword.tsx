@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { RouteHead } from "@/components/RouteHead";
 
 // /sifre-sifirla — kullanıcı şifre sıfırlama e-postasındaki bağlantıyla buraya gelir.
 // Supabase, hash'teki recovery token'ı otomatik işleyip onAuthStateChange("PASSWORD_RECOVERY")
@@ -48,6 +49,12 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-secondary/40 via-background to-primary-soft/40 px-4">
+      <RouteHead
+        title="Şifre Sıfırla — ElifMim"
+        description="ElifMim hesabın için yeni şifre belirle."
+        path="/sifre-sifirla"
+        noindex
+      />
       <div className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-card">
         <div className="text-center mb-5">
           <div className="text-5xl mb-2">🔒</div>
