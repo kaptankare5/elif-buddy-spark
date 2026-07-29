@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { BookOpen, Gamepad2, TrendingUp, Home, Shield } from "lucide-react";
+import { BookOpen, Gamepad2, TrendingUp, Home, Shield, Sprout } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/useSubscription";
 
@@ -12,6 +12,7 @@ export function BottomNav() {
 
   const items = [
     { to: "/", label: "Ana", icon: Home, show: true },
+    { to: "/bahce", label: "Bahçem", icon: Sprout, show: true },
     { to: "/oyunlar", label: "Oyunlar", icon: Gamepad2, show: true },
     { to: "/ilerleme", label: "İlerleme", icon: TrendingUp, show: true },
     { to: "/admin", label: "Admin", icon: Shield, show: isAdmin },
