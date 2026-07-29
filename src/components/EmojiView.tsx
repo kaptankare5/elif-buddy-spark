@@ -6,8 +6,28 @@ import { cn } from "@/lib/utils";
 //   "rect:#f59e0b"   -> colored long rectangle (dikdörtgen)
 //   "hex:#a855f7"    -> colored hexagon (altıgen)
 // Otherwise renders the string as-is (normal emoji/text).
+//
+// ARAPÇA: değer Arap harfi içeriyorsa konu sayfalarıyla AYNI hat (font-arabic
+// = Amiri Quran) + geniş satır kutusu (leading) uygulanır. Varsayılan dar
+// leading'de ع/ح/ج gibi derin çanaklı harflerin altı kırpılıyordu ("harf tam
+// gözükmüyor"); leading-[1.6] tüm glifi boyatır. Boyut/renk ebeveynden miras.
+// \u kod noktası kaçışlarıyla: Arapça (U+0600-06FF) + Arapça Ek (U+0750-077F)
+// + Arapça Genişletilmiş-A (U+08A0-08FF) + Sunum Biçimleri A (U+FB50-FDFF) +
+// Sunum Biçimleri B (U+FE70-FEFC, BOM U+FEFF HARİÇ). Literal glif aralığı
+// eslint "irregular whitespace" hatası veriyordu (U+FEFF BOM aralığa
+// giriyordu) — kod noktası kaçışı hem güvenli hem net.
+const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFC]/;
+
 export function EmojiView({ value, className }: { value?: string; className?: string }) {
   if (!value) return null;
+
+  if (ARABIC_RE.test(value)) {
+    return (
+      <span dir="rtl" className={cn("font-arabic inline-block leading-[1.6]", className)}>
+        {value}
+      </span>
+    );
+  }
 
   if (value.startsWith("num:")) {
     const [, n, color] = value.split(":");
