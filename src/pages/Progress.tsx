@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { RouteHead } from "@/components/RouteHead";
 import { SUBJECTS } from "@/data/subjects";
 import { getTopicSrs, getNamespaceStats, getCloudSrsState, useSrsTick, type Level, type SrsState } from "@/data/srs";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,11 @@ const ProgressPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary/30 to-background">
+      <RouteHead
+        title="İlerlemem — ElifMim"
+        description="Öğrendiğin harfleri, ustalık seviyeni ve günlük seri sayacını gör."
+        path="/ilerleme"
+      />
       <main className="container mx-auto max-w-2xl px-4 pb-16">
         <PageHeader title="📈 İlerleme" backTo="/" centered />
 
@@ -117,14 +123,14 @@ const ProgressPage = () => {
                             return (
                               <div key={it.id} className={cn(
                                 "flex items-center gap-2 rounded-lg px-2 py-1 text-xs bg-card border",
-                                lv === 0 && "border-border/40 opacity-60",
+                                lv === 0 && "border-border/40 text-muted-foreground",
                                 lv === 1 && "border-info/40",
                                 lv === 2 && "border-warning/40",
                                 lv === 3 && "border-secondary",
                                 lv === 4 && "border-success/40",
                               )}>
                                 <span className="text-lg">{it.emoji}</span>
-                                <span className="flex-1 truncate font-semibold">{it.label}</span>
+                                <span className={cn("flex-1 truncate font-semibold", lv === 0 && "text-muted-foreground")}>{it.label}</span>
                                 {lv > 0 && (
                                   <span className={cn("text-[9px] font-bold rounded px-1",
                                     lv === 1 && "bg-info/20 text-info",

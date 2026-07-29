@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { getSubject, getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
+import { RouteHead } from "@/components/RouteHead";
 import { playItem, playFeedback } from "@/lib/audio";
 import { Volume2, Layers, Zap, Lock, Gamepad2 } from "lucide-react";
 import type { ContentItem, SubjectId } from "@/data/types";
@@ -145,6 +146,7 @@ const Topic = () => {
     <button
       key={it.id}
       onClick={() => playItem(it)}
+      aria-label={it.translit || it.label || "harf"}
       className="aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
     >
       {/* Glif bölgesi — hareke işaretleri taşsa bile alttaki etiket bandına binemez */}
@@ -172,6 +174,11 @@ const Topic = () => {
   if (mode === "browse") {
     return (
       <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 to-background">
+        <RouteHead
+          title={`${topic.title} — Elifbâ | ElifMim`}
+          description={`${topic.title}: ${topic.description} — çocuklar için sesli Elifbâ dersi.`}
+          path={`/konu/${subjectId}/${topicId}`}
+        />
         <main className="container mx-auto max-w-2xl px-4 pb-24">
           <PageHeader title={topic.title} backTo="/" centered />
 
@@ -248,7 +255,7 @@ const Topic = () => {
                   <div className="mb-6 rounded-2xl border-2 border-dashed border-border bg-muted/40 p-5 text-center">
                     <Lock className="mx-auto mb-1 h-6 w-6 text-muted-foreground" />
                     <p className="text-xs font-bold text-muted-foreground">
-                      Önceki bölümdeki harfleri öğrenince açılır
+                      Alıştırma yaparak öğrenince açılır
                     </p>
                   </div>
                 )}
@@ -284,6 +291,11 @@ const Topic = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 to-background">
+      <RouteHead
+        title={`${topic.title} Testi — Elifbâ | ElifMim`}
+        description={`${topic.title} konusunu test ederek pekiştir. ${topic.description}`}
+        path={`/konu/${subjectId}/${topicId}`}
+      />
       <main className="container mx-auto max-w-xl px-4 pb-24">
         <PageHeader
           title={`${topic.title} • Test`}
