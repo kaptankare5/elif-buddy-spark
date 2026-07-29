@@ -6,8 +6,11 @@ import {
   getIntroGateInfo,
   LEARNING_SET_K,
   recordSrsAnswer,
+  retrievabilityOf,
+  __resetSelectorState,
   type TopicSrs,
 } from "@/data/srs";
+import { currentReviewShare } from "@/lib/review";
 import {
   markTopicSkipped,
   isTopicSkipped,
@@ -188,10 +191,80 @@ describe("akıcılık / latency (responseMs)", () => {
   });
 });
 
+// --- FSRS-lite (yarı-ömür modeli) ---
+describe("FSRS-lite — yarı-ömür ve hatırlanabilirlik", () => {
+  const realNow = Date.now;
+  const at = (dayMs: number) => { Date.now = () => dayMs; };
+  const entry = () => getTopicSrs("quiz", "harfler")["l1-07"];
+  const rec = (correct: boolean, ms = 1000) =>
+    recordSrsAnswer("quiz", "harfler", "l1-07", correct, { responseMs: ms });
+
+  it("R unutma eğrisiyle düşer; yarı-ömür noktasında %50", () => {
+    const t0 = 10 * 86_400_000; // lastSeen=0 "hiç görülmedi" demek → sıfırdan uzak taban
+    const e = { level: 3 as const, correct: 1, total: 1, seen: 1, lastSeen: t0, stab: 4 };
+    expect(retrievabilityOf(e, t0)).toBeCloseTo(1, 5);
+    expect(retrievabilityOf(e, t0 + 4 * 86_400_000)).toBeCloseTo(0.5, 5);
+    expect(retrievabilityOf(e, t0 + 8 * 86_400_000)).toBeCloseTo(0.25, 5);
+    expect(retrievabilityOf(undefined, t0)).toBe(0); // görülmemiş = en acil
+  });
+
+  it("ilk doğru ~0.7g başlatır; taze tekrar AZ, ertesi-gün tekrarı ÇOK büyütür; yanlış küçültür", async () => {
+    __resetSelectorState();
+    const t0 = 10 * 86_400_000;
+    at(t0); await rec(true);             // ilk karşılaşma (hızlı doğru)
+    const s0 = entry().stab!;
+    expect(s0).toBeCloseTo(0.7, 5);
+    at(t0 + 60_000); await rec(true);    // 1 dk sonra (R≈1) → taban büyüme %15
+    const s1 = entry().stab!;
+    expect(s1).toBeCloseTo(s0 * 1.15, 3);
+    at(t0 + 60_000 + 2 * 86_400_000); await rec(true); // 2 gün sonra (R düşük) → büyük sıçrama
+    const s2 = entry().stab!;
+    expect(s2 / s1).toBeGreaterThan(2);  // (1−R)~0.9 → ×~3
+    at(t0 + 60_000 + 3 * 86_400_000); await rec(false); // yanlış → ×0.3
+    expect(entry().stab!).toBeCloseTo(s2 * 0.3, 3);
+    Date.now = realNow;
+  });
+
+  it("seçici düşük-R (unutulmak üzere) öğeye daha çok bilet verir", () => {
+    __resetSelectorState();
+    const now = Date.now();
+    const mk = (stab: number): TopicSrs[string] =>
+      ({ level: 4, correct: 5, total: 5, seen: 2, lastSeen: now - 5 * 86_400_000, stab });
+    // a: sağlam (yarı-ömür 50g → R yüksek). b: çürük (0.7g → R≈0).
+    // c/d dolgu (seen yüksek → havuza girmez).
+    const topic: TopicSrs = {
+      a: mk(50), b: mk(0.7),
+      c: { ...mk(50), seen: 9 }, d: { ...mk(50), seen: 9 },
+    };
+    let aN = 0, bN = 0;
+    for (let i = 0; i < 400; i++) {
+      const p = pickNextLetterFromTopic(topic, ["a", "b", "c", "d"]);
+      if (p === "a") aN++; else if (p === "b") bN++;
+    }
+    expect(bN).toBeGreaterThan(aN); // çürük öğe önce geri gelir
+  });
+});
+
+// --- DİNAMİK K + akışa uyarlı bakım payı ---
+describe("akış bandı — uçarken K genişler, bakım payı değişir", () => {
+  it("uçarken (yüksek doğruluk) K=5: 3 harf öğrenilmekteyken bile YENİ harf gelir", async () => {
+    __resetSelectorState();
+    for (let i = 0; i < 12; i++) await recordSrsAnswer("quiz", "dummy-f", `f${i}`, true, {});
+    expect(currentReviewShare()).toBeCloseTo(0.10, 5); // uçuş → bakım payı düşer
+    const topic: TopicSrs = { [ids[0]]: seenAt(2), [ids[1]]: seenAt(2), [ids[2]]: seenAt(2) };
+    const pick = pickNextLetterFromTopic(topic, ids);
+    const gate = getIntroGateInfo()!;
+    expect(gate.k).toBe(LEARNING_SET_K + 2); // efektif K genişledi
+    expect(gate.gated).toBe(false);
+    expect(pick).toBe(ids[3]); // sıradaki YENİ harf tanıtıldı
+  });
+});
+
 // --- PROBLEM 1: struggling (zorlanınca) kapısı — _recent'i kirlettiği için EN SON ---
 describe("Problem 1 — zorlanınca yeni harf durur", () => {
   it("son doğruluk düşükken tek harf öğrenilmekte olsa bile YENİ harf tanıtmaz", async () => {
     // _recent'i 8 yanlışla doldur → struggling (acc < %70).
+    __resetSelectorState();
     for (let i = 0; i < 8; i++) {
       await recordSrsAnswer("quiz", "dummy-topic", `d${i}`, false, {});
     }
@@ -203,5 +276,7 @@ describe("Problem 1 — zorlanınca yeni harf durur", () => {
     expect(gate.inProgress).toBe(1); // K'dan az
     expect(gate.gated).toBe(true);   // yine de yeni harf yok
     expect(pick).toBe(ids[0]);       // eldeki tek görülmüş harf
+    // Zorlanırken eski-konu bakım payı %50'ye çıkar (kolaylar eski konuda).
+    expect(currentReviewShare()).toBeCloseTo(0.50, 5);
   });
 });

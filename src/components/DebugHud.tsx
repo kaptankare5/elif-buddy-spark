@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { useTestUnlock } from "@/lib/testUnlock";
 import { getAdaptiveDebug, getLastPickInfo, getIntroGateInfo, getTopicSrs, type AdaptiveDebug, type LastPickInfo, type IntroGateInfo } from "@/data/srs";
 import { getPlacementDebug, getLastBackCheck, resetPlacement, type PlacementDebugRow } from "@/lib/placement";
+import { currentReviewShare } from "@/lib/review";
 import { getStreak } from "@/lib/streak";
 import { getAllTopics } from "@/data/subjects";
 import { cn } from "@/lib/utils";
@@ -109,6 +110,7 @@ export function DebugHud() {
           <div className="text-white/50 text-[9px] uppercase mb-0.5">Uyarlanır Zorluk</div>
           <div className="font-extrabold" style={{ color: bandColor }}>{adaptive.band}</div>
           <div className="text-white/80">Doğruluk: <b>{accPct}</b> ({correctN}/{adaptive.count})</div>
+          <div className="text-white/60 text-[10px]">eski-konu bakım payı ~%{Math.round(currentReviewShare() * 100)}</div>
           <div className="flex gap-0.5 mt-1">
             {adaptive.recent.slice(-12).map((c, i) => (
               <span key={i} className={cn("h-2 w-2 rounded-full")} style={{ background: c ? "#22c55e" : "#ef4444" }} />
@@ -145,8 +147,14 @@ export function DebugHud() {
                 <span className="text-white/80">bilet <b>{pick.ticket}</b></span>
               </div>
               <div className="text-white/60 text-[10px]">
-                sıklık {pick.weight} × bayat {pick.stale}{pick.fragile ? " × kırılgan1.5" : ""} · {pick.days}g
+                sıklık {pick.weight} × aciliyet {pick.stale}{pick.fragile ? " × kırılgan1.5" : ""} · {pick.days}g
               </div>
+              {pick.retr !== undefined && (
+                <div className="text-white/60 text-[10px]">
+                  R <b style={{ color: pick.retr < 0.5 ? "#ef4444" : pick.retr < 0.8 ? "#f59e0b" : "#22c55e" }}>%{Math.round(pick.retr * 100)}</b>
+                  {" "}· yarı-ömür <b>{pick.hl}g</b>
+                </div>
+              )}
               {pick.fragile && <div className="text-amber-400 text-[10px]">⚠ yavaş-doğru (akıcılık düşük)</div>}
             </>
           ) : <div className="text-white/40">henüz seçim yok</div>}
