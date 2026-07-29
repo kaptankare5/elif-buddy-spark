@@ -310,6 +310,15 @@ export interface IntroGateInfo {
 let _introGate: IntroGateInfo | null = null;
 export function getIntroGateInfo(): IntroGateInfo | null { return _introGate; }
 
+// Yalnız test/simülasyon için: seçicinin modül-düzeyi global durumunu sıfırla
+// (uyarlanır band tamponu + son seçim izleri). Üretim akışında çağrılmaz.
+export function __resetSelectorState() {
+  _recent.length = 0;
+  _lastPickedId = null;
+  _lastPickInfo = null;
+  _introGate = null;
+}
+
 export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): string {
   // 1) Öğrenme seti kapısı: kaç harf "öğrenilmekte" (görülmüş, L3 altı) + ilk
   //    görülmemiş harf hangisi? (müfredat sırası korunur — i+1 ilkesi).
