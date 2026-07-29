@@ -264,12 +264,34 @@ function recentAccuracy(): number | null {
   return _recent.reduce((a, b) => a + (b ? 1 : 0), 0) / _recent.length;
 }
 
+// ---- DEBUG (yalnız test modunda HUD'da gösterilir) ----
+// Uyarlanır zorluğun elle doğrulanması için: anlık doğruluk + hangi bantta.
+export interface AdaptiveDebug { count: number; accuracy: number | null; band: string; recent: boolean[] }
+export function getAdaptiveDebug(): AdaptiveDebug {
+  const acc = recentAccuracy();
+  let band: string;
+  if (_recent.length < 4) band = "ISINMA (kolay)";
+  else if (acc === null) band = "— (veri az)";
+  else if (acc < 0.70) band = "ZORLANIYOR → kolaylaştı";
+  else if (acc > 0.92) band = "UÇUYOR → zorlaştı";
+  else band = "NORMAL (~%85)";
+  return { count: _recent.length, accuracy: acc, band, recent: [..._recent] };
+}
+// Son seçilen öğenin "neden seçildiği": seviye + bilet (sıklık × bayatlık).
+export interface LastPickInfo { id: string; level: number; weight: number; stale: number; ticket: number; days: number }
+let _lastPickInfo: LastPickInfo | null = null;
+export function getLastPickInfo(): LastPickInfo | null { return _lastPickInfo; }
+
 export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): string {
   // 1) Hiç karşılaşılmamış öğe varsa MÜFREDAT SIRASIYLA tanıt (i+1 ilkesi:
   //    yeni bilgi öngörülebilir sırayla gelir; elif'ten önce ye sorulmaz).
   for (const id of letterIds) {
     const e = topic[id];
-    if (!e || (e.seen ?? 0) === 0) { _lastPickedId = id; return id; }
+    if (!e || (e.seen ?? 0) === 0) {
+      _lastPickedId = id;
+      _lastPickInfo = { id, level: 0, weight: itemWeight(id), stale: 1, ticket: 0, days: 0 };
+      return id;
+    }
   }
 
   const byLevel: Record<Level, string[]> = { 1: [], 2: [], 3: [], 4: [] };
@@ -334,6 +356,13 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
     if (rw <= 0) { pick = pool[i]; break; }
   }
   _lastPickedId = pick;
+  const pe = topic[pick];
+  const pdays = pe?.lastSeen ? (now - pe.lastSeen) / 86_400_000 : 0;
+  _lastPickInfo = {
+    id: pick, level: pe?.level ?? 1, weight: itemWeight(pick),
+    stale: +staleMult(pick).toFixed(2), ticket: +(itemWeight(pick) * staleMult(pick)).toFixed(1),
+    days: +pdays.toFixed(1),
+  };
   return pick;
 }
 
