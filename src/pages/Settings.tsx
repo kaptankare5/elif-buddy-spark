@@ -135,7 +135,7 @@ const Settings = () => {
               </button>
             </div>
             <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
-              Süper modda sadece şu oyunlar gösterilir: Tren Sörfü, Harf Macerası, Yılan, Uzay, Balon, Kutu Boşalt, Uçan Kuş, Hızlı Quiz. İpucu halkası yalnız seviye 1'de görünür.
+              Süper modda sadece şu oyunlar gösterilir: Tren Sörfü, Elif Ba Macerası, Yılan, Uzay, Balon, Kutu Boşalt, Uçan Kuş, Hızlı Quiz. İpucu halkası yalnız seviye 1'de görünür.
             </p>
           </div>
 
