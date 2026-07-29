@@ -22,6 +22,7 @@ import { pickReviewItem } from "@/lib/review";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
 import { SkipTest } from "@/components/SkipTest";
 import { LevelBadge } from "@/components/LevelBadge";
+import { pickDistractors } from "@/lib/confusables";
 import { Rocket } from "lucide-react";
 
 type Mode = "browse" | "test";
@@ -37,7 +38,8 @@ function shuffle<T>(a: T[]): T[] {
 
 function buildQuestion(items: ContentItem[], targetId: string) {
   const target = items.find((it) => it.id === targetId) || items[0];
-  const wrongs = shuffle(items.filter((it) => it.id !== target.id)).slice(0, 3);
+  // Çeldiriciler rastgele değil, hedefin KARIŞANLARINDAN (ayrım eğitimi).
+  const wrongs = pickDistractors(items, target, 3);
   return { target, options: shuffle([target, ...wrongs]) };
 }
 

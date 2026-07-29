@@ -24,6 +24,12 @@ export interface LetterSrsEntry {
   knewBefore?: boolean;    // Daha önce biliyordu mu?
   learnedAt?: number;      // Seviye 3'e ilk ulaştığı epoch ms
   consecutiveCorrect?: number; // Aynı harfte üst üste doğru sayısı (yanlışta sıfırlanır) — L4 mandalı için
+
+  // Akıcılık (tepki süresi) sinyali — bilim: doğru ama YAVAŞ cevap kırılgan
+  // izdir (erişim gücü düşük); hızlı+doğru = otomatiklik. Latency, gelecekteki
+  // hatırlamayı öngörür (Pavlik & Anderson; erişim gücü, Bjork).
+  lastMs?: number;         // son cevap süresi (ms)
+  fragile?: boolean;       // doğru ama yavaş → önce geri getir (bakım önceliği)
 }
 
 export type TopicSrs = Record<string, LetterSrsEntry>;
@@ -287,8 +293,12 @@ export function getAdaptiveDebug(): AdaptiveDebug {
   else band = "NORMAL (~%85)";
   return { count: _recent.length, accuracy: acc, band, recent: [..._recent] };
 }
-// Son seçilen öğenin "neden seçildiği": seviye + bilet (sıklık × bayatlık).
-export interface LastPickInfo { id: string; level: number; weight: number; stale: number; ticket: number; days: number }
+// Akıcılık eşiği: bu süreden (ms) uzun doğru cevap "yavaş/kırılgan" sayılır.
+// Çocuk sesi dinleyip dokunuyor → taban ~2sn; 5sn üstü gerçekten tereddüt.
+const FLUENT_MS = 5000;
+
+// Son seçilen öğenin "neden seçildiği": seviye + bilet (sıklık × bayatlık × kırılganlık).
+export interface LastPickInfo { id: string; level: number; weight: number; stale: number; ticket: number; days: number; fragile?: boolean }
 let _lastPickInfo: LastPickInfo | null = null;
 export function getLastPickInfo(): LastPickInfo | null { return _lastPickInfo; }
 
@@ -404,9 +414,12 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
     const days = (now - ls) / 86_400_000;
     return 1 + Math.min(2, days / 3.5);
   };
+  // Kırılganlık çarpanı: doğru ama YAVAŞ ustalaşan öğe (fragile) daha çok bilet
+  // alır → otomatiklik oturana kadar önce geri gelir (erişim gücü bakımı).
+  const fragileMult = (id: string): number => (topic[id]?.fragile ? 1.5 : 1);
   const top = Math.max(1, Math.ceil(candidates.length * 0.5));
   const pool = candidates.slice(0, top);
-  const tickets = pool.map((id) => itemWeight(id) * staleMult(id));
+  const tickets = pool.map((id) => itemWeight(id) * staleMult(id) * fragileMult(id));
   let rw = Math.random() * tickets.reduce((a, b) => a + b, 0);
   let pick = pool[pool.length - 1];
   for (let i = 0; i < pool.length; i++) {
@@ -418,8 +431,9 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
   const pdays = pe?.lastSeen ? (now - pe.lastSeen) / 86_400_000 : 0;
   _lastPickInfo = {
     id: pick, level: pe?.level ?? 1, weight: itemWeight(pick),
-    stale: +staleMult(pick).toFixed(2), ticket: +(itemWeight(pick) * staleMult(pick)).toFixed(1),
-    days: +pdays.toFixed(1),
+    stale: +staleMult(pick).toFixed(2),
+    ticket: +(itemWeight(pick) * staleMult(pick) * fragileMult(pick)).toFixed(1),
+    days: +pdays.toFixed(1), fragile: !!pe?.fragile,
   };
   return pick;
 }
@@ -450,23 +464,29 @@ function recordLocalSrsAnswer(
   e.total += 1;
   e.seen += 1;
   e.lastSeen = Date.now();
-  if (typeof meta?.responseMs === "number" && meta.responseMs > 0) {
-    e.totalMs = (e.totalMs || 0) + Math.min(meta.responseMs, 60_000); // 60sn üst sınır (idle koruma)
-  }
+  // Tepki süresi (akıcılık sinyali). Süre yoksa (aksiyon oyunları) NÖTR:
+  // ne kırılgan işaretler ne L4'ü engeller.
+  const rt = (typeof meta?.responseMs === "number" && meta.responseMs > 0)
+    ? Math.min(meta.responseMs, 60_000) : undefined;
+  if (rt !== undefined) { e.totalMs = (e.totalMs || 0) + rt; e.lastMs = rt; }
+  const fluent = rt === undefined || rt <= FLUENT_MS;
   if (correct) {
     e.correct += 1;
     e.consecutiveCorrect = (e.consecutiveCorrect || 0) + 1;
+    // Doğru ama yavaşsa kırılgan işaretle (önce geri gelsin); hızlıysa temizle.
+    e.fragile = rt !== undefined && !fluent;
     if (e.level < 3) {
       // L1→L2, L2→L3: tek doğru yeterli
       e.level = ((e.level + 1) as Level);
     } else if (e.level === 3) {
-      // L3→L4 (en üst): mandal etkisini kır — aynı harfte üst üste 2 doğru gerekir,
-      // böylece harf tek şanslık bir doğruyla en üste zıplayamaz.
-      if (e.consecutiveCorrect >= 2) e.level = 4;
+      // L3→L4 (en üst = OTOMATİKLİK): üst üste 2 doğru VE akıcı (hızlı) olmalı.
+      // Yavaş-doğru "biliyor ama tereddütlü" → henüz ustalık değil, L3'te kalır.
+      if (e.consecutiveCorrect >= 2 && fluent) e.level = 4;
     }
   } else {
     // Yanlışta 2 seviye düş (kullanıcı isteği — sabit kalacak).
     e.consecutiveCorrect = 0;
+    e.fragile = false;
     e.level = (Math.max(1, e.level - 2) as Level);
   }
 
