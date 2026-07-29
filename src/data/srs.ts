@@ -283,11 +283,21 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
     if (ea.seen !== eb.seen) return ea.seen - eb.seen;
     return ea.lastSeen - eb.lastSeen; // en uzun süredir görülmeyen önce (aralık etkisi)
   });
-  // En taze yarıdan (az görülen + uzun süredir görülmeyen) Kur'an sıklığı
-  // biletleriyle çekiliş: sık hece 3 bilet, normal 1 — seviye zaten seçildi.
+  // En taze yarıdan çekiliş. Bilet = Kur'an sıklığı × BAYATLIK çarpanı.
+  // Bayatlık, seviye sistemine "zaman" kazandırır (gerçek aralıklı tekrar):
+  // uzun süredir sorulmayan öğe daha çok bilet alır → unutulmadan geri gelir.
+  // Çarpan 0 günde 1, ~3.5 günde 2, 7+ günde 3 (üst sınır). Aynı seviyedeki
+  // "uykuda" L4 öğeleri uyandıran bakım tekrarı budur; seviye seçimi değişmez.
+  const now = Date.now();
+  const staleMult = (id: string): number => {
+    const ls = topic[id]?.lastSeen ?? 0;
+    if (!ls) return 3;
+    const days = (now - ls) / 86_400_000;
+    return 1 + Math.min(2, days / 3.5);
+  };
   const top = Math.max(1, Math.ceil(candidates.length * 0.5));
   const pool = candidates.slice(0, top);
-  const tickets = pool.map((id) => itemWeight(id));
+  const tickets = pool.map((id) => itemWeight(id) * staleMult(id));
   let rw = Math.random() * tickets.reduce((a, b) => a + b, 0);
   let pick = pool[pool.length - 1];
   for (let i = 0; i < pool.length; i++) {

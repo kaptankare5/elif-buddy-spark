@@ -1784,33 +1784,39 @@ const PlatformGame = () => {
       loseLife();
     };
 
-    // Doğru cevap ödülleri — soruları cazip kılar: kalp / Nur / mıknatıs /
-    // 2X / harf yağmuru. Yanlış cevap CAN GÖTÜRMEZ (öğrenme hatası ölüm değil).
+    // Doğru cevap ödülü — DEĞİŞKEN ORANLI (variable-ratio): her doğruda DEĞİL,
+    // ortalama ~her 3-4 doğruda bir SÜRPRİZ büyük ödül (kalp / Nur / mıknatıs /
+    // 2X). Tahmin edilemezlik dopamini canlı tutar; her seferinde ödül vermek
+    // dopamini köreltir (Skinner değişken oran). Sürpriz olmayan doğrular küçük
+    // ama tatmin edici harf yağmuru alır (banner yok — büyük ödül değerli kalsın).
+    // Seri ısındıkça sürpriz şansı hafif artar → "alev aldın" hissi (kararlılığı
+    // ödüllendirir). Yanlış cevap CAN GÖTÜRMEZ.
     const grantReward = (target: ContentItem) => {
       const anyPower = s.nurT > 0 || s.magT > 0 || s.x2T > 0;
-      const roll = Math.random();
-      if (lives < MAX_LIVES && roll < 0.3) {
+      const bigChance = Math.min(0.5, 0.25 + Math.max(0, streak - 3) * 0.05);
+      if (anyPower || Math.random() >= bigChance) {
+        spawnCoinTrail(target, anyPower ? 6 : 3); // küçük ödül, sessiz
+        return;
+      }
+      const r2 = Math.random();
+      if (lives < MAX_LIVES && r2 < 0.4) {
         lives += 1;
         setLives(lives);
-        showBanner("❤️ +1 Can kazandın!", "good", 1700);
-        spawnCoinTrail(target, 5);
-      } else if (!anyPower) {
-        const r2 = Math.random();
-        if (r2 < 0.4) {
+        showBanner("❤️ +1 Can! Süpersin!", "good", 1700);
+      } else {
+        const r3 = Math.random();
+        if (r3 < 0.34) {
           s.nurT = NUR_TIME;
           showBanner("✨ NUR! Dokunduğun canavar güvercin olur 🕊️", "power", 2200);
-        } else if (r2 < 0.7) {
+        } else if (r3 < 0.67) {
           s.magT = MAG_TIME;
           showBanner("🧲 MIKNATIS! Harfler sana gelir", "power", 1800);
         } else {
           s.x2T = X2_TIME;
           showBanner("⭐ 2X PUAN!", "power", 1600);
         }
-        spawnCoinTrail(target, 5);
-      } else {
-        showBanner("🪙 Harf yağmuru!", "good", 1400);
-        spawnCoinTrail(target, 9);
       }
+      spawnCoinTrail(target, 6);
     };
 
     const resolveTrio = (t: TrioEnt, b: BlockEnt) => {
