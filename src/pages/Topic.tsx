@@ -238,6 +238,24 @@ const Topic = () => {
             )}
           </div>
 
+          {/* Yazılış konusunda: önce HAFIZA YÖNTEMİNİ öğren (ezber yerine kural).
+              84 şekli tek tek ezberlemek yerine 3 yapısal kuralı öğrenmek hem
+              hızlı hem kalıcı — alıştırmadan ÖNCE gösterilir. */}
+          {topic.id === "yazilislar" && (
+            <Link
+              to="/yazilis-hafiza"
+              className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-warning to-topic-pink p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
+            >
+              <span className="text-3xl" aria-hidden>🧠</span>
+              <div className="flex-1">
+                <div className="text-base font-extrabold text-shadow-soft">Hafıza Yöntemi</div>
+                <div className="text-[11px] font-semibold opacity-95">
+                  Ezberleme, kuralı öğren! Kuyruk silme + nokta yöntemi — animasyonlu →
+                </div>
+              </div>
+            </Link>
+          )}
+
           {/* Alıştırma yap — sayfanın üstünde, hemen erişilebilir */}
           {!topic.noPractice && (
             <div className="mb-4 rounded-2xl bg-card border-2 border-primary/20 p-3 shadow-card">
