@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Volume2 } from "lucide-react";
-import { gamePool, pickWrongs, shuffle } from "@/pages/games/_shared";
+import { gamePool, pickN, shuffle } from "@/pages/games/_shared";
 import { playItem, playFeedback } from "@/lib/audio";
 import { recordInGameTest } from "@/lib/gameProgress";
 import { EmojiView } from "@/components/EmojiView";
@@ -16,8 +16,10 @@ export function InGameQuiz({ onDone }: { onDone: (correct: boolean) => void }) {
     const pool = gamePool();
     if (pool.length < 2) return null;
     const target = pool[Math.floor(Math.random() * pool.length)];
-    // Çeldiriciler karışan harflerden — mini test de ayrım eğitsin
-    const wrongs = pickWrongs(pool, target, Math.min(3, pool.length - 1), { distinctEmoji: true });
+    const wrongs = pickN(
+      pool.filter((p) => p.id !== target.id && p.emoji !== target.emoji),
+      Math.min(3, pool.length - 1),
+    );
     return { target, options: shuffle([target, ...wrongs]) };
   }, []);
   const [picked, setPicked] = useState<string | null>(null);
@@ -33,9 +35,7 @@ export function InGameQuiz({ onDone }: { onDone: (correct: boolean) => void }) {
     if (picked) return;
     setPicked(opt.id);
     const correct = opt.id === quiz.target.id;
-    recordInGameTest(quiz.target, correct, {
-      chosenId: opt.id, shownIds: quiz.options.map((o) => o.id),
-    });
+    recordInGameTest(quiz.target, correct);
     await playFeedback(correct);
     setTimeout(() => onDone(correct), correct ? 800 : 1500);
   };

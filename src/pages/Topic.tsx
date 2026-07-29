@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { getSubject, getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
-import { RouteHead } from "@/components/RouteHead";
-import { playItem, playFeedback, preloadItems } from "@/lib/audio";
+import { playItem, playFeedback } from "@/lib/audio";
 import { Volume2, Layers, Zap, Lock, Gamepad2 } from "lucide-react";
 import type { ContentItem, SubjectId } from "@/data/types";
 import {
@@ -16,27 +15,8 @@ import {
   type Level,
 } from "@/data/srs";
 import { cn } from "@/lib/utils";
-import { isTopicUnlocked, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
-import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
+import { isTopicUnlocked, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
-import { SkipTest } from "@/components/SkipTest";
-import { LevelBadge } from "@/components/LevelBadge";
-import { BuddyWithBubble } from "@/components/Buddy";
-import { pickDistractors, recordConfusionPick, recordDiscrimination } from "@/lib/confusion";
-import { hotPairInSection } from "@/lib/unlock";
-import { considerRemedy, showRemedy } from "@/lib/remedial";
-import { pickQuestionSource } from "@/lib/questionSource";
-import { Rocket, Brain } from "lucide-react";
-import { STABLE_GROUP, TAIL_RULES, HAREKE_MNEMONICS } from "@/data/writingMnemonics";
-
-// Mim'in test tepkileri — kısa, sıcak, çeşitli (soruya göre deterministik seçilir)
-const PRAISE = ["Maşallah, bildin! 🌟", "Harikasın!", "Aferin sana! 👏", "Süpersin, devam!", "İşte bu! ⭐"];
-const COMFORT = ["Olsun, bir daha deneyelim!", "Çok yaklaştın, tekrar dinle!", "Sorun değil, birlikte öğreniyoruz!", "Bir daha dinleyelim mi? 🎧"];
-const phraseIdx = (id: string, len: number) => {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return Math.abs(h) % len;
-};
 
 type Mode = "browse" | "test";
 
@@ -51,8 +31,7 @@ function shuffle<T>(a: T[]): T[] {
 
 function buildQuestion(items: ContentItem[], targetId: string) {
   const target = items.find((it) => it.id === targetId) || items[0];
-  // Çeldiriciler rastgele değil, hedefin KARIŞANLARINDAN (ayrım eğitimi).
-  const wrongs = pickDistractors(items, target, 3);
+  const wrongs = shuffle(items.filter((it) => it.id !== target.id)).slice(0, 3);
   return { target, options: shuffle([target, ...wrongs]) };
 }
 
@@ -74,16 +53,9 @@ const Topic = () => {
   const [q, setQ] = useState<{ target: ContentItem; options: ContentItem[] } | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState<{ title: string; subtitle?: string } | null>(null);
-  const [showSkip, setShowSkip] = useState(false);
   const questionStartRef = useRef<number>(0);
-  // Yanlış cevaplanan harf bir sonraki soruda tekrar sorulsun (anlık düzeltici
-  // tekrar). AMA en fazla BİR kez: tekrar da yanlışsa harf bırakılır, yoksa
-  // çocuk bilmediği harfte kilitlenip her soruyu yanlış yapıyordu.
+  // Yanlış cevaplanan harf bir sonraki soruda tekrar sorulsun (anlık düzeltici tekrar)
   const retryIdRef = useRef<string | null>(null);
-  const retryUsedRef = useRef(false);
-  // Şu anki soru bir ARA-KONTROL ise, hangi (eski, atlanmış) konudan geldiği.
-  // null = normal konu sorusu.
-  const backCheckRef = useRef<string | null>(null);
 
   const items = topic?.items || [];
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
@@ -102,54 +74,24 @@ const Topic = () => {
   useEffect(() => {
     if (mode !== "test" || !topic || unlockedItemIds.length === 0 || q) return;
     if (topic.noPractice) return;
-
-    // Soru kaynağı tek yerden seçilir (retry / bakım / frontier) — öncelik
-    // kuralları ve "zorlanınca kurtarma" mantığı lib/questionSource.ts'te.
-    const src = pickQuestionSource({
-      retryId: retryIdRef.current,
-      retryUsed: retryUsedRef.current,
-      unlockedIds: unlockedItemIds,
-      currentTopicId: topic.id,
-      ns: NS,
-    });
-
-    const ask = (pool: ContentItem[], targetId: string, reviewTopic: string | null) => {
-      backCheckRef.current = reviewTopic;
-      setQ(buildQuestion(pool, targetId));
-      setPicked(null);
-      questionStartRef.current = Date.now();
-    };
-    const ownPool = () => items.filter((it) => unlockedItemIds.includes(it.id));
-
-    if (src.kind === "retry") {
+    const pool = items.filter((it) => unlockedItemIds.includes(it.id));
+    // Yanlış cevaplanan harf varsa onu tekrar sor (düzeltici tekrar), yoksa SRS seçer
+    let tid: string;
+    if (retryIdRef.current && unlockedItemIds.includes(retryIdRef.current)) {
+      tid = retryIdRef.current;
       retryIdRef.current = null;
-      retryUsedRef.current = true;   // bu harf tekrar hakkını kullandı
-      ask(ownPool(), src.itemId, null);
-      return;
+    } else {
+      tid = pickNextLetter(NS, topic.id, unlockedItemIds);
     }
-
-    if (src.kind === "review") {
-      const rt = getTopic("elifba", src.topicId);
-      // Çeldiriciler de YALNIZ açık bölümlerden gelmeli — çocuk henüz
-      // açmadığı bir harfi şıkta görmesin.
-      const rPool = rt ? getUnlockedItemsOf(rt) : [];
-      if (rPool.length >= 2) {
-        ask(rPool, src.itemId, src.topicId);
-        return;
-      }
-    }
-
-    // Normal konu içi SRS seçimi.
-    ask(ownPool(), pickNextLetter(NS, topic.id, unlockedItemIds), null);
+    setQ(buildQuestion(pool, tid));
+    setPicked(null);
+    questionStartRef.current = Date.now();
   }, [mode, topic, unlockedItemIds, q, items]);
 
   useEffect(() => {
     if (mode === "test" && q?.target) playItem(q.target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q?.target?.id, mode]);
-
-  // Öğe seslerini önden yükle → ilk tıkta bile anında çalar (gecikmesiz).
-  useEffect(() => { preloadItems(items); }, [items]);
 
   // Yeni bölüm açıldı mı? Açılan bölüm sayısı önceki kayda göre arttıysa kutla.
   useEffect(() => {
@@ -203,10 +145,8 @@ const Topic = () => {
     <button
       key={it.id}
       onClick={() => playItem(it)}
-      aria-label={it.translit || it.label || "harf"}
-      className="relative aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
+      className="aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
     >
-      <LevelBadge itemId={it.id} topicId={topic.id} className="absolute right-1 top-1" />
       {/* Glif bölgesi — hareke işaretleri taşsa bile alttaki etiket bandına binemez */}
       <span className="flex-1 min-h-0 flex w-full items-center justify-center px-1">
         <span className={cn(
@@ -232,11 +172,6 @@ const Topic = () => {
   if (mode === "browse") {
     return (
       <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 to-background">
-        <RouteHead
-          title={`${topic.title} — Elifbâ | ElifMim`}
-          description={`${topic.title}: ${topic.description} — çocuklar için sesli Elifbâ dersi.`}
-          path={`/konu/${subjectId}/${topicId}`}
-        />
         <main className="container mx-auto max-w-2xl px-4 pb-24">
           <PageHeader title={topic.title} backTo="/" centered />
 
@@ -248,12 +183,6 @@ const Topic = () => {
             )}
           </div>
 
-          {/* Hafıza yöntemi ÖNİZLEMESİ — konudan hiç çıkmadan da görünür olsun
-              diye (kullanıcı isteği: "konuya girip çıkarsa da hafıza yöntemi
-              görünsün"). Gerçek glifler burada, tam anlatım /yazilis-hafiza'da. */}
-          {topic.id === "yazilislar" && <YazilisHafizaPreview />}
-          {topic.id === "harekeler" && <HarekeHafizaPreview />}
-
           {/* Alıştırma yap — sayfanın üstünde, hemen erişilebilir */}
           {!topic.noPractice && (
             <div className="mb-4 rounded-2xl bg-card border-2 border-primary/20 p-3 shadow-card">
@@ -263,21 +192,6 @@ const Topic = () => {
                 <PracticeCard to={`/konu/elifba/${topic.id}/flashcard`} icon={<Layers className="h-6 w-6" />} label="Flashcard" color="from-warning to-topic-pink" />
                 <PracticeCard to="/oyunlar" icon={<Gamepad2 className="h-6 w-6" />} label="Oyunlar" color="from-success to-topic-doga" />
               </div>
-            </div>
-          )}
-
-          {/* Hızlı-geçiş: konuyu zaten bilen çocuk atlayabilir (4/4 sınav) */}
-          {!topic.noPractice && !isTopicSkipped(topic.id) && !isTopicCompleted(topic) && (
-            <button
-              onClick={() => setShowSkip(true)}
-              className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-2.5 text-sm font-extrabold text-primary transition-bouncy hover:bg-primary/10 active:scale-95"
-            >
-              <Rocket className="h-4 w-4" /> Bunu zaten biliyorum · Atla
-            </button>
-          )}
-          {isTopicSkipped(topic.id) && (
-            <div className="mb-4 flex items-center justify-center gap-1.5 rounded-2xl bg-success/10 border border-success/30 px-4 py-2 text-xs font-bold text-success">
-              🚀 Bu konuyu atladın — arada seni yoklayacağız
             </div>
           )}
 
@@ -303,16 +217,10 @@ const Topic = () => {
             </div>
           )}
 
-          {sectionOrder.map((sec, secIdx) => {
+          {sectionOrder.map((sec) => {
             const open = unlockedSecs.has(sec);
             const { done, total } = sectionMastery(sec);
             const isExtra = sec === "Ekstralar";
-            // Bu bölüm kilitliyse kapıyı tutan sebep bir önceki bölümdedir:
-            // ya seviyeler eksik ya da orada hâlâ karıştırılan bir ikili var.
-            const prevSec = secIdx > 0 ? sectionOrder[secIdx - 1] : null;
-            const blockingPair = !open && prevSec
-              ? hotPairInSection(items.filter((it) => it.section === prevSec))
-              : null;
             return (
               <div key={sec}>
                 <h3 className="mb-2 flex items-center justify-center gap-2 text-center font-extrabold text-foreground">
@@ -340,23 +248,8 @@ const Topic = () => {
                   <div className="mb-6 rounded-2xl border-2 border-dashed border-border bg-muted/40 p-5 text-center">
                     <Lock className="mx-auto mb-1 h-6 w-6 text-muted-foreground" />
                     <p className="text-xs font-bold text-muted-foreground">
-                      {blockingPair
-                        ? "Önceki bölümde iki harf hâlâ karışıyor"
-                        : "Alıştırma yaparak öğrenince açılır"}
+                      Önceki bölümdeki harfleri öğrenince açılır
                     </p>
-                    {/* Kapıyı tutan sebep gizli kalmasın: hangi ikili karışıyor? */}
-                    {blockingPair && (
-                      <p className="mt-1.5 text-[11px] font-extrabold text-warning" dir="rtl">
-                        <span className="font-arabic text-lg leading-[1.5]">{blockingPair[0].emoji}</span>
-                        <span className="mx-1" dir="ltr">↔</span>
-                        <span className="font-arabic text-lg leading-[1.5]">{blockingPair[1].emoji}</span>
-                      </p>
-                    )}
-                    {blockingPair && (
-                      <p className="mt-0.5 text-[10px] font-bold text-muted-foreground">
-                        Bu ikiliyi üst üste doğru ayırınca açılır
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
@@ -369,25 +262,6 @@ const Topic = () => {
             </div>
           )}
         </main>
-        {showSkip && (
-          <SkipTest
-            topic={topic}
-            onClose={() => setShowSkip(false)}
-            onPass={() => {
-              setShowSkip(false);
-              // Bölüm-kutlama efekti "konu tamamlandı" sanmasın diye görülen
-              // bölüm sayacını dolu işaretle (çift kutlama olmaz).
-              const scope = getActiveStudentScope() ?? "guest";
-              try {
-                localStorage.setItem(`elifba-secseen-${scope}-${topic.id}`, String(getSectionOrder(topic).length));
-              } catch { /* ignore */ }
-              setCelebrate({
-                title: "🚀 Konu atlandı!",
-                subtitle: "Bir sonraki konu açıldı — istersen geri gelip pekiştirebilirsin.",
-              });
-            }}
-          />
-        )}
         {celebrate && (
           <UnlockCelebration title={celebrate.title} subtitle={celebrate.subtitle} onDone={() => setCelebrate(null)} />
         )}
@@ -401,52 +275,15 @@ const Topic = () => {
     setPicked(opt.id);
     const correct = opt.id === q.target.id;
     const responseMs = questionStartRef.current ? Date.now() - questionStartRef.current : undefined;
-    // KARIŞIKLIK ÖLÇÜMÜ: testte hangi şıkkı seçtiğini biliyoruz — en net sinyal.
-    // Yanlış seçim o çiftin ısısını yükseltir; partner ORTADAYKEN doğru cevap
-    // gerçek bir ayrımdır ve üst üste 3 olunca ısıyı düşürür.
-    if (correct) recordDiscrimination(q.target.id, q.options.map((o) => o.id));
-    else recordConfusionPick(q.target.id, opt.id);
-    const bcTopic = backCheckRef.current;
-    if (bcTopic) {
-      // Bakım/ara-kontrol: cevabı O konuya işle (dürüst seviye). Atlanmış konuysa
-      // ayrıca konu-düzeyi yoklama durumunu güncelle (deneme/zayıflık). Yabancı
-      // harf hemen tekrar sorulmaz.
-      await recordSrsAnswer(NS, bcTopic, q.target.id, correct, { responseMs });
-      if (isTopicSkipped(bcTopic)) recordBackCheck(bcTopic, correct);
-      retryIdRef.current = null;
-      retryUsedRef.current = false;
-    } else {
-      await recordSrsAnswer(NS, topic.id, q.target.id, correct, { responseMs });
-      // Yanlışsa aynı harf bir sonraki soruda tekrar sorulsun — ama yalnız
-      // BİR kez. Tekrar da yanlışsa harf bırakılır; SRS zaten onu yakında
-      // geri getirir, bu arada çocuk kolay/eski sorularla toparlanır.
-      if (correct) {
-        retryIdRef.current = null;
-        retryUsedRef.current = false;
-      } else if (!retryUsedRef.current) {
-        retryIdRef.current = q.target.id;
-      } else {
-        retryIdRef.current = null;
-        retryUsedRef.current = false;   // sonraki YENİ harf için hak yenilenir
-      }
-    }
+    await recordSrsAnswer(NS, topic.id, q.target.id, correct, { responseMs });
     await playFeedback(correct);
-    // TELAFİ: başta/ortada/sonda hâlinde ısrarlı hata → hafıza yöntemi açılır.
-    // Politika remedial.ts'te (her yanlışta değil; soğuma + seans tavanı).
-    if (!correct) {
-      const r = considerRemedy(q.target.id, opt.id);
-      if (r) setTimeout(() => showRemedy(r), 1200);
-    }
+    // Yanlışsa aynı harf bir sonraki soruda tekrar sorulsun
+    retryIdRef.current = correct ? null : q.target.id;
     setTimeout(() => setQ(null), correct ? 700 : 2000);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 to-background">
-      <RouteHead
-        title={`${topic.title} Testi — Elifbâ | ElifMim`}
-        description={`${topic.title} konusunu test ederek pekiştir. ${topic.description}`}
-        path={`/konu/${subjectId}/${topicId}`}
-      />
       <main className="container mx-auto max-w-xl px-4 pb-24">
         <PageHeader
           title={`${topic.title} • Test`}
@@ -482,8 +319,7 @@ const Topic = () => {
 
         {q && (
           <>
-            <div className="relative bg-card rounded-3xl p-6 shadow-card border-4 border-primary/20 mb-4 text-center animate-bounce-in" key={q.target.id}>
-              <LevelBadge itemId={q.target.id} topicId={topic.id} className="absolute right-2 top-2" />
+            <div className="bg-card rounded-3xl p-6 shadow-card border-4 border-primary/20 mb-4 text-center animate-bounce-in" key={q.target.id}>
               <button
                 onClick={() => playItem(q.target)}
                 className="inline-flex items-center gap-3 rounded-full bg-primary px-8 py-5 text-primary-foreground font-extrabold shadow-soft transition-bouncy hover:scale-105"
@@ -503,12 +339,11 @@ const Topic = () => {
                     key={opt.id}
                     onClick={() => choose(opt)}
                     className={cn(
-                      "relative aspect-square rounded-3xl flex flex-col items-center justify-center gap-1 shadow-card border-4 transition-bouncy bg-card border-primary/20 hover:-translate-y-1 p-3",
+                      "aspect-square rounded-3xl flex flex-col items-center justify-center gap-1 shadow-card border-4 transition-bouncy bg-card border-primary/20 hover:-translate-y-1 p-3",
                       isCorrect && "bg-success border-success animate-pop",
                       isWrong && "bg-destructive border-destructive animate-shake",
                     )}
                   >
-                    <LevelBadge itemId={opt.id} topicId={topic.id} className="absolute right-1.5 top-1.5" />
                     <span className={cn(
                       "font-arabic text-5xl leading-[1.5]",
                       (isCorrect || isWrong) ? "text-white" : "text-emerald-800",
@@ -524,18 +359,6 @@ const Topic = () => {
                 );
               })}
             </div>
-
-            {/* Mim'in tepkisi — doğruda kutlar, yanlışta şefkatle teşvik eder.
-                Sabit yükseklik: cevap gelince ekran zıplamaz. */}
-            <div className="mt-3 flex h-24 items-center justify-center">
-              {picked && (
-                picked === q.target.id ? (
-                  <BuddyWithBubble pose="celebrate" size={72} say={PRAISE[phraseIdx(q.target.id, PRAISE.length)]} />
-                ) : (
-                  <BuddyWithBubble pose="encourage" size={72} say={COMFORT[phraseIdx(q.target.id, COMFORT.length)]} />
-                )
-              )}
-            </div>
           </>
         )}
       </main>
@@ -550,72 +373,6 @@ function PracticeCard({ to, onClick, icon, label, color }: { to: string; onClick
   const cls = `flex flex-col items-center justify-center gap-1 rounded-2xl bg-gradient-to-br ${color} p-3 text-white shadow-soft transition-bouncy hover:-translate-y-0.5`;
   if (onClick) return <button onClick={onClick} className={cls}>{icon}<span className="text-xs font-extrabold">{label}</span></button>;
   return <Link to={to} className={cls}>{icon}<span className="text-xs font-extrabold">{label}</span></Link>;
-}
-
-// Hafıza yöntemi ÖNİZLEMELERİ — konu sayfasından hiç çıkmadan gerçek içerik
-// görünsün diye (yalnız ayrı sayfaya link değil). Diyanet/veli konuya girip
-// çıksa bile yöntemin var olduğunu, çalıştığını görür.
-function YazilisHafizaPreview() {
-  const cim = TAIL_RULES[0];
-  return (
-    <div className="mb-4 overflow-hidden rounded-2xl border-2 border-warning/40 bg-card shadow-card">
-      <div className="flex items-center gap-2 bg-gradient-to-r from-warning to-topic-pink px-4 py-2.5 text-white">
-        <Brain className="h-5 w-5 shrink-0" />
-        <span className="text-sm font-extrabold text-shadow-soft">Hafıza Yöntemi — ezberleme, kuralı öğren</span>
-      </div>
-      <div className="grid grid-cols-3 gap-2 p-3">
-        {/* 1) Değişmeyen harf örneği */}
-        <div className="flex flex-col items-center gap-1 rounded-xl bg-success/10 p-2 text-center">
-          <span className="font-arabic text-2xl leading-[1.6] text-emerald-900" dir="rtl">{STABLE_GROUP.letters[1].iso}</span>
-          <span className="text-[9px] font-extrabold leading-tight text-success">6 harf hep aynı</span>
-        </div>
-        {/* 2) Kuyruk silme örneği */}
-        <div className="flex flex-col items-center gap-1 rounded-xl bg-primary/10 p-2 text-center">
-          <span className="flex items-center gap-1 font-arabic text-xl leading-[1.6] text-emerald-900" dir="rtl">
-            {cim.iso}<span className="text-[10px]" aria-hidden>✂️</span>{cim.init}
-          </span>
-          <span className="text-[9px] font-extrabold leading-tight text-primary">kuyruk sil</span>
-        </div>
-        {/* 3) Nokta yöntemi örneği */}
-        <div className="flex flex-col items-center gap-1 rounded-xl bg-warning/10 p-2 text-center">
-          <span className="font-arabic text-xl leading-[1.6] text-emerald-900" dir="rtl">ب ت ث</span>
-          <span className="text-[9px] font-extrabold leading-tight text-warning">nokta = fark</span>
-        </div>
-      </div>
-      <Link
-        to="/yazilis-hafiza"
-        className="flex items-center justify-center gap-1.5 border-t border-border/60 bg-muted/40 py-2 text-xs font-extrabold text-primary"
-      >
-        Animasyonlu tam anlatımı gör →
-      </Link>
-    </div>
-  );
-}
-
-function HarekeHafizaPreview() {
-  return (
-    <div className="mb-4 overflow-hidden rounded-2xl border-2 border-info/40 bg-card shadow-card">
-      <div className="flex items-center gap-2 bg-gradient-to-r from-info to-primary px-4 py-2.5 text-white">
-        <Brain className="h-5 w-5 shrink-0" />
-        <span className="text-sm font-extrabold text-shadow-soft">Hafıza Yöntemi — adı ipucu veriyor</span>
-      </div>
-      <div className="grid grid-cols-3 gap-2 p-3">
-        {HAREKE_MNEMONICS.map((m) => (
-          <div key={m.id} className="flex flex-col items-center gap-1 rounded-xl bg-info/10 p-2 text-center">
-            <span className="font-arabic text-2xl leading-none text-primary">{m.onLetter}</span>
-            <span className="text-[10px] font-extrabold leading-tight text-foreground">{m.name}</span>
-            <span className="text-[9px] font-bold leading-tight text-info">{m.position}</span>
-          </div>
-        ))}
-      </div>
-      <Link
-        to="/yazilis-hafiza#hareke"
-        className="flex items-center justify-center gap-1.5 border-t border-border/60 bg-muted/40 py-2 text-xs font-extrabold text-primary"
-      >
-        Animasyonlu tam anlatımı gör →
-      </Link>
-    </div>
-  );
 }
 
 export default Topic;

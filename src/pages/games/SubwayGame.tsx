@@ -11,8 +11,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
-import { gamePool, pickWrongs, shuffle } from "./_shared";
-import { useRemedyOnGameOver } from "@/lib/remedial";
+import { gamePool, pickN, shuffle } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
@@ -910,8 +909,6 @@ const SubwayGame = () => {
   const [paused, setPaused] = useState(true);
   const [started, setStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
-  useRemedyOnGameOver(gameOver);
   const [question, setQuestion] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad" | "power" } | null>(null);
   const [pu, setPu] = useState<{ jet: number; x2: number; mag: number }>({ jet: 0, x2: 0, mag: 0 });
@@ -963,7 +960,7 @@ const SubwayGame = () => {
     const pool = gamePool();
     if (pool.length < 3) { gateActive.current = false; return; }
     const target = pickNextGameItem(pool) || pool[0];
-    const wrongs = pickWrongs(pool, target, 2, { distinctEmoji: true });
+    const wrongs = pickN(pool.filter((p) => p.id !== target.id && p.emoji !== target.emoji), 2);
     if (wrongs.length < 2) { gateActive.current = false; return; }
     const items = shuffle([target, ...wrongs]);
     const targetLane = items.findIndex((i) => i.id === target.id);
@@ -1081,10 +1078,7 @@ const SubwayGame = () => {
     const lane = nearestLane(s.x);
     const correct = lane === gate.targetLane;
     recordLetterMastery(gate.target!.id, correct);
-    recordGameAnswer(gate.target!, correct, {
-      chosenId: gate.items?.[lane]?.id,
-      shownIds: gate.items?.map((i) => i.id),
-    });
+    recordGameAnswer(gate.target!, correct);
     setEnts((prev) => prev.map((e) => (e.id === gateId ? { ...e, resolution: { lane, correct } } : e)));
     gateActive.current = false;
 

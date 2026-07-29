@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { cn } from "@/lib/utils";
-import { gamePool, getGameLang, pickCluster } from "./_shared";
+import { gamePool, getGameLang, pickN } from "./_shared";
 import { playItem, playFeedback } from "@/lib/audio";
 import type { ContentItem, Lang } from "@/data/types";
 
@@ -28,7 +28,7 @@ const nid = () => ++_uid;
 function buildBoard(lang: Lang): BoxItem[] {
   const pool = gamePool(lang);
   if (pool.length === 0) return [];
-  const kinds = pickCluster(pool, Math.min(DISTINCT_KINDS, pool.length));
+  const kinds = pickN(pool, Math.min(DISTINCT_KINDS, pool.length));
   const items: BoxItem[] = [];
   kinds.forEach((it) => {
     const triples = 1 + Math.floor(Math.random() * 3); // 3,6,9

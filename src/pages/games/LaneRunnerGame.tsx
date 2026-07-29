@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem } from "@/lib/audio";
-import { gamePool, pickWrongs } from "./_shared";
-import { useRemedyOnGameOver } from "@/lib/remedial";
+import { gamePool, pickN } from "./_shared";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
@@ -37,8 +36,6 @@ const LaneRunnerGame = () => {
   const [combo, setCombo] = useState(0);
   const [lives, setLives] = useState(3);
   const [gameOver, setGameOver] = useState(false);
-  // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
-  useRemedyOnGameOver(gameOver);
   const [paused, setPaused] = useState(true);
   const [pops, setPops] = useState<Pop[]>([]);
   const [flash, setFlash] = useState<"good" | "bad" | null>(null);
@@ -112,7 +109,7 @@ const LaneRunnerGame = () => {
           let item: ContentItem;
           if (useTarget) item = targetRef.current!;
           else {
-            const wrongs = pickWrongs(pool, targetRef.current, 1);
+            const wrongs = pickN(pool.filter((p) => p.id !== targetRef.current!.id), 1);
             item = wrongs[0] || targetRef.current!;
           }
           const newLane = (Math.random() < 0.5 ? 0 : 1) as 0 | 1;
@@ -153,7 +150,7 @@ const LaneRunnerGame = () => {
           setTimeout(pickTarget, 350);
         }
         if (hitWrong) {
-          recordGameAnswer(targetRef.current!, false, { chosenId: hitWrong.item.id });
+          recordGameAnswer(targetRef.current!, false);
           playFeedback(false); setCombo(0);
           addPop(hitWrong.lane, "✗", false);
           flashFx("bad");
@@ -224,7 +221,7 @@ const LaneRunnerGame = () => {
 
         <div className="rounded-2xl p-3 mb-3 border-2 bg-warning/15 border-warning/50 text-center min-h-[64px]">
           <p className="text-xs font-bold text-muted-foreground">🎯 Doğru yola geç, topla!</p>
-          <p className="text-3xl mt-1"><EmojiView value={target?.emoji ?? "—"} /> <span className="text-base font-bold text-muted-foreground">{target?.label ?? ""}</span></p>
+          <p className="text-3xl mt-1"><EmojiView value={target?.emoji ?? "—"} /> <span className="text-base font-bold text-foreground/70">{target?.label ?? ""}</span></p>
         </div>
 
         <div

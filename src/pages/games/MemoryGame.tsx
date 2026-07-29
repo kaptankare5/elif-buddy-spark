@@ -5,14 +5,14 @@ import { InGameQuiz } from "@/components/InGameQuiz";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { useGameMode } from "@/lib/gameMode";
-import { gamePool, pickCluster, shuffle } from "./_shared";
+import { gamePool, pickN, shuffle } from "./_shared";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 
 interface Card { uid: string; item: ContentItem; flipped: boolean; matched: boolean; variant: "a" | "b"; }
 
 function buildBoard(pairs: number): Card[] {
-  const items = pickCluster(gamePool(), pairs);
+  const items = pickN(gamePool(), pairs);
   const cards: Card[] = [];
   items.forEach((it) => {
     cards.push({ uid: `${it.id}-a`, item: it, flipped: false, matched: false, variant: "a" });
@@ -83,7 +83,7 @@ const MemoryGame = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-topic-pink/30 to-background">
       <main className="container mx-auto max-w-xl px-4 pb-16">
-        <PageHeader title="🧠 Hafıza Kartları" backTo="/oyunlar" centered onReset={reset} />
+        <PageHeader title="🃏 Hafıza Kartları" backTo="/oyunlar" centered onReset={reset} />
 
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-card p-3 text-center shadow-card border-2 border-primary/30">

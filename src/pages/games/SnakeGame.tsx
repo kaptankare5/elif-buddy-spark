@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
-import { gamePool, shuffle, pickWrongs } from "./_shared";
-import { useRemedyOnGameOver } from "@/lib/remedial";
+import { gamePool, shuffle, pickN } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
@@ -56,8 +55,6 @@ const SnakeGame = () => {
   const [eaten, setEaten] = useState(0);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
-  // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
-  useRemedyOnGameOver(gameOver);
   const [paused, setPaused] = useState(true);
 
   // Süper modda hedef harfin SRS seviyesi — sadece L1'de halka göster
@@ -75,7 +72,7 @@ const SnakeGame = () => {
   const startQuiz = useCallback((occupied: Cell[]) => {
     const pool = gamePool();
     const target = pickNextGameItem(pool) || pool[0];
-    const wrong = pickWrongs(pool, target, 1)[0];
+    const wrong = pickN(pool.filter((p) => p.id !== target.id), 1)[0];
     const taken = [...occupied];
     // Yılan kafasının etrafında geniş bir alanı boş tut — istemeden cevap üstüne gitmesin
     const head = occupied[0];
@@ -156,9 +153,7 @@ const SnakeGame = () => {
             const opt = quiz.options[hitIdx];
             const correct = opt.item.id === quiz.target.id;
             recordLetterMastery(quiz.target.id, correct);
-            recordGameAnswer(quiz.target, correct, {
-              chosenId: opt.item.id, shownIds: quiz.options.map((o) => o.item.id),
-            });
+            recordGameAnswer(quiz.target, correct);
             if (correct) {
               grew = true;
               setScore((s) => s + 5);
@@ -387,7 +382,7 @@ const SnakeGame = () => {
             >
               <div className="text-7xl mb-3 animate-bounce">🐍</div>
               <div className="text-2xl font-black text-success mb-2 drop-shadow-sm">Hazır mısın?</div>
-              <div className="text-xs font-extrabold text-muted-foreground px-6 text-center max-w-[80%]">
+              <div className="text-xs font-extrabold text-foreground/80 px-6 text-center max-w-[80%]">
                 Ekrana parmağını sürükle ↑↓←→
               </div>
               <div className="mt-4 px-6 py-2.5 rounded-full bg-gradient-to-r from-success to-emerald-600 text-white font-black text-sm shadow-elegant">
@@ -399,7 +394,7 @@ const SnakeGame = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/80 to-rose-100/90 backdrop-blur-sm">
               <div className="text-7xl mb-2 animate-bounce-in">😵</div>
               <div className="text-3xl font-black text-destructive mb-1 drop-shadow-sm">Oyun Bitti!</div>
-              <div className="text-sm font-extrabold text-muted-foreground mb-4">⭐ Puan: {score}</div>
+              <div className="text-sm font-extrabold text-foreground/70 mb-4">⭐ Puan: {score}</div>
               <button onClick={reset} className="rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-7 py-3 font-black shadow-elegant border-2 border-white/40 active:scale-95">
                 🔄 Tekrar Oyna
               </button>

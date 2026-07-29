@@ -73,43 +73,6 @@ const byName = new Map(LETTERS.map((l) => [l.name, l]));
 // tüm konularda aynı harf grubunu işaret eder (tutarlı zihinsel harita).
 const bolum = (n: number) => `${Math.floor((n - 1) / 4) + 1}. Bölüm`;
 
-// YALNIZ 2. KONU (başta/ortada/sonda) İÇİN AYRI BÖLÜMLEME.
-// O konunun bütün derdi harfleri BİRBİRİNDEN AYIRT ETMEK: çocuk ب ile ن'yi,
-// ج ile ح'yi karıştırır. Ayrım öğrenmenin tek yolu benzerleri YAN YANA
-// görmektir (Kornell & Bjork 2008). 4'erli kesim ise benzerleri bölüyordu
-// (Dal/Zel 2 ile 3'e, Sin/Şin 3 ile 4'e düşüyordu; Elif 1., Lem 6. bölümdeydi).
-// Bu yüzden BU KONUDA bölümler, karışabilen harfleri bir arada tutacak şekilde
-// kesilir. Diğer konular geleneksel elifbâ sırasını ve 4'erli bölümlemeyi
-// aynen korur — değişen tek şey bu konunun bölüm sınırlarıdır.
-// BÖLÜM BOYUTU: burada bir harf = ÜÇ yeni öğe (başta/ortada/sonda). 4 harflik
-// bir bölüm 12 yeni şekil demek — çocuk temel hâlini biliyor olsa da diğer
-// hâllerini bilmiyor, yük katlanıyor. Bu yüzden bölümler 2-3 harfte tutulur
-// (6-9 öğe). Karışan harfler yine aynı bölümde; yalnız kalabalık aileler
-// (ب ت ث ن ي gibi) ikiye bölünür — ilk yarı zaten açık kaldığı için ikinci
-// yarı geldiğinde karşıtlık kurulmaya devam eder.
-const YAZILIS_SECTIONS: number[][] = [
-  [1, 22, 23],    // ا ك ل — dikey çizgililer
-  [2, 3, 4],      // ب ت ث — diş + nokta
-  [5, 6, 7],      // ج ح خ — çanaklılar
-  [8, 9],         // د ذ
-  [10, 11],       // ر ز
-  [12, 13],       // س ش
-  [14, 15],       // ص ض
-  [16, 17],       // ط ظ
-  [18, 19],       // ع غ
-  [20, 21],       // ف ق
-  [24, 27],       // م ه — ilmekliler
-  [25, 28],       // ن ي — diş ailesinin devamı
-  [26],           // و
-];
-
-const YAZILIS_SECTION_OF = new Map<number, string>();
-YAZILIS_SECTIONS.forEach((letters, i) => {
-  for (const n of letters) YAZILIS_SECTION_OF.set(n, `${i + 1}. Bölüm`);
-});
-
-const bolumYazilis = (n: number) => YAZILIS_SECTION_OF.get(n) ?? "Ekstralar";
-
 // Elifba konusu (10 alt konu)
 const P = "elifba" as const;
 
@@ -154,7 +117,7 @@ const t2_yazilislar: ContentTopic = {
       emoji: l.init,
       translit: `${l.name} (başta)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolumYazilis(l.n),
+      section: bolum(l.n),
     },
     {
       id: `l2-${pad2(l.n)}-med`,
@@ -164,7 +127,7 @@ const t2_yazilislar: ContentTopic = {
       emoji: l.med,
       translit: `${l.name} (ortada)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolumYazilis(l.n),
+      section: bolum(l.n),
     },
     {
       id: `l2-${pad2(l.n)}-fin`,
@@ -174,7 +137,7 @@ const t2_yazilislar: ContentTopic = {
       emoji: l.fin,
       translit: `${l.name} (sonda)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolumYazilis(l.n),
+      section: bolum(l.n),
     },
   ]),
 };
@@ -333,27 +296,15 @@ const t3_harekeler: ContentTopic = {
 // 4. KONU — CEZM: her harf (Elif hariç, Kef için ses yok)
 const CEZM_MISSING = new Set([22]); // 22=Kef ses yok
 
-// Kur'an sıklığına göre seçilmiş cezm heceleri (tam Kur'an taraması,
-// engine5 sayımı — Hafs/Âsım, Türk mushafı kuralı: idgamlı işaretsiz
-// ünsüzler cezimli sayılır). Seçim kuralları:
-// - aynı hareke+koda sonundan yalnız EN SIK örnek ("hüm" varken "küm" yok)
-// - hamza başlangıçlılar hariç (çekirdek eb/ib/üb serisi zaten öğretiyor)
-// - az geçenler elendi. 3. alan = SRS bilet ağırlığı (3 çok sık / 2 sık).
-const CEZM_EKSTRA: Array<[string, string, number]> = [
-  ["هُمْ", "hüm", 3],  // 2.577
-  ["مِنْ", "min", 3],  // 2.281
-  ["لَيْ", "ley", 3],  // 1.224
-  ["هِمْ", "him", 3],  //   919
-  ["مَنْ", "men", 3],  //   837
-  ["بِلْ", "bil", 3],  //   585 — harf-i tarif okuyuşu (bi + el → bil)
-  ["قَوْ", "kav", 3],  //   509
-  ["يَعْ", "ye'", 3],  //   403
-  ["قَدْ", "kad", 2],  //   398
-  ["لَمْ", "lem", 2],  //   385
-  ["قُلْ", "kul", 2],  //   350
-  ["كُنْ", "kün", 2],  //   329
-  ["قَبْ", "kab", 2],  //   248
-  ["يَسْ", "yes", 2],  //   237
+// Sayfa 13 alıştırmalarından 2 harfli cezm heceleri (lem-yelid → lem + lid)
+const CEZM_EKSTRA: Array<[string, string]> = [
+  ["مِنْ", "min"], ["هُمْ", "hüm"], ["لَمْ", "lem"], ["قُلْ", "kul"],
+  ["يَوْ", "yev"], ["كُمْ", "küm"], ["كَيْ", "key"], ["قَبْ", "kab"],
+  ["اَنْ", "en"], ["اَكْ", "ek"], ["اَرْ", "er"], ["كُنْ", "kün"],
+  ["تُمْ", "tüm"], ["لِدْ", "lid"], ["اِسْ", "is"], ["تَكْ", "tek"],
+  ["لَسْ", "les"], ["نَعْ", "na'"], ["حَتْ", "het"], ["لَيْ", "ley"],
+  ["هِمْ", "him"], ["اَيْ", "ey"], ["تَوْ", "tev"], ["قَوْ", "kav"],
+  ["تُنْ", "tün"], ["ذِرْ", "zir"], ["ذَرْ", "zer"], ["اَفْ", "ef"],
 ];
 
 const t4_cezm: ContentTopic = {
@@ -391,39 +342,28 @@ const t4_cezm: ContentTopic = {
         };
       });
     }),
-    ...CEZM_EKSTRA.map(([ar, sp, w], i) => ({
-      id: `l4e-${pad2(i + 1)}`,
+    ...CEZM_EKSTRA.map(([ar, sp], i) => ({
+      id: `l4x-${pad2(i + 1)}`,
       label: sp,
       speech: sp.replace(/'/g, ""),
       lang: "tr" as const,
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
-      weight: w,
     })),
   ],
 };
 
 // 5. KONU — ŞEDDE: her harf (Elif hariç) × 3 hareke
 
-// Kur'an sıklığına göre seçilmiş şedde heceleri (engine5 sayımı). Aynı
-// hareke + şeddeli harf + son hareke kombinasyonundan yalnız EN SIK örnek
-// alınır; az geçenler elendi. 3. alan = SRS bilet ağırlığı (3/2/1).
-const SEDDE_EKSTRA: Array<[string, string, number]> = [
-  ["اِنَّ", "inne", 3],   // 1.513 — Kur'an'ın en sık şeddeli hecesi
-  ["اِلَّ", "ille", 3],   //   665
-  ["رَبِّ", "rabbi", 3],  //   609
-  ["اَنَّ", "enne", 3],   //   408
-  ["ثُمَّ", "sümme", 2],  //   338
-  ["رَبَّ", "rabbe", 2],  //   210
-  ["كُلِّ", "külli", 2],  //   192
-  ["اَيُّ", "eyyü", 2],   //   172
-  ["رَبُّ", "rabbü", 2],  //   171
-  ["لَمَّ", "lemme", 2],  //   165
-  ["مِمَّ", "mimme", 2],  //   159
-  ["عَلَّ", "alle", 2],   //   153
-  ["اِنِّ", "inni", 2],   //   151
-  ["حَتَّ", "hatte", 1],  //   142
+// Sayfa 15 alıştırmalarından 2 harfli şedde heceleri
+const SEDDE_EKSTRA: Array<[string, string]> = [
+  ["زَيَّ", "zeyye"], ["عَلَّ", "alle"], ["حَقُّ", "hakku"], ["كُلُّ", "küllü"],
+  ["نَزَّ", "nezze"], ["ظُنُّ", "zunnü"], ["سَبِّ", "sebbi"], ["جَنَّ", "cenne"],
+  ["مُدَّ", "müdde"], ["هَنَّ", "henne"], ["فَصَّ", "fassa"], ["شَرِّ", "şerri"],
+  ["فُصِّ", "fussı"], ["اِتَّ", "itte"], ["بَشِّ", "beşşi"], ["وَجَّ", "vecce"],
+  ["وَكَّ", "vekke"], ["كَذِّ", "kezzi"], ["بَيِّ", "beyyi"], ["نَبِّ", "nebbi"],
+  ["لَنَّ", "lenne"],
 ];
 
 const t5_sedde: ContentTopic = {
@@ -459,39 +399,26 @@ const t5_sedde: ContentTopic = {
         };
       });
     }),
-    ...SEDDE_EKSTRA.map(([ar, sp, w], i) => ({
-      id: `l5e-${pad2(i + 1)}`,
+    ...SEDDE_EKSTRA.map(([ar, sp], i) => ({
+      id: `l5x-${pad2(i + 1)}`,
       label: sp,
       speech: sp,
       lang: "tr" as const,
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
-      weight: w,
     })),
   ],
 };
 
 // 6. KONU — MED HARFLERİ (uzatma). PDF sayfa 16-17 örneklerinden.
 
-// Kur'an sıklığına göre seçilmiş med heceleri (engine5 sayımı; çekirdek
-// kartlarda olmayanlardan en sık geçenler — hepsi 1.000+ kez). 3. alan =
-// SRS bilet ağırlığı (tümü çok sık: 3).
-const MED_EKSTRA: Array<[string, string, number]> = [
-  ["لَا", "lâ", 3],   // 4.019
-  ["مَا", "mâ", 3],   // 3.890
-  ["نَا", "nâ", 3],   // 3.351
-  ["وَا", "vâ", 3],   // 2.641
-  ["آ", "â", 3],      // 2.244 — medli elif (uzatmalı hemze)
-  ["هَا", "hâ", 3],   // 1.956
-  ["فِي", "fî", 3],   // 1.794
-  ["لُو", "lû", 3],   // 1.563
-  ["ذِي", "zî", 3],   // 1.470
-  ["هُو", "hû", 3],   // 1.338
-  ["يَا", "yâ", 3],   // 1.185
-  ["رُو", "rû", 3],   // 1.184
-  ["نُو", "nû", 3],   // 1.097
-  ["هِي", "hî", 3],   // 1.091
+// Sayfa 17 alıştırmalarından 2 harfli med heceleri (temel kartlarda olmayanlar)
+const MED_EKSTRA: Array<[string, string]> = [
+  ["قَا", "kâ"], ["كَا", "kâ"], ["وَا", "vâ"], ["ضَا", "dâ"], ["مَا", "mâ"],
+  ["خِى", "hî"], ["دِى", "dî"], ["ظِى", "zî"], ["مِى", "mî"], ["قِى", "kî"],
+  ["طِى", "tî"], ["نِى", "nî"], ["لُو", "lû"], ["كُو", "kû"], ["نُو", "nû"],
+  ["عُو", "û"], ["سُو", "sû"], ["مُو", "mû"], ["رُو", "rû"], ["دُو", "dû"],
 ];
 
 const t6_med: ContentTopic = {
@@ -522,15 +449,14 @@ const t6_med: ContentTopic = {
       // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
       section: `${Math.floor(i / 6) + 1}. Bölüm`,
     })),
-    ...MED_EKSTRA.map(([ar, sp, w], i) => ({
-      id: `l6e-${pad2(i + 1)}`,
+    ...MED_EKSTRA.map(([ar, sp], i) => ({
+      id: `l6x-${pad2(i + 1)}`,
       label: sp,
       speech: sp,
       lang: "tr" as const,
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
-      weight: w,
     })),
   ],
 };
@@ -569,12 +495,11 @@ const t8_tenvin: ContentTopic = {
   items: [
     ...LETTERS.flatMap((l) => {
       const v = harekeVowels(l.thick);
-      // Tenvin mp3'leri var: tenvin-NN-{fetha|esre|otre}.mp3 (NN = harf no 1-28).
       const defs = [
         // iki üstün: harf + fethatan + elif (بًا) — elif kendisi yalnız "اً"
-        { suf: "ustun2", file: "fetha", glyph: l.n === 1 ? "اً" : `${l.iso}ًا`, read: `${l.cons}${v.a}n` },
-        { suf: "esre2", file: "esre", glyph: `${l.iso}ٍ`, read: `${l.cons}${v.i}n` },
-        { suf: "otre2", file: "otre", glyph: `${l.iso}ٌ`, read: `${l.cons}${v.u}n` },
+        { suf: "ustun2", glyph: l.n === 1 ? "اً" : `${l.iso}ًا`, read: `${l.cons}${v.a}n` },
+        { suf: "esre2", glyph: `${l.iso}ٍ`, read: `${l.cons}${v.i}n` },
+        { suf: "otre2", glyph: `${l.iso}ٌ`, read: `${l.cons}${v.u}n` },
       ];
       return defs.map((d) => ({
         id: `l8-${pad2(l.n)}-${d.suf}`,
@@ -583,7 +508,6 @@ const t8_tenvin: ContentTopic = {
         lang: "tr" as const,
         emoji: d.glyph,
         translit: d.read,
-        audio: audioPath(`tenvin-${pad2(l.n)}-${d.file}.mp3`),
         section: bolum(l.n),
       }));
     }),

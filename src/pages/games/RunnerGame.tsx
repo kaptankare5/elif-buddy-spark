@@ -28,8 +28,7 @@ const ShipSvg = memo(() => (
 ShipSvg.displayName = "ShipSvg";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem } from "@/lib/audio";
-import { gamePool, pickWrongs, shuffle } from "./_shared";
-import { useRemedyOnGameOver } from "@/lib/remedial";
+import { gamePool, pickN, shuffle } from "./_shared";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
@@ -78,8 +77,6 @@ const RunnerGame = () => {
   const [combo, setCombo] = useState(0);
   const [lives, setLives] = useState(3);
   const [gameOver, setGameOver] = useState(false);
-  // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
-  useRemedyOnGameOver(gameOver);
   const [paused, setPaused] = useState(true);
   const [pops, setPops] = useState<Pop[]>([]);
   const [flash, setFlash] = useState<"good" | "bad" | null>(null);
@@ -100,7 +97,7 @@ const RunnerGame = () => {
     // Hedefi SRS ile seç
     const tgt = pickNextGameItem(pool) || pool[0];
     // El nesneleri: hedef + 3 rastgele yanlış (toplam 4)
-    const others = pickWrongs(pool, tgt, Math.max(0, ROUND_SIZE - 1));
+    const others = pickN(pool.filter((p) => p.id !== tgt.id), Math.max(0, ROUND_SIZE - 1));
     const items = shuffle([tgt, ...others]);
     setTarget(tgt);
     setRoundItems(items);

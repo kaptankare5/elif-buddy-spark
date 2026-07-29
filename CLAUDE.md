@@ -2,14 +2,7 @@
 
 Çocuklara Kur'an harflerini öğreten React uygulaması. Vite + React 18 + TS +
 Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
-(port 8080, `.claude/launch.json` var).
-
-**DOĞRULAMA — dikkat:** `npx tsc --noEmit` HİÇBİR ŞEYİ denetlemez! Kök
-`tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
-sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
-(+ `npx eslint src/` + `npx vitest run`). Bilinen 4 hata Lovable'ın
-`src/lib/mcp/` dosyalarında (`@lovable.dev/mcp-js` paketi kurulu değil) —
-bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
+(port 8080, `.claude/launch.json` var). Doğrulama: `npx tsc --noEmit` + eslint.
 
 ## Mimari — kritik kurallar
 
@@ -22,19 +15,11 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   kutlamaları kaldırıldı — `playFeedback(true/false)` (ding/buzz) kullan.
 
 ### Veri: `src/data/topics/elifba.ts`
-- İki ayrı bölümleme var: `bolum()` = geleneksel 4'erli ("1. Bölüm" =
-  elif be te se) — 1., 3. ve sonraki BÜTÜN konular bunu kullanır.
-  `bolumYazilis()` = YALNIZ 2. konu (başta/ortada/sonda): karışabilen
-  harfler aynı bölümde ama bölümler EN FAZLA 3 harf — orada bir harf ÜÇ yeni
-  şekil demek, 4 harflik bölüm 12 yeni şekle çıkıyordu (13 bölüm: ا ك ل ·
-  ب ت ث · ج ح خ · د ذ · ر ز · س ش · ص ض · ط ظ · ع غ · ف ق · م ه · ن ي · و).
-  Bölüm ADLARI iki tarafta da sade ("N. Bölüm") — aile etiketi YOK
-  (kullanıcı şartı). Harf sırası (LETTERS) hiç değişmedi.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
   hareke okunuşları üretilir (kalın 7 harf a/ı/u; Râ karışık ra/ri/ru;
   gerisi e/i/ü). Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
 - 10 konu; 7/9/10 video'lu (`topic.video`, YouTube gömme Topic.tsx'te).
-- `item.section` = "N. Bölüm" (yukarı bak) veya "Ekstralar"
+- `item.section` = "N. Bölüm" (4 harflik gruplar) veya "Ekstralar"
   (Diyanet PDF alıştırmalarından). CRLF satır sonları — çok satırlı Edit
   eşleşmesi başarısız olursa nedeni bu (tek satır anchor veya node kullan).
 
@@ -43,57 +28,12 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   değişmez). L3→L4 = üst üste 2 doğru (`consecutiveCorrect`). Seçici:
   görülmemişler müfredat sırasıyla, art arda aynı öğe yok, ağırlıklar
   L1 %55…L4 %15 (%85 başarı kuralı).
-- Bölüm kilidi `src/lib/unlock.ts`: konu içi section'lar sıralı açılır.
-  Açılma şartı İKİ tane: (1) bölümdeki tüm öğeler L3+, (2) bölüm içinde
-  sıcak karışıklık kalmamış (`hotPairInSection`, eşik 0.6). Eskiler açık
-  kalır. `isTopicCompleted` de aynı iki şarta bakar.
+- Bölüm kilidi `src/lib/unlock.ts`: konu içi section'lar sıralı açılır
+  (bölümdeki tüm öğeler L3+ → sonraki açılır; eskiler açık kalır).
   Test/Flashcard/oyun havuzu (`gamePool`) YALNIZ açık öğeleri sorar
   (`getUnlockedItemsOf` / `getUnlockedItemIdSet`).
 - Konu kilidi: konudaki tüm öğeler L3+ → sonraki konu. Ayarlar'da test
   kilidi: kod **1234** her şeyi açar (`src/lib/testUnlock.ts`).
-- Soru kaynağı `src/lib/questionSource.ts` (Topic testi): retry / bakım /
-  frontier önceliği. Yanlış harf en fazla **BİR kez** tekrar sorulur (eskiden
-  sınırsızdı → çocuk aynı harfte kilitlenip bakım kanalına hiç sıra
-  gelmiyordu). **Zorlanma bandında bakım, retry'nin önüne geçer** — kolay
-  soru konu içinde yok, önceki konunun bilinen harflerindedir. Flashcard'da
-  da aynı kurtarma karşıtlık zincirinin önünde. Bakım sorusunun ÇELDİRİCİLERİ
-  de yalnız açık bölümlerden gelir.
-
-### Karışan harfler (`confusables.ts` + `confusion.ts`)
-- `confusables.ts` = STATİK bilgi (import etmez, yapraktır): rasm öbekleri
-  (ب/ت/ث/ن/ي…, ا/ل, ك/ل, م/ه) **ve** aynı harfin başta/ortada/sonda hâlleri
-  (`l2-NN-init|med|fin`) da karışan sayılır.
-- `confusion.ts` = ÖLÇÜLEN karışıklık ısısı (0..1, localStorage, öğrenciye
-  özel, yarı ömür 21 gün). Yanlış şık seçimi +0.34; şık bilinmiyorsa
-  a-priori partnerlere +0.12; partner ortadayken **üst üste 3 doğru** ayrım
-  → −0.5. Harf ısısı BÜTÜN hâllere/harekelere taşınır (Elif↔Lem ısınınca
-  `l2-01-fin` de ısınır), form ısısı yalnız o harfin hâlleri arasında kalır.
-- **AYNI SESLİ öğe asla çeldirici olamaz** (`sameSound`): sorular sesle
-  sorulur, Fe'nin yalın/başta/ortada/sonda hâllerinin dördü de
-  `basic-20.mp3` çalar → ikisi şıkka girerse sorunun İKİ doğru cevabı olur.
-  `pickDistractors` ve `pickCluster` bunu eler (küme üyeleri birbirine de
-  benzemez). Sonuç: sesle sorulan çoktan seçmeliyle form ayrımı SORULAMAZ.
-- Isının üç etkisi: **sıklık** (srs.ts biletinde `1 + 1.6·ısı`),
-  **birliktelik** (`pickDistractors` → oyunlarda `pickWrongs`/`pickCluster`),
-  **ardışıklık** (`pickContrastId` → Flashcard'da partner hemen sonra gelir,
-  zincir en fazla 3).
-- Katman sırası tek yönlü: `confusables → confusion → srs/sayfalar/oyunlar`.
-  `pickDistractors` **confusion.ts'ten** gelir (confusables'ta değil).
-- Ölçüm noktaları: Topic testi (`choose`), `gameProgress.recordGameAnswer`
-  (`chosenId`/`shownIds` meta'sı — moddan bağımsız her cevapta işler),
-  Flashcard (ardışık kart partnerse doğru cevap = ayrım).
-- Debug HUD'da "Karışıklık Isısı" bölümü çifti okunur gösterir (Elif↔Lem).
-
-### Telafi (`src/lib/remedial.ts` + `RemedyOverlay`)
-- Yalnız `l2-*` (başta/ortada/sonda) hatalarında; harfin hafıza yöntemi
-  tam ekran açılır. Yöntem HATANIN EKSENİNE göre: farklı harf karıştırdıysa
-  nokta (`DotCompare`, hata yapılan hâlle açılır), aynı harfin başka hâliyle
-  karıştırdıysa kuyruk (`EraseGame`) ya da "hiç değişmez".
-- **Her yanlışta çıkmaz**: ısı ≥ 0.5 (tek hata yetmez) + aynı harf 30 dk,
-  herhangi bir telafi 4 dk soğuma + seansta en fazla 3.
-- Test/Flashcard'da hemen; OYUNLARDA ASLA ortada — `queueRemedy` ile
-  kuyruğa alınır, `useRemedyOnGameOver` (ölünce/süre bitince) ya da
-  Game.tsx unmount'ta (bitişi olmayan oyunlar) açılır.
 
 ### Oyun modları (`src/lib/gameMode.ts`)
 - Varsayılan **süper** ("super"); kullanıcı Ayarlar'dan normale döner.
@@ -103,7 +43,7 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   çoktan seçmeli, `recordInGameTest` her zaman sayar) çıkar; Balon/Koşu'da
   doğru cevapta ışık + ipucu halkası hep görünür.
 - Topic Test + Flashcard recordSrsAnswer'ı doğrudan çağırır → hep sayılır;
-  testte yanlış cevaplanan soru bir kez tekrar sorulur (questionSource.ts).
+  testte yanlış cevaplanan soru hemen tekrar sorulur (`retryIdRef`).
 
 ### Hoca Modu (`src/lib/students.ts`)
 - Cihazda öğrenci profilleri; `setActiveStudentScope` (srs.ts) localStorage
@@ -115,15 +55,6 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
 ### Oyunlar
 - 11 oyun `src/pages/games/`; kayıt: Game.tsx (route) + Games.tsx (liste,
   Kolay/Zor gruplu) + `SUPER_MODE_GAMES` (gameMode.ts) + Settings metni.
-- "Elif Ba Macerası" (`PlatformGame.tsx`, id "platform"): 10 bölüm, cami
-  finali. **Şiddetsiz tasarım korunacak** — canavar öldürülmez, Nur'a değen
-  canavar güvercine dönüşüp uçar. ✨ **Nur ışığı atışı**: Nur açıkken ✨
-  düğmesi (klavye J/F) ışık fırlatır; değdiği canavar yine güvercin olur —
-  silah değil, ışık. 🌑 **Karanlık Bulut** yalnız 10. bölümde, caminin
-  önünde: öldürülmez, 5 ışıkla AYDINLATILIR, dağılınca yuttuğu harfler
-  saçılır. Arenaya girince kandil yanar (nur sürekli tazelenir); ışık
-  perdesi bulut dağılmadan camiye geçirmez. Bulut yalnız yavaş "gölge
-  damlası" gönderir (kaçılacak engel).
 - "ElifBa Koşusu" (`SubwayGame.tsx`, id "subway"): R3F 3D koşu. Arapça
   harfler canvas dokusuyla (troika değil), pano dokusu ölçüp sığdırır
   (derin çanaklı harfler kesilmez), fog'dan muaf. Tasarım:

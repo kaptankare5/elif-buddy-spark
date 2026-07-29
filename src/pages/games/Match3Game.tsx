@@ -3,7 +3,7 @@ import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
-import { gamePool, pickCluster, pickWrongs, shuffle } from "./_shared";
+import { gamePool, getGameLang, pickN, shuffle } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
@@ -136,7 +136,7 @@ function findPossibleMatchTypes(g: Cell[][]): ContentItem[] {
 }
 
 const Match3Game = () => {
-  const [types, setTypes] = useState<ContentItem[]>(() => pickCluster(gamePool(), TYPES_COUNT));
+  const [types, setTypes] = useState<ContentItem[]>(() => pickN(gamePool(), TYPES_COUNT));
   const [grid, setGrid] = useState<Cell[][]>(() => buildGrid(types));
   const [selected, setSelected] = useState<{ r: number; c: number } | null>(null);
   const [score, setScore] = useState(0);
@@ -146,7 +146,7 @@ const Match3Game = () => {
 
   useEffect(() => {
     const h = () => {
-      const t = pickCluster(gamePool(), TYPES_COUNT);
+      const t = pickN(gamePool(), TYPES_COUNT);
       setTypes(t); setGrid(buildGrid(t)); setScore(0); setSelected(null);
     };
     window.addEventListener("games-lang-change", h);
@@ -246,7 +246,7 @@ const Match3Game = () => {
         const possible = findPossibleMatchTypes(curr);
         if (possible.length >= 3) {
           const target = possible[Math.floor(Math.random() * possible.length)];
-          const distractors = pickWrongs(possible, target, 2);
+          const distractors = shuffle(possible.filter((p) => p.id !== target.id)).slice(0, 2);
           const opts = shuffle([target, ...distractors]);
           setTimeout(() => {
             setQuiz({ target, options: opts });
@@ -260,7 +260,7 @@ const Match3Game = () => {
   };
 
   const reset = () => {
-    const t = pickCluster(gamePool(), TYPES_COUNT);
+    const t = pickN(gamePool(), TYPES_COUNT);
     setTypes(t); setGrid(buildGrid(t)); setScore(0); setSelected(null); setBusy(false);
     setMoveCount(0); setQuiz(null);
   };
@@ -328,9 +328,7 @@ const Match3Game = () => {
                     onClick={() => {
                       const correct = opt.id === quiz.target.id;
                       recordLetterMastery(quiz.target.id, correct);
-                      recordGameAnswer(quiz.target, correct, {
-                        chosenId: opt.id, shownIds: quiz.options.map((o) => o.id),
-                      });
+                      recordGameAnswer(quiz.target, correct);
                       playFeedback(correct);
                       setQuiz(null);
                     }}

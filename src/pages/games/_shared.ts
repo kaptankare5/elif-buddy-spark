@@ -1,6 +1,5 @@
 import { flattenItems } from "@/data/subjects";
 import { getUnlockedItemIdSet } from "@/lib/unlock";
-import { pickDistractors, sameSound } from "@/lib/confusion";
 import type { ContentItem, Lang } from "@/data/types";
 
 export function shuffle<T>(a: T[]): T[] {
@@ -43,55 +42,4 @@ export function gamePool(_lang?: Lang): ContentItem[] {
 
 export function pickN<T>(arr: T[], n: number): T[] {
   return shuffle(arr).slice(0, Math.min(n, arr.length));
-}
-
-/**
- * Oyunlarda hedefin YANINDA görünecek yanlış harfler.
- *
- * Rastgele seçilirse oyun ayrım öğretmez: Elif sorulduğunda ekrana Elif ile
- * hiç benzemeyen harfler gelirse çocuk şekle bakmadan da bulur. Karıştırdığı
- * harf (Lem) ekranda olursa her doğru cevap gerçek bir AYRIM olur ve karışıklık
- * çöze çöze azalır. Önce çocuğun GERÇEKTEN karıştırdıkları (ölçülmüş ısı),
- * sonra a-priori benzerler, sonra rastgele doldurma.
- *
- * `emoji` alanı aynı olanları eleme seçeneği: bazı oyunlar aynı görünen iki
- * öğeyi yan yana koyamaz (çocuk hangisi doğru ayırt edemez).
- */
-export function pickWrongs(
-  pool: ContentItem[],
-  target: ContentItem | null | undefined,
-  n: number,
-  opts?: { distinctEmoji?: boolean },
-): ContentItem[] {
-  if (!target) return pickN(pool, n);
-  const usable = opts?.distinctEmoji
-    ? pool.filter((p) => p.id !== target.id && p.emoji !== target.emoji)
-    : pool.filter((p) => p.id !== target.id);
-  return pickDistractors(usable, target, n);
-}
-
-/**
- * Tahtaya N FARKLI harf koyan oyunlar için (Eşleştirme, Ayıklama, Üçlü, Hafıza):
- * harfler rastgele değil, bir çekirdeğin çevresindeki KARIŞANLARDAN kurulur.
- * Böylece tahtada ج ile ح yan yana bulunur ve her doğru hamle bir ayrımdır.
- */
-export function pickCluster(pool: ContentItem[], n: number): ContentItem[] {
-  if (pool.length <= n) return shuffle(pool);
-  const anchor = pool[Math.floor(Math.random() * pool.length)];
-  // Tahtadaki harflerin HİÇBİRİ birbiriyle aynı sesi çalmamalı. "Kutu Boşalt"
-  // gibi oyunlarda sorulan harf sesle veriliyor; tahtada aynı sesi çalan iki
-  // harf varsa çocuk doğru olanı seçse bile yanlış sayılabiliyor. Çapaya
-  // benzememesi yetmez — adaylar BİRBİRİNE de benzememeli, bu yüzden küme
-  // teker teker, her adımda kontrol edilerek büyütülür.
-  const out: ContentItem[] = [anchor];
-  const add = (candidates: ContentItem[]) => {
-    for (const c of candidates) {
-      if (out.length >= n) return;
-      if (out.some((o) => o.id === c.id || sameSound(o, c))) continue;
-      out.push(c);
-    }
-  };
-  add(pickWrongs(pool, anchor, n * 3));   // önce karışan harfler (bol aday)
-  add(shuffle(pool));                      // kalan boşluğu rastgele doldur
-  return shuffle(out);
 }

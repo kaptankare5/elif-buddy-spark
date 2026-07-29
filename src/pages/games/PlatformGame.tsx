@@ -1,4 +1,4 @@
-// 🕌 "Elif Ba Macerası" — 2D yandan kaydırmalı platform macera oyunu.
+// 🍄 "Harf Macerası" — Mario tarzı 2D yandan kaydırmalı platform oyunu.
 //
 // 10 BÖLÜM: her bölüm farklı temalı (çayır, orman, sahil, çöl, gün batımı,
 // kar, gece, şeker, uzay, gökkuşağı), soldan sağa koşulur ve bölüm sonundaki
@@ -24,12 +24,9 @@
 // dpr'a duyarlı tek <canvas>, arka planda otomatik durur, DT_MAX kelepçesi.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { playFeedback, playItem, playSfx } from "@/lib/audio";
-import { gamePool, pickWrongs, shuffle } from "./_shared";
-import { useRemedyOnGameOver } from "@/lib/remedial";
+import { playFeedback, playItem } from "@/lib/audio";
+import { gamePool, pickN, shuffle } from "./_shared";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
-import { gameMusic } from "@/lib/gameMusic";
-import { isTestUnlockActive } from "@/lib/testUnlock";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
@@ -60,24 +57,6 @@ const MAG_TIME = 10;          // 🧲 mıknatıs: harf paraları oyuncuya akar
 const X2_TIME = 12;           // ⭐ 2X puan
 const FREED_DUR = 1.0;        // güvercine dönüşüp uçma animasyonu
 
-// ✨ NUR IŞIĞI (atış) — "silah" değil, ışık. Mario'daki ateş topunun yerini
-// tutar ama hiçbir şeyi yok etmez: değdiği canavar tıpkı Nur'a dokunmuş gibi
-// GÜVERCİNE dönüşüp uçar. Elifbâ öğreten bir oyunda silah/öldürme olmasın
-// diye bilinçli tercih (oyunun şiddetsiz canavar tasarımıyla aynı çizgi).
-const SHOT_SPEED = 460;
-const SHOT_CD = 0.32;         // atışlar arası bekleme
-const SHOT_LIFE = 1.5;
-const SHOT_R = 9;
-
-// 🌑 BÖLÜM SONU: "Karanlık Bulut" — son bölümde (10) caminin önünü kapatan
-// dev bulut. Öldürülmez, AYDINLATILIR: 5 nur ışığı değince dağılıp içinden
-// yuttuğu harfler ve bir güvercin sürüsü çıkar, yol açılır. Saldırısı da
-// şiddet değil: yavaş "gölge damlaları" gönderir, çocuk onlardan kaçar.
-const BOSS_HP = 5;
-const BOSS_W = 132, BOSS_H = 96;
-const BOSS_SHOT_CD = 1.6;
-const BOSS_DIE_DUR = 2.2;
-
 // canavar çarpışma kutuları (tür bazlı)
 type MonsterKind = "walker" | "hopper" | "floater" | "flyer";
 const MW: Record<MonsterKind, number> = { walker: 30, hopper: 26, floater: 26, flyer: 26 };
@@ -95,7 +74,6 @@ interface Theme {
   hillA: string;
   hillB: string;
   soil: string;
-  pit: string;         // yeraltı/uçurum içi rengi (çukurlar gökyüzü göstermez)
   grassA: string;      // çim üst ton
   grassB: string;      // çim alt ton
   tree: "tree" | "pine" | "palm" | "cactus" | "snowtree" | "candy" | "none";
@@ -112,19 +90,19 @@ interface Theme {
 }
 
 const THEMES: Theme[] = [
-  { name: "Çayır", emoji: "🌼", skyTop: "#7ec3f0", skyBottom: "#eaf8ff", hillA: "#8fd889", hillB: "#a7e3a0", soil: "#c07a35", pit: "#4a2c12", grassA: "#5ec46a", grassB: "#3f9d45", tree: "tree", treeLeaf: "#4cae5b", trunk: "#8a5a34", celestial: "sun", cloud: "#ffffff", flower1: "#f472b6", flower2: "#facc15", birds: true },
-  { name: "Orman", emoji: "🌲", skyTop: "#74b9e8", skyBottom: "#dff2fd", hillA: "#6fbf73", hillB: "#8fd889", soil: "#8a5a2c", pit: "#3b2410", grassA: "#4caf50", grassB: "#357a38", tree: "pine", treeLeaf: "#2f855a", trunk: "#6b4226", celestial: "sun", cloud: "#ffffff", flower1: "#fb7185", flower2: "#a3e635", birds: true },
-  { name: "Sahil", emoji: "🏖️", skyTop: "#67c7f5", skyBottom: "#f3fbff", hillA: "#7dd3fc", hillB: "#a5e7ff", soil: "#d8ab60", pit: "#5d4322", grassA: "#f2d489", grassB: "#e0b96b", tree: "palm", treeLeaf: "#3fae5f", trunk: "#a9713d", celestial: "sun", cloud: "#ffffff", flower1: "#fda4af", flower2: "#fef08a", birds: true },
-  { name: "Çöl", emoji: "🌵", skyTop: "#f7b267", skyBottom: "#ffe8c7", hillA: "#e8c07d", hillB: "#f2d49b", soil: "#c9945a", pit: "#5f3f1e", grassA: "#eec97f", grassB: "#d9a95f", tree: "cactus", treeLeaf: "#3f9d45", trunk: "#3f9d45", celestial: "sun", cloud: "#fff7ed", flower1: "#f87171", flower2: "#fbbf24", birds: true },
-  { name: "Gün Batımı", emoji: "🌇", skyTop: "#8b5cf6", skyBottom: "#fb923c", hillA: "#6d28d9", hillB: "#8b5cf6", soil: "#7c4a24", pit: "#35200f", grassA: "#4d9e57", grassB: "#3b7f44", tree: "tree", treeLeaf: "#2f6b4f", trunk: "#573418", celestial: "sun", cloud: "#ffe4e6", flower1: "#fb7185", flower2: "#fdba74", birds: true },
-  { name: "Kar", emoji: "❄️", skyTop: "#b8def5", skyBottom: "#f0faff", hillA: "#e6f3fb", hillB: "#ffffff", soil: "#8fa5ba", pit: "#3d4f63", grassA: "#ffffff", grassB: "#dcedf8", tree: "snowtree", treeLeaf: "#2f855a", trunk: "#6b4226", celestial: "sun", cloud: "#ffffff", flower1: "#93c5fd", flower2: "#e0f2fe", snow: true },
-  { name: "Gece", emoji: "🌙", skyTop: "#1e293b", skyBottom: "#3b5578", hillA: "#14532d", hillB: "#166534", soil: "#5e3d1d", pit: "#1c1206", grassA: "#3f7d4a", grassB: "#2f5e38", tree: "tree", treeLeaf: "#1f7a44", trunk: "#3f2a14", celestial: "moon", cloud: "rgba(148,163,184,0.55)", flower1: "#a78bfa", flower2: "#f0abfc", stars: true, fireflies: true },
-  { name: "Şeker", emoji: "🍭", skyTop: "#fbc7e4", skyBottom: "#fff0f7", hillA: "#f9a8d4", hillB: "#fbcfe8", soil: "#8d5b41", pit: "#41241a", grassA: "#7fe3c3", grassB: "#4cc9a6", tree: "candy", treeLeaf: "#f472b6", trunk: "#fefce8", celestial: "none", cloud: "#ffffff", flower1: "#f472b6", flower2: "#38bdf8", birds: true },
-  { name: "Uzay", emoji: "🪐", skyTop: "#241b4d", skyBottom: "#4c3a8c", hillA: "#5b4a9e", hillB: "#7263b8", soil: "#565073", pit: "#241f38", grassA: "#9d94c4", grassB: "#7a71a8", tree: "none", treeLeaf: "#67e8f9", trunk: "#67e8f9", celestial: "planet", cloud: null, flower1: "#67e8f9", flower2: "#c084fc", stars: true },
-  { name: "Gökkuşağı", emoji: "🌈", skyTop: "#7ec3f0", skyBottom: "#eaf8ff", hillA: "#86efac", hillB: "#fde68a", soil: "#c07a35", pit: "#4a2c12", grassA: "#5ec46a", grassB: "#3f9d45", tree: "tree", treeLeaf: "#4cae5b", trunk: "#8a5a34", celestial: "rainbow", cloud: "#ffffff", flower1: "#f43f5e", flower2: "#facc15", birds: true },
+  { name: "Çayır", emoji: "🌼", skyTop: "#7ec3f0", skyBottom: "#eaf8ff", hillA: "#8fd889", hillB: "#a7e3a0", soil: "#c07a35", grassA: "#5ec46a", grassB: "#3f9d45", tree: "tree", treeLeaf: "#4cae5b", trunk: "#8a5a34", celestial: "sun", cloud: "#ffffff", flower1: "#f472b6", flower2: "#facc15", birds: true },
+  { name: "Orman", emoji: "🌲", skyTop: "#74b9e8", skyBottom: "#dff2fd", hillA: "#6fbf73", hillB: "#8fd889", soil: "#8a5a2c", grassA: "#4caf50", grassB: "#357a38", tree: "pine", treeLeaf: "#2f855a", trunk: "#6b4226", celestial: "sun", cloud: "#ffffff", flower1: "#fb7185", flower2: "#a3e635", birds: true },
+  { name: "Sahil", emoji: "🏖️", skyTop: "#67c7f5", skyBottom: "#f3fbff", hillA: "#7dd3fc", hillB: "#a5e7ff", soil: "#d8ab60", grassA: "#f2d489", grassB: "#e0b96b", tree: "palm", treeLeaf: "#3fae5f", trunk: "#a9713d", celestial: "sun", cloud: "#ffffff", flower1: "#fda4af", flower2: "#fef08a", birds: true },
+  { name: "Çöl", emoji: "🌵", skyTop: "#f7b267", skyBottom: "#ffe8c7", hillA: "#e8c07d", hillB: "#f2d49b", soil: "#c9945a", grassA: "#eec97f", grassB: "#d9a95f", tree: "cactus", treeLeaf: "#3f9d45", trunk: "#3f9d45", celestial: "sun", cloud: "#fff7ed", flower1: "#f87171", flower2: "#fbbf24", birds: true },
+  { name: "Gün Batımı", emoji: "🌇", skyTop: "#8b5cf6", skyBottom: "#fb923c", hillA: "#6d28d9", hillB: "#8b5cf6", soil: "#7c4a24", grassA: "#4d9e57", grassB: "#3b7f44", tree: "tree", treeLeaf: "#2f6b4f", trunk: "#573418", celestial: "sun", cloud: "#ffe4e6", flower1: "#fb7185", flower2: "#fdba74", birds: true },
+  { name: "Kar", emoji: "❄️", skyTop: "#b8def5", skyBottom: "#f0faff", hillA: "#e6f3fb", hillB: "#ffffff", soil: "#8fa5ba", grassA: "#ffffff", grassB: "#dcedf8", tree: "snowtree", treeLeaf: "#2f855a", trunk: "#6b4226", celestial: "sun", cloud: "#ffffff", flower1: "#93c5fd", flower2: "#e0f2fe", snow: true },
+  { name: "Gece", emoji: "🌙", skyTop: "#1e293b", skyBottom: "#3b5578", hillA: "#14532d", hillB: "#166534", soil: "#5e3d1d", grassA: "#3f7d4a", grassB: "#2f5e38", tree: "tree", treeLeaf: "#1f7a44", trunk: "#3f2a14", celestial: "moon", cloud: "rgba(148,163,184,0.55)", flower1: "#a78bfa", flower2: "#f0abfc", stars: true, fireflies: true },
+  { name: "Şeker", emoji: "🍭", skyTop: "#fbc7e4", skyBottom: "#fff0f7", hillA: "#f9a8d4", hillB: "#fbcfe8", soil: "#8d5b41", grassA: "#7fe3c3", grassB: "#4cc9a6", tree: "candy", treeLeaf: "#f472b6", trunk: "#fefce8", celestial: "none", cloud: "#ffffff", flower1: "#f472b6", flower2: "#38bdf8", birds: true },
+  { name: "Uzay", emoji: "🪐", skyTop: "#241b4d", skyBottom: "#4c3a8c", hillA: "#5b4a9e", hillB: "#7263b8", soil: "#565073", grassA: "#9d94c4", grassB: "#7a71a8", tree: "none", treeLeaf: "#67e8f9", trunk: "#67e8f9", celestial: "planet", cloud: null, flower1: "#67e8f9", flower2: "#c084fc", stars: true },
+  { name: "Gökkuşağı", emoji: "🌈", skyTop: "#7ec3f0", skyBottom: "#eaf8ff", hillA: "#86efac", hillB: "#fde68a", soil: "#c07a35", grassA: "#5ec46a", grassB: "#3f9d45", tree: "tree", treeLeaf: "#4cae5b", trunk: "#8a5a34", celestial: "rainbow", cloud: "#ffffff", flower1: "#f43f5e", flower2: "#facc15", birds: true },
 ];
 
-// Bölüm zorluk ayarı — seviye arttıkça uzar, canavar türü çeşitlenir
+// Bölüm zorluk ayarı — seviye arttıkça uzar ve sıklaşır
 function levelConf(lv: number) {
   const kinds: MonsterKind[] = ["walker"];
   if (lv >= 2) kinds.push("hopper");
@@ -132,8 +110,13 @@ function levelConf(lv: number) {
   if (lv >= 4) kinds.push("flyer");
   return {
     len: 2900 + lv * 380,
+    gapChance: lv === 1 ? 0.22 : Math.min(0.5, 0.24 + lv * 0.028),
+    gapMin: 58,
+    gapMax: 84 + Math.min(38, lv * 4),
+    monsterChance: Math.min(0.72, 0.3 + lv * 0.045),
     monsterKinds: kinds,
     springs: lv >= 2,
+    movers: lv >= 3,
     questions: Math.min(8, 4 + Math.ceil(lv / 2)),
   };
 }
@@ -170,10 +153,8 @@ interface MonsterEnt {
   vy: number;         // hopper
   grounded: boolean;  // hopper
   hopT: number;       // hopper: bir sonraki zıplamaya kalan süre
-  groundY: number;    // üzerinde durduğu zeminin üst yüzeyi (teraslar için)
   calmT: number;      // üstüne basılınca sersemleme (zarar yok)
   freedT: number;     // Nur ile güvercine dönüşüp uçma (yok etme değil)
-  golden?: boolean;   // 🌟 nadir ALTIN güvercin (~%3) — kozmetik sürpriz, bonus puan
 }
 interface SpringEnt { id: number; x: number; y: number; t: number }
 interface BlockEnt { x: number; y: number; item: ContentItem | null; isTarget: boolean; state?: "good" | "bad" | "fade" }
@@ -189,14 +170,6 @@ interface TrioEnt {
   doneT: number;
 }
 interface CoinEnt { id: number; x: number; y: number; glyph: string; taken: boolean; heart?: boolean }
-/** Uçan ışık (oyuncunun nuru) ya da bulutun gölge damlası */
-interface ShotEnt { id: number; x: number; y: number; vx: number; vy: number; t: number; dark: boolean }
-interface BossEnt {
-  x: number; baseY: number; y: number; t: number;
-  hp: number; hitT: number; deadT: number; shotCd: number;
-  /** oyuncu arenaya girdi mi (girmeden uyumaya devam eder) */
-  woke: boolean;
-}
 interface Pop { x: number; y: number; vx: number; vy: number; t: number; life: number; color: string; text?: string; grav?: boolean }
 interface World {
   solids: SolidEnt[];
@@ -205,8 +178,6 @@ interface World {
   trios: TrioEnt[];
   coins: CoinEnt[];
   pops: Pop[];
-  shots: ShotEnt[];
-  boss: BossEnt | null;
   cliffs: { x: number; w: number }[];   // geniş uçurumlar (görsel kaya duvarı + tabela)
   genX: number;
 }
@@ -659,117 +630,8 @@ function drawSpring(g: CanvasRenderingContext2D, sp: SpringEnt) {
 
 // ---- canavarlar (sevimli, şiddetsiz) ----
 
-// Nur ile dönüşen güvercin — yukarı süzülüp kaybolur (kimse zarar görmez).
-// golden=true: nadir ALTIN güvercin — altın tüyler + parıltı izi (kozmetik).
-/** ✨ Nur ışığı — parlayan altın küre + hâle. Silah değil, ışık. */
-function drawNurShot(g: CanvasRenderingContext2D, sh: ShotEnt, time: number) {
-  g.save();
-  g.translate(sh.x, sh.y);
-  if (sh.dark) {
-    // 🌑 gölge damlası — kaçılacak engel
-    g.globalAlpha = 0.85;
-    g.fillStyle = "#312e5b";
-    g.beginPath();
-    g.arc(0, 0, SHOT_R, 0, Math.PI * 2);
-    g.fill();
-    g.globalAlpha = 0.35;
-    g.fillStyle = "#6d28d9";
-    g.beginPath();
-    g.arc(0, 0, SHOT_R + 4 + Math.sin(time * 9) * 1.5, 0, Math.PI * 2);
-    g.fill();
-    g.restore();
-    return;
-  }
-  const pulse = 1 + Math.sin(time * 14) * 0.12;
-  g.globalAlpha = 0.32;
-  g.fillStyle = "#fde68a";
-  g.beginPath();
-  g.arc(0, 0, (SHOT_R + 7) * pulse, 0, Math.PI * 2);
-  g.fill();
-  g.globalAlpha = 1;
-  const gr = g.createRadialGradient(0, 0, 1, 0, 0, SHOT_R);
-  gr.addColorStop(0, "#fffbeb");
-  gr.addColorStop(0.6, "#fcd34d");
-  gr.addColorStop(1, "#f59e0b");
-  g.fillStyle = gr;
-  g.beginPath();
-  g.arc(0, 0, SHOT_R * pulse, 0, Math.PI * 2);
-  g.fill();
-  g.restore();
-}
-
-/** 🌑 Karanlık Bulut — öldürülmez, aydınlatılır. Işık aldıkça açılır. */
-function drawBoss(g: CanvasRenderingContext2D, b: BossEnt, time: number) {
-  const dying = b.deadT > 0;
-  const k = dying ? b.deadT / BOSS_DIE_DUR : 1;          // 1 → 0 dağılma
-  const lit = 1 - b.hp / BOSS_HP;                         // aydınlanma oranı
-  g.save();
-  g.translate(b.x + BOSS_W / 2, b.y + BOSS_H / 2);
-  if (dying) g.scale(0.6 + k * 0.4, 0.6 + k * 0.4);
-  g.globalAlpha = dying ? k : 1;
-  // vurulunca beyaz parlar
-  const flash = b.hitT > 0 ? b.hitT / 0.35 : 0;
-  // gövde: üst üste binen kabarcıklar
-  const puffs: [number, number, number][] = [
-    [-46, 6, 34], [-16, -12, 42], [20, -6, 38], [48, 10, 30], [0, 18, 36],
-  ];
-  for (const [px, py, pr] of puffs) {
-    const wob = Math.sin(time * 1.6 + px * 0.05) * 3;
-    const gr = g.createRadialGradient(px, py + wob, 4, px, py + wob, pr);
-    // aydınlandıkça morlaşan gri → açık leylak
-    gr.addColorStop(0, flash > 0 ? "#ffffff" : `rgb(${70 + lit * 90}, ${64 + lit * 80}, ${110 + lit * 90})`);
-    gr.addColorStop(1, flash > 0 ? "#e9d5ff" : `rgb(${40 + lit * 70}, ${36 + lit * 60}, ${72 + lit * 80})`);
-    g.fillStyle = gr;
-    g.beginPath();
-    g.arc(px, py + wob, pr, 0, Math.PI * 2);
-    g.fill();
-  }
-  // gözler — çizgi göz, korkutucu değil
-  g.globalAlpha = dying ? k * 0.9 : 0.9;
-  g.strokeStyle = "#fde68a";
-  g.lineWidth = 4;
-  g.lineCap = "round";
-  const eo = Math.sin(time * 2) * 2;
-  g.beginPath();
-  g.moveTo(-24, -8 + eo); g.lineTo(-10, -8 + eo);
-  g.moveTo(12, -8 + eo);  g.lineTo(26, -8 + eo);
-  g.stroke();
-  // yuttuğu harfler içinde parıldar
-  g.globalAlpha = (dying ? k : 0.5 + lit * 0.4) * 0.9;
-  g.fillStyle = "#fef3c7";
-  g.font = "700 20px 'Amiri Quran', serif";
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  const glyphs = ["ا", "ب", "ج", "م", "ن"];
-  for (let i = 0; i < glyphs.length; i++) {
-    const a = time * 0.9 + i * 1.25;
-    g.fillText(glyphs[i], Math.cos(a) * 44, Math.sin(a * 1.3) * 22 + 4);
-  }
-  g.restore();
-}
-
-/** Işık perdesi — bulut dağılmadan camiye geçilemez. */
-function drawLightGate(g: CanvasRenderingContext2D, x: number, time: number) {
-  g.save();
-  g.globalAlpha = 0.42 + Math.sin(time * 3) * 0.12;
-  const gr = g.createLinearGradient(x - 10, 0, x + 10, 0);
-  gr.addColorStop(0, "rgba(253,230,138,0)");
-  gr.addColorStop(0.5, "rgba(252,211,77,0.95)");
-  gr.addColorStop(1, "rgba(253,230,138,0)");
-  g.fillStyle = gr;
-  g.fillRect(x - 10, 0, 20, GROUND_Y);
-  g.globalAlpha = 0.8;
-  for (let i = 0; i < 5; i++) {
-    const yy = ((time * 46 + i * 78) % (GROUND_Y + 40)) - 20;
-    g.fillStyle = "rgba(255,255,255,0.75)";
-    g.beginPath();
-    g.arc(x, yy, 3.5, 0, Math.PI * 2);
-    g.fill();
-  }
-  g.restore();
-}
-
-function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number, k: number, time: number, golden = false) {
+// Nur ile dönüşen güvercin — yukarı süzülüp kaybolur (kimse zarar görmez)
+function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number, k: number, time: number) {
   const dx = x + k * 46 * dir;
   const dy = y - k * 82;
   g.save();
@@ -780,25 +642,11 @@ function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number
   if (k < 0.25) {
     g.globalAlpha = (0.25 - k) * 3;
     g.fillStyle = "#fde047";
-    g.beginPath(); g.arc(0, 0, (golden ? 26 : 20) * (1 - k), 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(0, 0, 20 * (1 - k), 0, Math.PI * 2); g.fill();
     g.globalAlpha = Math.max(0, 1 - k * 0.85);
   }
-  // altın güvercin: arkasında süzülen parıltı izi
-  if (golden) {
-    g.fillStyle = "#fde047";
-    for (let i = 1; i <= 4; i++) {
-      const a = time * 7 + i * 1.7;
-      g.globalAlpha = Math.max(0, (1 - k * 0.85) * (0.5 - i * 0.1));
-      g.beginPath();
-      g.arc(-10 - i * 7, Math.sin(a) * 4 + i * 3, 2.6 - i * 0.4, 0, Math.PI * 2);
-      g.fill();
-    }
-    g.globalAlpha = Math.max(0, 1 - k * 0.85);
-  }
-  const body = golden ? "#fcd34d" : "#ffffff";
-  const wing = golden ? "#fbbf24" : "#f1f5f9";
   // gövde + kuyruk
-  g.fillStyle = body;
+  g.fillStyle = "#ffffff";
   g.beginPath();
   g.ellipse(0, 0, 10, 6.2, -0.15, 0, Math.PI * 2);
   g.fill();
@@ -810,7 +658,7 @@ function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number
   g.fill();
   // baş + gaga + göz
   g.beginPath(); g.arc(9, -4, 4.2, 0, Math.PI * 2); g.fill();
-  g.fillStyle = golden ? "#d97706" : "#f59e0b";
+  g.fillStyle = "#f59e0b";
   g.beginPath();
   g.moveTo(12.5, -4.5); g.lineTo(16.5, -3.4); g.lineTo(12.5, -2.2);
   g.closePath(); g.fill();
@@ -818,7 +666,7 @@ function drawDove(g: CanvasRenderingContext2D, x: number, y: number, dir: number
   g.beginPath(); g.arc(10, -4.6, 1, 0, Math.PI * 2); g.fill();
   // çırpan kanat
   const wf = Math.sin(time * 18) * 0.9;
-  g.fillStyle = wing;
+  g.fillStyle = "#f1f5f9";
   g.save();
   g.translate(-1, -2);
   g.rotate(-0.5 + wf * 0.55);
@@ -842,7 +690,7 @@ function drawDizzyStars(g: CanvasRenderingContext2D, cx: number, cy: number, tim
 
 function drawMonster(g: CanvasRenderingContext2D, m: MonsterEnt, time: number) {
   if (m.freedT > 0) {
-    drawDove(g, m.x + MW[m.kind] / 2, m.y + MH[m.kind] / 2, m.dir, 1 - m.freedT / FREED_DUR, time, m.golden);
+    drawDove(g, m.x + MW[m.kind] / 2, m.y + MH[m.kind] / 2, m.dir, 1 - m.freedT / FREED_DUR, time);
     return;
   }
   const w = MW[m.kind], h = MH[m.kind];
@@ -1152,10 +1000,9 @@ function drawMosque(g: CanvasRenderingContext2D, x: number, time: number) {
   g.fill();
 }
 
-// Uçurum: kenarlarda ışık alan kaya duvarları + dipte siluet kayalar +
-// solda uyarı tabelası (yeraltı katmanının üstüne çizilir)
+// Uçurum: kenarlarda kaya duvarı gölgesi + solda uyarı tabelası
 function drawCliff(g: CanvasRenderingContext2D, x: number, w: number) {
-  g.fillStyle = "rgba(196,132,72,0.35)";
+  g.fillStyle = "rgba(62,38,18,0.4)";
   g.beginPath();
   g.moveTo(x, GROUND_Y);
   g.lineTo(x + 13, GROUND_Y + 34);
@@ -1170,8 +1017,8 @@ function drawCliff(g: CanvasRenderingContext2D, x: number, w: number) {
   g.lineTo(x + w, VH + 20);
   g.closePath();
   g.fill();
-  // dipte sivri siluet kayalar
-  g.fillStyle = "#0c0703";
+  // dipte sivri kayalar
+  g.fillStyle = "rgba(50,30,14,0.45)";
   const n = Math.max(2, Math.floor(w / 22));
   for (let i = 0; i < n; i++) {
     const rx = x + 6 + (i + 0.5) * ((w - 12) / n);
@@ -1431,7 +1278,7 @@ const PlatformGame = () => {
 
   const boxRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const controls = useRef({ moveDir: 0 as -1 | 0 | 1, jumpQueued: false, jumpHeld: false, shootQueued: false, paused: true, over: false });
+  const controls = useRef({ moveDir: 0 as -1 | 0 | 1, jumpQueued: false, jumpHeld: false, paused: true, over: false });
   const trioRef = useRef<TrioEnt | null>(null); // aktif soru — ses tekrarı için
   const levelRef = useRef(1);
 
@@ -1443,30 +1290,14 @@ const PlatformGame = () => {
   const [paused, setPaused] = useState(true);
   const [started, setStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
-  useRemedyOnGameOver(gameOver);
   const [won, setWon] = useState(false);
   const [progress, setProgress] = useState(0);
   const [question, setQuestion] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad" | "power" } | null>(null);
   const [pu, setPu] = useState<{ nur: number; mag: number; x2: number }>({ nur: 0, mag: 0, x2: 0 });
-  // 🌑 Karanlık Bulut canı (0 = yok/dağıldı) — HUD'da kalan ışık sayısı
-  const [bossHp, setBossHp] = useState(0);
   const [flash, setFlash] = useState(false); // normal modda doğru cevapta ışık
   const [resetTick, setResetTick] = useState(0);
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 🌟 Bu koşuda bulunan altın güvercinler (kozmetik sürpriz)
-  const goldenRef = useRef(0);
-  const [goldenRun, setGoldenRun] = useState(0);
-  // 🎵 Ambiyans müziği aç/kapa (kalıcı tercih)
-  const [musicMuted, setMusicMuted] = useState(() => gameMusic.isMuted());
-
-  // Müzik: oyun gerçekten akarken çalar; duraklama/bitiş/ayrılışta susar.
-  useEffect(() => {
-    if (started && !paused && !gameOver && !won) gameMusic.start(level);
-    else gameMusic.stop();
-    return () => gameMusic.stop();
-  }, [started, paused, gameOver, won, level]);
 
   useEffect(() => {
     controls.current.paused = paused || gameOver || won;
@@ -1508,11 +1339,10 @@ const PlatformGame = () => {
     levelRef.current = lv;
     setLevel(lv);
     setScore(0); setStreak(0); setLives(3);
-    setGameOver(false); setWon(false); setBossHp(0);
+    setGameOver(false); setWon(false);
     setQuestion(null); setBanner(null); setFlash(false); setProgress(0);
     setPu({ nur: 0, mag: 0, x2: 0 });
-    goldenRef.current = 0; setGoldenRun(0);
-    controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, shootQueued: false, paused: false, over: false };
+    controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, paused: false, over: false };
     trioRef.current = null;
     setStarted(true);
     setPaused(false);
@@ -1523,7 +1353,7 @@ const PlatformGame = () => {
     setStarted(false); setPaused(true); setGameOver(false); setWon(false);
     setQuestion(null); setBanner(null); setProgress(0);
     setPu({ nur: 0, mag: 0, x2: 0 });
-    controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, shootQueued: false, paused: true, over: false };
+    controls.current = { moveDir: 0, jumpQueued: false, jumpHeld: false, paused: true, over: false };
     trioRef.current = null;
     setResetTick((t) => t + 1);
   }, []);
@@ -1542,11 +1372,11 @@ const PlatformGame = () => {
     const s = {
       x: 80, y: GROUND_Y - PH, vy: 0, grounded: true, facing: 1 as 1 | -1,
       coyote: 0, jumpBuf: 0, ghostT: 0, camX: 0, safeX: 80, anim: 0, time: 0,
-      nurT: 0, magT: 0, x2T: 0, shootCd: 0,
+      nurT: 0, magT: 0, x2T: 0,
     };
     const w: World = {
       solids: [{ x: -240, y: GROUND_Y, w: 1040, oneWay: false }],
-      monsters: [], springs: [], trios: [], coins: [], pops: [], shots: [], boss: null, cliffs: [],
+      monsters: [], springs: [], trios: [], coins: [], pops: [], cliffs: [],
       genX: 800,
     };
     let score = 0, streak = 0, lives = 3, over = false;
@@ -1592,22 +1422,22 @@ const PlatformGame = () => {
       }
     };
 
-    const spawnMonster = (kind: MonsterKind, rx0: number, rx1: number, groundY = GROUND_Y) => {
+    const spawnMonster = (kind: MonsterKind, rx0: number, rx1: number) => {
       const cx = (rx0 + rx1) / 2;
       const base: MonsterEnt = {
-        id: UID++, kind, x: cx, y: groundY - MH[kind],
+        id: UID++, kind, x: cx, y: GROUND_Y - MH[kind],
         dir: Math.random() < 0.5 ? -1 : 1,
         minX: rx0, maxX: rx1, homeX: cx,
-        baseY: groundY - MH[kind], amp: 0, t: Math.random() * 6,
+        baseY: GROUND_Y - MH[kind], amp: 0, t: Math.random() * 6,
         vy: 0, grounded: true, hopT: 0.5 + Math.random() * 0.6,
-        groundY, calmT: 0, freedT: 0,
+        calmT: 0, freedT: 0,
       };
       if (kind === "floater") {
-        base.baseY = groundY - 104 - Math.random() * 30;
+        base.baseY = GROUND_Y - 104 - Math.random() * 30;
         base.amp = 42 + Math.random() * 20;
         base.y = base.baseY;
       } else if (kind === "flyer") {
-        base.baseY = groundY - 118 - Math.random() * 36;
+        base.baseY = GROUND_Y - 118 - Math.random() * 36;
         base.amp = 20 + Math.random() * 14;
         base.y = base.baseY;
       }
@@ -1615,243 +1445,116 @@ const PlatformGame = () => {
     };
 
     // Soru üçlüsü: bloklar şimdi yerleştirilir, HARFLER görünürken seçilir
-    const placeTrioAt = (pos: { x: number; y: number }[]) => {
-      const blocks: BlockEnt[] = pos.map((p) => ({ x: p.x, y: p.y, item: null, isTarget: false }));
+    const placeTrio = (baseX: number) => {
+      const hs = shuffle([84, 138, 84]); // blok alt kenarının zeminden yüksekliği
+      const blocks: BlockEnt[] = hs.map((h, i) => ({
+        x: baseX + i * 122,
+        y: GROUND_Y - h - BLOCK,
+        item: null,
+        isTarget: false,
+      }));
       w.trios.push({
         id: UID++, target: null, blocks,
-        left: Math.min(...pos.map((p) => p.x)),
-        right: Math.max(...pos.map((p) => p.x)) + BLOCK,
+        left: baseX, right: baseX + 2 * 122 + BLOCK,
         announced: false, hint: false, resolved: null, doneT: 0,
       });
     };
-    const placeTrio = (baseX: number) => {
-      const hs = shuffle([84, 138, 84]); // blok alt kenarının zeminden yüksekliği
-      placeTrioAt(hs.map((h, i) => ({ x: baseX + i * 122, y: GROUND_Y - h - BLOCK })));
-    };
 
-    // ---- dünya inşa tuğlaları ----
-    const ground = (x: number, wd: number, y = GROUND_Y) => {
-      w.solids.push({ x, y, w: wd, oneWay: false });
-      return x + wd;
-    };
-    const plat = (x: number, wd: number, y: number, mover = false) => {
-      if (mover) {
-        w.solids.push({
-          x, y, w: wd, oneWay: true,
-          mover: { baseY: y, range: 26 + Math.random() * 16, speed: 1.1 + Math.random() * 0.6, phase: Math.random() * 6.28 },
-        });
-      } else {
-        w.solids.push({ x, y, w: wd, oneWay: true });
-      }
-    };
-    // çukur: genişse uçurum görseli; üstünde yol gösteren para yayı
-    const gap = (x: number, wd: number, coinH = 66) => {
-      if (wd >= 90) w.cliffs.push({ x, w: wd });
-      const glyph = randGlyph();
-      if (glyph) {
-        for (let i = 0; i < 4; i++) {
-          const k = (i + 0.5) / 4;
-          w.coins.push({ id: UID++, x: x + wd * k, y: GROUND_Y - coinH - Math.sin(k * Math.PI) * 40, glyph, taken: false });
-        }
-      }
-      return x + wd;
-    };
-    const springAt = (x: number) => {
-      w.springs.push({ id: UID++, x, y: GROUND_Y, t: 0 });
-    };
-    const kindPick = () => conf.monsterKinds[Math.floor(Math.random() * conf.monsterKinds.length)];
-
-    // ---- DESEN KÜTÜPHANESİ ----
-    // Klasik platform oyunlarının kanıtlanmış bölüm tasarım KALIPLARINDAN
-    // esinlenildi (kademeli teraslar, ada atlamaları, piramit tepeler, yay
-    // uçuşları, hareketli feribotlar, ritim çukurları, canavar koridorları,
-    // çift katlı yollar, bölüm sonu merdiveni). Kalıplar mekaniktir — telifli
-    // grafik/karakter/isim kopyalanmadı; tüm çizimler özgün.
-    interface Pattern { minLv: number; build: (x: number) => number }
-    const PATTERNS: Pattern[] = [
-      // teraslar: kademeli yükselen zemin, tepede paralar + bekçi canavar
-      { minLv: 1, build: (x) => {
-        let cx = ground(x, 110);
-        cx = ground(cx, 105, GROUND_Y - 44);
-        addCoinRow(cx - 52, GROUND_Y - 44 - 26, 2);
-        cx = ground(cx, 125, GROUND_Y - 88);
-        addCoinRow(cx - 62, GROUND_Y - 88 - 26, 3);
-        if (lv >= 2) spawnMonster("walker", cx - 118, cx - 6, GROUND_Y - 88);
-        cx = ground(cx, 105, GROUND_Y - 44);
-        return ground(cx, 110);
-      } },
-      // canavar koridoru: düzlükte 2-3 karışık canavar, üstte para hattı
-      { minLv: 1, build: (x) => {
-        const wd = 430 + Math.random() * 90;
-        const e = ground(x, wd);
-        spawnMonster(kindPick(), x + 30, x + wd * 0.55);
-        spawnMonster(kindPick(), x + wd * 0.45, x + wd - 30);
-        if (lv >= 4) spawnMonster(kindPick(), x + wd * 0.3, x + wd * 0.85);
-        addCoinRow(x + wd / 2, GROUND_Y - 96, 5); // canavarların üstünden zıpla-topla
-        return e;
-      } },
-      // ritim çukurları: kısa zemin + çukur ×2-3 (para yayları yol gösterir)
-      { minLv: 1, build: (x) => {
-        let cx = ground(x, 130);
-        const n = lv >= 4 ? 3 : 2;
-        for (let i = 0; i < n; i++) {
-          cx = gap(cx, 64 + Math.random() * 22 + Math.min(20, lv * 2));
-          cx = ground(cx, 112 + Math.random() * 50);
-        }
-        return cx;
-      } },
-      // çift katlı yol: altta canavarlar, üstte paralı uzun platform (seçim!)
-      { minLv: 2, build: (x) => {
-        const wd = 400;
-        const e = ground(x, wd);
-        plat(x + 70, 250, GROUND_Y - 108);
-        addCoinRow(x + 195, GROUND_Y - 108 - 28, 5);
-        spawnMonster(kindPick(), x + 40, x + wd - 40);
-        if (lv >= 5) spawnMonster(kindPick(), x + wd * 0.5, x + wd - 30);
-        return e;
-      } },
-      // yay uçuşu: yaya bas, büyük uçurumun üzerinden uç (para sütunu)
-      { minLv: 2, build: (x) => {
-        let cx = ground(x, 170);
-        springAt(cx - 60);
-        addCoinColumn(cx - 60);
-        cx = gap(cx, 120 + Math.min(40, lv * 5), 96);
-        return ground(cx, 150);
-      } },
-      // ada atlamaları: geniş uçurumda 3 küçük ada + üstte devriye kuşu
-      { minLv: 2, build: (x) => {
-        let cx = ground(x, 130);
-        for (let i = 0; i < 3; i++) {
-          cx = gap(cx, 60 + Math.random() * 16, 60);
-          cx = ground(cx, 100 + Math.random() * 30);
-        }
-        if (conf.monsterKinds.includes("flyer")) spawnMonster("flyer", x + 150, cx - 40);
-        cx = gap(cx, 66, 60);
-        return ground(cx, 140);
-      } },
-      // merdiven + tepe atlayışı: basamaklarla çık, tepedeki boşluğu atla, in
-      { minLv: 3, build: (x) => {
-        let cx = ground(x, 110);
-        cx = ground(cx, 95, GROUND_Y - 44);
-        cx = ground(cx, 95, GROUND_Y - 88);
-        addCoinRow(cx - 48, GROUND_Y - 88 - 26, 2);
+    const genChunk = (wantQ: boolean): boolean => {
+      let x = w.genX;
+      if (!wantQ && x > 1150 && Math.random() < conf.gapChance) {
+        // bazen dar çukur, bazen (2. bölümden itibaren) GENİŞ UÇURUM
+        const cliff = lv >= 2 && Math.random() < 0.3;
+        const gw = cliff
+          ? 100 + Math.random() * 26
+          : conf.gapMin + Math.random() * (conf.gapMax - conf.gapMin);
+        if (cliff) w.cliffs.push({ x, w: gw });
+        // üstüne para yayı — zıplarken toplanır (uçurumda daha yüksek)
         const glyph = randGlyph();
         if (glyph) {
-          for (let i = 0; i < 3; i++) {
-            w.coins.push({ id: UID++, x: cx + 16 + i * 30, y: GROUND_Y - 88 - 58, glyph, taken: false });
+          for (let i = 0; i < 4; i++) {
+            const k = (i + 0.5) / 4;
+            w.coins.push({
+              id: UID++,
+              x: x + gw * k,
+              y: GROUND_Y - (cliff ? 84 : 66) - Math.sin(k * Math.PI) * (cliff ? 44 : 34),
+              glyph, taken: false,
+            });
           }
         }
-        cx += 92; // tepe boşluğu — düşersen aşağısı yok
-        cx = ground(cx, 95, GROUND_Y - 88);
-        cx = ground(cx, 95, GROUND_Y - 44);
-        return ground(cx, 110);
-      } },
-      // hareketli feribot: dev uçurumu süzülen platformla geç (zamanlama!)
-      { minLv: 3, build: (x) => {
-        let cx = ground(x, 150);
-        const gw = 170 + Math.min(50, lv * 6);
-        plat(cx + gw * 0.5 - 45, 90, GROUND_Y - 96, true);
-        cx = gap(cx, gw, 120);
-        return ground(cx, 150);
-      } },
-      // piramit: kademeli tepe, zirvede para tacı + bekçi baloncuk
-      { minLv: 4, build: (x) => {
-        let cx = ground(x, 100);
-        cx = ground(cx, 85, GROUND_Y - 44);
-        cx = ground(cx, 85, GROUND_Y - 88);
-        cx = ground(cx, 100, GROUND_Y - 132);
-        addCoinRow(cx - 50, GROUND_Y - 132 - 28, 3);
-        if (conf.monsterKinds.includes("floater")) spawnMonster("floater", cx - 92, cx - 8);
-        cx = ground(cx, 85, GROUND_Y - 88);
-        cx = ground(cx, 85, GROUND_Y - 44);
-        return ground(cx, 100);
-      } },
-    ];
-
-    // ---- soru arenaları: sorular da desenlerin içinde ----
-    const qaClassic = (x: number) => {
-      const e = ground(x, 520);
-      placeTrio(x + 90);
-      return e;
-    };
-    // adalar arenası: her blok kendi adasının üstünde — zıpla, seç
-    const qaIslands = (x: number) => {
-      let cx = ground(x, 140);
-      const pos: { x: number; y: number }[] = [];
-      for (let i = 0; i < 3; i++) {
-        pos.push({ x: cx + 75 - BLOCK / 2, y: GROUND_Y - 84 - BLOCK });
-        cx = ground(cx, 150);
-        if (i < 2) cx = gap(cx, 58, 56);
+        x += gw;
       }
-      placeTrioAt(pos);
-      return ground(cx, 140);
+      const len = wantQ ? 480 + Math.random() * 150 : 300 + Math.random() * 340;
+      w.solids.push({ x, y: GROUND_Y, w: len, oneWay: false });
+      let placed = false;
+      if (wantQ) {
+        placeTrio(x + 90);
+        placed = true;
+      } else {
+        const r = Math.random();
+        if (len >= 250 && r < 0.78) {
+          if (conf.movers && r < 0.25) {
+            // hareketli platform (aşağı-yukarı süzülür)
+            const pw2 = 84 + Math.random() * 36;
+            const px = x + 50 + Math.random() * Math.max(1, len - pw2 - 100);
+            const baseY = GROUND_Y - 112;
+            w.solids.push({
+              x: px, y: baseY, w: pw2, oneWay: true,
+              mover: { baseY, range: 26 + Math.random() * 16, speed: 1.1 + Math.random() * 0.7, phase: Math.random() * 6.28 },
+            });
+            addCoinRow(px + pw2 / 2, baseY - 36, 3);
+          } else if (r < 0.5 && len >= 330) {
+            // merdiven: 2-3 basamak
+            const steps = 2 + (Math.random() < 0.5 ? 1 : 0);
+            const sx = x + 40 + Math.random() * Math.max(1, len - steps * 95 - 120);
+            for (let k = 0; k < steps; k++) {
+              w.solids.push({ x: sx + k * 90, y: GROUND_Y - 78 - k * 52, w: 80, oneWay: true });
+            }
+            addCoinRow(sx + (steps - 1) * 90 + 40, GROUND_Y - 78 - (steps - 1) * 52 - 30, 3);
+          } else {
+            const pw2 = 90 + Math.random() * 70;
+            const px = x + 40 + Math.random() * Math.max(1, len - pw2 - 80);
+            const py = GROUND_Y - (78 + Math.random() * 34);
+            w.solids.push({ x: px, y: py, w: pw2, oneWay: true });
+            if (Math.random() < 0.8) addCoinRow(px + pw2 / 2, py - 28, 3);
+          }
+        }
+        // zıplama yayı + üstüne dikey para dizisi
+        if (conf.springs && len >= 240 && Math.random() < 0.34) {
+          const spx = x + 60 + Math.random() * Math.max(1, len - 300);
+          w.springs.push({ id: UID++, x: spx, y: GROUND_Y, t: 0 });
+          addCoinColumn(spx);
+        }
+        // yerde para sırası
+        if (Math.random() < 0.45) addCoinRow(x + len / 2, GROUND_Y - 26, 4);
+        // canavarlar — tür çeşidi bölümle artar
+        if (len >= 240 && Math.random() < conf.monsterChance) {
+          const kinds = conf.monsterKinds;
+          const kind = kinds[Math.floor(Math.random() * kinds.length)];
+          spawnMonster(kind, x + 26, x + len - 26);
+          if (len >= 430 && Math.random() < 0.45) {
+            const kind2 = kinds[Math.floor(Math.random() * kinds.length)];
+            spawnMonster(kind2, x + len * 0.55, x + len - 26);
+          }
+        }
+      }
+      w.genX = x + len;
+      return placed;
     };
 
-    // ---- bölümü desenlerden kur: soru arenaları araya serpiştirilir,
-    // desen çantası (bag) tekrarları önler, aralara nefes düzlükleri girer ----
+    // Bölümü baştan sona üret: sorular eşit aralıklı, sonda düzlük + CAMİ
     placeTrio(460); // ilk soru başlangıç düzlüğünde hazır
     const qStep = (conf.len - 1600) / Math.max(1, conf.questions - 1);
     const qXs = Array.from({ length: conf.questions }, (_, i) => 900 + i * qStep);
     let qi = 0;
-    let bag: Pattern[] = [];
-    const nextPattern = () => {
-      if (!bag.length) bag = shuffle(PATTERNS.filter((p) => p.minLv <= lv));
-      return bag.pop()!;
-    };
-    let bx = 800;
-    let lastWasQ = false;
-    while (bx < conf.len) {
-      if (!lastWasQ && qi < qXs.length && bx >= qXs[qi]) {
-        bx = lv >= 4 && Math.random() < 0.5 ? qaIslands(bx) : qaClassic(bx);
-        qi++;
-        lastWasQ = true;
-      } else {
-        bx = nextPattern().build(bx);
-        lastWasQ = false;
-      }
-      // bağlantı düzlüğü: kısa nefes — bazen para, bazen canavar, bazen yay
-      const cw = 130 + Math.random() * 110;
-      if (Math.random() < 0.5) addCoinRow(bx + cw / 2, GROUND_Y - 26, 3);
-      else if (Math.random() < 0.45) spawnMonster(kindPick(), bx + 24, bx + cw - 24);
-      if (conf.springs && Math.random() < 0.18) {
-        springAt(bx + cw / 2);
-        addCoinColumn(bx + cw / 2);
-      }
-      bx = ground(bx, cw);
+    while (w.genX < conf.len) {
+      const wantQ = qi < qXs.length && w.genX >= qXs[qi];
+      if (genChunk(wantQ)) qi++;
     }
-    // final: kutlama merdiveni (paralı basamaklar) → cami avlusuna atla
-    bx = ground(bx, 120);
-    bx = ground(bx, 90, GROUND_Y - 44);
-    addCoinRow(bx - 45, GROUND_Y - 44 - 26, 2);
-    bx = ground(bx, 90, GROUND_Y - 88);
-    addCoinRow(bx - 45, GROUND_Y - 88 - 26, 3);
-    bx = ground(bx, 110, GROUND_Y - 132);
-    addCoinRow(bx - 55, GROUND_Y - 132 - 28, 3);
-    w.genX = bx;
     w.solids.push({ x: w.genX, y: GROUND_Y, w: 860, oneWay: false });
     const mosqueX = w.genX + 300;          // cami sol kenarı
     const finishX = mosqueX + 85;          // cami kapısı — hedef
     w.genX += 860;
-
-    // 🌑 SON BÖLÜM: caminin önünde Karanlık Bulut. Dağılmadan kapıya
-    // geçilemez (ışık perdesi tutar). Arenaya girince KANDİL yanar ve nur
-    // kalıcı olur — çocuk bol bol ışık atabilsin.
-    const isBossLevel = lv >= LEVEL_COUNT;
-    // Sıra ÖNEMLİ: çocuk soldan gelir → önce IŞIK PERDESİ durdurur, bulut
-    // perdenin SAĞINDA süzülür. Böylece çocuk buluta bakarak ışık atar.
-    // (Bulut perdenin solunda kalırsa çocuk yanından geçip arkasında kalıyor.)
-    const bossGateX = isBossLevel ? mosqueX - 430 : null;
-    const arenaX = isBossLevel ? mosqueX - 660 : null;
-    if (isBossLevel) {
-      w.boss = {
-        // Alçak süzülür ki yerden atılan ışık da değsin (çocuk zıplamak
-        // zorunda kalmasın); yine de üstünden geçilemeyecek kadar büyük.
-        x: mosqueX - 326, baseY: GROUND_Y - 132, y: GROUND_Y - 132,
-        t: 0, hp: BOSS_HP, hitT: 0, deadT: 0, shotCd: BOSS_SHOT_CD, woke: false,
-      };
-      // arenada canavar olmasın — sahne bulutun olsun
-      w.monsters = w.monsters.filter((m) => m.maxX < mosqueX - 700);
-    }
 
     // GİZLİ KAPI + bonus bahçe (2, 5 ve 8. bölümlerde): kapı bir çalının
     // arkasında saklıdır; giren çocuk cami arkasındaki gizli bahçeye ışınlanır
@@ -1860,7 +1563,7 @@ const PlatformGame = () => {
     const bonusExitX = bonusX + 660;
     let doorX: number | null = null;
     if (lv % 3 === 2) {
-      const cands = w.solids.filter((so) => !so.oneWay && so.y === GROUND_Y && so.x > 1000 && so.x + so.w < conf.len && so.w >= 300);
+      const cands = w.solids.filter((so) => !so.oneWay && so.x > 1000 && so.x + so.w < conf.len && so.w >= 300);
       if (cands.length) {
         const so = cands[Math.floor(cands.length / 2)];
         doorX = so.x + so.w - 96;
@@ -1887,11 +1590,10 @@ const PlatformGame = () => {
     };
 
     const respawnX = () => {
-      // yalnız DÜZ zemine (GROUND_Y) doğar — teras üstüne/içine doğmasın
       const minX = s.camX + 20;
       let best: number | null = null;
       for (const so of w.solids) {
-        if (so.oneWay || so.y !== GROUND_Y) continue;
+        if (so.oneWay) continue;
         const rx = Math.max(so.x + 12, minX);
         if (rx + PW + 12 <= so.x + so.w && (best === null || rx < best)) best = rx;
       }
@@ -1949,7 +1651,7 @@ const PlatformGame = () => {
       t.announced = true;
       const pool = gamePool();
       const target = pool.length >= 3 ? (pickNextGameItem(pool) || pool[0]) : null;
-      const wrongs = pickWrongs(pool, target, 2, { distinctEmoji: true });
+      const wrongs = target ? pickN(pool.filter((p) => p.id !== target.id && p.emoji !== target.emoji), 2) : [];
       if (!target || wrongs.length < 2) {
         t.resolved = { correct: false, missed: true };
         for (const b of t.blocks) b.state = "fade";
@@ -1976,39 +1678,33 @@ const PlatformGame = () => {
       loseLife();
     };
 
-    // Doğru cevap ödülü — DEĞİŞKEN ORANLI (variable-ratio): her doğruda DEĞİL,
-    // ortalama ~her 3-4 doğruda bir SÜRPRİZ büyük ödül (kalp / Nur / mıknatıs /
-    // 2X). Tahmin edilemezlik dopamini canlı tutar; her seferinde ödül vermek
-    // dopamini köreltir (Skinner değişken oran). Sürpriz olmayan doğrular küçük
-    // ama tatmin edici harf yağmuru alır (banner yok — büyük ödül değerli kalsın).
-    // Seri ısındıkça sürpriz şansı hafif artar → "alev aldın" hissi (kararlılığı
-    // ödüllendirir). Yanlış cevap CAN GÖTÜRMEZ.
+    // Doğru cevap ödülleri — soruları cazip kılar: kalp / Nur / mıknatıs /
+    // 2X / harf yağmuru. Yanlış cevap CAN GÖTÜRMEZ (öğrenme hatası ölüm değil).
     const grantReward = (target: ContentItem) => {
       const anyPower = s.nurT > 0 || s.magT > 0 || s.x2T > 0;
-      const bigChance = Math.min(0.5, 0.25 + Math.max(0, streak - 3) * 0.05);
-      if (anyPower || Math.random() >= bigChance) {
-        spawnCoinTrail(target, anyPower ? 6 : 3); // küçük ödül, sessiz
-        return;
-      }
-      const r2 = Math.random();
-      if (lives < MAX_LIVES && r2 < 0.4) {
+      const roll = Math.random();
+      if (lives < MAX_LIVES && roll < 0.3) {
         lives += 1;
         setLives(lives);
-        showBanner("❤️ +1 Can! Süpersin!", "good", 1700);
-      } else {
-        const r3 = Math.random();
-        if (r3 < 0.34) {
+        showBanner("❤️ +1 Can kazandın!", "good", 1700);
+        spawnCoinTrail(target, 5);
+      } else if (!anyPower) {
+        const r2 = Math.random();
+        if (r2 < 0.4) {
           s.nurT = NUR_TIME;
           showBanner("✨ NUR! Dokunduğun canavar güvercin olur 🕊️", "power", 2200);
-        } else if (r3 < 0.67) {
+        } else if (r2 < 0.7) {
           s.magT = MAG_TIME;
           showBanner("🧲 MIKNATIS! Harfler sana gelir", "power", 1800);
         } else {
           s.x2T = X2_TIME;
           showBanner("⭐ 2X PUAN!", "power", 1600);
         }
+        spawnCoinTrail(target, 5);
+      } else {
+        showBanner("🪙 Harf yağmuru!", "good", 1400);
+        spawnCoinTrail(target, 9);
       }
-      spawnCoinTrail(target, 6);
     };
 
     const resolveTrio = (t: TrioEnt, b: BlockEnt) => {
@@ -2016,11 +1712,7 @@ const PlatformGame = () => {
       const correct = b.isTarget;
       t.resolved = { correct };
       t.doneT = 0;
-      recordGameAnswer(target, correct, {
-        gameId: "platform",
-        chosenId: b.item?.id,
-        shownIds: t.blocks.map((o) => o.item?.id).filter((x): x is string => !!x),
-      });
+      recordGameAnswer(target, correct, { gameId: "platform" });
       if (correct) {
         playFeedback(true);
         streak += 1;
@@ -2090,151 +1782,11 @@ const PlatformGame = () => {
       if (s.magT > 0) s.magT = Math.max(0, s.magT - dt);
       if (s.x2T > 0) s.x2T = Math.max(0, s.x2T - dt);
 
-      // ---- ✨ NUR IŞIĞI ATIŞI ----
-      // Nur açıkken çocuk ışık fırlatabilir. Değdiği canavar güvercine
-      // dönüşür — dokunmakla aynı sonuç, uzaktan hâli.
-      if (s.shootCd > 0) s.shootCd = Math.max(0, s.shootCd - dt);
-      const canShoot = s.nurT > 0 && !winning;
-      if (c.shootQueued) {
-        c.shootQueued = false;
-        if (canShoot && s.shootCd <= 0) {
-          s.shootCd = SHOT_CD;
-          w.shots.push({
-            id: UID++, x: s.x + PW / 2 + s.facing * 14, y: s.y + PH * 0.3,
-            vx: s.facing * SHOT_SPEED, vy: 0, t: 0, dark: false,
-          });
-          playSfx("coin");
-          w.pops.push({
-            x: s.x + PW / 2 + s.facing * 16, y: s.y + PH * 0.3,
-            vx: 0, vy: -20, t: 0, life: 0.25, color: "#fde68a",
-          });
-        }
-      }
-
-      const boss = w.boss;
-
-      for (let i = w.shots.length - 1; i >= 0; i--) {
-        const sh = w.shots[i];
-        sh.t += dt;
-        sh.x += sh.vx * dt;
-        sh.y += sh.vy * dt;
-        if (sh.dark) sh.vy += 120 * dt;               // gölge damlası hafif düşer
-        if (sh.t >= SHOT_LIFE || sh.y > GROUND_Y + 20) { w.shots.splice(i, 1); continue; }
-        // ışık izi
-        if (!sh.dark && Math.random() < 0.6) {
-          w.pops.push({ x: sh.x, y: sh.y, vx: 0, vy: 0, t: 0, life: 0.22, color: "#fef3c7" });
-        }
-        if (sh.dark) {
-          // gölge damlası oyuncuya değerse can gider (hayalet süresi korur)
-          if (s.ghostT <= 0 && Math.abs(sh.x - (s.x + PW / 2)) < SHOT_R + PW / 2
-              && Math.abs(sh.y - (s.y + PH / 2)) < SHOT_R + PH / 2) {
-            w.shots.splice(i, 1);
-            hurt();
-          }
-          continue;
-        }
-        // nur ışığı: canavarları özgür bırakır
-        let hit = false;
-        for (const m of w.monsters) {
-          if (m.freedT > 0) continue;
-          const mw2 = MW[m.kind], mh2 = MH[m.kind];
-          if (sh.x > m.x && sh.x < m.x + mw2 && sh.y > m.y && sh.y < m.y + mh2) {
-            m.freedT = FREED_DUR;
-            playSfx("dove");
-            score += 5 * (s.x2T > 0 ? 2 : 1);
-            setScore(score);
-            spawnSparkles(m.x + mw2 / 2, m.y + mh2 / 2);
-            hit = true;
-            break;
-          }
-        }
-        // Karanlık Bulut'u aydınlatır
-        if (!hit && boss && boss.deadT <= 0 && boss.hp > 0
-            && sh.x > boss.x - SHOT_R && sh.x < boss.x + BOSS_W + SHOT_R
-            // dikeyde cömert kutu: yerden atılan ışık da isabet etsin
-            && sh.y > boss.y - 16 && sh.y < boss.y + BOSS_H + 22) {
-          hit = true;
-          boss.hp -= 1;
-          boss.hitT = 0.35;
-          playSfx("coin");
-          spawnSparkles(sh.x, sh.y);
-          score += 20 * (s.x2T > 0 ? 2 : 1);
-          setScore(score);
-          setBossHp(boss.hp);
-          if (boss.hp <= 0) {
-            boss.deadT = BOSS_DIE_DUR;
-            playFeedback(true);
-            // içinden yuttuğu harfler ve güvercinler saçılır
-            for (let k = 0; k < 14; k++) {
-              spawnConfetti(boss.x + BOSS_W / 2 + (Math.random() - 0.5) * BOSS_W,
-                            boss.y + BOSS_H / 2 + (Math.random() - 0.5) * BOSS_H);
-            }
-          }
-        }
-        if (hit) w.shots.splice(i, 1);
-      }
-
-      // ---- 🌑 KARANLIK BULUT ----
-      if (boss) {
-        boss.t += dt;
-        if (boss.hitT > 0) boss.hitT = Math.max(0, boss.hitT - dt);
-        // uyanış: oyuncu arenaya girince kandil yanar, nur kalıcı olur
-        if (!boss.woke && arenaX !== null && s.x > arenaX) {
-          boss.woke = true;
-          setBossHp(boss.hp);
-          w.pops.push({
-            x: s.x + PW / 2, y: s.y - 24, vx: 0, vy: -30, t: 0, life: 1.4,
-            color: "#fbbf24", text: "KANDİL YANDI!",
-          });
-        }
-        if (boss.woke && boss.deadT <= 0) s.nurT = Math.max(s.nurT, 3);  // nur sürekli tazelenir
-        // süzülme
-        boss.y = boss.baseY + Math.sin(boss.t * 1.25) * 26;
-        if (boss.deadT > 0) {
-          boss.deadT = Math.max(0, boss.deadT - dt);
-          if (Math.random() < 0.5) {
-            spawnSparkles(boss.x + BOSS_W / 2 + (Math.random() - 0.5) * BOSS_W,
-                          boss.y + BOSS_H / 2 + (Math.random() - 0.5) * BOSS_H);
-          }
-          if (boss.deadT <= 0) { w.boss = null; setBossHp(0); }
-        } else if (boss.woke) {
-          // gölge damlası — saldırı değil, kaçılacak engel
-          boss.shotCd -= dt;
-          if (boss.shotCd <= 0) {
-            boss.shotCd = BOSS_SHOT_CD;
-            const dir = s.x < boss.x ? -1 : 1;
-            w.shots.push({
-              id: UID++, x: boss.x + BOSS_W / 2, y: boss.y + BOSS_H - 8,
-              vx: dir * 120, vy: 40, t: 0, dark: true,
-            });
-          }
-          // gövdesine değmek can götürür (yandan canavara değmek gibi)
-          if (s.ghostT <= 0
-              && s.x + PW > boss.x + 12 && s.x < boss.x + BOSS_W - 12
-              && s.y + PH > boss.y + 10 && s.y < boss.y + BOSS_H - 10) {
-            hurt();
-          }
-        }
-      }
-
-      // ışık perdesi: bulut dağılmadan camiye geçilemez
-      if (bossGateX !== null && w.boss && w.boss.deadT <= 0 && s.x + PW > bossGateX) {
-        s.x = bossGateX - PW;   // oyuncunun yatay hızı yok, konum kelepçesi yeter
-      }
-
       // yatay hareket (geri gitmek serbest ama kamera geri dönmez)
       const mv = winning ? 0 : c.moveDir;
       if (mv !== 0) s.facing = mv;
       s.x += mv * RUN_SPEED * dt;
       if (s.x < s.camX + 14) s.x = s.camX + 14;
-      // yükseltilmiş zeminlerin (teras/piramit) YAN YÜZLERİ katıdır —
-      // içinden yürünmez, üstüne zıplayarak çıkılır (klasik platform kuralı)
-      for (const so of w.solids) {
-        if (so.oneWay || so.y >= GROUND_Y) continue;
-        if (s.y + PH <= so.y + 6) continue;                 // üstündeyiz
-        if (s.x + PW <= so.x || s.x >= so.x + so.w) continue;
-        s.x = s.x + PW / 2 < so.x + so.w / 2 ? so.x - PW : so.x + so.w;
-      }
       s.anim += dt * (mv !== 0 && s.grounded ? 1 : 0.2);
 
       // zıplama: tampon + coyote — çocuklar için affedici
@@ -2372,7 +1924,7 @@ const PlatformGame = () => {
                 m.x += m.dir * 118 * dt;
                 if (m.x < m.minX) { m.x = m.minX; m.dir = 1; }
                 if (m.x + mw > m.maxX) { m.x = m.maxX - mw; m.dir = -1; }
-                const gy = m.groundY - mh;
+                const gy = GROUND_Y - mh;
                 if (m.y >= gy) {
                   m.y = gy;
                   m.vy = 0;
@@ -2399,34 +1951,15 @@ const PlatformGame = () => {
           if (s.nurT > 0) {
             // NUR: canavar güvercine dönüşüp özgürce uçar — kimse zarar görmez
             m.freedT = FREED_DUR;
-            playSfx("dove");
-            // 🌟 Nadir ALTIN güvercin (%3): kozmetik sürpriz + bonus puan.
-            // "Acaba bugün çıkar mı?" merakı — kazanma şartı yine doğru oyun.
-            m.golden = Math.random() < 0.03;
-            const gain = m.golden ? 25 : 5;
-            score += gain * (s.x2T > 0 ? 2 : 1);
+            score += 5 * (s.x2T > 0 ? 2 : 1);
             setScore(score);
-            if (m.golden) {
-              goldenRef.current += 1;
-              setGoldenRun(goldenRef.current);
-              try {
-                const k = "elifba-golden-doves-v1";
-                localStorage.setItem(k, String(parseInt(localStorage.getItem(k) || "0", 10) + 1));
-              } catch { /* ignore */ }
-              spawnSparkles(m.x + mw / 2, m.y + mh / 2);
-              spawnSparkles(m.x + mw / 2, m.y);
-            }
             spawnSparkles(m.x + mw / 2, m.y + mh / 2);
-            w.pops.push({
-              x: m.x + mw / 2, y: m.y - 10, vx: 0, vy: -70, t: 0, life: m.golden ? 1.2 : 0.8,
-              color: m.golden ? "#d97706" : "#0891b2", text: m.golden ? "✨🕊️ ALTIN +25" : "🕊️ +5",
-            });
+            w.pops.push({ x: m.x + mw / 2, y: m.y - 10, vx: 0, vy: -70, t: 0, life: 0.8, color: "#0891b2", text: "🕊️ +5" });
           } else if (s.vy > 0 && prevFeet <= m.y + 9) {
             // üstüne basmak zarar vermez: oyuncu seker, canavar sersemler
             s.vy = -430;
             s.grounded = false;
             m.calmT = 1.1;
-            playSfx("stomp");
             spawnDust(m.x + mw / 2, m.y);
           } else if (s.ghostT <= 0 && m.calmT <= 0) {
             hurt();
@@ -2484,7 +2017,6 @@ const PlatformGame = () => {
             const v = 2 * (s.x2T > 0 ? 2 : 1);
             score += v;
             setScore(score);
-            playSfx("coin");
             w.pops.push({ x: cn.x, y: cn.y - 12, vx: 0, vy: -60, t: 0, life: 0.7, color: "#b45309", text: `+${v}` });
           }
         }
@@ -2519,7 +2051,6 @@ const PlatformGame = () => {
     // --- çizim ---
     const draw = () => {
       const g = ctx;
-      const testActive = isTestUnlockActive(); // test modunda blok seviyesi göster
       g.setTransform(dpr * kScale, 0, 0, dpr * kScale, 0, 0);
       const grad = g.createLinearGradient(0, 0, 0, VH);
       grad.addColorStop(0, theme.skyTop);
@@ -2535,22 +2066,6 @@ const PlatformGame = () => {
       g.save();
       g.translate(-s.camX, 0);
       const l = s.camX - 70, r = s.camX + view.w + 70;
-
-      // YERALTI KATMANI: zemin çizgisinin altı her yerde koyu kaya — çukur ve
-      // uçurumlar gökyüzünü/tepe yarım dairelerini değil mağara karanlığını
-      // gösterir; zemin parçaları bunun üstüne çizilir.
-      const ug = g.createLinearGradient(0, GROUND_Y, 0, VH + 40);
-      ug.addColorStop(0, theme.pit);
-      ug.addColorStop(1, "#120b04");
-      g.fillStyle = ug;
-      g.fillRect(l, GROUND_Y, r - l, VH - GROUND_Y + 40);
-      // yeraltı kaya dokusu (deterministik)
-      g.fillStyle = "rgba(0,0,0,0.28)";
-      for (let i = Math.floor(l / 46); i <= Math.ceil(r / 46); i++) {
-        const rx = i * 46 + hash01(i * 3) * 30;
-        const ry = GROUND_Y + 16 + hash01(i * 7) * (VH - GROUND_Y - 20);
-        g.fillRect(rx, ry, 7, 4);
-      }
 
       for (const so of w.solids) {
         if (so.x + so.w < l || so.x > r) continue;
@@ -2641,16 +2156,6 @@ const PlatformGame = () => {
             ? glyphSprite(b.item.emoji || "?", "block")
             : glyphSprite("?", "mystery");
           g.drawImage(sprite, bx, by, BLOCK, BLOCK);
-          // TEST MODU: bloğun köşesinde SRS seviyesi (elle doğrulama)
-          if (testActive && t.announced && b.item) {
-            const lv = getGameItemLevel(b.item);
-            g.fillStyle = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e"][Math.min(4, lv)];
-            g.fillRect(bx + BLOCK - 16, by, 16, 13);
-            g.fillStyle = "#000";
-            g.font = "bold 10px system-ui, sans-serif";
-            g.textAlign = "center";
-            g.fillText(`L${lv}`, bx + BLOCK - 8, by + 10);
-          }
           g.globalAlpha = 1;
         }
       }
@@ -2660,16 +2165,6 @@ const PlatformGame = () => {
         drawMonster(g, m, s.time);
       }
 
-      // 🌑 Karanlık Bulut + ışık perdesi (yalnız son bölüm)
-      if (w.boss) drawBoss(g, w.boss, s.time);
-      if (bossGateX !== null && w.boss && w.boss.deadT <= 0 && bossGateX > l - 40 && bossGateX < r + 40) {
-        drawLightGate(g, bossGateX, s.time);
-      }
-      // ✨ uçan ışıklar / gölge damlaları
-      for (const sh of w.shots) {
-        if (sh.x < l - 30 || sh.x > r + 30) continue;
-        drawNurShot(g, sh, s.time);
-      }
       drawPlayerChar(g, s.x, s.y, s.facing, s.anim, s.grounded, s.ghostT, s.nurT, s.time);
 
       for (const p of w.pops) {
@@ -2726,8 +2221,7 @@ const PlatformGame = () => {
   // klavye (masaüstü)
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.code === "KeyJ" || e.code === "KeyF") { e.preventDefault(); if (!e.repeat) controls.current.shootQueued = true; }
-      else if (e.code === "ArrowLeft" || e.code === "KeyA") { e.preventDefault(); controls.current.moveDir = -1; }
+      if (e.code === "ArrowLeft" || e.code === "KeyA") { e.preventDefault(); controls.current.moveDir = -1; }
       else if (e.code === "ArrowRight" || e.code === "KeyD") { e.preventDefault(); controls.current.moveDir = 1; }
       else if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") {
         e.preventDefault();
@@ -2785,7 +2279,7 @@ const PlatformGame = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-100 to-background">
       <main className="container mx-auto max-w-xl px-4 pb-16">
-        <PageHeader title="🕌 Elif Ba Macerası" backTo="/oyunlar" centered onReset={toPicker} />
+        <PageHeader title="🍄 Harf Macerası" backTo="/oyunlar" centered onReset={toPicker} />
 
         <div className="mb-2 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-success/30">
@@ -2800,22 +2294,10 @@ const PlatformGame = () => {
               ))}
             </div>
           </div>
-          {bossHp > 0 ? (
-            /* 🌑 Boss sırasında seri yerine kalan ışık sayısı gösterilir */
-            <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-primary/40">
-              <div className="text-[10px] font-bold text-muted-foreground">Bulut</div>
-              <div className="mt-1 flex justify-center gap-0.5">
-                {Array.from({ length: BOSS_HP }).map((_, i) => (
-                  <span key={i} className={cn("text-xs", i < bossHp ? "opacity-100" : "opacity-25")}>🌑</span>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-warning/30">
-              <div className="text-[10px] font-bold text-muted-foreground">Seri</div>
-              <div className="text-xl font-extrabold text-warning">🔥{streak}</div>
-            </div>
-          )}
+          <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-warning/30">
+            <div className="text-[10px] font-bold text-muted-foreground">Seri</div>
+            <div className="text-xl font-extrabold text-warning">🔥{streak}</div>
+          </div>
         </div>
 
         {/* bölüm + ilerleme çubuğu (hedef: cami) */}
@@ -2831,14 +2313,6 @@ const PlatformGame = () => {
               />
             </div>
             <span className="text-sm">🕌</span>
-            {/* 🎵 ambiyans müziği aç/kapa — tercih kalıcı */}
-            <button
-              onClick={() => { const m = !musicMuted; setMusicMuted(m); gameMusic.setMuted(m); }}
-              aria-label={musicMuted ? "Müziği aç" : "Müziği kapat"}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-card border border-border text-sm shadow-soft active:scale-90"
-            >
-              {musicMuted ? "🔇" : "🎵"}
-            </button>
           </div>
         )}
 
@@ -2916,7 +2390,7 @@ const PlatformGame = () => {
           {/* bölüm seçme ekranı */}
           {!started && !gameOver && !won && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2.5 bg-background/90 p-3">
-              <div className="text-lg font-extrabold text-warning">🕌 Bölüm Seç</div>
+              <div className="text-lg font-extrabold text-warning">🍄 Bölüm Seç</div>
               <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                 {THEMES.map((t, i) => {
                   const lv = i + 1;
@@ -2931,12 +2405,12 @@ const PlatformGame = () => {
                       className={cn(
                         "flex flex-col items-center justify-center rounded-2xl border-2 px-1 py-1.5 w-[54px] sm:w-16 transition-bouncy",
                         locked
-                          ? "bg-muted/50 border-border text-muted-foreground"
+                          ? "bg-muted/50 border-border opacity-60"
                           : "bg-card border-warning/50 shadow-soft active:scale-95 hover:-translate-y-0.5",
                       )}
                     >
                       <span className="text-xl sm:text-2xl leading-none">{locked ? "🔒" : t.emoji}</span>
-                      <span className={cn("text-[11px] font-extrabold mt-0.5", locked ? "text-muted-foreground" : "text-foreground")}>{lv}</span>
+                      <span className="text-[11px] font-extrabold text-foreground mt-0.5">{lv}</span>
                     </button>
                   );
                 })}
@@ -2965,15 +2439,7 @@ const PlatformGame = () => {
               <div className="text-4xl mb-1">🕌</div>
               <div className="text-2xl font-extrabold text-success mb-1">Bölüm {level} Tamam!</div>
               <div className="text-2xl mb-1">{"⭐".repeat(Math.max(1, Math.min(3, lives)))}</div>
-              <div className="text-sm font-bold text-muted-foreground mb-2">Camiye ulaştın! Puan: {score}</div>
-              {/* 🌟 nadir altın güvercin bulunduysa kutla */}
-              {goldenRun > 0 && (
-                <div className="mb-2 rounded-xl bg-gradient-gold px-3 py-1.5 text-xs font-extrabold text-gold-foreground shadow-soft animate-pop">
-                  ✨🕊️ ALTIN GÜVERCİN buldun! ×{goldenRun}
-                </div>
-              )}
-              {/* yüksek notada bitiş — bahçe teşviki */}
-              <div className="mb-4 rounded-xl bg-success/10 border-2 border-success/30 px-3 py-1.5 text-xs font-extrabold text-success">🌸 Bahçende yeni çiçekler açtı!</div>
+              <div className="text-sm font-bold text-muted-foreground mb-4">Camiye ulaştın! Puan: {score}</div>
               <div className="flex gap-2">
                 {level < LEVEL_COUNT ? (
                   <button
@@ -3058,16 +2524,6 @@ const PlatformGame = () => {
           >
             <ArrowUp className="h-7 w-7" /> Zıpla
           </button>
-          {/* ✨ Nur ışığı atma — yalnız Nur açıkken belirir (silah değil, ışık) */}
-          {pu.nur > 0 && (
-            <button
-              onPointerDown={(e) => { e.preventDefault(); controls.current.shootQueued = true; }}
-              aria-label="Nur ışığı at"
-              className="flex-1 rounded-2xl bg-warning text-warning-foreground py-5 text-2xl font-extrabold shadow-soft active:scale-95 flex items-center justify-center touch-none select-none animate-pop"
-            >
-              ✨
-            </button>
-          )}
         </div>
 
         {started && paused && !gameOver && !won && (
