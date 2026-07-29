@@ -16,9 +16,23 @@
 import { getAllTopics, findTopicOfItem } from "@/data/subjects";
 import { getUnlockedTopicIds, getUnlockedItemsOf } from "@/lib/unlock";
 import { isTopicSkipped, backCheckPressure } from "@/lib/placement";
-import { getTopicSrs, pickNextLetterFromTopic, type Namespace, type TopicSrs } from "@/data/srs";
+import { getTopicSrs, pickNextLetterFromTopic, getFlowBand, type Namespace, type TopicSrs } from "@/data/srs";
 
+// AKIŞA UYARLI bakım payı — "cezm dersi": taze bir konuda zorlanan çocuğa
+// "kolay ver" demenin konu İÇİNDE karşılığı yoktur (hepsi L1). Kolay olan,
+// ÖNCEKİ konuların ustalaşılmış öğeleridir. Zorlanınca bakım payı %50'ye
+// çıkar (eski sağlam öğelerle güven onarımı — akış bandını yukarı çeker);
+// uçarken %10'a iner (yeni içerik hızlansın, K kapısı da genişler).
 const REVIEW_BASE = 0.22;
+const REVIEW_STRUGGLING = 0.50;
+const REVIEW_FLYING = 0.10;
+
+export function currentReviewShare(): number {
+  const band = getFlowBand();
+  if (band === "struggling") return REVIEW_STRUGGLING;
+  if (band === "flying") return REVIEW_FLYING;
+  return REVIEW_BASE;
+}
 
 export interface ReviewPick { topicId: string; itemId: string }
 
@@ -41,7 +55,7 @@ export function pickReviewItem(currentTopicId: string, ns: Namespace): ReviewPic
     const p = backCheckPressure(t.id);
     if (p > hotP) { hotP = p; hotTopic = t.id; }
   }
-  const p = Math.max(REVIEW_BASE, hotP);
+  const p = Math.max(currentReviewShare(), hotP);
   if (Math.random() > p) return null;
 
   // Havuz: sıcak (zayıf/atlanmış) konu belirginse yalnız o; yoksa tüm eski açık
