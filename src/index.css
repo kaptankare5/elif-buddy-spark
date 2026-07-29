@@ -2,105 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Mini Akıl Design System — Anaokulu için pastel & canlı tokenlar
- * Tüm renkler HSL formatında. Bileşenlerde asla doğrudan renk yazma.
+/* ElifMim Design System — "Zümrüt & Altın"
+ * Kur'an eğitimi için kurumsal-sıcak kimlik: derin zümrüt (ana), altın
+ * (ödül/vurgu), fildişi zemin. Çocuk odağı: yüksek kontrast, yumuşak köşeler,
+ * büyük dokunma alanları. Tüm renkler HSL. Bileşenlerde asla doğrudan renk yazma.
  */
 
 @layer base {
   :root {
-    /* Krem-pembe arka plan, koyu friendly metin */
-    --background: 30 80% 97%;
-    --foreground: 240 30% 18%;
+    /* Sıcak fildişi zemin, koyu zümrüt-antrasit metin */
+    --background: 44 50% 97%;
+    --foreground: 172 28% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 30% 18%;
+    --card-foreground: 172 28% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 30% 18%;
+    --popover-foreground: 172 28% 15%;
 
-    /* Mor-pembe ana marka */
-    --primary: 280 70% 60%;
+    /* Derin zümrüt ana marka (İslami yeşil, kurumsal ton) */
+    --primary: 158 62% 30%;
     --primary-foreground: 0 0% 100%;
-    --primary-soft: 280 80% 95%;
+    --primary-soft: 156 52% 93%;
 
-    --secondary: 195 80% 92%;
-    --secondary-foreground: 200 60% 25%;
+    --secondary: 168 45% 91%;
+    --secondary-foreground: 172 45% 20%;
 
-    --muted: 30 30% 94%;
-    --muted-foreground: 240 10% 35%;
+    --muted: 45 28% 93%;
+    --muted-foreground: 172 12% 36%;
 
-    --accent: 50 95% 90%;
-    --accent-foreground: 35 70% 30%;
+    /* Altın vurgu — ödül dili */
+    --accent: 45 90% 90%;
+    --accent-foreground: 38 70% 26%;
 
-    --destructive: 0 80% 62%;
+    --destructive: 0 72% 54%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 145 65% 48%;
+    --success: 152 58% 38%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 95% 58%;
+    --warning: 40 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --info: 200 90% 55%;
+    --info: 199 84% 42%;
     --info-foreground: 0 0% 100%;
 
-    --pink: 335 85% 65%;
+    --pink: 350 72% 58%;
     --pink-foreground: 0 0% 100%;
 
-    --border: 30 30% 88%;
-    --input: 30 30% 88%;
-    --ring: 280 70% 60%;
+    /* Altın — koleksiyon kartları / taç anları */
+    --gold: 42 92% 50%;
+    --gold-foreground: 35 65% 18%;
+
+    --border: 45 24% 86%;
+    --input: 45 24% 86%;
+    --ring: 158 62% 30%;
 
     --radius: 1.25rem;
 
-    /* Konu renkleri — canlı ve dostça */
-    --topic-turkce: 335 85% 65%;     /* pembe */
-    --topic-ingilizce: 200 85% 58%;  /* mavi */
-    --topic-matematik: 30 95% 60%;   /* turuncu */
-    --topic-doga: 145 60% 50%;       /* yeşil */
-    --topic-purple: 270 70% 65%;
-    --topic-yellow: 45 95% 60%;
+    /* Konu renkleri — zümrüt/altın ailesiyle uyumlu, canlı */
+    --topic-turkce: 350 72% 58%;     /* mercan-gül */
+    --topic-ingilizce: 199 80% 46%;  /* deniz mavisi */
+    --topic-matematik: 28 90% 54%;   /* sıcak turuncu */
+    --topic-doga: 152 55% 42%;       /* zümrüt-yeşil */
+    --topic-purple: 262 48% 56%;     /* yumuşak mor */
+    --topic-yellow: 45 92% 52%;      /* altın sarı */
 
     /* Oyun renkleri (eski uyumluluk) */
-    --topic-green: 145 60% 48%;
-    --topic-blue: 200 85% 58%;
-    --topic-orange: 30 95% 60%;
-    --topic-pink: 335 85% 65%;
+    --topic-green: 152 55% 42%;
+    --topic-blue: 199 80% 46%;
+    --topic-orange: 28 90% 54%;
+    --topic-pink: 350 72% 58%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(280 80% 65%), hsl(335 85% 65%));
-    --gradient-warm: linear-gradient(135deg, hsl(45 95% 65%), hsl(30 95% 60%));
-    --gradient-cool: linear-gradient(135deg, hsl(200 85% 60%), hsl(280 70% 65%));
-    --gradient-fresh: linear-gradient(135deg, hsl(145 60% 55%), hsl(200 85% 60%));
-    --gradient-sky: linear-gradient(180deg, hsl(200 90% 92%), hsl(280 80% 95%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(30 50% 98%));
+    --gradient-primary: linear-gradient(135deg, hsl(158 62% 34%), hsl(174 62% 34%));
+    --gradient-warm: linear-gradient(135deg, hsl(45 95% 58%), hsl(30 92% 54%));
+    --gradient-cool: linear-gradient(135deg, hsl(174 62% 38%), hsl(199 80% 44%));
+    --gradient-fresh: linear-gradient(135deg, hsl(152 55% 44%), hsl(174 62% 40%));
+    --gradient-sky: linear-gradient(180deg, hsl(168 55% 93%), hsl(44 55% 96%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(44 45% 98%));
+    --gradient-gold: linear-gradient(135deg, hsl(46 96% 62%), hsl(36 90% 48%));
 
     /* Topic bg gradients */
-    --bg-turkce: linear-gradient(135deg, hsl(335 90% 70%), hsl(355 85% 65%));
-    --bg-ingilizce: linear-gradient(135deg, hsl(200 85% 60%), hsl(220 80% 60%));
-    --bg-matematik: linear-gradient(135deg, hsl(30 95% 62%), hsl(45 95% 58%));
-    --bg-doga: linear-gradient(135deg, hsl(145 60% 50%), hsl(170 65% 50%));
-    --bg-kavramlar: linear-gradient(135deg, hsl(270 70% 65%), hsl(290 70% 55%));
-    --bg-elifba: linear-gradient(135deg, hsl(160 70% 40%), hsl(200 75% 45%));
+    --bg-turkce: linear-gradient(135deg, hsl(350 78% 62%), hsl(355 75% 56%));
+    --bg-ingilizce: linear-gradient(135deg, hsl(199 80% 48%), hsl(214 72% 50%));
+    --bg-matematik: linear-gradient(135deg, hsl(28 92% 56%), hsl(42 92% 52%));
+    --bg-doga: linear-gradient(135deg, hsl(152 55% 42%), hsl(170 60% 40%));
+    --bg-kavramlar: linear-gradient(135deg, hsl(262 50% 58%), hsl(280 45% 50%));
+    --bg-elifba: linear-gradient(135deg, hsl(158 62% 32%), hsl(190 65% 36%));
 
-    /* Shadows — kabarık ve yumuşak */
-    --shadow-soft: 0 2px 10px -2px hsl(280 50% 30% / 0.08);
-    --shadow-card: 0 6px 22px -6px hsl(280 50% 30% / 0.12);
-    --shadow-elegant: 0 16px 40px -14px hsl(280 70% 50% / 0.30);
-    --shadow-pop: 0 10px 0 hsl(280 30% 80%);
+    /* Shadows — zümrüt tabanlı, yumuşak ve kabarık */
+    --shadow-soft: 0 2px 10px -2px hsl(165 45% 16% / 0.08);
+    --shadow-card: 0 6px 22px -6px hsl(165 45% 16% / 0.12);
+    --shadow-elegant: 0 16px 40px -14px hsl(160 60% 22% / 0.28);
+    --shadow-pop: 0 10px 0 hsl(158 28% 80%);
 
     /* Transitions */
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bouncy: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 
-    --sidebar-background: 30 80% 97%;
-    --sidebar-foreground: 240 30% 18%;
-    --sidebar-primary: 280 70% 60%;
+    --sidebar-background: 44 50% 97%;
+    --sidebar-foreground: 172 28% 15%;
+    --sidebar-primary: 158 62% 30%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 30% 94%;
-    --sidebar-accent-foreground: 280 60% 30%;
-    --sidebar-border: 30 30% 88%;
-    --sidebar-ring: 280 70% 60%;
+    --sidebar-accent: 45 28% 93%;
+    --sidebar-accent-foreground: 158 55% 24%;
+    --sidebar-border: 45 24% 86%;
+    --sidebar-ring: 158 62% 30%;
   }
 }
 
@@ -137,8 +145,26 @@
     text-shadow: 0 2px 4px hsl(0 0% 0% / 0.15);
   }
   .font-arabic {
-    font-family: "Amiri Quran", "Scheherazade New", "Traditional Arabic", serif;
+    font-family: "Amiri Quran", "Amiri", "Scheherazade New", "Traditional Arabic", serif;
     font-feature-settings: "kern", "liga", "calt";
+  }
+  /* İslami 8 köşeli yıldız deseni — kurumsal dokunuş, çok hafif.
+   * -light: renkli hero/başlık zeminleri için beyaz; düz: açık zeminler için zümrüt. */
+  .bg-pattern-star {
+    background-image: url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%231b6b4f' stroke-opacity='0.10' stroke-width='1.2'%3E%3Cpath d='M28 10l4.8 8.2L42 14l-4.2 9.2L46 28l-8.2 4.8L42 42l-9.2-4.2L28 46l-4.8-8.2L14 42l4.2-9.2L10 28l8.2-4.8L14 14l9.2 4.2z'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 56px 56px;
+  }
+  .bg-pattern-star-light {
+    background-image: url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.14' stroke-width='1.2'%3E%3Cpath d='M28 10l4.8 8.2L42 14l-4.2 9.2L46 28l-8.2 4.8L42 42l-9.2-4.2L28 46l-4.8-8.2L14 42l4.2-9.2L10 28l8.2-4.8L14 14l9.2 4.2z'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 56px 56px;
+  }
+  /* Hero bandı: yıldız deseni + zümrüt gradyan TEK sınıfta (iki ayrı sınıf
+   * background-image'ı ezişir — katmanlı tek tanım şart). */
+  .bg-hero-emerald {
+    background-image:
+      url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.14' stroke-width='1.2'%3E%3Cpath d='M28 10l4.8 8.2L42 14l-4.2 9.2L46 28l-8.2 4.8L42 42l-9.2-4.2L28 46l-4.8-8.2L14 42l4.2-9.2L10 28l8.2-4.8L14 14l9.2 4.2z'/%3E%3C/g%3E%3C/svg%3E"),
+      var(--gradient-primary);
+    background-size: 56px 56px, cover;
   }
   /* 3D flip for flashcards */
   .perspective-1000 { perspective: 1000px; }
@@ -214,6 +240,35 @@
   100% { transform: translateX(-120%); opacity: 0; }
 }
 
+/* Altın kart parıltısı — koleksiyonda L4 kartların üstünden geçen ışık */
+@keyframes shimmer {
+  0% { transform: translateX(-160%) skewX(-18deg); }
+  100% { transform: translateX(260%) skewX(-18deg); }
+}
+/* Maskot: nazik nefes alma + el sallama + konuşma balonu belirişi */
+@keyframes buddy-bob {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-6px) rotate(1deg); }
+}
+@keyframes buddy-wave {
+  0%, 100% { transform: rotate(0deg); }
+  30% { transform: rotate(-24deg); }
+  60% { transform: rotate(10deg); }
+}
+@keyframes bubble-in {
+  0% { transform: scale(0.6) translateY(6px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.animate-shimmer { animation: shimmer 2.6s ease-in-out infinite; }
+.animate-buddy-bob { animation: buddy-bob 3.2s ease-in-out infinite; }
+.animate-bubble-in { animation: bubble-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+/* Maskot kolu — SVG içinde omuzdan sallanır (transform-box şart) */
+.buddy-arm-wave {
+  animation: buddy-wave 1.5s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 20% 15%;
+}
 .animate-pop { animation: pop 0.4s ease-out; }
 .animate-confetti { animation: confetti 2s ease-in forwards; }
 .animate-shake { animation: shake 0.45s ease-in-out; }

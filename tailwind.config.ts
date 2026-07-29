@@ -53,6 +53,10 @@ export default {
           DEFAULT: "hsl(var(--pink))",
           foreground: "hsl(var(--pink-foreground))",
         },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          foreground: "hsl(var(--gold-foreground))",
+        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -96,6 +100,7 @@ export default {
         "gradient-primary": "var(--gradient-primary)",
         "gradient-warm": "var(--gradient-warm)",
         "gradient-card": "var(--gradient-card)",
+        "gradient-gold": "var(--gradient-gold)",
       },
       boxShadow: {
         soft: "var(--shadow-soft)",
