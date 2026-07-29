@@ -4,12 +4,16 @@
 // test/flashcard/oyunlar dahil her sayfada görünür. Gösterdikleri:
 // - Uyarlanır zorluk: anlık doğruluk (son 12) + hangi bant (ısınma/normal/
 //   zorlanıyor→kolay/uçuyor→zor) → cevaplayınca bandın değiştiğini gör.
-// - Son seçilen öğe: seviye + bilet (sıklık × bayatlık) + kaç gün bayat →
-//   bayatlık çarpanı + sıklık ağırlığı çalışıyor mu gör.
+// - Öğrenme seti kapısı (Problem 1): kaç harf öğrenilmekte (K), zorlanıyor mu,
+//   yeni harf tanıtımı şu an kapalı mı → yeni harf akışının durduğunu gör.
+// - Son seçilen öğe: seviye + bilet (sıklık × bayatlık) + kaç gün bayat.
+// - Yerleştirme (Problem 2): atlanan konular, ara-kontrol doğruluğu + oranı,
+//   durum (deneme/onaylı/sallantı/zayıf) + son sorunun ara-kontrol olup olmadığı.
 // - Seri (affedici) + bugünkü öğrenilen/pratik sayısı (veli paneli verisi).
 import { useEffect, useState } from "react";
 import { useTestUnlock } from "@/lib/testUnlock";
-import { getAdaptiveDebug, getLastPickInfo, getTopicSrs, type AdaptiveDebug, type LastPickInfo } from "@/data/srs";
+import { getAdaptiveDebug, getLastPickInfo, getIntroGateInfo, getTopicSrs, type AdaptiveDebug, type LastPickInfo, type IntroGateInfo } from "@/data/srs";
+import { getPlacementDebug, getLastBackCheck, resetPlacement, type PlacementDebugRow } from "@/lib/placement";
 import { getStreak } from "@/lib/streak";
 import { getAllTopics } from "@/data/subjects";
 import { cn } from "@/lib/utils";
@@ -31,12 +35,21 @@ function todayCounts() {
 }
 
 const LVL_COLOR = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e"];
+const STATUS_COLOR: Record<string, string> = {
+  deneme: "#a855f7", // mor — deneme süresi (yoğun yoklama)
+  onaylı: "#22c55e", // yeşil — sağlıklı
+  sallantı: "#f59e0b", // amber — pekiştir
+  zayıf: "#ef4444", // kırmızı — geri çekiliyor
+};
 
 export function DebugHud() {
   const [active] = useTestUnlock();
   const [open, setOpen] = useState(true);
   const [adaptive, setAdaptive] = useState<AdaptiveDebug>(() => getAdaptiveDebug());
   const [pick, setPick] = useState<LastPickInfo | null>(() => getLastPickInfo());
+  const [gate, setGate] = useState<IntroGateInfo | null>(() => getIntroGateInfo());
+  const [placement, setPlacement] = useState<PlacementDebugRow[]>(() => getPlacementDebug());
+  const [lastBc, setLastBc] = useState(() => getLastBackCheck());
   const [streak, setStreak] = useState(() => getStreak());
   const [today, setToday] = useState(() => todayCounts());
 
@@ -45,6 +58,9 @@ export function DebugHud() {
     const refresh = () => {
       setAdaptive(getAdaptiveDebug());
       setPick(getLastPickInfo());
+      setGate(getIntroGateInfo());
+      setPlacement(getPlacementDebug());
+      setLastBc(getLastBackCheck());
       setStreak(getStreak());
       setToday(todayCounts());
     };
@@ -52,11 +68,13 @@ export function DebugHud() {
     window.addEventListener("elifba-srs-quiz-updated", refresh);
     window.addEventListener("elifba-srs-games-updated", refresh);
     window.addEventListener("elifba-progress-updated", refresh);
+    window.addEventListener("elifba-placement-updated", refresh);
     const id = setInterval(refresh, 800);
     return () => {
       window.removeEventListener("elifba-srs-quiz-updated", refresh);
       window.removeEventListener("elifba-srs-games-updated", refresh);
       window.removeEventListener("elifba-progress-updated", refresh);
+      window.removeEventListener("elifba-placement-updated", refresh);
       clearInterval(id);
     };
   }, [active]);
@@ -98,6 +116,22 @@ export function DebugHud() {
             {adaptive.recent.length === 0 && <span className="text-white/40">henüz cevap yok</span>}
           </div>
         </div>
+        {/* Öğrenme seti kapısı (Problem 1) */}
+        <div className="border-t border-white/10 pt-1.5">
+          <div className="text-white/50 text-[9px] uppercase mb-0.5">Öğrenme Seti (yeni harf kapısı)</div>
+          {gate ? (
+            <>
+              <div className="text-white/80">
+                Öğrenilmekte: <b className={cn(gate.inProgress >= gate.k && "text-amber-400")}>{gate.inProgress}</b>/{gate.k}
+                {gate.struggling && <span className="text-blue-400"> · zorlanıyor</span>}
+              </div>
+              <div className="font-extrabold" style={{ color: gate.gated ? "#f59e0b" : "#22c55e" }}>
+                {gate.gated ? "⛔ yeni harf DURDU" : gate.nextUnseen ? "✅ yeni harf açık" : "— hepsi görüldü"}
+              </div>
+              {gate.nextUnseen && <div className="text-white/50 text-[10px] truncate">sıradaki: {gate.nextUnseen}</div>}
+            </>
+          ) : <div className="text-white/40">henüz veri yok</div>}
+        </div>
         {/* Son seçim: sıklık × bayatlık */}
         <div className="border-t border-white/10 pt-1.5">
           <div className="text-white/50 text-[9px] uppercase mb-0.5">Son Seçilen Öğe</div>
@@ -113,6 +147,45 @@ export function DebugHud() {
               <div className="text-white/60 text-[10px]">sıklık {pick.weight} × bayat {pick.stale} · {pick.days}g</div>
             </>
           ) : <div className="text-white/40">henüz seçim yok</div>}
+        </div>
+        {/* Yerleştirme / ara-kontrol (Problem 2) */}
+        <div className="border-t border-white/10 pt-1.5">
+          <div className="flex items-center justify-between mb-0.5">
+            <span className="text-white/50 text-[9px] uppercase">Yerleştirme · Ara-kontrol</span>
+            {placement.length > 0 && (
+              <button
+                onClick={() => resetPlacement()}
+                className="text-[9px] text-white/40 hover:text-white/80 underline"
+              >sıfırla</button>
+            )}
+          </div>
+          {placement.length === 0 ? (
+            <div className="text-white/40">atlanmış konu yok</div>
+          ) : (
+            <div className="space-y-1">
+              {placement.map((p) => (
+                <div key={p.topicId} className="flex items-center justify-between gap-1">
+                  <span className="truncate text-white/80 max-w-[92px]" title={p.title}>{p.title}</span>
+                  <span className="flex items-center gap-1 shrink-0">
+                    <span className="rounded px-1 font-extrabold text-black" style={{ background: STATUS_COLOR[p.status] }}>
+                      {p.status}
+                    </span>
+                    <span className="text-white/60 text-[10px]">
+                      {p.bcAcc === null ? "—" : `%${Math.round(p.bcAcc * 100)}`}·{Math.round(p.pressure * 100)}%
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-1 text-[10px]">
+            <span className="text-white/50">Son soru: </span>
+            {lastBc && Date.now() - lastBc.at < 4000 ? (
+              <b style={{ color: lastBc.correct ? "#22c55e" : "#ef4444" }}>
+                ARA-KONTROL ({lastBc.topicId}) {lastBc.correct ? "✓" : "✗"}
+              </b>
+            ) : <span className="text-white/40">normal konu</span>}
+          </div>
         </div>
         {/* Seri + bugün */}
         <div className="border-t border-white/10 pt-1.5 flex justify-between">
