@@ -532,11 +532,12 @@ const t8_tenvin: ContentTopic = {
   items: [
     ...LETTERS.flatMap((l) => {
       const v = harekeVowels(l.thick);
+      // Tenvin mp3'leri var: tenvin-NN-{fetha|esre|otre}.mp3 (NN = harf no 1-28).
       const defs = [
         // iki üstün: harf + fethatan + elif (بًا) — elif kendisi yalnız "اً"
-        { suf: "ustun2", glyph: l.n === 1 ? "اً" : `${l.iso}ًا`, read: `${l.cons}${v.a}n` },
-        { suf: "esre2", glyph: `${l.iso}ٍ`, read: `${l.cons}${v.i}n` },
-        { suf: "otre2", glyph: `${l.iso}ٌ`, read: `${l.cons}${v.u}n` },
+        { suf: "ustun2", file: "fetha", glyph: l.n === 1 ? "اً" : `${l.iso}ًا`, read: `${l.cons}${v.a}n` },
+        { suf: "esre2", file: "esre", glyph: `${l.iso}ٍ`, read: `${l.cons}${v.i}n` },
+        { suf: "otre2", file: "otre", glyph: `${l.iso}ٌ`, read: `${l.cons}${v.u}n` },
       ];
       return defs.map((d) => ({
         id: `l8-${pad2(l.n)}-${d.suf}`,
@@ -545,6 +546,7 @@ const t8_tenvin: ContentTopic = {
         lang: "tr" as const,
         emoji: d.glyph,
         translit: d.read,
+        audio: audioPath(`tenvin-${pad2(l.n)}-${d.file}.mp3`),
         section: bolum(l.n),
       }));
     }),

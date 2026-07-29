@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 // ---- sabitler ----
 const VH = 360;
-const GROUND_Y = 232;      // çim üst çizgisi
+const GROUND_Y = 206;      // çim üst çizgisi (daha büyük çayır/ekim alanı)
 const SEEN_KEY = "elifba-garden-seen-v1";
 
 // konu → çiçek rengi (hue). Sıra elifbaTopics ile aynı.
@@ -211,10 +211,18 @@ function drawKid(g: CanvasRenderingContext2D, x: number, baseY: number, sc: numb
   g.fillStyle = "#f59e0b"; rr(g, -9, -28, 18, 13, 4); g.fill();      // tişört
   g.fillRect(-12, -27, 4, 8); g.fillRect(8, -27, 4, 8);
   g.fillStyle = "#ffd9b3"; g.beginPath(); g.arc(0, -35, 9, 0, Math.PI * 2); g.fill(); // kafa
-  g.fillStyle = "#6b4226"; g.beginPath(); g.arc(0, -36.5, 9.2, Math.PI, Math.PI * 2); g.fill();
-  g.beginPath(); g.arc(-5, -41, 4, 0, Math.PI * 2); g.arc(0, -43, 4.4, 0, Math.PI * 2); g.arc(5, -41, 4, 0, Math.PI * 2); g.fill();
-  g.fillStyle = "#1f2937"; g.beginPath(); g.arc(3.5, -35.5, 1.6, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = "#7c2d12"; g.lineWidth = 1.3; g.beginPath(); g.arc(2.5, -32, 2.8, 0.15, Math.PI * 0.7); g.stroke();
+  g.fillStyle = "#6b4226"; g.beginPath(); g.arc(0, -37, 9.3, Math.PI, Math.PI * 2); g.fill(); // saç kubbe
+  g.beginPath(); g.arc(-5, -42, 4, 0, Math.PI * 2); g.arc(0, -44, 4.4, 0, Math.PI * 2); g.arc(5, -42, 4, 0, Math.PI * 2); g.fill();
+  // iki göz (düz bakış — bıyık görünümü yok)
+  g.fillStyle = "#1f2937";
+  g.beginPath(); g.arc(-3, -35, 1.5, 0, Math.PI * 2); g.arc(3, -35, 1.5, 0, Math.PI * 2); g.fill();
+  // temiz küçük gülümseme (aşağı, ortalı U)
+  g.strokeStyle = "#b45309"; g.lineWidth = 1.4; g.lineCap = "round";
+  g.beginPath(); g.arc(0, -30.5, 2.6, 0.25 * Math.PI, 0.75 * Math.PI); g.stroke();
+  g.lineCap = "butt";
+  // pembe yanaklar
+  g.fillStyle = "rgba(244,114,182,0.45)";
+  g.beginPath(); g.arc(-5.5, -32, 1.6, 0, Math.PI * 2); g.arc(5.5, -32, 1.6, 0, Math.PI * 2); g.fill();
   // sulama kabı (elinde)
   g.fillStyle = "#38bdf8"; rr(g, 9, -20, 8, 7, 2); g.fill();
   g.fillRect(16, -19, 4, 2);
@@ -380,15 +388,15 @@ const Bahce = () => {
         g.fillStyle = "#fde047"; g.beginPath(); g.arc(wx, wy, 1.3 * sc2, 0, Math.PI * 2); g.fill();
       }
 
-      // ağaçlar (biten konular) — arkada
-      for (const tr of G.trees) drawTree(g, tr.x * (view.w - 40) + 20, GROUND_Y + 14, 0.9, tr.hue);
+      // ağaçlar (biten konular) — arkada, daha büyük
+      for (const tr of G.trees) drawTree(g, tr.x * (view.w - 40) + 20, GROUND_Y + 16, 1.3, tr.hue);
 
       // çiçekler + filizler (arkadan öne)
       const meadowTop = GROUND_Y + 18, meadowBot = VH - 6;
       G.flowers.forEach((f, idx) => {
         const fx = 18 + f.x * (view.w - 36);
         const fy = meadowTop + f.d * (meadowBot - meadowTop);
-        const sc = 0.62 + f.d * 0.75;
+        const sc = 0.85 + f.d * 1.05;
         if (f.kind === "bud") { drawBud(g, fx, fy, sc, f.hue, time, f.seed); return; }
         // yeni açanlar için açılma animasyonu (0→1)
         let bloom = 1;
@@ -415,7 +423,7 @@ const Bahce = () => {
       }
 
       // çocuk — ön planda, sadece en az 1 çiçek varsa
-      if (G.mastered + G.budding > 0) drawKid(g, view.w * 0.16, VH - 8, 1.05, time);
+      if (G.mastered + G.budding > 0) drawKid(g, view.w * 0.15, VH - 8, 1.35, time);
     };
     raf = requestAnimationFrame(frame);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
@@ -450,7 +458,7 @@ const Bahce = () => {
         <div
           ref={boxRef}
           className="relative w-full overflow-hidden rounded-2xl shadow-card border-4 border-success/40 bg-sky-200"
-          style={{ aspectRatio: "16 / 10", maxHeight: "58vh", margin: "0 auto", contain: "layout paint size" }}
+          style={{ aspectRatio: "5 / 4", maxHeight: "66vh", margin: "0 auto", contain: "layout paint size" }}
         >
           <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
 

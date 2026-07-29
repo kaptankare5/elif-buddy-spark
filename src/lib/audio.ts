@@ -11,14 +11,54 @@ let currentTimer: ReturnType<typeof setTimeout> | null = null;
 let playToken = 0;
 let unlockInstalled = false;
 
+// GECİKME ÇÖZÜMÜ: ses elemanları URL bazında ÖNBELLEKLENİR ve yeniden
+// kullanılır. Böylece aynı sesin ikinci ve sonraki çalışları ANINDA olur
+// (fetch/decode yok). Durdururken eleman YOK EDİLMEZ (src silinmez), sadece
+// duraklatılıp başa sarılır — yüklü kalır. preload="auto" ilk fetch'i erken
+// başlatır; `preloadItems` görünen öğeleri önceden ısıtır (ilk tık da anında).
+interface CachedAudio { audio: HTMLAudioElement; node?: { src: MediaElementAudioSourceNode; g: GainNode } }
+const audioCache = new Map<string, CachedAudio>();
+
+function getCachedAudio(url: string, gain: number): CachedAudio {
+  let c = audioCache.get(url);
+  if (!c) {
+    const audio = new Audio(url);
+    audio.preload = "auto";
+    audio.setAttribute("playsinline", "true");
+    c = { audio };
+    if (gain > 1) {
+      const ctx = getCtx();
+      if (ctx) {
+        try {
+          const src = ctx.createMediaElementSource(audio);
+          const g = ctx.createGain();
+          g.gain.value = gain;
+          src.connect(g).connect(ctx.destination);
+          c.node = { src, g };
+        } catch { /* doğrudan çalar */ }
+      }
+    }
+    audioCache.set(url, c);
+    if (audioCache.size > 150) {
+      const k = audioCache.keys().next().value;
+      if (k && k !== url) { try { audioCache.get(k)?.audio.pause(); } catch { /* ignore */ } audioCache.delete(k); }
+    }
+  } else if (c.node && gain > 1) {
+    c.node.g.gain.value = gain;
+  }
+  return c;
+}
+
+// Görünen öğelerin sesini önceden yükle (ilk tık gecikmesini de bitirir).
+export function preloadItems(items: { audio?: string }[]) {
+  for (const it of items) if (it.audio) { try { getCachedAudio(it.audio, 1); } catch { /* ignore */ } }
+}
+
 function cleanupActiveAudio(audio?: HTMLAudioElement | null) {
   const target = audio ?? activeAudio;
   if (!target) return;
-  try {
-    target.pause();
-    target.removeAttribute("src");
-    target.load();
-  } catch { /* ignore */ }
+  // Önbellekli eleman: yok etme, sadece duraklat + başa sar (yüklü kalsın).
+  try { target.pause(); target.currentTime = 0; } catch { /* ignore */ }
   if (!audio || target === activeAudio) activeAudio = null;
 }
 
@@ -121,70 +161,16 @@ function speakWithSynthesis(text: string, lang: Lang | undefined, token: number)
 }
 
 // Resolve only when the played audio actually ends (or fails).
+// Manifest'te ses varsa önbellekli playUrl ile çalar (anında tekrar);
+// yoksa tarayıcı TTS'ine düşer.
 export function playSpeech(text: string, lang?: Lang, opts?: { gain?: number }): Promise<void> {
-  stopCurrent(true);
-  const token = playToken;
   const found = lookupKey(text, lang);
-
   if (!found) {
-    return speakWithSynthesis(text, lang, token);
+    stopCurrent(true);
+    return speakWithSynthesis(text, lang, playToken);
   }
-
   const url = `/audio/${found.lang}/${found.key}.mp3`;
-  const gain = opts?.gain && opts.gain > 1 ? opts.gain : 1;
-  return new Promise<void>((resolve) => {
-    try {
-      const audio = new Audio(url);
-      audio.preload = "auto";
-      // Aynı origin: crossOrigin ayarlamıyoruz; MediaElementSource yine de çalışır.
-      audio.setAttribute("playsinline", "true");
-      activeAudio = audio;
-
-      // WebAudio gain boost (volume > 1 için)
-      let ctxNodes: { src: MediaElementAudioSourceNode; g: GainNode } | null = null;
-      if (gain > 1) {
-        const ctx = getCtx();
-        if (ctx) {
-          try {
-            const src = ctx.createMediaElementSource(audio);
-            const g = ctx.createGain();
-            g.gain.value = gain;
-            src.connect(g).connect(ctx.destination);
-            ctxNodes = { src, g };
-          } catch { /* fallback to normal volume */ }
-        }
-      }
-
-      currentResolve = resolve;
-      currentCleanup = () => {
-        cleanupActiveAudio(audio);
-        if (ctxNodes) { try { ctxNodes.src.disconnect(); ctxNodes.g.disconnect(); } catch { /* ignore */ } }
-      };
-
-      const settle = () => {
-        if (token !== playToken) { resolve(); return; }
-        stopCurrent(false);
-      };
-
-      audio.addEventListener("ended", settle, { once: true });
-      audio.addEventListener("error", () => {
-        if (token !== playToken) { resolve(); return; }
-        void speakWithSynthesis(text, lang, token);
-      }, { once: true });
-
-      setPlaybackTimeout(token);
-      const playPromise = audio.play();
-      if (playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch((e: { name?: string }) => {
-          if (token !== playToken) return;
-          if (e?.name !== "AbortError") console.warn("audio play failed", text, e);
-          void speakWithSynthesis(text, lang, token);
-        });
-      }
-    } catch {
-      void speakWithSynthesis(text, lang, token);
-    }
-  });
+  return playUrl(url, { fallbackText: text, fallbackLang: lang, gain: opts?.gain });
 }
 
 export function playItem(item: ContentItem): Promise<void> {
@@ -201,38 +187,23 @@ function playUrl(url: string, opts: { fallbackText?: string; fallbackLang?: Lang
   const gain = opts.gain && opts.gain > 1 ? opts.gain : 1;
   return new Promise<void>((resolve) => {
     try {
-      const audio = new Audio(url);
-      audio.preload = "auto";
-      audio.setAttribute("playsinline", "true");
+      const c = getCachedAudio(url, gain);
+      const audio = c.audio;
       activeAudio = audio;
-      let ctxNodes: { src: MediaElementAudioSourceNode; g: GainNode } | null = null;
-      if (gain > 1) {
-        const ctx = getCtx();
-        if (ctx) {
-          try {
-            const src = ctx.createMediaElementSource(audio);
-            const g = ctx.createGain();
-            g.gain.value = gain;
-            src.connect(g).connect(ctx.destination);
-            ctxNodes = { src, g };
-          } catch { /* fallback */ }
-        }
-      }
+      try { audio.currentTime = 0; } catch { /* ignore */ }
       currentResolve = resolve;
-      currentCleanup = () => {
-        cleanupActiveAudio(audio);
-        if (ctxNodes) { try { ctxNodes.src.disconnect(); ctxNodes.g.disconnect(); } catch { /* */ } }
-      };
+      currentCleanup = () => cleanupActiveAudio(audio); // önbellekli: yalnız duraklat
       const settle = () => {
         if (token !== playToken) { resolve(); return; }
         stopCurrent(false);
       };
-      audio.addEventListener("ended", settle, { once: true });
-      audio.addEventListener("error", () => {
+      audio.onended = settle;
+      audio.onerror = () => {
         if (token !== playToken) { resolve(); return; }
+        audioCache.delete(url); // bozuk kaydı at
         if (opts.fallbackText) void speakWithSynthesis(opts.fallbackText, opts.fallbackLang, token);
         else settle();
-      }, { once: true });
+      };
       setPlaybackTimeout(token);
       const p = audio.play();
       if (p && typeof p.catch === "function") {

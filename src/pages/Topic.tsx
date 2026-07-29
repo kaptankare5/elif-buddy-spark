@@ -3,7 +3,7 @@ import { useParams, Navigate, Link } from "react-router-dom";
 import { getSubject, getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
 import { RouteHead } from "@/components/RouteHead";
-import { playItem, playFeedback } from "@/lib/audio";
+import { playItem, playFeedback, preloadItems } from "@/lib/audio";
 import { Volume2, Layers, Zap, Lock, Gamepad2 } from "lucide-react";
 import type { ContentItem, SubjectId } from "@/data/types";
 import {
@@ -93,6 +93,9 @@ const Topic = () => {
     if (mode === "test" && q?.target) playItem(q.target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q?.target?.id, mode]);
+
+  // Öğe seslerini önden yükle → ilk tıkta bile anında çalar (gecikmesiz).
+  useEffect(() => { preloadItems(items); }, [items]);
 
   // Yeni bölüm açıldı mı? Açılan bölüm sayısı önceki kayda göre arttıysa kutla.
   useEffect(() => {
