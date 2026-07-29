@@ -10,7 +10,7 @@ interface GameDef { id: string; title: string; emoji: string; color: string; des
 // sakin/tempolu olanlar "kolay". Küçük çocuk kolaydan başlayabilsin.
 const GAMES: GameDef[] = [
   // — Kolay —
-  { id: "memory", title: "Hafıza Kartları", emoji: "🃏", color: "from-topic-pink to-pink", desc: "Eşleşenleri bul", diff: "kolay" },
+  { id: "memory", title: "Hafıza Kartları", emoji: "🧠", color: "from-topic-pink to-pink", desc: "Eşleşenleri bul", diff: "kolay" },
   { id: "balloon", title: "Balon Patlatma", emoji: "🎈", color: "from-topic-blue to-info", desc: "Doğru balonu patlat", diff: "kolay" },
   { id: "sorter", title: "Kutu Boşalt", emoji: "📦", color: "from-topic-doga to-success", desc: "Sorulan harfi seç, kutuyu boşalt", diff: "kolay" },
   { id: "puzzle", title: "Yapboz", emoji: "🧩", color: "from-warning to-topic-pink", desc: "Parçaları birleştir, sesi duy", diff: "kolay" },

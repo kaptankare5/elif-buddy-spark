@@ -148,6 +148,14 @@
     font-family: "Amiri Quran", "Amiri", "Scheherazade New", "Traditional Arabic", serif;
     font-feature-settings: "kern", "liga", "calt";
   }
+  /* Diyanet Elifbâ'sındaki sade naskh görünümü — Ölçüm gibi ekranlarda
+   * temel harf ile başta/ortada/sonda halleri tutarlı çizilsin diye
+   * Scheherazade New öne alınır (Amiri Quran'ın Kur'ani süslemeleri
+   * bu ekranlarda kafa karıştırıyor). */
+  .font-arabic-naskh {
+    font-family: "Scheherazade New", "Traditional Arabic", "Amiri", serif;
+    font-feature-settings: "kern", "liga", "calt";
+  }
   /* İslami 8 köşeli yıldız deseni — kurumsal dokunuş, çok hafif.
    * -light: renkli hero/başlık zeminleri için beyaz; düz: açık zeminler için zümrüt. */
   .bg-pattern-star {
@@ -251,9 +259,8 @@
   50% { transform: translateY(-6px) rotate(1deg); }
 }
 @keyframes buddy-wave {
-  0%, 100% { transform: rotate(0deg); }
-  30% { transform: rotate(-24deg); }
-  60% { transform: rotate(10deg); }
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(22deg); }
 }
 @keyframes bubble-in {
   0% { transform: scale(0.6) translateY(6px); opacity: 0; }
@@ -263,11 +270,11 @@
 .animate-shimmer { animation: shimmer 2.6s ease-in-out infinite; }
 .animate-buddy-bob { animation: buddy-bob 3.2s ease-in-out infinite; }
 .animate-bubble-in { animation: bubble-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
-/* Maskot kolu — SVG içinde omuzdan sallanır (transform-box şart) */
+/* Maskot kolu — omuz noktası (76,88) etrafında sallanır; viewBox koordinatı */
 .buddy-arm-wave {
-  animation: buddy-wave 1.5s ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: 20% 15%;
+  animation: buddy-wave 1.4s ease-in-out infinite;
+  transform-box: view-box;
+  transform-origin: 76px 88px;
 }
 .animate-pop { animation: pop 0.4s ease-out; }
 .animate-confetti { animation: confetti 2s ease-in forwards; }

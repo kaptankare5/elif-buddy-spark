@@ -302,34 +302,34 @@ var t3_harekeler = {
 };
 var CEZM_MISSING = /* @__PURE__ */ new Set([22]);
 var CEZM_EKSTRA = [
-  ["\u0645\u0650\u0646\u0652", "min"],
-  ["\u0647\u064F\u0645\u0652", "h\xFCm"],
-  ["\u0644\u064E\u0645\u0652", "lem"],
-  ["\u0642\u064F\u0644\u0652", "kul"],
-  ["\u064A\u064E\u0648\u0652", "yev"],
-  ["\u0643\u064F\u0645\u0652", "k\xFCm"],
-  ["\u0643\u064E\u064A\u0652", "key"],
-  ["\u0642\u064E\u0628\u0652", "kab"],
-  ["\u0627\u064E\u0646\u0652", "en"],
-  ["\u0627\u064E\u0643\u0652", "ek"],
-  ["\u0627\u064E\u0631\u0652", "er"],
-  ["\u0643\u064F\u0646\u0652", "k\xFCn"],
-  ["\u062A\u064F\u0645\u0652", "t\xFCm"],
-  ["\u0644\u0650\u062F\u0652", "lid"],
-  ["\u0627\u0650\u0633\u0652", "is"],
-  ["\u062A\u064E\u0643\u0652", "tek"],
-  ["\u0644\u064E\u0633\u0652", "les"],
-  ["\u0646\u064E\u0639\u0652", "na'"],
-  ["\u062D\u064E\u062A\u0652", "het"],
-  ["\u0644\u064E\u064A\u0652", "ley"],
-  ["\u0647\u0650\u0645\u0652", "him"],
-  ["\u0627\u064E\u064A\u0652", "ey"],
-  ["\u062A\u064E\u0648\u0652", "tev"],
-  ["\u0642\u064E\u0648\u0652", "kav"],
-  ["\u062A\u064F\u0646\u0652", "t\xFCn"],
-  ["\u0630\u0650\u0631\u0652", "zir"],
-  ["\u0630\u064E\u0631\u0652", "zer"],
-  ["\u0627\u064E\u0641\u0652", "ef"]
+  ["\u0647\u064F\u0645\u0652", "h\xFCm", 3],
+  // 2.577
+  ["\u0645\u0650\u0646\u0652", "min", 3],
+  // 2.281
+  ["\u0644\u064E\u064A\u0652", "ley", 3],
+  // 1.224
+  ["\u0647\u0650\u0645\u0652", "him", 3],
+  //   919
+  ["\u0645\u064E\u0646\u0652", "men", 3],
+  //   837
+  ["\u0628\u0650\u0644\u0652", "bil", 3],
+  //   585 — harf-i tarif okuyuşu (bi + el → bil)
+  ["\u0642\u064E\u0648\u0652", "kav", 3],
+  //   509
+  ["\u064A\u064E\u0639\u0652", "ye'", 3],
+  //   403
+  ["\u0642\u064E\u062F\u0652", "kad", 2],
+  //   398
+  ["\u0644\u064E\u0645\u0652", "lem", 2],
+  //   385
+  ["\u0642\u064F\u0644\u0652", "kul", 2],
+  //   350
+  ["\u0643\u064F\u0646\u0652", "k\xFCn", 2],
+  //   329
+  ["\u0642\u064E\u0628\u0652", "kab", 2],
+  //   248
+  ["\u064A\u064E\u0633\u0652", "yes", 2]
+  //   237
 ];
 var t4_cezm = {
   id: "cezm",
@@ -364,39 +364,47 @@ var t4_cezm = {
         };
       });
     }),
-    ...CEZM_EKSTRA.map(([ar, sp], i) => ({
-      id: `l4x-${pad2(i + 1)}`,
+    ...CEZM_EKSTRA.map(([ar, sp, w], i) => ({
+      id: `l4e-${pad2(i + 1)}`,
       label: sp,
       speech: sp.replace(/'/g, ""),
       lang: "tr",
       emoji: ar,
       translit: sp,
-      section: "Ekstralar"
+      section: "Ekstralar",
+      weight: w
     }))
   ]
 };
 var SEDDE_EKSTRA = [
-  ["\u0632\u064E\u064A\u064E\u0651", "zeyye"],
-  ["\u0639\u064E\u0644\u064E\u0651", "alle"],
-  ["\u062D\u064E\u0642\u064F\u0651", "hakku"],
-  ["\u0643\u064F\u0644\u064F\u0651", "k\xFCll\xFC"],
-  ["\u0646\u064E\u0632\u064E\u0651", "nezze"],
-  ["\u0638\u064F\u0646\u064F\u0651", "zunn\xFC"],
-  ["\u0633\u064E\u0628\u0650\u0651", "sebbi"],
-  ["\u062C\u064E\u0646\u064E\u0651", "cenne"],
-  ["\u0645\u064F\u062F\u064E\u0651", "m\xFCdde"],
-  ["\u0647\u064E\u0646\u064E\u0651", "henne"],
-  ["\u0641\u064E\u0635\u064E\u0651", "fassa"],
-  ["\u0634\u064E\u0631\u0650\u0651", "\u015Ferri"],
-  ["\u0641\u064F\u0635\u0650\u0651", "fuss\u0131"],
-  ["\u0627\u0650\u062A\u064E\u0651", "itte"],
-  ["\u0628\u064E\u0634\u0650\u0651", "be\u015F\u015Fi"],
-  ["\u0648\u064E\u062C\u064E\u0651", "vecce"],
-  ["\u0648\u064E\u0643\u064E\u0651", "vekke"],
-  ["\u0643\u064E\u0630\u0650\u0651", "kezzi"],
-  ["\u0628\u064E\u064A\u0650\u0651", "beyyi"],
-  ["\u0646\u064E\u0628\u0650\u0651", "nebbi"],
-  ["\u0644\u064E\u0646\u064E\u0651", "lenne"]
+  ["\u0627\u0650\u0646\u064E\u0651", "inne", 3],
+  // 1.513 — Kur'an'ın en sık şeddeli hecesi
+  ["\u0627\u0650\u0644\u064E\u0651", "ille", 3],
+  //   665
+  ["\u0631\u064E\u0628\u0650\u0651", "rabbi", 3],
+  //   609
+  ["\u0627\u064E\u0646\u064E\u0651", "enne", 3],
+  //   408
+  ["\u062B\u064F\u0645\u064E\u0651", "s\xFCmme", 2],
+  //   338
+  ["\u0631\u064E\u0628\u064E\u0651", "rabbe", 2],
+  //   210
+  ["\u0643\u064F\u0644\u0650\u0651", "k\xFClli", 2],
+  //   192
+  ["\u0627\u064E\u064A\u064F\u0651", "eyy\xFC", 2],
+  //   172
+  ["\u0631\u064E\u0628\u064F\u0651", "rabb\xFC", 2],
+  //   171
+  ["\u0644\u064E\u0645\u064E\u0651", "lemme", 2],
+  //   165
+  ["\u0645\u0650\u0645\u064E\u0651", "mimme", 2],
+  //   159
+  ["\u0639\u064E\u0644\u064E\u0651", "alle", 2],
+  //   153
+  ["\u0627\u0650\u0646\u0650\u0651", "inni", 2],
+  //   151
+  ["\u062D\u064E\u062A\u064E\u0651", "hatte", 1]
+  //   142
 ];
 var t5_sedde = {
   id: "sedde",
@@ -430,38 +438,47 @@ var t5_sedde = {
         };
       });
     }),
-    ...SEDDE_EKSTRA.map(([ar, sp], i) => ({
-      id: `l5x-${pad2(i + 1)}`,
+    ...SEDDE_EKSTRA.map(([ar, sp, w], i) => ({
+      id: `l5e-${pad2(i + 1)}`,
       label: sp,
       speech: sp,
       lang: "tr",
       emoji: ar,
       translit: sp,
-      section: "Ekstralar"
+      section: "Ekstralar",
+      weight: w
     }))
   ]
 };
 var MED_EKSTRA = [
-  ["\u0642\u064E\u0627", "k\xE2"],
-  ["\u0643\u064E\u0627", "k\xE2"],
-  ["\u0648\u064E\u0627", "v\xE2"],
-  ["\u0636\u064E\u0627", "d\xE2"],
-  ["\u0645\u064E\u0627", "m\xE2"],
-  ["\u062E\u0650\u0649", "h\xEE"],
-  ["\u062F\u0650\u0649", "d\xEE"],
-  ["\u0638\u0650\u0649", "z\xEE"],
-  ["\u0645\u0650\u0649", "m\xEE"],
-  ["\u0642\u0650\u0649", "k\xEE"],
-  ["\u0637\u0650\u0649", "t\xEE"],
-  ["\u0646\u0650\u0649", "n\xEE"],
-  ["\u0644\u064F\u0648", "l\xFB"],
-  ["\u0643\u064F\u0648", "k\xFB"],
-  ["\u0646\u064F\u0648", "n\xFB"],
-  ["\u0639\u064F\u0648", "\xFB"],
-  ["\u0633\u064F\u0648", "s\xFB"],
-  ["\u0645\u064F\u0648", "m\xFB"],
-  ["\u0631\u064F\u0648", "r\xFB"],
-  ["\u062F\u064F\u0648", "d\xFB"]
+  ["\u0644\u064E\u0627", "l\xE2", 3],
+  // 4.019
+  ["\u0645\u064E\u0627", "m\xE2", 3],
+  // 3.890
+  ["\u0646\u064E\u0627", "n\xE2", 3],
+  // 3.351
+  ["\u0648\u064E\u0627", "v\xE2", 3],
+  // 2.641
+  ["\u0622", "\xE2", 3],
+  // 2.244 — medli elif (uzatmalı hemze)
+  ["\u0647\u064E\u0627", "h\xE2", 3],
+  // 1.956
+  ["\u0641\u0650\u064A", "f\xEE", 3],
+  // 1.794
+  ["\u0644\u064F\u0648", "l\xFB", 3],
+  // 1.563
+  ["\u0630\u0650\u064A", "z\xEE", 3],
+  // 1.470
+  ["\u0647\u064F\u0648", "h\xFB", 3],
+  // 1.338
+  ["\u064A\u064E\u0627", "y\xE2", 3],
+  // 1.185
+  ["\u0631\u064F\u0648", "r\xFB", 3],
+  // 1.184
+  ["\u0646\u064F\u0648", "n\xFB", 3],
+  // 1.097
+  ["\u0647\u0650\u064A", "h\xEE", 3]
+  // 1.091
 ];
 var t6_med = {
   id: "med",
@@ -507,14 +524,15 @@ var t6_med = {
       // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
       section: `${Math.floor(i / 6) + 1}. B\xF6l\xFCm`
     })),
-    ...MED_EKSTRA.map(([ar, sp], i) => ({
-      id: `l6x-${pad2(i + 1)}`,
+    ...MED_EKSTRA.map(([ar, sp, w], i) => ({
+      id: `l6e-${pad2(i + 1)}`,
       label: sp,
       speech: sp,
       lang: "tr",
       emoji: ar,
       translit: sp,
-      section: "Ekstralar"
+      section: "Ekstralar",
+      weight: w
     }))
   ]
 };
@@ -553,9 +571,9 @@ var t8_tenvin = {
       const v = harekeVowels(l.thick);
       const defs = [
         // iki üstün: harf + fethatan + elif (بًا) — elif kendisi yalnız "اً"
-        { suf: "ustun2", glyph: l.n === 1 ? "\u0627\u064B" : `${l.iso}\u064B\u0627`, read: `${l.cons}${v.a}n` },
-        { suf: "esre2", glyph: `${l.iso}\u064D`, read: `${l.cons}${v.i}n` },
-        { suf: "otre2", glyph: `${l.iso}\u064C`, read: `${l.cons}${v.u}n` }
+        { suf: "ustun2", file: "fetha", glyph: l.n === 1 ? "\u0627\u064B" : `${l.iso}\u064B\u0627`, read: `${l.cons}${v.a}n` },
+        { suf: "esre2", file: "esre", glyph: `${l.iso}\u064D`, read: `${l.cons}${v.i}n` },
+        { suf: "otre2", file: "otre", glyph: `${l.iso}\u064C`, read: `${l.cons}${v.u}n` }
       ];
       return defs.map((d) => ({
         id: `l8-${pad2(l.n)}-${d.suf}`,
@@ -564,6 +582,7 @@ var t8_tenvin = {
         lang: "tr",
         emoji: d.glyph,
         translit: d.read,
+        audio: audioPath(`tenvin-${pad2(l.n)}-${d.file}.mp3`),
         section: bolum(l.n)
       }));
     }),

@@ -15,7 +15,7 @@ import { clearLocalProgress, hydrateSrsFromCloud } from "@/data/srs";
 import { ConfirmDestructive } from "@/components/ConfirmDestructive";
 import { toast } from "sonner";
 import { useTestUnlock, tryUnlockWithCode } from "@/lib/testUnlock";
-import { KeyRound, Users } from "lucide-react";
+import { KeyRound, Users, Ruler } from "lucide-react";
 import { useStudents, addStudent, removeStudent, switchStudent } from "@/lib/students";
 
 
@@ -92,6 +92,18 @@ const Settings = () => {
             <div className="flex-1">
               <div className="text-base font-extrabold text-shadow-soft">Veli Paneli</div>
               <div className="text-[11px] font-semibold opacity-90">Çocuğunuz bugün ne öğrendi? Günlük özet →</div>
+            </div>
+          </Link>
+
+          {/* Ölçüm Modu — çocuk hangi harf hallerini önceden biliyor? */}
+          <Link
+            to="/olcum"
+            className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-warning to-topic-pink p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
+          >
+            <Ruler className="h-8 w-8 shrink-0" />
+            <div className="flex-1">
+              <div className="text-base font-extrabold text-shadow-soft">📏 Ölçüm Modu</div>
+              <div className="text-[11px] font-semibold opacity-90">Başta/ortada/sonda hallerinden hangilerini zaten biliyor? →</div>
             </div>
           </Link>
 

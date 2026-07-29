@@ -11,6 +11,7 @@ import Games from "./pages/Games.tsx";
 import Game from "./pages/Game.tsx";
 import Progress from "./pages/Progress.tsx";
 import Settings from "./pages/Settings.tsx";
+import Olcum from "./pages/Olcum.tsx";
 import Ezber from "./pages/Ezber.tsx";
 import EzberCalis from "./pages/EzberCalis.tsx";
 import Bahce from "./pages/Bahce.tsx";
@@ -65,6 +66,7 @@ const AppShell = () => {
               <Route path="/veli" element={<Veli />} />
               <Route path="/ilerleme" element={<Progress />} />
               <Route path="/ayarlar" element={<Settings />} />
+              <Route path="/olcum" element={<Olcum />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/gizlilik" element={<PrivacyPolicy />} />
