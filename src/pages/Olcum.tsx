@@ -127,11 +127,17 @@ export default function Olcum() {
               <div className="text-[11px] font-extrabold uppercase text-muted-foreground">
                 Sıradaki harf
               </div>
-              <div
-                className={cn(ARABIC_FONT, "text-[9rem] leading-[1.5] text-foreground select-none")}
-                dir="rtl"
-              >
-                {current.emoji}
+              {/* Sabit yükseklikli kutu: harfin altındaki "Doğru okunuş" düğmesiyle
+                  arası HER zaman aynı kalsın — derin çanaklı/kuyruklu harfler
+                  (ayın sonda ﻊ gibi) glife göre değişen leading yüzünden
+                  düğmeye çok yaklaşmasın diye glif değil, kutu boyutlandırır. */}
+              <div className="flex h-44 w-full items-center justify-center overflow-visible">
+                <div
+                  className={cn(ARABIC_FONT, "text-[9rem] leading-[1.5] text-foreground select-none")}
+                  dir="rtl"
+                >
+                  {current.emoji}
+                </div>
               </div>
               {/* Not: Harfin Türkçe adı gösterilmez — çocuk cevabı görmeden okumalı.
                   Veli, "Doğru okunuş" düğmesiyle kontrol edebilir. */}
