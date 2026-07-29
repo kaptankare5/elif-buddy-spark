@@ -24,7 +24,8 @@ import { SkipTest } from "@/components/SkipTest";
 import { LevelBadge } from "@/components/LevelBadge";
 import { BuddyWithBubble } from "@/components/Buddy";
 import { pickDistractors } from "@/lib/confusables";
-import { Rocket } from "lucide-react";
+import { Rocket, Brain } from "lucide-react";
+import { STABLE_GROUP, TAIL_RULES, HAREKE_MNEMONICS } from "@/data/writingMnemonics";
 
 // Mim'in test tepkileri — kısa, sıcak, çeşitli (soruya göre deterministik seçilir)
 const PRAISE = ["Maşallah, bildin! 🌟", "Harikasın!", "Aferin sana! 👏", "Süpersin, devam!", "İşte bu! ⭐"];
@@ -238,23 +239,11 @@ const Topic = () => {
             )}
           </div>
 
-          {/* Yazılış konusunda: önce HAFIZA YÖNTEMİNİ öğren (ezber yerine kural).
-              84 şekli tek tek ezberlemek yerine 3 yapısal kuralı öğrenmek hem
-              hızlı hem kalıcı — alıştırmadan ÖNCE gösterilir. */}
-          {topic.id === "yazilislar" && (
-            <Link
-              to="/yazilis-hafiza"
-              className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-warning to-topic-pink p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
-            >
-              <span className="text-3xl" aria-hidden>🧠</span>
-              <div className="flex-1">
-                <div className="text-base font-extrabold text-shadow-soft">Hafıza Yöntemi</div>
-                <div className="text-[11px] font-semibold opacity-95">
-                  Ezberleme, kuralı öğren! Kuyruk silme + nokta yöntemi — animasyonlu →
-                </div>
-              </div>
-            </Link>
-          )}
+          {/* Hafıza yöntemi ÖNİZLEMESİ — konudan hiç çıkmadan da görünür olsun
+              diye (kullanıcı isteği: "konuya girip çıkarsa da hafıza yöntemi
+              görünsün"). Gerçek glifler burada, tam anlatım /yazilis-hafiza'da. */}
+          {topic.id === "yazilislar" && <YazilisHafizaPreview />}
+          {topic.id === "harekeler" && <HarekeHafizaPreview />}
 
           {/* Alıştırma yap — sayfanın üstünde, hemen erişilebilir */}
           {!topic.noPractice && (
@@ -509,6 +498,72 @@ function PracticeCard({ to, onClick, icon, label, color }: { to: string; onClick
   const cls = `flex flex-col items-center justify-center gap-1 rounded-2xl bg-gradient-to-br ${color} p-3 text-white shadow-soft transition-bouncy hover:-translate-y-0.5`;
   if (onClick) return <button onClick={onClick} className={cls}>{icon}<span className="text-xs font-extrabold">{label}</span></button>;
   return <Link to={to} className={cls}>{icon}<span className="text-xs font-extrabold">{label}</span></Link>;
+}
+
+// Hafıza yöntemi ÖNİZLEMELERİ — konu sayfasından hiç çıkmadan gerçek içerik
+// görünsün diye (yalnız ayrı sayfaya link değil). Diyanet/veli konuya girip
+// çıksa bile yöntemin var olduğunu, çalıştığını görür.
+function YazilisHafizaPreview() {
+  const cim = TAIL_RULES[0];
+  return (
+    <div className="mb-4 overflow-hidden rounded-2xl border-2 border-warning/40 bg-card shadow-card">
+      <div className="flex items-center gap-2 bg-gradient-to-r from-warning to-topic-pink px-4 py-2.5 text-white">
+        <Brain className="h-5 w-5 shrink-0" />
+        <span className="text-sm font-extrabold text-shadow-soft">Hafıza Yöntemi — ezberleme, kuralı öğren</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 p-3">
+        {/* 1) Değişmeyen harf örneği */}
+        <div className="flex flex-col items-center gap-1 rounded-xl bg-success/10 p-2 text-center">
+          <span className="font-arabic text-2xl leading-[1.6] text-emerald-900" dir="rtl">{STABLE_GROUP.letters[1].iso}</span>
+          <span className="text-[9px] font-extrabold leading-tight text-success">6 harf hep aynı</span>
+        </div>
+        {/* 2) Kuyruk silme örneği */}
+        <div className="flex flex-col items-center gap-1 rounded-xl bg-primary/10 p-2 text-center">
+          <span className="flex items-center gap-1 font-arabic text-xl leading-[1.6] text-emerald-900" dir="rtl">
+            {cim.iso}<span className="text-[10px]" aria-hidden>✂️</span>{cim.init}
+          </span>
+          <span className="text-[9px] font-extrabold leading-tight text-primary">kuyruk sil</span>
+        </div>
+        {/* 3) Nokta yöntemi örneği */}
+        <div className="flex flex-col items-center gap-1 rounded-xl bg-warning/10 p-2 text-center">
+          <span className="font-arabic text-xl leading-[1.6] text-emerald-900" dir="rtl">ب ت ث</span>
+          <span className="text-[9px] font-extrabold leading-tight text-warning">nokta = fark</span>
+        </div>
+      </div>
+      <Link
+        to="/yazilis-hafiza"
+        className="flex items-center justify-center gap-1.5 border-t border-border/60 bg-muted/40 py-2 text-xs font-extrabold text-primary"
+      >
+        Animasyonlu tam anlatımı gör →
+      </Link>
+    </div>
+  );
+}
+
+function HarekeHafizaPreview() {
+  return (
+    <div className="mb-4 overflow-hidden rounded-2xl border-2 border-info/40 bg-card shadow-card">
+      <div className="flex items-center gap-2 bg-gradient-to-r from-info to-primary px-4 py-2.5 text-white">
+        <Brain className="h-5 w-5 shrink-0" />
+        <span className="text-sm font-extrabold text-shadow-soft">Hafıza Yöntemi — adı ipucu veriyor</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 p-3">
+        {HAREKE_MNEMONICS.map((m) => (
+          <div key={m.id} className="flex flex-col items-center gap-1 rounded-xl bg-info/10 p-2 text-center">
+            <span className="font-arabic text-2xl leading-none text-primary">{m.onLetter}</span>
+            <span className="text-[10px] font-extrabold leading-tight text-foreground">{m.name}</span>
+            <span className="text-[9px] font-bold leading-tight text-info">{m.position}</span>
+          </div>
+        ))}
+      </div>
+      <Link
+        to="/yazilis-hafiza#hareke"
+        className="flex items-center justify-center gap-1.5 border-t border-border/60 bg-muted/40 py-2 text-xs font-extrabold text-primary"
+      >
+        Animasyonlu tam anlatımı gör →
+      </Link>
+    </div>
+  );
 }
 
 export default Topic;
