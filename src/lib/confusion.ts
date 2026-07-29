@@ -251,10 +251,26 @@ export function pickDistractors(pool: ContentItem[], target: ContentItem, count 
     else rest.push(it);
   }
   hot.sort((a, b) => heatBetween(target.id, b.id) - heatBetween(target.id, a.id));
-  // a-priori grubun içinde aynı ekli/hâlli olanlar önce → yalnız harf farkı kalır
-  const baseSame = shuffle(base.filter((it) => sameSuffix(target.id, it.id)));
-  const baseOther = shuffle(base.filter((it) => !sameSuffix(target.id, it.id)));
-  return [...hot, ...baseSame, ...baseOther, ...shuffle(rest)].slice(0, count);
+
+  // A-priori grup İKİ EKSENE ayrılır ve dönüşümlü harmanlanır:
+  //  • aynı HARFİN başka hâli (جـ ↔ ـجـ) → FORM ayrımı,
+  //  • aynı hâlde başka HARF (جـ ↔ حـ)  → HARF ayrımı (yalnız nokta farkı).
+  // Yalnız biri kullanılsaydı "Yazılışlar" konusunda çocuk hiç form ayrımı
+  // çalışmazdı; harmanlama ikisini de her soruda masaya koyar.
+  const tn = letterNumOf(target.id);
+  const sameLetterForm = shuffle(base.filter((it) => letterNumOf(it.id) === tn));
+  const sameSufOther = shuffle(base.filter(
+    (it) => letterNumOf(it.id) !== tn && sameSuffix(target.id, it.id),
+  ));
+  const otherConf = shuffle(base.filter(
+    (it) => letterNumOf(it.id) !== tn && !sameSuffix(target.id, it.id),
+  ));
+  const blended: ContentItem[] = [];
+  for (let i = 0; i < Math.max(sameLetterForm.length, sameSufOther.length); i++) {
+    if (sameLetterForm[i]) blended.push(sameLetterForm[i]);
+    if (sameSufOther[i]) blended.push(sameSufOther[i]);
+  }
+  return [...hot, ...blended, ...otherConf, ...shuffle(rest)].slice(0, count);
 }
 
 /**

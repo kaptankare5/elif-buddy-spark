@@ -13,6 +13,7 @@ import { getTopicSrs, pickNextLetterFromTopic, recordSrsAnswer, type Level, type
 import { findTopicOfItem } from "@/data/subjects";
 import { getGameMode } from "@/lib/gameMode";
 import { recordConfusionPick, recordDiscrimination, recordMiss } from "@/lib/confusion";
+import { considerRemedy, queueRemedy } from "@/lib/remedial";
 import type { ContentItem } from "@/data/types";
 
 const NS = "quiz" as const;
@@ -75,6 +76,8 @@ function recordConfusionSignal(
     } else {
       recordMiss(targetId);
     }
+    // TELAFİ: oyunun ORTASINDA açılmaz — kuyruğa alınır, oyun bitince çıkar.
+    if (!correct) queueRemedy(considerRemedy(targetId, chosenId));
   } catch { /* ölçüm oyunu bozmasın */ }
 }
 

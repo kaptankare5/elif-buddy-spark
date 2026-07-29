@@ -7,6 +7,7 @@ import { Volume2, Sprout } from "lucide-react";
 import { Link } from "react-router-dom";
 import { gardenTease } from "@/lib/sessionEnd";
 import { gamePool, shuffle, pickWrongs } from "./_shared";
+import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 
@@ -58,6 +59,8 @@ const QuizGame = () => {
   };
 
   const ended = time <= 0;
+  // Süre dolunca bekleyen telafi açılır
+  useRemedyOnGameOver(ended);
   const reset = () => { setScore(0); setTime(60); setQ(makeQ()); setPicked(null); };
 
   return (
