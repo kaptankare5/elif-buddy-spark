@@ -22,10 +22,18 @@
 // gövde (çekiç kolları, sarkaçlar, 6 yarışmacı, çarpışmalar). Bunları React
 // ağacına bağlamak her kare için gereksiz reconcile demek olurdu; sahne bir kez
 // kurulur, döngü imperative çalışır, React yalnız HUD'u çizer.
+//
+// ⚠️ EKSEN KURALI — YARIŞ -Z YÖNÜNDE KOŞULUR:
+// Oyun MANTIĞINDA ilerleme `z` 0'dan TRACK_LEN'e ARTAR, ama sahneye
+// yerleştirirken hep `wz(z) = -z` kullanılır. Sebep: kamerayı +Z'ye baktırmak
+// (yani parkuru +Z'de kurmak) three.js'te görüntüyü AYNALAR — harfler ters
+// okunur ve "sağ" tuşu ekranda sola gider. -Z yönü three.js'in varsayılan
+// bakış yönü olduğu için hem harfler düz çıkar hem sağ/sol doğru olur.
+// Yeni bir nesne eklerken konumu `wz(z)` ile ver; z'yi ham koyma.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
-import { ArrowLeft, ArrowRight, Volume2, Maximize2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Volume2, Maximize2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
@@ -33,10 +41,13 @@ import { useRemedyOnGameOver } from "@/lib/remedial";
 import { playItem, playFeedback, playSfx } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
+import { isTestUnlockActive } from "@/lib/testUnlock";
 import type { ContentItem } from "@/data/types";
 
+/** Mantıksal ilerleme (artan) → sahne koordinatı (-Z). Yukarıdaki eksen notu. */
+const wz = (z: number) => -z;
+
 // ---- parkur sabitleri (birim ≈ 1 metre) ----
-const TRACK_LEN = 470;         // uzun parkur: kapılar arasına bol engel sığsın
 const ROAD_HALF = 9;           // geniş yol — engeller büyüdü, kaçacak yer lazım
 const BASE_SPEED = 11.5;       // birim/sn
 const BOOST_SPEED = 17;
@@ -44,16 +55,73 @@ const MUD_SPEED = 4.6;
 const HIT_SPEED = 3.2;         // çekiç yedikten sonraki toparlanma hızı
 const STEER = 8.5;             // yana hız
 const GRAVITY = 30;
-const JUMP_V = 12.4;           // tepe ≈ 2.6 birim — çubuk için rahat pay
-const JUMP_CLEAR = 1.5;        // bu yükseklikten sonra dönen çubuk değmez
+// Zıplama artık gerçek bir kaçış aracı: normal zıplama da "süper" yükseklikte
+// (tepe ≈ 4.3 birim → sarkaç topunun ve çekicin üstünden geçilebilir),
+// ⭐ kozu ise ondan çok daha yükseğe (tepe ≈ 13 birim) fırlatır.
+const JUMP_V = 16;
+const SUPER_JUMP_MUL = 1.75;
+const JUMP_CLEAR = 1.5;        // dönen çubuk bu yükseklikten sonra değmez
+const HAMMER_CLEAR = 4.4;      // çekiç kafasının üstü
+const PEND_CLEAR = 4.2;        // sarkaç topunun üstü
+const ROLLER_CLEAR = 2.4;      // silindirin üstü
 const BOOST_TIME = 3.5;
 const MUD_TIME = 1.8;
 const NET_TIME = 2.2;
 const HIT_TIME = 1.0;          // takla süresi
-const SUPER_JUMP_MUL = 1.45;   // ⭐ kozu: daha yükseğe
 const RACERS = 6;
 const DT_MAX = 0.05;
-const FINISH_Z = TRACK_LEN;
+
+// Soru kapısının ÖNÜNDE ve ARKASINDA engelsiz "nefes alma" payı. Kapı hemen
+// bir engelin ardından gelince çocuk hem çekiçten kaçmaya hem harfi seçmeye
+// çalışıyor, ikisini de kaçırıyordu (kullanıcı şartı: "biraz dinlenelim").
+const GATE_CLEAR = 40;
+
+// ================= bölümler =================
+// 10 bölüm, giderek zorlaşır. Her bölüm bir "reçete": hangi engel tipleri,
+// ne sıklıkta, ne hızda, kaç soru kapısı. Engeller reçeteden PROSEDÜREL
+// yerleştirilir (elle 200 satır koordinat yazmak yerine) — bölüm eklemek
+// tabloya bir satır yazmaktır.
+type ObsKind = "hammer" | "pendulum" | "spinner" | "roller" | "mud";
+
+interface LevelDef {
+  name: string;
+  len: number;          // parkur uzunluğu
+  gates: number;        // soru kapısı sayısı
+  kinds: ObsKind[];     // sırayla dizilecek engel tipleri
+  gap: number;          // engeller arası mesafe
+  speed: number;        // engel hız çarpanı
+  botSkill: [number, number];
+}
+
+const LEVELS: LevelDef[] = [
+  { name: "Isınma Turu",     len: 300, gates: 2, kinds: ["mud", "spinner"],                                  gap: 46, speed: 0.8, botSkill: [0.40, 0.62] },
+  { name: "Çekiç Tarlası",   len: 340, gates: 2, kinds: ["hammer", "mud", "hammer", "spinner"],               gap: 44, speed: 0.9, botSkill: [0.45, 0.66] },
+  { name: "Sallanan Toplar", len: 360, gates: 3, kinds: ["pendulum", "spinner", "pendulum", "mud"],           gap: 42, speed: 0.95, botSkill: [0.48, 0.70] },
+  { name: "Yuvarlananlar",   len: 380, gates: 3, kinds: ["roller", "spinner", "roller", "mud"],               gap: 42, speed: 1.0, botSkill: [0.50, 0.72] },
+  { name: "Karışık Parti",   len: 400, gates: 3, kinds: ["hammer", "pendulum", "spinner", "roller", "mud"],   gap: 40, speed: 1.05, botSkill: [0.52, 0.74] },
+  { name: "Hızlı Çekiçler",  len: 420, gates: 3, kinds: ["hammer", "hammer", "spinner", "mud"],               gap: 38, speed: 1.3, botSkill: [0.55, 0.76] },
+  { name: "Dar Geçit",       len: 440, gates: 4, kinds: ["roller", "spinner", "pendulum", "spinner"],         gap: 36, speed: 1.25, botSkill: [0.57, 0.78] },
+  { name: "Zıpla Zıpla",     len: 460, gates: 4, kinds: ["spinner", "spinner", "hammer", "mud", "spinner"],   gap: 34, speed: 1.35, botSkill: [0.58, 0.80] },
+  { name: "Fırtına",         len: 490, gates: 4, kinds: ["hammer", "pendulum", "roller", "spinner", "hammer"],gap: 33, speed: 1.45, botSkill: [0.60, 0.82] },
+  { name: "Büyük Final 👑",  len: 540, gates: 5, kinds: ["hammer", "pendulum", "spinner", "roller", "hammer", "mud", "spinner"], gap: 31, speed: 1.6, botSkill: [0.62, 0.85] },
+];
+const LEVEL_COUNT = LEVELS.length;
+
+// Bölüm ilerlemesi — cihazda saklanır. Ayarlar'daki test kilidi (kod 1234)
+// uygulamada her şeyi açar; bölüm seçici de ona uyar.
+const PROGRESS_KEY = "elifba-party-progress-v1";
+function getUnlockedLevel(): number {
+  if (isTestUnlockActive()) return LEVEL_COUNT;
+  try {
+    const n = parseInt(localStorage.getItem(PROGRESS_KEY) || "1", 10);
+    return Math.min(LEVEL_COUNT, Math.max(1, isNaN(n) ? 1 : n));
+  } catch { return 1; }
+}
+function unlockLevel(n: number) {
+  try {
+    if (n > getUnlockedLevel()) localStorage.setItem(PROGRESS_KEY, String(Math.min(LEVEL_COUNT, n)));
+  } catch { /* ignore */ }
+}
 
 const BOT_NAMES = ["Zeynep", "Yusuf", "Ayşe", "Ömer", "Elif"];
 const BOT_COLORS = [0xf59e0b, 0xef4444, 0x8b5cf6, 0x06b6d4, 0xec4899];
@@ -158,7 +226,7 @@ function nameTexture(name: string, color: string): THREE.CanvasTexture {
 }
 
 // ================= tipler =================
-type Phase = "intro" | "race" | "finish";
+type Phase = "levels" | "race" | "finish";
 
 /** Parkur engelleri — hepsi z ekseninde sıralı, çarpışması basit geometri */
 type Obstacle =
@@ -213,7 +281,9 @@ const PartyGame = () => {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [phase, setPhase] = useState<Phase>("intro");
+  const [phase, setPhase] = useState<Phase>("levels");
+  const [level, setLevel] = useState(1);              // oynanan bölüm (1..10)
+  const [unlocked, setUnlocked] = useState(() => getUnlockedLevel());
   const [hud, setHud] = useState({ place: 1, pct: 0, nets: 0, jumps: 0, correct: 0, wrong: 0 });
   const [prompt, setPrompt] = useState<ContentItem | null>(null);
   const [flash, setFlash] = useState<{ k: number; text: string; good: boolean } | null>(null);
@@ -241,7 +311,8 @@ const PartyGame = () => {
     setTimeout(() => setFlash(null), 1200);
   };
 
-  const start = useCallback(() => {
+  const start = useCallback((lv: number) => {
+    setLevel(lv);
     setRaceKey((k) => k + 1);
     setResult(null);
     setPrompt(null);
@@ -276,13 +347,17 @@ const PartyGame = () => {
     const disposables: { dispose(): void }[] = [];
     const track = <T extends THREE.BufferGeometry | THREE.Material>(x: T): T => { disposables.push(x); return x; };
 
+    const def = LEVELS[Math.min(LEVELS.length, Math.max(1, level)) - 1];
+    const TRACK_LEN = def.len;
+    const FINISH_Z = TRACK_LEN;
+
     // ---------- yol ----------
     // Fall Guys pastel şeritleri: her 20 birimde renk değişir → hız hissi.
     const roadGeo = track(new THREE.BoxGeometry(ROAD_HALF * 2, 1, 20));
     const STRIPES = [0xffd6ec, 0xd9f7ff, 0xfff2c9, 0xd8ffe6];
     for (let i = 0; i < Math.ceil((TRACK_LEN + 60) / 20); i++) {
       const m = new THREE.Mesh(roadGeo, track(new THREE.MeshLambertMaterial({ color: STRIPES[i % STRIPES.length] })));
-      m.position.set(0, -0.5, -20 + i * 20 + 10);
+      m.position.set(0, -0.5, wz(-20 + i * 20 + 10));
       scene.add(m);
     }
     // yumuşak kenar duvarları (çocuk yoldan düşmez — Fall Guys'taki şişme bariyer)
@@ -290,7 +365,7 @@ const PartyGame = () => {
     const wallMat = track(new THREE.MeshLambertMaterial({ color: 0xff8fc4 }));
     for (const s of [-1, 1]) {
       const w = new THREE.Mesh(wallGeo, wallMat);
-      w.position.set(s * (ROAD_HALF + 0.45), 0.4, TRACK_LEN / 2 - 10);
+      w.position.set(s * (ROAD_HALF + 0.45), 0.4, wz(TRACK_LEN / 2 - 10));
       scene.add(w);
     }
 
@@ -310,12 +385,12 @@ const PartyGame = () => {
         const k = Math.floor(z / 16) % BALLOON_COLORS.length;
         const b = new THREE.Mesh(balloonGeo, balloonMats[(k + (s > 0 ? 2 : 0)) % balloonMats.length]);
         const base = 6.5 + ((z / 16) % 3) * 1.1;
-        b.position.set(s * BAL_X, base, z);
+        b.position.set(s * BAL_X, base, wz(z));
         b.scale.y = 1.25;
         scene.add(b);
         decor.push({ mesh: b, base, ph: z * 0.7 });
         const str = new THREE.Mesh(track(new THREE.CylinderGeometry(0.04, 0.04, base, 6)), stringMat);
-        str.position.set(s * BAL_X, base / 2, z);
+        str.position.set(s * BAL_X, base / 2, wz(z));
         scene.add(str);
       }
     }
@@ -324,7 +399,7 @@ const PartyGame = () => {
     const hillMat = track(new THREE.MeshLambertMaterial({ color: 0xbbf7d0 }));
     for (let i = 0; i < 10; i++) {
       const hMesh = new THREE.Mesh(hillGeo, hillMat);
-      hMesh.position.set((i % 2 ? -1 : 1) * (24 + (i % 3) * 9), -7, 30 + i * 34);
+      hMesh.position.set((i % 2 ? -1 : 1) * (24 + (i % 3) * 9), -7, wz(30 + i * 34));
       hMesh.scale.set(1, 0.55 + (i % 3) * 0.15, 1);
       scene.add(hMesh);
     }
@@ -348,10 +423,10 @@ const PartyGame = () => {
       // Direk SABİTTİR — pivotun çocuğu olursa çekiçle birlikte döner ve
       // ekranın ortasında dönen dev bir sütun gibi görünür.
       const post = new THREE.Mesh(postGeo, matPost);
-      post.position.set(x, 2.3, z);
+      post.position.set(x, 2.3, wz(z));
       scene.add(post);
       const pivot = new THREE.Group();
-      pivot.position.set(x, 2.6, z);
+      pivot.position.set(x, 2.6, wz(z));
       const arm = new THREE.Mesh(hammerArmGeo, matPost);
       arm.position.set(0, 0, 3.5);
       pivot.add(arm);
@@ -373,7 +448,7 @@ const PartyGame = () => {
     };
     const addPendulum = (z: number, x: number, sp: number, amp: number, t0: number) => {
       const pivot = new THREE.Group();
-      pivot.position.set(x, 8.4, z);
+      pivot.position.set(x, 8.4, wz(z));
       const rope = new THREE.Mesh(track(new THREE.CylinderGeometry(0.11, 0.11, 6.4, 8)), matPost);
       rope.position.y = -3.2;
       pivot.add(rope);
@@ -385,7 +460,7 @@ const PartyGame = () => {
     };
     const addSpinner = (z: number, sp: number, t0: number) => {
       const g = new THREE.Group();
-      g.position.set(0, 0.9, z);
+      g.position.set(0, 0.9, wz(z));
       const bar = new THREE.Mesh(barGeo, matBar);
       g.add(bar);
       const cap = new THREE.Mesh(track(new THREE.CylinderGeometry(0.6, 0.6, 1.8, 12)), matPost);
@@ -397,13 +472,13 @@ const PartyGame = () => {
     const addRoller = (z: number, sp: number, span: number, t0: number) => {
       const m = new THREE.Mesh(rollerGeo, matRoll);
       m.rotation.z = Math.PI / 2;
-      m.position.set(0, 1.1, z);
+      m.position.set(0, 1.1, wz(z));
       scene.add(m);
       obstacles.push({ kind: "roller", z, t: t0, sp, span, body: m });
     };
     const addMud = (z: number, x: number, w: number, d: number) => {
       const m = new THREE.Mesh(track(new THREE.BoxGeometry(w, 0.14, d)), matMud);
-      m.position.set(x, 0.06, z);
+      m.position.set(x, 0.06, wz(z));
       scene.add(m);
       obstacles.push({ kind: "mud", z, x, w, d });
     };
@@ -423,7 +498,7 @@ const PartyGame = () => {
       const options = shuffle([target, ...wrongs]);
       const panels: THREE.Mesh[] = [];
       const g = new THREE.Group();
-      g.position.z = z;
+      g.position.z = wz(z);
       const top = new THREE.Mesh(gateTopGeo, matFrame);
       top.position.y = 6.6;
       g.add(top);
@@ -447,48 +522,41 @@ const PartyGame = () => {
       gates.push({ z, target, options, done: false, botDone: new Set(), panels, group: g });
     };
 
-    // ---------- parkur dizilimi ----------
-    // Ritim: UZUN engel bölümü → soru kapısı → uzun engel bölümü …
-    // Kapılar seyrek (≈110 birim ≈ 10 sn arayla): oyun "sürekli soru soran
-    // test" gibi hissettirmesin, arada bol bol engel oyunu oynansın. Toplam
-    // 4 kapı; SRS ölçümü için yeterli, çocuk için yormayacak kadar az.
-    addHammer(38, -4.0, 1.4, 0);
-    addHammer(56, 3.6, -1.6, 1.1);
-    addSpinner(74, 1.9, 0);
-    addMud(92, -4.2, 7, 7);
-    addRoller(104, 1.5, 7.0, 0);
-    addGate(120);
+    // ---------- parkur dizilimi (bölüm reçetesinden prosedürel) ----------
+    // Ritim: uzun engel bölümü → soru kapısı → uzun engel bölümü …
+    // Kapılar parkuru eşit parçalara böler, ve her kapının ±GATE_CLEAR
+    // kadar çevresine HİÇ engel konmaz — çocuk sesi dinleyip harfi seçerken
+    // aynı anda çekiçten kaçmak zorunda kalmasın (kullanıcı şartı).
+    const gateZs: number[] = [];
+    for (let i = 0; i < def.gates; i++) {
+      gateZs.push(Math.round(70 + ((i + 1) / (def.gates + 1)) * (TRACK_LEN - 110)));
+    }
+    const nearGate = (z: number) => gateZs.some((gz) => Math.abs(gz - z) < GATE_CLEAR);
 
-    addPendulum(140, -4.2, 1.8, 5.6, 0);
-    addPendulum(154, 4.2, -1.6, 5.6, 1.4);
-    addSpinner(170, 2.2, 0.5);
-    addHammer(186, 0, 1.8, 0.6);
-    addMud(202, 4.0, 7.5, 7);
-    addRoller(216, -1.7, 7.4, 1.2);
-    addGate(232);
-
-    addHammer(252, -4.2, 2.0, 0);
-    addHammer(266, 4.2, -2.0, 0.9);
-    addSpinner(282, 2.5, 0.3);
-    addPendulum(298, 0, 2.1, 6.4, 0);
-    addMud(314, -3.0, 7, 7);
-    addRoller(328, 2.0, 7.2, 0);
-    addGate(344);
-
-    addSpinner(364, -2.6, 0.8);
-    addHammer(380, 3.8, 2.2, 0);
-    addPendulum(396, -3.8, 2.3, 6.0, 0);
-    addRoller(412, 1.8, 7.6, 0.4);
-    addGate(428);
-
-    addSpinner(448, 2.8, 0);
+    let ki = 0;
+    for (let z = 34; z < TRACK_LEN - 24; z += def.gap) {
+      if (nearGate(z)) continue;
+      const kind = def.kinds[ki % def.kinds.length];
+      ki++;
+      // Yön/faz çeşitliliği: aynı engel hep aynı taraftan gelmesin
+      const side = ki % 2 ? -1 : 1;
+      const dir = ki % 3 ? 1 : -1;
+      const t0 = (ki * 0.7) % 3;
+      const sp = def.speed;
+      if (kind === "hammer") addHammer(z, side * 4.0, dir * 1.9 * sp, t0);
+      else if (kind === "pendulum") addPendulum(z, side * 4.0, dir * 1.9 * sp, 5.8, t0);
+      else if (kind === "spinner") addSpinner(z, dir * 2.2 * sp, t0);
+      else if (kind === "roller") addRoller(z, dir * 1.7 * sp, 7.2, t0);
+      else addMud(z, side * 3.4, 7, 7);
+    }
+    for (const gz of gateZs) addGate(gz);
 
     obsRef.current = obstacles;
     gatesRef.current = gates;
 
     // ---------- bitiş: taç + damalı çizgi ----------
     const finishG = new THREE.Group();
-    finishG.position.z = FINISH_Z;
+    finishG.position.z = wz(FINISH_Z);
     for (let i = 0; i < 13; i++) {
       const q = new THREE.Mesh(
         track(new THREE.BoxGeometry(ROAD_HALF * 2 / 13, 0.06, 1.4)),
@@ -537,10 +605,12 @@ const PartyGame = () => {
       body.position.y = 1.25;
       const torso = new THREE.Mesh(bodyGeo, mat);
       body.add(torso);
-      // Yüz düzlemi gövdenin DIŞINDA dursun: kapsülün içine gömülünce
-      // arkadan bakıldığında gözler/ağız gövdeden sızıyordu.
+      // Koşu yönü -Z olduğu için yüz de -Z'ye bakar (kamera arkada, +Z'de).
+      // Düzlem gövdenin DIŞINDA durmalı: kapsülün içine gömülünce arkadan
+      // bakıldığında gözler/ağız gövdeden sızıyordu.
       const face = new THREE.Mesh(faceGeo, faceMat);
-      face.position.set(0, 0.28, 0.79);
+      face.position.set(0, 0.28, -0.79);
+      face.rotation.y = Math.PI;
       body.add(face);
       // Alt yarı koyu = "şort": kamera hep ARKADAN baktığı için karakterin
       // sevimliliği yüzden değil siluetten okunmalı (kostüm + şapka + kuyruk).
@@ -556,7 +626,7 @@ const PartyGame = () => {
         track(new THREE.SphereGeometry(0.22, 10, 8)),
         track(new THREE.MeshLambertMaterial({ color: 0xfffbeb })),
       );
-      tail.position.set(0, -0.35, -0.78);
+      tail.position.set(0, -0.35, 0.78);   // kuyruk ARKADA = +Z (koşu yönü -Z)
       body.add(tail);
       // Bere gövdenin tepesine oturur (kapsül üstü ≈ 1.28); kenar bandı ve
       // ponpon kontrast renkte ki arkadan bakınca "kostüm" olarak okunsun.
@@ -595,7 +665,7 @@ const PartyGame = () => {
         l.add(limb);
         const foot = new THREE.Mesh(footGeo, mat);
         foot.scale.set(1, 0.62, 1.35);
-        foot.position.set(0, -0.48, 0.1);
+        foot.position.set(0, -0.48, -0.1);   // ayak ucu ileri = -Z
         l.add(foot);
         group.add(l);
         legs.push(l);
@@ -632,7 +702,7 @@ const PartyGame = () => {
       return {
         id, name, isPlayer, z: 0, x: homeX, y: 0, vy: 0,
         boostT: 0, mudT: 0, netT: 0, hitT: 0,
-        skill: isPlayer ? 1 : 0.55 + Math.random() * 0.3,
+        skill: isPlayer ? 1 : def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0]),
         targetX: homeX, homeX, gateChoice: null, finished: null,
         hop: Math.random() * 6, group, body,
         legs: legs as [THREE.Object3D, THREE.Object3D],
@@ -684,20 +754,25 @@ const PartyGame = () => {
       if (r.isPlayer) { playSfx("stomp"); showFlash("💫 Takla attın!", false); }
     };
 
-    /** Engelin şu anki tehlike merkezleri (dünya koordinatı) */
-    const hazardOf = (o: Obstacle): { x: number; z: number; r: number; low: boolean } | null => {
+    /**
+     * Engelin şu anki tehlike merkezi — MANTIKSAL koordinatta (z artan).
+     * Çekiç kolu sahnede lokal +Z'de duruyor ama sahne -Z'ye kurulu olduğu
+     * için mantıksal z'de İŞARET TERSTİR (`- cos(a)`); `clear` ise engelin
+     * üstünden zıplayarak geçmek için gereken yükseklik.
+     */
+    const hazardOf = (o: Obstacle): { x: number; z: number; r: number; clear: number } | null => {
       if (o.kind === "hammer") {
         const a = o.t * o.sp;
-        return { x: o.x + Math.sin(a) * o.arm, z: o.z + Math.cos(a) * o.arm, r: 2.7, low: false };
+        return { x: o.x + Math.sin(a) * o.arm, z: o.z - Math.cos(a) * o.arm, r: 2.7, clear: HAMMER_CLEAR };
       }
       if (o.kind === "pendulum") {
-        return { x: o.x + Math.sin(o.t * o.sp) * o.amp, z: o.z, r: 2.4, low: false };
+        return { x: o.x + Math.sin(o.t * o.sp) * o.amp, z: o.z, r: 2.4, clear: PEND_CLEAR };
       }
       if (o.kind === "spinner") {
-        return { x: 0, z: o.z, r: 0, low: true };   // bar hep yolu keser → zıpla
+        return { x: 0, z: o.z, r: 0, clear: JUMP_CLEAR };   // çubuk yolu keser → zıpla
       }
       if (o.kind === "roller") {
-        return { x: Math.sin(o.t * o.sp) * o.span, z: o.z, r: 2.3, low: false };
+        return { x: Math.sin(o.t * o.sp) * o.span, z: o.z, r: 2.3, clear: ROLLER_CLEAR };
       }
       return null;
     };
@@ -705,7 +780,9 @@ const PartyGame = () => {
     const collide = (r: Racer, dt: number) => {
       let inMud = false;
       for (const o of obsRef.current) {
-        if (Math.abs(o.z - r.z) > 9) continue;
+        // Kaba eleme: çekiç kolu 6.9 uzunlukta, kafa yarıçapı 2.7 → merkez
+        // mesafesi 12'ye kadar hâlâ değebilir.
+        if (Math.abs(o.z - r.z) > 12) continue;
         if (o.kind === "mud") {
           if (Math.abs(r.x - o.x) < o.w / 2 && Math.abs(r.z - o.z) < o.d / 2 && r.y < 0.5) inMud = true;
           continue;
@@ -717,16 +794,21 @@ const PartyGame = () => {
           // yaklaşık "kutu" testi çubuk çapraz dururken yanlış yerde vuruyordu.
           // Zıplayan (y > JUMP_CLEAR) çocuk temiz geçer — basit, öğretilebilir kural.
           if (r.y >= JUMP_CLEAR) continue;
+          // Çubuk lokal X'te uzanır, rotation.y = a. Sahne -Z'de kurulu
+          // olduğu için mantıksal z bileşeni +sin(a) olur.
           const a = o.t * o.sp;
-          const dxa = Math.cos(a), dza = -Math.sin(a);   // çubuk yön vektörü
+          const dxa = Math.cos(a), dza = Math.sin(a);
           const px = r.x, pz = r.z - o.z;
           const t = Math.max(-o.len, Math.min(o.len, px * dxa + pz * dza));
           const ex = px - t * dxa, ez = pz - t * dza;
           if (ex * ex + ez * ez < 1.15 * 1.15) knock(r, 2.4);
           continue;
         }
+        // Zıplama artık gerçek bir kaçış: her engelin kendi "üstünden geç"
+        // eşiği var (çekiç 4.4, sarkaç 4.2, silindir 2.4).
+        if (r.y >= hz.clear) continue;
         const dx = r.x - hz.x, dz = r.z - hz.z;
-        if (dx * dx + dz * dz < hz.r * hz.r && r.y < 2.2) knock(r, o.kind === "hammer" ? 3.4 : 2.4);
+        if (dx * dx + dz * dz < hz.r * hz.r) knock(r, o.kind === "hammer" ? 3.4 : 2.4);
       }
       if (inMud && r.mudT <= 0) r.mudT = 0.35;   // içindeyken sürekli tazelenir
       void dt;
@@ -750,7 +832,7 @@ const PartyGame = () => {
         if (netCountRef.current > 0 && player.finished === null) {
           netCountRef.current -= 1;
           const mesh = new THREE.Mesh(netGeo, netMat);
-          mesh.position.set(player.x, 1.1, player.z + 1);
+          mesh.position.set(player.x, 1.1, wz(player.z + 1));
           scene.add(mesh);
           netsRef.current.push({ mesh, x: player.x, z: player.z + 1, from: 0 });
           playSfx("coin");
@@ -783,7 +865,7 @@ const PartyGame = () => {
       for (let i = netsRef.current.length - 1; i >= 0; i--) {
         const n = netsRef.current[i];
         n.z += 26 * dt;
-        n.mesh.position.z = n.z;
+        n.mesh.position.z = wz(n.z);
         n.mesh.rotation.x += dt * 8;
         let hit = false;
         for (const r of racers) {
@@ -799,7 +881,7 @@ const PartyGame = () => {
       // --- yarışmacılar ---
       for (const r of racers) {
         if (r.finished !== null) {
-          r.group.position.set(r.x, r.y, r.z);
+          r.group.position.set(r.x, r.y, wz(r.z));
           continue;
         }
         if (r.boostT > 0) r.boostT = Math.max(0, r.boostT - dt);
@@ -867,7 +949,7 @@ const PartyGame = () => {
         collide(r, dt);
 
         // --- karakter animasyonu ---
-        r.group.position.set(r.x, r.y, r.z);
+        r.group.position.set(r.x, r.y, wz(r.z));
         const swing = Math.sin(r.hop);
         if (r.hitT > 0) {
           // takla: tüm gövde döner, kollar bacaklar savrulur
@@ -901,6 +983,10 @@ const PartyGame = () => {
           r.finished = done + 1;
           if (r.isPlayer) {
             ctrlRef.current.running = false;
+            // Bölümü bitirmek sonrakini açar (derece şartı yok — çocuk
+            // sonuncu da olsa parkuru tamamladıysa devam edebilmeli).
+            unlockLevel(level + 1);
+            setUnlocked(getUnlockedLevel());
             setResult({ place: r.finished, correct: statsRef.current.correct, wrong: statsRef.current.wrong });
             setPhase("finish");
             playFeedback(r.finished <= 3);
@@ -959,7 +1045,9 @@ const PartyGame = () => {
       // (StrictMode güncelleyiciyi iki kez çağırır → ses çift çalar).
       const next = gatesRef.current.find((g) => !g.done);
       const d = next ? next.z - player.z : Infinity;
-      const wantId = next && d > 0 && d < 34 ? next.target.id : null;
+      // Kapı GATE_CLEAR kadar önceden engelsiz — ses de o anda çalsın ki
+      // çocuğun dinleyip şerit seçmeye bol vakti olsun.
+      const wantId = next && d > 0 && d < GATE_CLEAR ? next.target.id : null;
       if (wantId !== promptIdRef.current) {
         promptIdRef.current = wantId;
         if (next && wantId) { setPrompt(next.target); playItem(next.target); }
@@ -969,11 +1057,12 @@ const PartyGame = () => {
       // --- kamera: oyuncunun arkasından, yukarıdan, yumuşak takip ---
       // Yakın kamera parkuru görünmez yapıyordu (çekiç direği ekranı kapatıyordu);
       // geride + yüksekte durup ileriye bakınca çocuk engeli GELİRKEN görür.
+      // Kamera oyuncunun ARKASINDA = mantıksal z'de geride = sahnede +Z tarafta.
       camera.position.x += (player.x * 0.5 - camera.position.x) * Math.min(1, dt * 5);
       camera.position.y += ((12.5 + player.y * 0.3) - camera.position.y) * Math.min(1, dt * 5);
-      camera.position.z += ((player.z - 17.5) - camera.position.z) * Math.min(1, dt * 8);
+      camera.position.z += (wz(player.z - 17.5) - camera.position.z) * Math.min(1, dt * 8);
       // Biraz aşağı bakış: yol kadrajı doldursun, ekranın yarısı boş gök olmasın
-      camera.lookAt(player.x * 0.3, 0.6 + player.y * 0.25, player.z + 13);
+      camera.lookAt(player.x * 0.3, 0.6 + player.y * 0.25, wz(player.z + 13));
 
       // dekor: balonlar süzülür, taç döner, oyuncunun oku zıplar
       const tNow = performance.now() * 0.001;
@@ -986,7 +1075,7 @@ const PartyGame = () => {
       }
       // Geride kalan yarışmacı kameranın önüne girip ekranı kapatıyordu:
       // kameraya çok yakın olanı gizle (yarışta hâlâ koşmaya devam eder).
-      for (const r of racers) r.group.visible = r.z > camera.position.z + 5.5;
+      for (const r of racers) r.group.visible = wz(r.z) < camera.position.z - 5.5;
     };
 
     // ---------- döngü ----------
@@ -1033,7 +1122,7 @@ const PartyGame = () => {
       netsRef.current = [];
     };
     // raceKey her "Tekrar Yarış"ta artar → sahne baştan kurulur
-  }, [phase, raceKey]);
+  }, [phase, raceKey, level]);
 
   // ---------- klavye (masaüstü) ----------
   useEffect(() => {
@@ -1075,8 +1164,8 @@ const PartyGame = () => {
 
           {/* üst HUD */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-2">
-            <div className="rounded-2xl bg-white/85 px-3 py-1.5 shadow-card backdrop-blur">
-              <div className="text-[10px] font-bold text-muted-foreground">Sıra</div>
+            <div className="rounded-2xl bg-white/85 px-3 py-1.5 text-center shadow-card backdrop-blur">
+              <div className="text-[10px] font-bold text-muted-foreground">B{level} · Sıra</div>
               <div className="text-xl font-extrabold text-primary">{hud.place}.</div>
             </div>
             <div className="flex-1 rounded-2xl bg-white/85 px-3 py-2 shadow-card backdrop-blur">
@@ -1157,25 +1246,65 @@ const PartyGame = () => {
         </>
       )}
 
-      {phase === "intro" && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-6 text-center">
-          <div className="text-6xl">🎉</div>
-          <h1 className="text-3xl font-extrabold text-primary">Elifbâ Partisi</h1>
-          <p className="max-w-xs text-sm font-bold text-muted-foreground">
+      {/* ---- BÖLÜM SEÇME ---- */}
+      {phase === "levels" && (
+        <div className="flex flex-1 flex-col overflow-y-auto p-4 pb-8 text-center">
+          <div className="mt-2 text-5xl">🎉</div>
+          <h1 className="mt-1 text-2xl font-extrabold text-primary">Elifbâ Partisi</h1>
+          <p className="mx-auto mt-1 max-w-xs text-xs font-bold text-muted-foreground">
             5 arkadaşınla engelli parkurda yarış! Çekiçlerden kaç, çubuğu zıpla,
             <b className="text-primary"> doğru harfin kapısından</b> geç ve tacı kap 👑
           </p>
-          <div className="grid w-full max-w-xs gap-2 text-left text-sm font-bold">
+
+          <div className="mx-auto mt-3 grid w-full max-w-sm grid-cols-2 gap-2">
+            {LEVELS.map((lv, i) => {
+              const n = i + 1;
+              const open = n <= unlocked;
+              const done = n < unlocked;
+              return (
+                <button
+                  key={n}
+                  onClick={() => open && start(n)}
+                  disabled={!open}
+                  className={cn(
+                    "flex flex-col items-start gap-0.5 rounded-2xl border-4 p-3 text-left shadow-card transition-bouncy",
+                    open
+                      ? "border-primary/40 bg-card active:scale-95"
+                      : "border-muted bg-muted/40 opacity-60",
+                  )}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span className="text-lg font-extrabold text-primary">{n}. Bölüm</span>
+                    {!open ? <Lock className="h-4 w-4 text-muted-foreground" />
+                      : done ? <span className="text-lg">⭐</span> : null}
+                  </div>
+                  <span className="text-xs font-bold text-muted-foreground">{lv.name}</span>
+                  <span className="text-[10px] font-bold text-muted-foreground">
+                    {lv.gates} soru kapısı
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mx-auto mt-3 w-full max-w-sm rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm font-extrabold text-primary">
+            🚧 Devamı gelecek — yeni bölümler yolda!
+          </div>
+
+          <div className="mx-auto mt-3 grid w-full max-w-sm gap-1.5 text-left text-xs font-bold">
             <div className="rounded-xl border-2 border-destructive/30 bg-destructive/10 px-3 py-2">🔨 Dönen çekiç → değersen takla atarsın</div>
-            <div className="rounded-xl border-2 border-info/30 bg-info/10 px-3 py-2">🦘 Dönen çubuk → tam zamanında ZIPLA</div>
+            <div className="rounded-xl border-2 border-info/30 bg-info/10 px-3 py-2">🦘 ZIPLA → çubuğun, hatta çekicin üstünden geç</div>
             <div className="rounded-xl border-2 border-success/30 bg-success/10 px-3 py-2">✅ Doğru kapı → 🚀 hız + koz</div>
             <div className="rounded-xl border-2 border-warning/30 bg-warning/10 px-3 py-2">🕸️ Ağ at / ⭐ süper zıpla</div>
           </div>
-          <button onClick={start}
-            className="mt-1 inline-flex items-center gap-2 rounded-full bg-success px-8 py-4 text-lg font-extrabold text-success-foreground shadow-card active:scale-95">
-            <Maximize2 className="h-5 w-5" /> Yarışı Başlat
+
+          <button
+            onClick={() => start(unlocked)}
+            className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full bg-success px-8 py-4 text-lg font-extrabold text-success-foreground shadow-card active:scale-95"
+          >
+            <Maximize2 className="h-5 w-5" /> {unlocked}. Bölümü Oyna
           </button>
-          <button onClick={exit} className="text-sm font-bold text-muted-foreground underline">
+          <button onClick={exit} className="mt-3 text-sm font-bold text-muted-foreground underline">
             Oyunlara dön
           </button>
         </div>
@@ -1187,6 +1316,9 @@ const PartyGame = () => {
             {result.place === 1 ? "👑" : result.place <= 3 ? "🎉" : "💪"}
           </div>
           <h2 className="text-2xl font-extrabold text-primary">{PLACE_TXT[result.place] ?? "Bitti!"}</h2>
+          <div className="-mt-1 text-sm font-bold text-muted-foreground">
+            {level}. Bölüm · {LEVELS[level - 1]?.name}
+          </div>
           <div className="flex gap-3">
             <div className="rounded-2xl border-2 border-success/30 bg-success/10 px-4 py-2">
               <div className="text-[10px] font-bold text-muted-foreground">Doğru kapı</div>
@@ -1200,13 +1332,27 @@ const PartyGame = () => {
           <div className="mt-1 rounded-2xl border-2 border-success/30 bg-success/10 px-4 py-2 text-sm font-extrabold text-success">
             {teaseRef.current}
           </div>
-          <div className="mt-2 flex gap-2">
-            <button onClick={start}
-              className="rounded-full bg-primary px-6 py-3 font-extrabold text-primary-foreground shadow-card active:scale-95">
-              Tekrar Yarış
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+            {level < LEVEL_COUNT ? (
+              <button onClick={() => start(level + 1)}
+                className="rounded-full bg-success px-6 py-3 font-extrabold text-success-foreground shadow-card active:scale-95">
+                ▶ {level + 1}. Bölüm
+              </button>
+            ) : (
+              <div className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-2 text-sm font-extrabold text-primary">
+                🚧 Son bölümü bitirdin! Devamı gelecek…
+              </div>
+            )}
+            <button onClick={() => start(level)}
+              className="rounded-full bg-primary px-5 py-3 font-extrabold text-primary-foreground shadow-card active:scale-95">
+              Tekrar
+            </button>
+            <button onClick={() => { setPrompt(null); setPhase("levels"); }}
+              className="rounded-full bg-muted px-5 py-3 font-extrabold text-muted-foreground shadow-card active:scale-95">
+              Bölümler
             </button>
             <button onClick={exit}
-              className="rounded-full bg-muted px-6 py-3 font-extrabold text-muted-foreground shadow-card active:scale-95">
+              className="rounded-full bg-muted px-5 py-3 font-extrabold text-muted-foreground shadow-card active:scale-95">
               Çık
             </button>
           </div>

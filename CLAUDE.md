@@ -132,15 +132,27 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   parkuru**, 5 botla yarış, tam ekran + dikey + mobil kontroller. R3F DEĞİL,
   **düz three.js** (her karede ~40 hareketli gövde; React ağacına bağlamak
   gereksiz reconcile). Engeller: dönen çekiç, sallanan sarkaç, alçak dönen
-  çubuk (ZIPLAyarak geçilir, `JUMP_CLEAR`), yana kayan silindir, çamur.
-  Şiddetsiz: değen karakter takla atıp yavaşlar, ölmez/elenmez; ağ yalnız
-  yavaşlatır. **Soru kapıları seyrek** (≈110 birim, 4 kapı) — kullanıcı şartı:
-  oyun "sürekli soru soran test" gibi hissettirmeyecek. Doğru kapı → hız +
-  sırayla 🕸️/⭐ kozu; yanlış → çamur. Tekrar sistemi korunur
-  (pickNextGameItem + pickWrongs + recordGameAnswer chosenId/shownIds).
-  Dikkat edilecekler: kamera oyuncunun ~17 birim gerisinde → geçilen kapı
-  gizlenmeli, kameraya yakın yarışmacı `visible=false`; çekiç direği pivotun
-  çocuğu OLMAYACAK (yoksa çekiçle döner); yüz düzlemi kapsülün DIŞINDA.
+  çubuk, yana kayan silindir, çamur. Şiddetsiz: değen karakter takla atıp
+  yavaşlar, ölmez/elenmez; ağ yalnız yavaşlatır.
+  - ⚠️ **EKSEN KURALI: yarış -Z yönünde koşulur.** Mantıksal `z` 0→len ARTAR
+    ama sahneye hep `wz(z) = -z` ile yerleştirilir. Kamerayı +Z'ye baktırmak
+    (parkuru +Z'de kurmak) three.js'te görüntüyü AYNALAR: harfler ters okunur,
+    "sağ" tuşu ekranda sola gider. Yeni nesnenin z'sini ham koyma, `wz()` kullan;
+    lokal +Z'de duran parçanın (çekiç kolu) mantıksal z'si TERS işaretlidir.
+  - **10 bölüm** (`LEVELS` tablosu) + bölüm seçme ekranı (`phase: "levels"`);
+    engeller reçeteden PROSEDÜREL dizilir. İlerleme `elifba-party-progress-v1`,
+    test kilidi (1234) hepsini açar. Bölümü bitirmek sonrakini açar (derece
+    şartı yok). Bitiş ekranında "Devamı gelecek" notu var.
+  - **Soru kapıları seyrek** ve çevrelerinde `GATE_CLEAR` (40 birim) yarıçapında
+    HİÇ engel yok — kullanıcı şartı: çocuk harfi seçerken aynı anda çekiçten
+    kaçmak zorunda kalmasın, "biraz dinlensin". Kapı sesi de o mesafede çalar.
+  - **Zıplama bir kaçış aracıdır**: normal zıplama tepe ≈4.3 birim, ⭐ kozu
+    ≈13 birim. Her engelin `clear` eşiği var (çekiç 4.4, sarkaç 4.2, silindir
+    2.4, çubuk 1.5) — üstünden geçilebilir.
+  - Diğer tuzaklar: kamera oyuncunun ~17 birim gerisinde → geçilen kapı
+    gizlenmeli, kameraya yakın yarışmacı `visible=false`; çekiç direği pivotun
+    çocuğu OLMAYACAK (yoksa çekiçle döner); yüz düzlemi kapsülün DIŞINDA ve
+    -Z'ye bakar; bot şeritleri orta şeridi (oyuncunun) boş bırakır.
 - Arapça glif + `leading-none` = taşma; `leading-[1.5+]` kullan ve cn()
   içinde leading'i text-* SONRASINA koy (tailwind-merge yutar).
 - Grid'ler `dir="rtl"` (Arapça sağdan sola).
