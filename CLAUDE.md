@@ -113,7 +113,7 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   Hoca Modu. Öğrenci yoksa düğme görünmez.
 
 ### Oyunlar
-- 11 oyun `src/pages/games/`; kayıt: Game.tsx (route) + Games.tsx (liste,
+- 12 oyun `src/pages/games/`; kayıt: Game.tsx (route) + Games.tsx (liste,
   Kolay/Zor gruplu) + `SUPER_MODE_GAMES` (gameMode.ts) + Settings metni.
 - "Elif Ba Macerası" (`PlatformGame.tsx`, id "platform"): 10 bölüm, cami
   finali. **Şiddetsiz tasarım korunacak** — canavar öldürülmez, Nur'a değen
@@ -128,6 +128,19 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   harfler canvas dokusuyla (troika değil), pano dokusu ölçüp sığdırır
   (derin çanaklı harfler kesilmez), fog'dan muaf. Tasarım:
   `docs/tren-sorfu-tasarim.md`. rAF arka planda kısılır — DT_MAX kelepçesi var.
+- "Elifbâ Partisi" (`PartyGame.tsx`, id "party"): **Fall Guys tarzı 3B engel
+  parkuru**, 5 botla yarış, tam ekran + dikey + mobil kontroller. R3F DEĞİL,
+  **düz three.js** (her karede ~40 hareketli gövde; React ağacına bağlamak
+  gereksiz reconcile). Engeller: dönen çekiç, sallanan sarkaç, alçak dönen
+  çubuk (ZIPLAyarak geçilir, `JUMP_CLEAR`), yana kayan silindir, çamur.
+  Şiddetsiz: değen karakter takla atıp yavaşlar, ölmez/elenmez; ağ yalnız
+  yavaşlatır. **Soru kapıları seyrek** (≈110 birim, 4 kapı) — kullanıcı şartı:
+  oyun "sürekli soru soran test" gibi hissettirmeyecek. Doğru kapı → hız +
+  sırayla 🕸️/⭐ kozu; yanlış → çamur. Tekrar sistemi korunur
+  (pickNextGameItem + pickWrongs + recordGameAnswer chosenId/shownIds).
+  Dikkat edilecekler: kamera oyuncunun ~17 birim gerisinde → geçilen kapı
+  gizlenmeli, kameraya yakın yarışmacı `visible=false`; çekiç direği pivotun
+  çocuğu OLMAYACAK (yoksa çekiçle döner); yüz düzlemi kapsülün DIŞINDA.
 - Arapça glif + `leading-none` = taşma; `leading-[1.5+]` kullan ve cn()
   içinde leading'i text-* SONRASINA koy (tailwind-merge yutar).
 - Grid'ler `dir="rtl"` (Arapça sağdan sola).
