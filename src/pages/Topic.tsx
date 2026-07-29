@@ -18,7 +18,6 @@ import {
 import { cn } from "@/lib/utils";
 import { isTopicUnlocked, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
 import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
-import { pickReviewItem } from "@/lib/review";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
 import { SkipTest } from "@/components/SkipTest";
 import { LevelBadge } from "@/components/LevelBadge";
@@ -26,6 +25,7 @@ import { BuddyWithBubble } from "@/components/Buddy";
 import { pickDistractors, recordConfusionPick, recordDiscrimination } from "@/lib/confusion";
 import { hotPairInSection } from "@/lib/unlock";
 import { considerRemedy, showRemedy } from "@/lib/remedial";
+import { pickQuestionSource } from "@/lib/questionSource";
 import { Rocket, Brain } from "lucide-react";
 import { STABLE_GROUP, TAIL_RULES, HAREKE_MNEMONICS } from "@/data/writingMnemonics";
 
@@ -76,8 +76,11 @@ const Topic = () => {
   const [celebrate, setCelebrate] = useState<{ title: string; subtitle?: string } | null>(null);
   const [showSkip, setShowSkip] = useState(false);
   const questionStartRef = useRef<number>(0);
-  // Yanlış cevaplanan harf bir sonraki soruda tekrar sorulsun (anlık düzeltici tekrar)
+  // Yanlış cevaplanan harf bir sonraki soruda tekrar sorulsun (anlık düzeltici
+  // tekrar). AMA en fazla BİR kez: tekrar da yanlışsa harf bırakılır, yoksa
+  // çocuk bilmediği harfte kilitlenip her soruyu yanlış yapıyordu.
   const retryIdRef = useRef<string | null>(null);
+  const retryUsedRef = useRef(false);
   // Şu anki soru bir ARA-KONTROL ise, hangi (eski, atlanmış) konudan geldiği.
   // null = normal konu sorusu.
   const backCheckRef = useRef<string | null>(null);
@@ -100,40 +103,44 @@ const Topic = () => {
     if (mode !== "test" || !topic || unlockedItemIds.length === 0 || q) return;
     if (topic.noPractice) return;
 
-    // 1) Yanlış cevaplanan (konu içi) harf varsa önce onu tekrar sor.
-    if (retryIdRef.current && unlockedItemIds.includes(retryIdRef.current)) {
-      const pool = items.filter((it) => unlockedItemIds.includes(it.id));
-      const tid = retryIdRef.current;
-      retryIdRef.current = null;
-      backCheckRef.current = null;
-      setQ(buildQuestion(pool, tid));
+    // Soru kaynağı tek yerden seçilir (retry / bakım / frontier) — öncelik
+    // kuralları ve "zorlanınca kurtarma" mantığı lib/questionSource.ts'te.
+    const src = pickQuestionSource({
+      retryId: retryIdRef.current,
+      retryUsed: retryUsedRef.current,
+      unlockedIds: unlockedItemIds,
+      currentTopicId: topic.id,
+      ns: NS,
+    });
+
+    const ask = (pool: ContentItem[], targetId: string, reviewTopic: string | null) => {
+      backCheckRef.current = reviewTopic;
+      setQ(buildQuestion(pool, targetId));
       setPicked(null);
       questionStartRef.current = Date.now();
+    };
+    const ownPool = () => items.filter((it) => unlockedItemIds.includes(it.id));
+
+    if (src.kind === "retry") {
+      retryIdRef.current = null;
+      retryUsedRef.current = true;   // bu harf tekrar hakkını kullandı
+      ask(ownPool(), src.itemId, null);
       return;
     }
 
-    // 2) SERPİŞTİRİLMİŞ BAKIM + ara-kontrol: soru eski bir açık konudan gelsin
-    //    mi? (taban ~%22 bakım; zayıf/atlanmış konu varsa daha yüksek). Gelirse
-    //    soru O konudan kurulur ve gerçek SRS'e o konuya işlenir.
-    const rev = pickReviewItem(topic.id, NS);
-    if (rev) {
-      const rt = getTopic("elifba", rev.topicId);
-      if (rt && rt.items.length >= 2) {
-        backCheckRef.current = rev.topicId;
-        setQ(buildQuestion(rt.items, rev.itemId));
-        setPicked(null);
-        questionStartRef.current = Date.now();
+    if (src.kind === "review") {
+      const rt = getTopic("elifba", src.topicId);
+      // Çeldiriciler de YALNIZ açık bölümlerden gelmeli — çocuk henüz
+      // açmadığı bir harfi şıkta görmesin.
+      const rPool = rt ? getUnlockedItemsOf(rt) : [];
+      if (rPool.length >= 2) {
+        ask(rPool, src.itemId, src.topicId);
         return;
       }
     }
 
-    // 3) Normal konu içi SRS seçimi.
-    const pool = items.filter((it) => unlockedItemIds.includes(it.id));
-    const tid = pickNextLetter(NS, topic.id, unlockedItemIds);
-    backCheckRef.current = null;
-    setQ(buildQuestion(pool, tid));
-    setPicked(null);
-    questionStartRef.current = Date.now();
+    // Normal konu içi SRS seçimi.
+    ask(ownPool(), pickNextLetter(NS, topic.id, unlockedItemIds), null);
   }, [mode, topic, unlockedItemIds, q, items]);
 
   useEffect(() => {
@@ -407,10 +414,21 @@ const Topic = () => {
       await recordSrsAnswer(NS, bcTopic, q.target.id, correct, { responseMs });
       if (isTopicSkipped(bcTopic)) recordBackCheck(bcTopic, correct);
       retryIdRef.current = null;
+      retryUsedRef.current = false;
     } else {
       await recordSrsAnswer(NS, topic.id, q.target.id, correct, { responseMs });
-      // Yanlışsa aynı harf bir sonraki soruda tekrar sorulsun
-      retryIdRef.current = correct ? null : q.target.id;
+      // Yanlışsa aynı harf bir sonraki soruda tekrar sorulsun — ama yalnız
+      // BİR kez. Tekrar da yanlışsa harf bırakılır; SRS zaten onu yakında
+      // geri getirir, bu arada çocuk kolay/eski sorularla toparlanır.
+      if (correct) {
+        retryIdRef.current = null;
+        retryUsedRef.current = false;
+      } else if (!retryUsedRef.current) {
+        retryIdRef.current = q.target.id;
+      } else {
+        retryIdRef.current = null;
+        retryUsedRef.current = false;   // sonraki YENİ harf için hak yenilenir
+      }
     }
     await playFeedback(correct);
     // TELAFİ: başta/ortada/sonda hâlinde ısrarlı hata → hafıza yöntemi açılır.

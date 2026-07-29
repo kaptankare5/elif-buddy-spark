@@ -81,14 +81,26 @@ const bolum = (n: number) => `${Math.floor((n - 1) / 4) + 1}. Bölüm`;
 // Bu yüzden BU KONUDA bölümler, karışabilen harfleri bir arada tutacak şekilde
 // kesilir. Diğer konular geleneksel elifbâ sırasını ve 4'erli bölümlemeyi
 // aynen korur — değişen tek şey bu konunun bölüm sınırlarıdır.
+// BÖLÜM BOYUTU: burada bir harf = ÜÇ yeni öğe (başta/ortada/sonda). 4 harflik
+// bir bölüm 12 yeni şekil demek — çocuk temel hâlini biliyor olsa da diğer
+// hâllerini bilmiyor, yük katlanıyor. Bu yüzden bölümler 2-3 harfte tutulur
+// (6-9 öğe). Karışan harfler yine aynı bölümde; yalnız kalabalık aileler
+// (ب ت ث ن ي gibi) ikiye bölünür — ilk yarı zaten açık kaldığı için ikinci
+// yarı geldiğinde karşıtlık kurulmaya devam eder.
 const YAZILIS_SECTIONS: number[][] = [
-  [1, 22, 23],          // ا ك ل
-  [2, 3, 4, 25, 28],    // ب ت ث ن ي
-  [5, 6, 7],            // ج ح خ
-  [8, 9, 10, 11],       // د ذ ر ز
-  [12, 13, 14, 15],     // س ش ص ض
-  [16, 17, 18, 19],     // ط ظ ع غ
-  [20, 21, 24, 26, 27], // ف ق م و ه
+  [1, 22, 23],    // ا ك ل — dikey çizgililer
+  [2, 3, 4],      // ب ت ث — diş + nokta
+  [5, 6, 7],      // ج ح خ — çanaklılar
+  [8, 9],         // د ذ
+  [10, 11],       // ر ز
+  [12, 13],       // س ش
+  [14, 15],       // ص ض
+  [16, 17],       // ط ظ
+  [18, 19],       // ع غ
+  [20, 21],       // ف ق
+  [24, 27],       // م ه — ilmekliler
+  [25, 28],       // ن ي — diş ailesinin devamı
+  [26],           // و
 ];
 
 const YAZILIS_SECTION_OF = new Map<number, string>();
