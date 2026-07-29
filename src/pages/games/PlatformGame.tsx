@@ -141,6 +141,11 @@ function levelConf(lv: number) {
 // Bölüm ilerlemesi (kaç bölüm açık) — cihazda saklanır
 const PROGRESS_KEY = "elifba-platform-progress-v1";
 function getUnlockedLevel(): number {
+  // Ayarlar'daki test kilidi (kod 1234) uygulamada her şeyi açar; bölüm
+  // seçici de buna uymalıydı. Aksi hâlde son bölümdeki KARANLIK BULUT'u
+  // görmek için 9 bölümü baştan bitirmek gerekiyordu — geliştirme ve
+  // gösterim (Diyanet vitrini) için ulaşılamaz kalıyordu.
+  if (isTestUnlockActive()) return LEVEL_COUNT;
   try {
     const n = parseInt(localStorage.getItem(PROGRESS_KEY) || "1", 10);
     return Math.min(LEVEL_COUNT, Math.max(1, isNaN(n) ? 1 : n));

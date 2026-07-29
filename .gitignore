@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Geçici yerel dev sunucusu ayarı (Claude oturumları) — commit'lenmez
+vite.local.config.mjs
