@@ -1,4 +1,4 @@
-// 🍄 "Harf Macerası" — Mario tarzı 2D yandan kaydırmalı platform oyunu.
+// 🕌 "Elif Ba Macerası" — 2D yandan kaydırmalı platform macera oyunu.
 //
 // 10 BÖLÜM: her bölüm farklı temalı (çayır, orman, sahil, çöl, gün batımı,
 // kar, gece, şeker, uzay, gökkuşağı), soldan sağa koşulur ve bölüm sonundaki
@@ -2279,7 +2279,7 @@ const PlatformGame = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-100 to-background">
       <main className="container mx-auto max-w-xl px-4 pb-16">
-        <PageHeader title="🍄 Harf Macerası" backTo="/oyunlar" centered onReset={toPicker} />
+        <PageHeader title="🕌 Elif Ba Macerası" backTo="/oyunlar" centered onReset={toPicker} />
 
         <div className="mb-2 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-success/30">
@@ -2390,7 +2390,7 @@ const PlatformGame = () => {
           {/* bölüm seçme ekranı */}
           {!started && !gameOver && !won && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2.5 bg-background/90 p-3">
-              <div className="text-lg font-extrabold text-warning">🍄 Bölüm Seç</div>
+              <div className="text-lg font-extrabold text-warning">🕌 Bölüm Seç</div>
               <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                 {THEMES.map((t, i) => {
                   const lv = i + 1;

@@ -17,7 +17,7 @@ const GAMES: GameDef[] = [
   { id: "quiz", title: "Hızlı Quiz", emoji: "⚡", color: "from-topic-doga to-success", desc: "60 saniyede skor", diff: "kolay" },
   // — Zor —
   { id: "subway", title: "ElifBa Koşusu", emoji: "🏃", color: "from-sky-500 to-emerald-500", desc: "3D koşu! Doğru harfin rayına geç", diff: "zor" },
-  { id: "platform", title: "Harf Macerası", emoji: "🍄", color: "from-red-500 to-orange-400", desc: "10 bölüm! Zıpla, koş, harf topla", diff: "zor" },
+  { id: "platform", title: "Elif Ba Macerası", emoji: "🕌", color: "from-red-500 to-orange-400", desc: "10 bölüm! Zıpla, koş, harf topla", diff: "zor" },
   { id: "flappy", title: "Uçan Kuş", emoji: "🐤", color: "from-info to-primary", desc: "Doğru harfi yut, sorulara cevap ver", diff: "zor" },
   { id: "snake", title: "Yılan Oyunu", emoji: "🐍", color: "from-success to-topic-doga", desc: "Harfleri ye, sınavı geç", diff: "zor" },
   { id: "runner", title: "Uzay Savaşı", emoji: "🚀", color: "from-indigo-500 to-fuchsia-500", desc: "Doğru hedefi vur, yanlışı vurma", diff: "zor" },
@@ -52,26 +52,26 @@ const Games = () => {
           {mode === "super" ? "⚡ Süper Öğrenme Modu — sıkı çalış!" : "Hangi oyunu oynamak istersin?"}
         </p>
 
-        {kolay.length > 0 && (
-          <>
-            <h3 className="mb-2 flex items-center gap-2 font-extrabold text-success">
-              <span className="text-lg">🟢</span> Kolay Oyunlar
-              <span className="text-[11px] font-bold text-muted-foreground">— sakin & eğlenceli</span>
-            </h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-              {kolay.map((g, i) => <Card key={g.id} g={g} i={i} />)}
-            </div>
-          </>
-        )}
-
         {zor.length > 0 && (
           <>
             <h3 className="mb-2 flex items-center gap-2 font-extrabold text-destructive">
               <span className="text-lg">🔴</span> Zor Oyunlar
               <span className="text-[11px] font-bold text-muted-foreground">— hızlı & refleks</span>
             </h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
               {zor.map((g, i) => <Card key={g.id} g={g} i={i} />)}
+            </div>
+          </>
+        )}
+
+        {kolay.length > 0 && (
+          <>
+            <h3 className="mb-2 flex items-center gap-2 font-extrabold text-success">
+              <span className="text-lg">🟢</span> Kolay Oyunlar
+              <span className="text-[11px] font-bold text-muted-foreground">— sakin & eğlenceli</span>
+            </h3>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {kolay.map((g, i) => <Card key={g.id} g={g} i={i} />)}
             </div>
           </>
         )}
