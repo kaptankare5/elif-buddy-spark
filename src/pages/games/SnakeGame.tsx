@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
-import { gamePool, shuffle, pickN } from "./_shared";
+import { gamePool, shuffle, pickWrongs } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
@@ -72,7 +72,7 @@ const SnakeGame = () => {
   const startQuiz = useCallback((occupied: Cell[]) => {
     const pool = gamePool();
     const target = pickNextGameItem(pool) || pool[0];
-    const wrong = pickN(pool.filter((p) => p.id !== target.id), 1)[0];
+    const wrong = pickWrongs(pool, target, 1)[0];
     const taken = [...occupied];
     // Yılan kafasının etrafında geniş bir alanı boş tut — istemeden cevap üstüne gitmesin
     const head = occupied[0];
@@ -153,7 +153,9 @@ const SnakeGame = () => {
             const opt = quiz.options[hitIdx];
             const correct = opt.item.id === quiz.target.id;
             recordLetterMastery(quiz.target.id, correct);
-            recordGameAnswer(quiz.target, correct);
+            recordGameAnswer(quiz.target, correct, {
+              chosenId: opt.item.id, shownIds: quiz.options.map((o) => o.item.id),
+            });
             if (correct) {
               grew = true;
               setScore((s) => s + 5);

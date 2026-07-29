@@ -28,7 +28,7 @@ const ShipSvg = memo(() => (
 ShipSvg.displayName = "ShipSvg";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem } from "@/lib/audio";
-import { gamePool, pickN, shuffle } from "./_shared";
+import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
@@ -97,7 +97,7 @@ const RunnerGame = () => {
     // Hedefi SRS ile seç
     const tgt = pickNextGameItem(pool) || pool[0];
     // El nesneleri: hedef + 3 rastgele yanlış (toplam 4)
-    const others = pickN(pool.filter((p) => p.id !== tgt.id), Math.max(0, ROUND_SIZE - 1));
+    const others = pickWrongs(pool, tgt, Math.max(0, ROUND_SIZE - 1));
     const items = shuffle([tgt, ...others]);
     setTarget(tgt);
     setRoundItems(items);

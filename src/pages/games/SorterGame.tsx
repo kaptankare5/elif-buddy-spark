@@ -3,7 +3,7 @@ import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
-import { gamePool, getGameLang, pickN, shuffle } from "./_shared";
+import { gamePool, getGameLang, pickCluster, shuffle } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { useGameMode } from "@/lib/gameMode";
 import { getGameItemLevel, recordGameAnswer } from "@/lib/gameProgress";
@@ -23,7 +23,7 @@ const TYPE_COUNT = 4; // 4 farklı harf × 3 = 12 hücre
 function buildBox(): { cells: Cell[]; types: ContentItem[] } {
   const lang = getGameLang();
   const pool = gamePool(lang);
-  const types = pickN(pool, Math.min(TYPE_COUNT, pool.length));
+  const types = pickCluster(pool, Math.min(TYPE_COUNT, pool.length));
   const all: ContentItem[] = [];
   types.forEach((t) => { for (let i = 0; i < PER_TYPE; i++) all.push(t); });
   const shuffled = shuffle(all);
@@ -127,7 +127,7 @@ const SorterGame = () => {
     } else {
       setBusy(true);
       recordLetterMastery(target.id, false);
-      recordGameAnswer(target, false);
+      recordGameAnswer(target, false, { chosenId: c.item.id });
       await playFeedback(false);
       setBoard((b) => ({ ...b, cells: b.cells.map((x) => x.uid === c.uid ? { ...x, wrong: true } : x) }));
       setTimeout(() => {

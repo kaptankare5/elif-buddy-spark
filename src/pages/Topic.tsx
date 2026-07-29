@@ -23,7 +23,7 @@ import { UnlockCelebration } from "@/components/UnlockCelebration";
 import { SkipTest } from "@/components/SkipTest";
 import { LevelBadge } from "@/components/LevelBadge";
 import { BuddyWithBubble } from "@/components/Buddy";
-import { pickDistractors } from "@/lib/confusables";
+import { pickDistractors, recordConfusionPick, recordDiscrimination } from "@/lib/confusion";
 import { Rocket, Brain } from "lucide-react";
 import { STABLE_GROUP, TAIL_RULES, HAREKE_MNEMONICS } from "@/data/writingMnemonics";
 
@@ -371,6 +371,11 @@ const Topic = () => {
     setPicked(opt.id);
     const correct = opt.id === q.target.id;
     const responseMs = questionStartRef.current ? Date.now() - questionStartRef.current : undefined;
+    // KARIŞIKLIK ÖLÇÜMÜ: testte hangi şıkkı seçtiğini biliyoruz — en net sinyal.
+    // Yanlış seçim o çiftin ısısını yükseltir; partner ORTADAYKEN doğru cevap
+    // gerçek bir ayrımdır ve üst üste 3 olunca ısıyı düşürür.
+    if (correct) recordDiscrimination(q.target.id, q.options.map((o) => o.id));
+    else recordConfusionPick(q.target.id, opt.id);
     const bcTopic = backCheckRef.current;
     if (bcTopic) {
       // Bakım/ara-kontrol: cevabı O konuya işle (dürüst seviye). Atlanmış konuysa

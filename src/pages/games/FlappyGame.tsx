@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
-import { gamePool, shuffle, pickN } from "./_shared";
+import { gamePool, shuffle, pickWrongs } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
@@ -133,10 +133,10 @@ const FlappyGame = () => {
           }
           if (chosenSlots.length === 0) return prev;
           const pool = gamePool();
-          const wrongs = pickN(pool.filter((p) => p.id !== targetRef.current!.id), chosenSlots.length - 1);
+          const wrongs = pickWrongs(pool, targetRef.current, chosenSlots.length - 1);
           const items = shuffle([targetRef.current!, ...wrongs]).slice(0, chosenSlots.length);
           if (chosenSlots.length === 1 && Math.random() < 0.5 && wrongs.length === 0) {
-            const w = pickN(pool.filter((p) => p.id !== targetRef.current!.id), 1);
+            const w = pickWrongs(pool, targetRef.current, 1);
             if (w.length) items[0] = w[0];
           }
           return [
@@ -215,7 +215,7 @@ const FlappyGame = () => {
         }
         if (collidedWrong) {
           recordLetterMastery(targetRef.current!.id, false);
-          recordGameAnswer(targetRef.current!, false);
+          recordGameAnswer(targetRef.current!, false, { chosenId: collidedWrong.item.id });
           if (isSuper) enqueueRetryItem(targetRef.current!);
           playFeedback(false);
           // Yanlış harfi sol kenarda kısa süre parlat ki oyuncu görsün

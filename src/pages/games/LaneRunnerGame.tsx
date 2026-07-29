@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem } from "@/lib/audio";
-import { gamePool, pickN } from "./_shared";
+import { gamePool, pickWrongs } from "./_shared";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
@@ -109,7 +109,7 @@ const LaneRunnerGame = () => {
           let item: ContentItem;
           if (useTarget) item = targetRef.current!;
           else {
-            const wrongs = pickN(pool.filter((p) => p.id !== targetRef.current!.id), 1);
+            const wrongs = pickWrongs(pool, targetRef.current, 1);
             item = wrongs[0] || targetRef.current!;
           }
           const newLane = (Math.random() < 0.5 ? 0 : 1) as 0 | 1;
@@ -150,7 +150,7 @@ const LaneRunnerGame = () => {
           setTimeout(pickTarget, 350);
         }
         if (hitWrong) {
-          recordGameAnswer(targetRef.current!, false);
+          recordGameAnswer(targetRef.current!, false, { chosenId: hitWrong.item.id });
           playFeedback(false); setCombo(0);
           addPop(hitWrong.lane, "✗", false);
           flashFx("bad");

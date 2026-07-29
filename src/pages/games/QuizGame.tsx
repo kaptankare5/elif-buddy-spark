@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Volume2, Sprout } from "lucide-react";
 import { Link } from "react-router-dom";
 import { gardenTease } from "@/lib/sessionEnd";
-import { gamePool, shuffle } from "./_shared";
+import { gamePool, shuffle, pickWrongs } from "./_shared";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 
@@ -15,7 +15,7 @@ interface Q { target: ContentItem; options: ContentItem[]; }
 function makeQ(): Q {
   const pool = gamePool();
   const target = pool[Math.floor(Math.random() * pool.length)];
-  const wrongs = shuffle(pool.filter((p) => p.id !== target.id)).slice(0, 3);
+  const wrongs = pickWrongs(pool, target, 3);
   return { target, options: shuffle([target, ...wrongs]) };
 }
 
@@ -49,7 +49,10 @@ const QuizGame = () => {
     const correct = item.id === q.target.id;
     if (correct) setScore((s) => s + 1);
     const responseMs = Date.now() - questionStartRef.current;
-    recordGameAnswer(q.target, correct, { responseMs, gameId: "quiz" });
+    recordGameAnswer(q.target, correct, {
+      responseMs, gameId: "quiz",
+      chosenId: item.id, shownIds: q.options.map((o) => o.id),
+    });
     await playFeedback(correct);
     setTimeout(() => { setQ(makeQ()); setPicked(null); }, correct ? 700 : 1800);
   };

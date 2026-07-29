@@ -9,11 +9,15 @@
 // - Son seçilen öğe: seviye + bilet (sıklık × bayatlık) + kaç gün bayat.
 // - Yerleştirme (Problem 2): atlanan konular, ara-kontrol doğruluğu + oranı,
 //   durum (deneme/onaylı/sallantı/zayıf) + son sorunun ara-kontrol olup olmadığı.
+// - Karışıklık ısısı: çocuk hangi harfi hangisiyle karıştırıyor (Elif↔Lem
+//   gibi) — ısı yükseldikçe o çift daha sık ve BİRLİKTE sorulur; üst üste
+//   3 doğru ayrımda ısı düşer. "ok" sütunu ayrım sayacıdır.
 // - Seri (affedici) + bugünkü öğrenilen/pratik sayısı (veli paneli verisi).
 import { useEffect, useState } from "react";
 import { useTestUnlock } from "@/lib/testUnlock";
 import { getAdaptiveDebug, getLastPickInfo, getIntroGateInfo, getTopicSrs, type AdaptiveDebug, type LastPickInfo, type IntroGateInfo } from "@/data/srs";
 import { getPlacementDebug, getLastBackCheck, resetPlacement, type PlacementDebugRow } from "@/lib/placement";
+import { getConfusionDebug, resetConfusion, CONFUSION_EVENT } from "@/lib/confusion";
 import { currentReviewShare } from "@/lib/review";
 import { getStreak } from "@/lib/streak";
 import { getAllTopics } from "@/data/subjects";
@@ -35,6 +39,30 @@ function todayCounts() {
   return { learned, practiced };
 }
 
+// Karışıklık çiftini okunur yap: "1|23" → "Elif↔Lem", "05:init|med" → "Cim başta↔ortada"
+const FORM_TR: Record<string, string> = { init: "başta", med: "ortada", fin: "sonda" };
+let _names: Map<number, string> | null = null;
+function letterName(n: number): string {
+  if (!_names) {
+    _names = new Map();
+    const harfler = getAllTopics().find((t) => t.id === "harfler");
+    for (const it of harfler?.items ?? []) {
+      const m = it.id.match(/^l1-(\d{2})$/);
+      if (m) _names.set(parseInt(m[1], 10), it.translit || it.label);
+    }
+  }
+  return _names.get(n) ?? `#${n}`;
+}
+function prettyPair(pair: string): string {
+  if (pair.includes(":")) {
+    const [nn, forms] = pair.split(":");
+    const [a, b] = forms.split("|");
+    return `${letterName(parseInt(nn, 10))} ${FORM_TR[a] ?? a}↔${FORM_TR[b] ?? b}`;
+  }
+  const [a, b] = pair.split("|").map(Number);
+  return `${letterName(a)}↔${letterName(b)}`;
+}
+
 const LVL_COLOR = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e"];
 const STATUS_COLOR: Record<string, string> = {
   deneme: "#a855f7", // mor — deneme süresi (yoğun yoklama)
@@ -53,6 +81,7 @@ export function DebugHud() {
   const [lastBc, setLastBc] = useState(() => getLastBackCheck());
   const [streak, setStreak] = useState(() => getStreak());
   const [today, setToday] = useState(() => todayCounts());
+  const [conf, setConf] = useState(() => getConfusionDebug());
 
   useEffect(() => {
     if (!active) return;
@@ -64,18 +93,21 @@ export function DebugHud() {
       setLastBc(getLastBackCheck());
       setStreak(getStreak());
       setToday(todayCounts());
+      setConf(getConfusionDebug());
     };
     // her cevap srs event'i yayar; ayrıca güvenlik için 800ms poll
     window.addEventListener("elifba-srs-quiz-updated", refresh);
     window.addEventListener("elifba-srs-games-updated", refresh);
     window.addEventListener("elifba-progress-updated", refresh);
     window.addEventListener("elifba-placement-updated", refresh);
+    window.addEventListener(CONFUSION_EVENT, refresh);
     const id = setInterval(refresh, 800);
     return () => {
       window.removeEventListener("elifba-srs-quiz-updated", refresh);
       window.removeEventListener("elifba-srs-games-updated", refresh);
       window.removeEventListener("elifba-progress-updated", refresh);
       window.removeEventListener("elifba-placement-updated", refresh);
+      window.removeEventListener(CONFUSION_EVENT, refresh);
       clearInterval(id);
     };
   }, [active]);
@@ -147,7 +179,8 @@ export function DebugHud() {
                 <span className="text-white/80">bilet <b>{pick.ticket}</b></span>
               </div>
               <div className="text-white/60 text-[10px]">
-                sıklık {pick.weight} × aciliyet {pick.stale}{pick.fragile ? " × kırılgan1.5" : ""} · {pick.days}g
+                sıklık {pick.weight} × aciliyet {pick.stale}{pick.fragile ? " × kırılgan1.5" : ""}
+                {pick.conf ? ` × karışıklık${(1 + 1.6 * pick.conf).toFixed(1)}` : ""} · {pick.days}g
               </div>
               {pick.retr !== undefined && (
                 <div className="text-white/60 text-[10px]">
@@ -197,6 +230,36 @@ export function DebugHud() {
               </b>
             ) : <span className="text-white/40">normal konu</span>}
           </div>
+        </div>
+        {/* Karışıklık ısısı — hangi harfi neyle karıştırıyor */}
+        <div className="border-t border-white/10 pt-1.5">
+          <div className="flex items-center justify-between mb-0.5">
+            <span className="text-white/50 text-[9px] uppercase">Karışıklık Isısı</span>
+            {(conf.letters.length > 0 || conf.forms.length > 0) && (
+              <button
+                onClick={() => resetConfusion()}
+                className="text-[9px] text-white/40 hover:text-white/80 underline"
+              >sıfırla</button>
+            )}
+          </div>
+          {conf.letters.length === 0 && conf.forms.length === 0 ? (
+            <div className="text-white/40">karışıklık ölçülmedi</div>
+          ) : (
+            <div className="space-y-0.5">
+              {[...conf.letters, ...conf.forms].slice(0, 5).map((r) => (
+                <div key={r.pair} className="flex items-center justify-between gap-1">
+                  <span className="truncate text-white/80 max-w-[104px]" title={r.pair}>{prettyPair(r.pair)}</span>
+                  <span className="flex items-center gap-1 shrink-0">
+                    <span
+                      className="rounded px-1 font-extrabold text-black"
+                      style={{ background: r.heat > 0.6 ? "#ef4444" : r.heat > 0.25 ? "#f59e0b" : "#eab308" }}
+                    >{r.heat.toFixed(2)}</span>
+                    <span className="text-white/50 text-[10px]">ok{r.ok}/3</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {/* Seri + bugün */}
         <div className="border-t border-white/10 pt-1.5 flex justify-between">
