@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Lock, Crown, TrendingUp, Gamepad2, Flame } from "lucide-react";
+import { Lock, Crown, TrendingUp, Gamepad2, Flame, BookOpenCheck } from "lucide-react";
 
 import { SUBJECTS } from "@/data/subjects";
 
@@ -151,13 +151,20 @@ const Index = () => {
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Link
             to="/oyunlar"
             className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-gradient-to-br from-warning to-topic-pink p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
           >
             <Gamepad2 className="h-7 w-7" />
             <span className="text-sm font-extrabold text-shadow-soft">Oyunlar</span>
+          </Link>
+          <Link
+            to="/ezber"
+            className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-gradient-to-br from-success to-emerald-600 p-4 text-white shadow-card transition-bouncy hover:-translate-y-1"
+          >
+            <BookOpenCheck className="h-7 w-7" />
+            <span className="text-sm font-extrabold text-shadow-soft">Ezber</span>
           </Link>
           <Link
             to="/ilerleme"
