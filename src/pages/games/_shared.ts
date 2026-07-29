@@ -1,6 +1,6 @@
 import { flattenItems } from "@/data/subjects";
 import { getUnlockedItemIdSet } from "@/lib/unlock";
-import { pickDistractors } from "@/lib/confusion";
+import { pickDistractors, sameSound } from "@/lib/confusion";
 import type { ContentItem, Lang } from "@/data/types";
 
 export function shuffle<T>(a: T[]): T[] {
@@ -78,11 +78,20 @@ export function pickWrongs(
 export function pickCluster(pool: ContentItem[], n: number): ContentItem[] {
   if (pool.length <= n) return shuffle(pool);
   const anchor = pool[Math.floor(Math.random() * pool.length)];
-  const near = pickWrongs(pool, anchor, n - 1);
-  const out = [anchor, ...near];
-  if (out.length < n) {
-    const have = new Set(out.map((o) => o.id));
-    out.push(...shuffle(pool.filter((p) => !have.has(p.id))).slice(0, n - out.length));
-  }
+  // Tahtadaki harflerin HİÇBİRİ birbiriyle aynı sesi çalmamalı. "Kutu Boşalt"
+  // gibi oyunlarda sorulan harf sesle veriliyor; tahtada aynı sesi çalan iki
+  // harf varsa çocuk doğru olanı seçse bile yanlış sayılabiliyor. Çapaya
+  // benzememesi yetmez — adaylar BİRBİRİNE de benzememeli, bu yüzden küme
+  // teker teker, her adımda kontrol edilerek büyütülür.
+  const out: ContentItem[] = [anchor];
+  const add = (candidates: ContentItem[]) => {
+    for (const c of candidates) {
+      if (out.length >= n) return;
+      if (out.some((o) => o.id === c.id || sameSound(o, c))) continue;
+      out.push(c);
+    }
+  };
+  add(pickWrongs(pool, anchor, n * 3));   // önce karışan harfler (bol aday)
+  add(shuffle(pool));                      // kalan boşluğu rastgele doldur
   return shuffle(out);
 }

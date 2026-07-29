@@ -154,6 +154,16 @@ export function itemHeat(id: string): number {
   return best;
 }
 
+/**
+ * İki öğe KULAĞA aynı mı geliyor? (aynı ses kaydı, yoksa aynı okunuş)
+ * Sesle sorulan çoktan seçmeli bir soruda ikisi birlikte şıkka konamaz —
+ * sorunun iki doğru cevabı olur.
+ */
+export function sameSound(a: ContentItem, b: ContentItem): boolean {
+  if (a.audio && b.audio) return a.audio === b.audio;
+  return (a.speech ?? "").trim().toLowerCase() === (b.speech ?? "").trim().toLowerCase();
+}
+
 /** Bu öğenin ısınmış partnerleri, ısısı yüksekten düşüğe. */
 export function hotPartnersOf(id: string, pool: ContentItem[]): ContentItem[] {
   return pool
@@ -239,7 +249,14 @@ export function recordDiscrimination(targetId: string, shownIds: string[]) {
  * Karışan yoksa sorunsuz rastgeleye düşer (eski davranış korunur).
  */
 export function pickDistractors(pool: ContentItem[], target: ContentItem, count = 3): ContentItem[] {
-  const others = pool.filter((it) => it.id !== target.id);
+  // AYNI SESİ ÇALAN ÖĞE ASLA ÇELDİRİCİ OLAMAZ.
+  // Sorular sesle sorulur ("Dinle → hangisi?"). Fe'nin yalın, başta, ortada ve
+  // sonda hâllerinin DÖRDÜ de basic-20.mp3'ü çalar; ikisi birden şıkka girerse
+  // sorunun iki doğru cevabı olur ama sistem yalnız birini kabul eder — çocuk
+  // doğru harfi seçtiği hâlde "yanlış" yer. Bu yüzden çeldiriciler hedefle
+  // aynı sesi paylaşamaz. (Form ayrımı böyle sorulamaz; sesle sorulan bir
+  // soruda "başta mı ortada mı" ayrımı zaten cevaplanabilir değil.)
+  const others = pool.filter((it) => it.id !== target.id && !sameSound(target, it));
   if (others.length <= count) return shuffle(others);
 
   const hot: ContentItem[] = [];

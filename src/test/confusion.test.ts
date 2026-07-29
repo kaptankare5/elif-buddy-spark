@@ -107,14 +107,35 @@ describe("seçim: çeldirici ve ardışıklık", () => {
     }
   });
 
-  it("başta/ortada/sonda: her soruda hem FORM hem HARF ayrımı masada olur", () => {
-    const target = yazilislar.find((i) => i.id === "l2-05-init")!;   // Cim başta
+  // Soru sesle sorulduğu için (Dinle → hangisi?) aynı sesi çalan iki öğe
+  // asla birlikte şıkka giremez: sorunun iki doğru cevabı olurdu.
+  it("AYNI SESLİ öğe çeldirici olmaz — Fe'nin başka hâli şıklara girmez", () => {
+    const target = yazilislar.find((i) => i.id === "l2-20-med")!;   // Fe ortada
+    for (let k = 0; k < 40; k++) {
+      const w = pickDistractors(yazilislar, target, 3).map((x) => x.id);
+      expect(w).not.toContain("l2-20-init");
+      expect(w).not.toContain("l2-20-fin");
+      // yine de karışan HARFLER geliyor (Kaf — Fe ile aynı öbekte)
+      expect(w.some((id) => id.startsWith("l2-21-"))).toBe(true);
+    }
+  });
+
+  it("konular karışık havuzda da aynı ses ayıklanır (l1 Fe ↔ l2 Fe)", () => {
+    const mixed = [...harfler, ...yazilislar];
+    const target = mixed.find((i) => i.id === "l2-20-med")!;
+    for (let k = 0; k < 40; k++) {
+      for (const w of pickDistractors(mixed, target, 3)) {
+        expect(w.audio).not.toBe(target.audio);
+      }
+    }
+  });
+
+  it("ısınmış partner bile olsa aynı sesliyse şıkka girmez", () => {
+    recordConfusionPick("l2-20-med", "l2-20-init");   // form karışıklığı ölçüldü
+    const target = yazilislar.find((i) => i.id === "l2-20-med")!;
     for (let k = 0; k < 30; k++) {
       const w = pickDistractors(yazilislar, target, 3).map((x) => x.id);
-      // aynı harfin (Cim) başka hâli — form ayrımı
-      expect(w.some((id) => id === "l2-05-med" || id === "l2-05-fin")).toBe(true);
-      // aynı hâlde başka harf (Ha/Hı başta) — harf ayrımı
-      expect(w.some((id) => id === "l2-06-init" || id === "l2-07-init")).toBe(true);
+      expect(w).not.toContain("l2-20-init");
     }
   });
 
