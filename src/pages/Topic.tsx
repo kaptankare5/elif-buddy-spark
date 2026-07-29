@@ -16,9 +16,12 @@ import {
   type Level,
 } from "@/data/srs";
 import { cn } from "@/lib/utils";
-import { isTopicUnlocked, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
+import { isTopicUnlocked, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
+import { isTopicSkipped, pickBackCheckTopic, recordBackCheck } from "@/lib/placement";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
+import { SkipTest } from "@/components/SkipTest";
 import { LevelBadge } from "@/components/LevelBadge";
+import { Rocket } from "lucide-react";
 
 type Mode = "browse" | "test";
 
@@ -55,9 +58,13 @@ const Topic = () => {
   const [q, setQ] = useState<{ target: ContentItem; options: ContentItem[] } | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState<{ title: string; subtitle?: string } | null>(null);
+  const [showSkip, setShowSkip] = useState(false);
   const questionStartRef = useRef<number>(0);
   // Yanlış cevaplanan harf bir sonraki soruda tekrar sorulsun (anlık düzeltici tekrar)
   const retryIdRef = useRef<string | null>(null);
+  // Şu anki soru bir ARA-KONTROL ise, hangi (eski, atlanmış) konudan geldiği.
+  // null = normal konu sorusu.
+  const backCheckRef = useRef<string | null>(null);
 
   const items = topic?.items || [];
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
@@ -76,15 +83,40 @@ const Topic = () => {
   useEffect(() => {
     if (mode !== "test" || !topic || unlockedItemIds.length === 0 || q) return;
     if (topic.noPractice) return;
-    const pool = items.filter((it) => unlockedItemIds.includes(it.id));
-    // Yanlış cevaplanan harf varsa onu tekrar sor (düzeltici tekrar), yoksa SRS seçer
-    let tid: string;
+
+    // 1) Yanlış cevaplanan (konu içi) harf varsa önce onu tekrar sor.
     if (retryIdRef.current && unlockedItemIds.includes(retryIdRef.current)) {
-      tid = retryIdRef.current;
+      const pool = items.filter((it) => unlockedItemIds.includes(it.id));
+      const tid = retryIdRef.current;
       retryIdRef.current = null;
-    } else {
-      tid = pickNextLetter(NS, topic.id, unlockedItemIds);
+      backCheckRef.current = null;
+      setQ(buildQuestion(pool, tid));
+      setPicked(null);
+      questionStartRef.current = Date.now();
+      return;
     }
+
+    // 2) ARA-KONTROL: önceki atlanmış konulardan yoklama gelsin mi? (deneme
+    //    süresi / zayıflık oranına göre). Gelirse soru O konudan kurulur ve
+    //    gerçek SRS'e o konuya işlenir — dürüst seviye oluşur.
+    const bcTopicId = pickBackCheckTopic(topic.id);
+    if (bcTopicId) {
+      const bcTopic = getTopic("elifba", bcTopicId);
+      if (bcTopic && bcTopic.items.length >= 2) {
+        const bcIds = bcTopic.items.map((i) => i.id);
+        const bcTid = pickNextLetter(NS, bcTopicId, bcIds);
+        backCheckRef.current = bcTopicId;
+        setQ(buildQuestion(bcTopic.items, bcTid));
+        setPicked(null);
+        questionStartRef.current = Date.now();
+        return;
+      }
+    }
+
+    // 3) Normal konu içi SRS seçimi.
+    const pool = items.filter((it) => unlockedItemIds.includes(it.id));
+    const tid = pickNextLetter(NS, topic.id, unlockedItemIds);
+    backCheckRef.current = null;
     setQ(buildQuestion(pool, tid));
     setPicked(null);
     questionStartRef.current = Date.now();
@@ -207,6 +239,21 @@ const Topic = () => {
             </div>
           )}
 
+          {/* Hızlı-geçiş: konuyu zaten bilen çocuk atlayabilir (4/4 sınav) */}
+          {!topic.noPractice && !isTopicSkipped(topic.id) && !isTopicCompleted(topic) && (
+            <button
+              onClick={() => setShowSkip(true)}
+              className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-2.5 text-sm font-extrabold text-primary transition-bouncy hover:bg-primary/10 active:scale-95"
+            >
+              <Rocket className="h-4 w-4" /> Bunu zaten biliyorum · Atla
+            </button>
+          )}
+          {isTopicSkipped(topic.id) && (
+            <div className="mb-4 flex items-center justify-center gap-1.5 rounded-2xl bg-success/10 border border-success/30 px-4 py-2 text-xs font-bold text-success">
+              🚀 Bu konuyu atladın — arada seni yoklayacağız
+            </div>
+          )}
+
           {/* Konu videosu (Diyanet karekod videosu) */}
           {videoEmbed && (
             <div className="mb-4 overflow-hidden rounded-2xl border-2 border-primary/20 shadow-card bg-black">
@@ -274,6 +321,25 @@ const Topic = () => {
             </div>
           )}
         </main>
+        {showSkip && (
+          <SkipTest
+            topic={topic}
+            onClose={() => setShowSkip(false)}
+            onPass={() => {
+              setShowSkip(false);
+              // Bölüm-kutlama efekti "konu tamamlandı" sanmasın diye görülen
+              // bölüm sayacını dolu işaretle (çift kutlama olmaz).
+              const scope = getActiveStudentScope() ?? "guest";
+              try {
+                localStorage.setItem(`elifba-secseen-${scope}-${topic.id}`, String(getSectionOrder(topic).length));
+              } catch { /* ignore */ }
+              setCelebrate({
+                title: "🚀 Konu atlandı!",
+                subtitle: "Bir sonraki konu açıldı — istersen geri gelip pekiştirebilirsin.",
+              });
+            }}
+          />
+        )}
         {celebrate && (
           <UnlockCelebration title={celebrate.title} subtitle={celebrate.subtitle} onDone={() => setCelebrate(null)} />
         )}
@@ -287,10 +353,19 @@ const Topic = () => {
     setPicked(opt.id);
     const correct = opt.id === q.target.id;
     const responseMs = questionStartRef.current ? Date.now() - questionStartRef.current : undefined;
-    await recordSrsAnswer(NS, topic.id, q.target.id, correct, { responseMs });
+    const bcTopic = backCheckRef.current;
+    if (bcTopic) {
+      // Ara-kontrol: cevabı O konuya işle (dürüst seviye) + konu-düzeyi yoklama
+      // durumunu güncelle. Yabancı harf hemen tekrar sorulmaz.
+      await recordSrsAnswer(NS, bcTopic, q.target.id, correct, { responseMs });
+      recordBackCheck(bcTopic, correct);
+      retryIdRef.current = null;
+    } else {
+      await recordSrsAnswer(NS, topic.id, q.target.id, correct, { responseMs });
+      // Yanlışsa aynı harf bir sonraki soruda tekrar sorulsun
+      retryIdRef.current = correct ? null : q.target.id;
+    }
     await playFeedback(correct);
-    // Yanlışsa aynı harf bir sonraki soruda tekrar sorulsun
-    retryIdRef.current = correct ? null : q.target.id;
     setTimeout(() => setQ(null), correct ? 700 : 2000);
   };
 

@@ -120,6 +120,16 @@ export function clearLocalProgress(scope: "active" | "guest" | "all") {
     }
     try { window.dispatchEvent(new Event(EVENT(ns))); } catch { /* */ }
   }
+  // Yerleştirme (atlanan konu / ara-kontrol) verisini de temizle — sıfırlanan
+  // çocukta konular hâlâ "atlanmış" görünmesin. (placement.ts import etmeden,
+  // döngüsel bağımlılık olmasın diye anahtar doğrudan silinir.)
+  if (scope === "guest" || scope === "all") {
+    try { localStorage.removeItem("elifba-placement-guest-v1"); } catch { /* */ }
+  }
+  if (_activeStudent) {
+    try { localStorage.removeItem(`elifba-placement-student-${_activeStudent}-v1`); } catch { /* */ }
+  }
+  try { window.dispatchEvent(new Event("elifba-placement-updated")); } catch { /* */ }
   try { window.dispatchEvent(new Event(PROGRESS_EVENT)); } catch { /* */ }
 }
 
@@ -282,25 +292,64 @@ export interface LastPickInfo { id: string; level: number; weight: number; stale
 let _lastPickInfo: LastPickInfo | null = null;
 export function getLastPickInfo(): LastPickInfo | null { return _lastPickInfo; }
 
+// ÖĞRENME SETİ KAPISI (Problem 1 — bilişsel yük + akış): Aynı anda "öğrenilmekte
+// olan" (görülmüş ama L3'e ulaşmamış) harf sayısı K'yı geçtiyse YA DA çocuk
+// zorlanıyorsa (akış bandı düşük), sistem YENİ harf TANITMAZ — eldeki set
+// pekişene kadar üzerine yük bindirmez. Çocuk çalışma belleği sınırlıdır
+// (Miller/Sweller); zorlanırken yeni sembol akıtmak akışı kırar, bırakmayı
+// tetikler. Set boşalınca (bir harf L3+ olunca) ve doğruluk toparlayınca
+// sıradaki harf müfredat sırasıyla tanıtılır.
+export const LEARNING_SET_K = 3;
+export interface IntroGateInfo {
+  inProgress: number;  // görülmüş ama L3'e ulaşmamış (öğrenilmekte)
+  k: number;
+  struggling: boolean; // son doğruluk < %70
+  gated: boolean;      // yeni harf tanıtımı şu an bastırıldı mı
+  nextUnseen: string | null;
+}
+let _introGate: IntroGateInfo | null = null;
+export function getIntroGateInfo(): IntroGateInfo | null { return _introGate; }
+
 export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): string {
-  // 1) Hiç karşılaşılmamış öğe varsa MÜFREDAT SIRASIYLA tanıt (i+1 ilkesi:
-  //    yeni bilgi öngörülebilir sırayla gelir; elif'ten önce ye sorulmaz).
+  // 1) Öğrenme seti kapısı: kaç harf "öğrenilmekte" (görülmüş, L3 altı) + ilk
+  //    görülmemiş harf hangisi? (müfredat sırası korunur — i+1 ilkesi).
+  let inProgress = 0;
+  let seenCount = 0;
+  let firstUnseen: string | null = null;
   for (const id of letterIds) {
     const e = topic[id];
-    if (!e || (e.seen ?? 0) === 0) {
-      _lastPickedId = id;
-      _lastPickInfo = { id, level: 0, weight: itemWeight(id), stale: 1, ticket: 0, days: 0 };
-      return id;
-    }
+    const seen = (e?.seen ?? 0) > 0;
+    if (!seen) { if (firstUnseen === null) firstUnseen = id; continue; }
+    seenCount++;
+    if (((e?.level ?? 1) as Level) < 3) inProgress++;
+  }
+  const accGate = recentAccuracy();
+  const struggling = accGate !== null && accGate < 0.70;
+  // Set dolu veya zorlanıyorsa yeni harf tanıtma. Ama hiç görülmüş harf yoksa
+  // (taze konu) kapı çalışmaz — başlamak için ilk harf her zaman tanıtılır.
+  const gateNew = seenCount > 0 && (inProgress >= LEARNING_SET_K || struggling);
+  const introduce = firstUnseen !== null && !gateNew;
+  _introGate = {
+    inProgress, k: LEARNING_SET_K, struggling,
+    gated: firstUnseen !== null && gateNew, nextUnseen: firstUnseen,
+  };
+  if (introduce && firstUnseen) {
+    _lastPickedId = firstUnseen;
+    _lastPickInfo = { id: firstUnseen, level: 0, weight: itemWeight(firstUnseen), stale: 1, ticket: 0, days: 0 };
+    return firstUnseen;
   }
 
+  // Kapı kapalıysa seçim YALNIZ görülmüş harfler arasında yapılır — yeni harfler
+  // sırada bekler, eldeki set pekişir.
+  const pickIds = seenCount > 0 ? letterIds.filter((id) => (topic[id]?.seen ?? 0) > 0) : letterIds;
+
   const byLevel: Record<Level, string[]> = { 1: [], 2: [], 3: [], 4: [] };
-  for (const id of letterIds) {
+  for (const id of pickIds) {
     const e = topic[id] || { level: 1, seen: 0, lastSeen: 0 };
     byLevel[e.level as Level].push(id);
   }
   const filled: Level[] = ([1, 2, 3, 4] as Level[]).filter((l) => byLevel[l].length > 0);
-  if (filled.length === 0) return letterIds[Math.floor(Math.random() * letterIds.length)];
+  if (filled.length === 0) return pickIds[Math.floor(Math.random() * pickIds.length)];
   const w = waterfallWeights(filled);
   // Isınma + uyarlanır zorluk (seans yayı): ~%85 akış kanalını korur.
   const acc = recentAccuracy();
@@ -322,10 +371,10 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
   // 2) Aynı öğe art arda gelmesin — seçilen seviyede başka aday varsa
   //    sonuncuyu ele; o seviyede tek aday oysa tüm havuzdan ele.
   let candidates = byLevel[chosenLevel];
-  if (letterIds.length > 1) {
+  if (pickIds.length > 1) {
     const without = candidates.filter((id) => id !== _lastPickedId);
     if (without.length > 0) candidates = without;
-    else candidates = letterIds.filter((id) => id !== _lastPickedId);
+    else candidates = pickIds.filter((id) => id !== _lastPickedId);
   }
 
   candidates = [...candidates].sort((a, b) => {

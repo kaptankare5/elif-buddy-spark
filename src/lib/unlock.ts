@@ -14,6 +14,7 @@ import { SUBJECTS, findTopicOfItem } from "@/data/subjects";
 import { getTopicSrs, type Level, type Namespace } from "@/data/srs";
 import type { ContentItem, ContentTopic } from "@/data/types";
 import { isTestUnlockActive } from "@/lib/testUnlock";
+import { isTopicSkipped } from "@/lib/placement";
 
 const NS: Namespace = "quiz";
 
@@ -39,7 +40,9 @@ export function getUnlockedTopicIds(): Set<string> {
     for (const t of s.topics) {
       if (allowNext) {
         out.add(t.id);
-        allowNext = isTopicCompleted(t);
+        // Konu ya normal tamamlandıysa (tüm öğeler L3+) YA DA hızlı-geçişle
+        // atlandıysa sonraki konu açılır.
+        allowNext = isTopicCompleted(t) || isTopicSkipped(t.id);
       }
     }
   }
@@ -75,6 +78,13 @@ export function getUnlockedSections(topic: ContentTopic): Set<string> {
   const order = getSectionOrder(topic);
   const out = new Set<string>();
   if (isTestUnlockActive()) {
+    for (const sec of order) out.add(sec);
+    return out;
+  }
+  // Hızlı-geçişle atlanan konu "biliniyor" varsayılır → tüm bölümleri açık
+  // (geri gelip herhangi bir yeri pekiştirebilir; ara-kontrol de her yerden
+  // soru çekebilsin).
+  if (isTopicSkipped(topic.id)) {
     for (const sec of order) out.add(sec);
     return out;
   }
