@@ -1,9 +1,7 @@
 import { useEffect } from "react";
 import { useParams, Navigate } from "react-router-dom";
-import { toast } from "sonner";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { useGameSession } from "@/hooks/useGameSession";
-import { useGameMode } from "@/lib/gameMode";
 import { releaseRemedy } from "@/lib/remedial";
 import { RouteHead } from "@/components/RouteHead";
 import QuizGame from "./games/QuizGame";
@@ -50,21 +48,12 @@ const Game = () => {
 
 const TrackedGame = ({ gameId }: { gameId: string }) => {
   useGameSession(gameId);
-  const [mode] = useGameMode();
 
-  // Normal modda oyun cevabı "arada test" olarak sayıldığında kısa olumlu
-  // sinyal — çocuğa ilerlediğini hissettirir, akışı bölmez. (Süper modda ve
-  // Quiz oyununda her cevap zaten sayıldığı için bu bildirim gösterilmez.)
   // Bitiş durumu OLMAYAN oyunlarda (balon, hafıza, kutu, üçlü…) telafi anı
   // = çocuğun oyundan çıktığı andır. Oyun içinde asla açılmaz.
   useEffect(() => () => { releaseRemedy(); }, []);
-
-  useEffect(() => {
-    if (mode === "super" || gameId === "quiz") return;
-    const onTest = () => toast("📝 Test sorusu sayıldı! İlerliyorsun ✨", { duration: 1400 });
-    window.addEventListener("elifba-game-test-counted", onTest);
-    return () => window.removeEventListener("elifba-game-test-counted", onTest);
-  }, [mode, gameId]);
+  // NOT: Normal modda "📝 Test sorusu sayıldı" bildirimi KALDIRILDI —
+  // arada bir sayılan cevap mekaniğiyle birlikte (bkz. lib/gameProgress.ts).
 
   const meta = GAME_META[gameId] ?? { title: "Oyun", desc: "ElifMim oyunu." };
   const head = (

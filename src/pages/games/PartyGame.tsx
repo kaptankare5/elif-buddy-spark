@@ -220,8 +220,10 @@ type Obstacle =
 
 interface Gate {
   z: number;
-  target: ContentItem;
-  options: ContentItem[];   // 3 şık, soldan sağa
+  // Soru kapı SIRASI GELİNCE dağıtılır (armGate) — bölüm başında hepsine
+  // birden dağıtılırsa SRS güncellenmediği için hepsi aynı harfi alıyor.
+  target: ContentItem | null;
+  options: ContentItem[];   // 3 şık, soldan sağa (dağıtılana kadar boş)
   done: boolean;
   said: number;             // 0 = ses hiç çalmadı, 1 = uzaktan çaldı, 2 = yakında tekrar
   botDone: Set<number>;
@@ -338,7 +340,7 @@ const PartyGame = () => {
     scene.add(sun);
 
     const disposables: { dispose(): void }[] = [];
-    const track = <T extends THREE.BufferGeometry | THREE.Material>(x: T): T => { disposables.push(x); return x; };
+    const track = <T extends THREE.BufferGeometry | THREE.Material | THREE.Texture>(x: T): T => { disposables.push(x); return x; };
 
     const def = LEVELS[Math.min(LEVELS.length, Math.max(1, level)) - 1];
     const TRACK_LEN = def.len;
@@ -483,12 +485,12 @@ const PartyGame = () => {
     const doorFrameGeo = track(new THREE.BoxGeometry(0.6, 6.6, 0.6));
     const gateTopGeo = track(new THREE.BoxGeometry(ROAD_HALF * 2, 0.7, 0.7));
     const matFrame = track(new THREE.MeshLambertMaterial({ color: 0x0f766e }));
+    // Kapının SORUSU burada seçilmez — bkz. armGate. Bölüm başında bütün
+    // kapılara birden soru dağıtılırsa SRS durumu hiç değişmediği için
+    // pickNextGameItem her seferinde AYNI harfi (müfredatın ilk görülmemiş
+    // harfi = Elif) döndürüyordu; çocuk bütün bölüm boyunca tek harf görüyordu.
     const addGate = (z: number) => {
       if (pool.length < 3) return;
-      const target = pickNextGameItem(pool) || pool[0];
-      const wrongs = pickWrongs(pool, target, 2);
-      if (wrongs.length < 2) return;
-      const options = shuffle([target, ...wrongs]);
       const panels: THREE.Mesh[] = [];
       const g = new THREE.Group();
       g.position.z = wz(z);
@@ -503,16 +505,33 @@ const PartyGame = () => {
       for (let i = 0; i < 3; i++) {
         const px = -ROAD_HALF + (i + 0.5) * (ROAD_HALF * 2 / 3);
         const mat = track(new THREE.MeshBasicMaterial({
-          map: letterTexture(options[i].emoji ?? "؟"),
-          transparent: true, side: THREE.DoubleSide,
+          map: null, transparent: true, side: THREE.DoubleSide,
         }));
         const p = new THREE.Mesh(panelGeo, mat);
         p.position.set(px, 3.1, 0);
         g.add(p);
         panels.push(p);
       }
+      g.visible = false;   // sorusu dağıtılana kadar boş pano gösterme
       scene.add(g);
-      gates.push({ z, target, options, done: false, said: 0, botDone: new Set(), panels, group: g });
+      gates.push({ z, target: null, options: [], done: false, said: 0, botDone: new Set(), panels, group: g });
+    };
+
+    // Kapıya SIRASI GELİNCE soru dağıt. Bir önceki kapı cevaplanıp
+    // recordGameAnswer çalıştıktan sonra çağrıldığı için SRS durumu güncel:
+    // seviye/aciliyet/karışıklık ısısı hesaba katılır ve harf gerçekten değişir.
+    const armGate = (g: Gate) => {
+      const target = pickNextGameItem(pool) || pool[0];
+      const wrongs = pickWrongs(pool, target, 2);
+      if (wrongs.length < 2) { g.done = true; return; }
+      g.target = target;
+      g.options = shuffle([target, ...wrongs]);
+      g.panels.forEach((p, i) => {
+        const m = p.material as THREE.MeshBasicMaterial;
+        m.map = track(letterTexture(g.options[i].emoji ?? "؟"));
+        m.color.set(0xffffff);
+        m.needsUpdate = true;
+      });
     };
 
     // ---------- parkur dizilimi (bölüm reçetesinden prosedürel) ----------
@@ -1080,6 +1099,9 @@ const PartyGame = () => {
       // Aynı anda YALNIZCA SIRADAKİ kapı görünür: iki kapı üst üste görününce
       // çocuk hangisine cevap vereceğini şaşırıyor.
       const nextGate = gatesRef.current.find((g) => !g.done);
+      // Sırası gelen kapıya soruyu ŞİMDİ dağıt: bir önceki cevap SRS'e
+      // işlendikten sonra seçildiği için harf her kapıda gerçekten değişir.
+      if (nextGate && !nextGate.target) armGate(nextGate);
       for (const g of gatesRef.current) {
         // Geçilen kapı kameranın ÖNÜNDE kalıyor (kamera oyuncunun 17 birim
         // gerisinde) ve ekranın altını tamamen kapatıyordu. Doğru/yanlış
@@ -1089,18 +1111,19 @@ const PartyGame = () => {
         } else {
           g.group.visible = g === nextGate;
         }
-        if (!g.done && player.finished === null && player.z >= g.z) {
+        if (!g.done && g.target && player.finished === null && player.z >= g.z) {
+          const target = g.target;
           g.done = true;
           const idx = laneOf(player.x);
           const chosen = g.options[idx];
-          const correct = chosen.id === g.target.id;
-          recordGameAnswer(g.target, correct, {
+          const correct = chosen.id === target.id;
+          recordGameAnswer(target, correct, {
             gameId: "party", chosenId: chosen.id, shownIds: g.options.map((o) => o.id),
           });
           // geçilen kapıyı renklendir (görsel geri bildirim)
           g.panels.forEach((p, i) => {
             const m = p.material as THREE.MeshBasicMaterial;
-            m.color.set(g.options[i].id === g.target.id ? 0x86efac : 0xfca5a5);
+            m.color.set(g.options[i].id === target.id ? 0x86efac : 0xfca5a5);
           });
           if (correct) {
             statsRef.current.correct += 1;
@@ -1121,7 +1144,7 @@ const PartyGame = () => {
           }
         }
         for (const r of racers) {
-          if (r.isPlayer || g.botDone.has(r.id) || r.z < g.z) continue;
+          if (r.isPlayer || !g.target || g.botDone.has(r.id) || r.z < g.z) continue;
           g.botDone.add(r.id);
           const ok = g.options[laneOf(r.x)]?.id === g.target.id;
           if (ok) r.boostT = BOOST_TIME * 0.9; else r.mudT = MUD_TIME;
@@ -1135,15 +1158,16 @@ const PartyGame = () => {
       // YOK (kullanıcı şartı: aynı soruyu iki kez sormak rahatsız ediyor);
       // tekrar dinlemek isteyen çocuk "Hangi kapı? — dinle" bandına dokunur.
       const d = nextGate ? nextGate.z - player.z : Infinity;
-      if (nextGate && d > 0 && d < PROMPT_LEAD) {
+      if (nextGate?.target && d > 0 && d < PROMPT_LEAD) {
+        const gt = nextGate.target;
         if (nextGate.said === 0) {
           nextGate.said = 1;
-          setPrompt(nextGate.target);
-          playItem(nextGate.target);
+          setPrompt(gt);
+          playItem(gt);
         }
-        if (promptIdRef.current !== nextGate.target.id) {
-          promptIdRef.current = nextGate.target.id;
-          setPrompt(nextGate.target);
+        if (promptIdRef.current !== gt.id) {
+          promptIdRef.current = gt.id;
+          setPrompt(gt);
         }
       } else if (promptIdRef.current !== null) {
         promptIdRef.current = null;

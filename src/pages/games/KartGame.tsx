@@ -159,7 +159,9 @@ type Phase = "tracks" | "race" | "finish";
 
 interface Gate {
   s: number;
-  target: ContentItem;
+  // Soru kapı SIRASI GELİNCE dağıtılır (armGate) — yarış başında hepsine
+  // birden dağıtılırsa SRS güncellenmediği için hepsi aynı harfi alıyor.
+  target: ContentItem | null;
   options: ContentItem[];
   done: boolean;
   said: number;
@@ -580,12 +582,12 @@ const KartGame = () => {
     const laneU = (i: number) => -ROAD_HALF + (i + 0.5) * (ROAD_HALF * 2 / 3);
     const laneOf = (u: number) => Math.max(0, Math.min(2, Math.floor(((u + ROAD_HALF) / (ROAD_HALF * 2)) * 3)));
 
+    // Kapının SORUSU burada seçilmez — bkz. armGate. Yarış başında bütün
+    // kapılara birden soru dağıtılırsa SRS durumu hiç değişmediği için
+    // pickNextGameItem her seferinde AYNI harfi (müfredatın ilk görülmemiş
+    // harfi = Elif) döndürüyordu; çocuk bütün yarış boyunca tek harf görüyordu.
     for (const gs of gateSs) {
       if (pool.length < 3) break;
-      const target = pickNextGameItem(pool) || pool[0];
-      const wrongs = pickWrongs(pool, target, 2);
-      if (wrongs.length < 2) continue;
-      const options = shuffle([target, ...wrongs]);
       const g = new THREE.Group();
       const c = worldAt(gs, 0, new THREE.Vector3());
       g.position.copy(c);
@@ -608,9 +610,7 @@ const KartGame = () => {
         g.add(p);
       }
       for (let i = 0; i < 3; i++) {
-        const mat = keep(new THREE.MeshBasicMaterial({
-          map: letterTexture(options[i].emoji ?? "؟"), side: THREE.DoubleSide,
-        }));
+        const mat = keep(new THREE.MeshBasicMaterial({ map: null, side: THREE.DoubleSide }));
         const p = new THREE.Mesh(panelGeo, mat);
         // Grup lookAt(ileri) ile döndüğü için yerel +X = −normal = sürücünün
         // SAĞI; u da artık sağ yönünde ölçüldüğünden yerel x doğrudan laneU(i).
@@ -618,10 +618,28 @@ const KartGame = () => {
         g.add(p);
         panels.push(p);
       }
+      g.visible = false;   // sorusu dağıtılana kadar boş pano gösterme
       scene.add(g);
-      gates.push({ s: gs, target, options, done: false, said: 0, botDone: new Set(), panels, group: g });
+      gates.push({ s: gs, target: null, options: [], done: false, said: 0, botDone: new Set(), panels, group: g });
     }
     gatesRef.current = gates;
+
+    // Kapıya SIRASI GELİNCE soru dağıt. Bir önceki kapı cevaplanıp
+    // recordGameAnswer çalıştıktan sonra çağrıldığı için SRS durumu güncel:
+    // seviye/aciliyet/karışıklık ısısı hesaba katılır ve harf gerçekten değişir.
+    const armGate = (g: Gate) => {
+      const target = pickNextGameItem(pool) || pool[0];
+      const wrongs = pickWrongs(pool, target, 2);
+      if (wrongs.length < 2) { g.done = true; return; }
+      g.target = target;
+      g.options = shuffle([target, ...wrongs]);
+      g.panels.forEach((p, i) => {
+        const m = p.material as THREE.MeshBasicMaterial;
+        m.map = keep(letterTexture(g.options[i].emoji ?? "؟"));
+        m.color.set(0xffffff);
+        m.needsUpdate = true;
+      });
+    };
 
     const nearGate = (s: number) =>
       gateSs.some((gs) => {
@@ -1109,16 +1127,16 @@ const KartGame = () => {
             }
             continue;
           }
-          // yeni tura girince kapılar tekrar sorulur
+          // Yeni tura girince kapılar tekrar sorulur — ama AYNI harfler değil:
+          // hedef sıfırlanır, armGate ikinci turda güncel SRS'e göre yeniden
+          // seçer (birinci turun cevapları seviyeleri çoktan değiştirdi).
           if (r.isPlayer) {
             for (const g of gates) {
               g.done = false;
               g.said = 0;
-              g.group.visible = true;
-              g.panels.forEach((p, i) => {
-                (p.material as THREE.MeshBasicMaterial).map = letterTexture(g.options[i].emoji ?? "؟");
-                (p.material as THREE.MeshBasicMaterial).color.set(0xffffff);
-              });
+              g.target = null;
+              g.options = [];
+              g.group.visible = false;
             }
             playSfx("dove");
             showFlash(`🏁 ${r.lap}. TUR`, true);
@@ -1188,33 +1206,25 @@ const KartGame = () => {
       }
 
       // --- soru kapıları ---
-      let nextGate: Gate | null = null;
-      let nextD = Infinity;
+      // SIRA ÖNEMLİ: önce geçilen kapının cevabı kaydedilir, SONRA sıradaki
+      // kapı seçilip sorusu dağıtılır. Tersi olursa (kapı burada halka
+      // şeklinde olduğu için) oyuncu bir kapıyı geçtiği KAREDE, o kapı henüz
+      // `done` işaretlenmeden sıradaki kapı "en yakın" sayılıp siliniyordu →
+      // soru, önceki cevap SRS'e işlenmeden seçildiği için aynı harf çıkıyordu.
       for (const g of gates) {
-        if (g.done) continue;
-        const d = wrapS(g.s - player.s);
-        if (d < nextD) { nextD = d; nextGate = g; }
-      }
-      for (const g of gates) {
-        if (g.done) {
-          if (g.group.visible && wrapS(player.s - g.s) > 22 && wrapS(player.s - g.s) < TRACK_LEN * 0.5) {
-            g.group.visible = false;
-          }
-        } else {
-          g.group.visible = g === nextGate;
-        }
         // oyuncu kapıyı geçti mi? (bu karede üzerinden atladıysak da yakalanır)
-        if (!g.done && player.finished === null && wrapS(player.s - g.s) < 8) {
+        if (!g.done && g.target && player.finished === null && wrapS(player.s - g.s) < 8) {
+          const target = g.target;
           g.done = true;
           const idx = laneOf(player.u);
           const chosen = g.options[idx];
-          const correct = chosen.id === g.target.id;
-          recordGameAnswer(g.target, correct, {
+          const correct = chosen.id === target.id;
+          recordGameAnswer(target, correct, {
             gameId: "kart", chosenId: chosen.id, shownIds: g.options.map((o) => o.id),
           });
           g.panels.forEach((p, i) => {
             (p.material as THREE.MeshBasicMaterial).color.set(
-              g.options[i].id === g.target.id ? 0x86efac : 0xfca5a5,
+              g.options[i].id === target.id ? 0x86efac : 0xfca5a5,
             );
           });
           if (correct) {
@@ -1236,7 +1246,7 @@ const KartGame = () => {
           }
         }
         for (const r of racers) {
-          if (r.isPlayer || g.botDone.has(r.id)) continue;
+          if (r.isPlayer || !g.target || g.botDone.has(r.id)) continue;
           if (wrapS(r.s - g.s) < 8) {
             g.botDone.add(r.id);
             const ok = g.options[laneOf(r.u)]?.id === g.target.id;
@@ -1245,19 +1255,39 @@ const KartGame = () => {
         }
       }
 
+      // Cevaplar işlendi; şimdi sıradaki kapıyı seç ve sorusunu dağıt.
+      let nextGate: Gate | null = null;
+      let nextD = Infinity;
+      for (const g of gates) {
+        if (g.done) continue;
+        const d = wrapS(g.s - player.s);
+        if (d < nextD) { nextD = d; nextGate = g; }
+      }
+      if (nextGate && !nextGate.target) armGate(nextGate);
+      for (const g of gates) {
+        if (g.done) {
+          if (g.group.visible && wrapS(player.s - g.s) > 22 && wrapS(player.s - g.s) < TRACK_LEN * 0.5) {
+            g.group.visible = false;
+          }
+        } else {
+          g.group.visible = g === nextGate && !!g.target;
+        }
+      }
+
       // --- kapı sesi: kapı başına TEK KEZ, erkenden ---
       // Otomatik tekrar YOK (kullanıcı şartı: "soru cevaplamadan 2 defa
       // soruyor" — biri uzakta biri kapıya yakınken). Tekrar dinlemek isteyen
       // çocuk üstteki "Hangi kapı? — dinle" bandına dokunur.
-      if (nextGate && nextD < PROMPT_LEAD) {
+      if (nextGate?.target && nextD < PROMPT_LEAD) {
+        const gt = nextGate.target;
         if (nextGate.said === 0) {
           nextGate.said = 1;
-          setPrompt(nextGate.target);
-          playItem(nextGate.target);
+          setPrompt(gt);
+          playItem(gt);
         }
-        if (promptIdRef.current !== nextGate.target.id) {
-          promptIdRef.current = nextGate.target.id;
-          setPrompt(nextGate.target);
+        if (promptIdRef.current !== gt.id) {
+          promptIdRef.current = gt.id;
+          setPrompt(gt);
         }
       } else if (promptIdRef.current !== null) {
         promptIdRef.current = null;
