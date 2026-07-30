@@ -98,20 +98,44 @@ export function enqueueRetryItem(item: ContentItem | undefined | null) {
 
 export function clearRetryQueue() { _retryQueue.length = 0; }
 
+// SON SORULANLAR — seçimin SRS'ten BAĞIMSIZ ilerlemesini sağlar.
+// Normal modda oyun cevabı SRS'e yazılmadığı için seçicinin gördüğü durum
+// hiç değişmiyor ve her çağrıda aynı harf (müfredatın ilk görülmemişi)
+// dönüyordu: "sürekli aynı soruyu soruyor". Son sorulanları havuzdan
+// çıkarmak bunu moddan bağımsız çözer; süper modda da arka arkaya tekrarı
+// engelleyen ikinci bir emniyet olur.
+const RECENT_ASKED_MAX = 4;
+const _recentAsked: string[] = [];
+
+export function clearRecentAsked() { _recentAsked.length = 0; }
+
+function rememberAsked(id: string) {
+  const i = _recentAsked.indexOf(id);
+  if (i >= 0) _recentAsked.splice(i, 1);
+  _recentAsked.push(id);
+  while (_recentAsked.length > RECENT_ASKED_MAX) _recentAsked.shift();
+}
+
 export function pickNextGameItem(pool: ContentItem[]): ContentItem | undefined {
   if (pool.length === 0) return undefined;
   // Önce retry kuyruğunu kontrol et
   while (_retryQueue.length > 0) {
     const id = _retryQueue.shift()!;
     const found = pool.find((p) => p.id === id);
-    if (found) return found;
+    if (found) { rememberAsked(found.id); return found; }
   }
+  // Son sorulanları ele — ama havuz çeldirici kuracak kadar (3) kalmalı.
+  let usable = pool.filter((p) => !_recentAsked.includes(p.id));
+  if (usable.length < 3) usable = pool;
+
   const synthetic: TopicSrs = {};
-  for (const item of pool) {
+  for (const item of usable) {
     const t = findTopicOfItem(item.id);
     const entry = t ? getTopicSrs(NS, t.topicId)[item.id] : undefined;
     synthetic[item.id] = entry ?? { level: 1, correct: 0, total: 0, seen: 0, lastSeen: 0, totalMs: 0 };
   }
-  const id = pickNextLetterFromTopic(synthetic, pool.map((p) => p.id));
-  return pool.find((p) => p.id === id) ?? pool[0];
+  const id = pickNextLetterFromTopic(synthetic, usable.map((p) => p.id));
+  const chosen = usable.find((p) => p.id === id) ?? usable[0];
+  rememberAsked(chosen.id);
+  return chosen;
 }

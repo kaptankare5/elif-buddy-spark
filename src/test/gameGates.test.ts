@@ -9,7 +9,7 @@
 // Düzeltme: kapı sorusu SIRASI GELİNCE (armGate) dağıtılır — yani bir önceki
 // cevap SRS'e işlendikten sonra.
 import { describe, it, expect, beforeEach } from "vitest";
-import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
+import { clearRecentAsked, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { __resetSelectorState, resetTopicSrs } from "@/data/srs";
 import { getAllTopics } from "@/data/subjects";
 import { setGameMode } from "@/lib/gameMode";
@@ -21,20 +21,22 @@ const pool = t1.items.slice(0, 12);
 beforeEach(() => {
   localStorage.clear();
   __resetSelectorState();
+  clearRecentAsked();
   resetTopicSrs("quiz", t1.id);
   setGameMode("super");
 });
 
 describe("oyun kapılarına soru dağıtımı", () => {
-  it("HATALI DESEN: hepsi bir anda seçilirse aynı harf tekrarlanır", () => {
-    // Bu, düzeltme öncesi davranışın kaydı: cevap kaydedilmeden art arda
-    // seçim yapılırsa seçici ilerleyemez. Test bunu "yapılmaması gereken"
-    // olarak sabitler; oyunlar artık bu deseni kullanmıyor.
+  it("cevap kaydedilmeden art arda seçilse bile harf tekrarlanmaz", () => {
+    // Seçici SRS durumuna bakar; cevap yazılmazsa (normal mod) durum hiç
+    // değişmez ve eskiden hep aynı harf dönüyordu. `_recentAsked` tamponu
+    // seçimi SRS'ten bağımsız ilerletir.
     const hepsi = Array.from({ length: 6 }, () => pickNextGameItem(pool)!.id);
-    expect(new Set(hepsi).size).toBe(1);
+    expect(new Set(hepsi).size).toBeGreaterThan(2);
+    for (let i = 1; i < hepsi.length; i++) expect(hepsi[i]).not.toBe(hepsi[i - 1]);
   });
 
-  it("DOĞRU DESEN: her kapı cevaplandıktan sonra seçilirse harfler değişir", () => {
+  it("her kapı cevaplandıktan sonra seçilirse harfler değişir", () => {
     const secilen: string[] = [];
     for (let i = 0; i < 6; i++) {
       const it = pickNextGameItem(pool)!;
@@ -61,6 +63,20 @@ describe("oyun kapılarına soru dağıtımı", () => {
     }
     // Hiç yazılmadıysa öğe hâlâ "görülmemiş" → seçici onu ilk harf olarak verir.
     expect(pickNextGameItem(pool)!.id).toBe(pool[0].id);
+  });
+
+  it("normal modda da sorular ilerler (seviye yazılmasa bile)", () => {
+    // Bildirilen hata: "normal modda sürekli aynı soruyu soruyor". SRS'e
+    // yazılmadığı için seçicinin durumu donuyordu.
+    setGameMode("normal");
+    const secilen: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      const it = pickNextGameItem(pool)!;
+      secilen.push(it.id);
+      recordGameAnswer(it, false, { gameId: "kart", chosenId: pool[9].id, shownIds: [it.id, pool[9].id] });
+    }
+    expect(new Set(secilen).size).toBeGreaterThan(2);
+    for (let i = 1; i < secilen.length; i++) expect(secilen[i]).not.toBe(secilen[i - 1]);
   });
 
   it("süper modda oyun cevabı seviyeye işler", () => {

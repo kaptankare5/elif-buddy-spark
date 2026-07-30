@@ -16,6 +16,14 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
 ### Ses (EN ÖNEMLİSİ — geçmişte bozuldu)
 - Harf/hece sesleri GERÇEK hoca kayıtları: `public/audio/elifba/*.mp3`
   (basic/hareke/cezm/sedde/med/tenvin — 600+ dosya, item.audio alanında).
+- ⚠️ **Oyun havuzu YALNIZ sesi olan öğeleri alır** (`gamePool`, `_shared.ts`):
+  oyunların sorusu SESLE sorulur, kaydı olmayan öğe `playItem`'da tarayıcı
+  TTS'ine düşer ve çoğu cihazda hiç ses çıkmaz → çocuk kapıyı sessizce görür
+  ("soru sormadı, sadece cevaplar vardı"). Test kilidi 1234 bütün konuları
+  açınca kayıtsız öğeler havuza giriyordu. Kayıtsız öğeler konu sayfasında
+  ve Flashcard'da durur (orada soru görseldir). Bekçi: `audioFiles.test.ts`.
+  Hâlâ kaydı OLMAYANLAR: cezm 21 ve 28 (Kaf/Ye), sedde 28 (Ye), bütün
+  "Ekstralar" kelime kartları, `zamir-lafzatullah` ve `elif-lam-ra` konuları.
 - **Daima `playItem(item)` kullan** (item.audio'yu çalar). `playSpeech(text)`
   metni `public/audio/manifest.json`'da arar; bulamazsa ROBOTİK tarayıcı
   TTS'ine düşer. Harf sesi için playSpeech KULLANMA. "Tebrikler!" gibi TTS
@@ -39,6 +47,10 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   eşleşmesi başarısız olursa nedeni bu (tek satır anchor veya node kullan).
 
 ### Öğrenme sistemi (bilimsel gerekçeli — koru)
+- ⚠️ `pickNextGameItem` (gameProgress.ts) **son 4 sorulanı havuzdan eler**.
+  Seçici SRS durumuna bakar; normal modda cevap SRS'e yazılmadığı için durum
+  hiç değişmiyor ve her çağrı aynı harfi döndürüyordu ("sürekli aynı soruyu
+  soruyor"). Tampon seçimi moddan bağımsız ilerletir.
 - SRS `src/data/srs.ts`: L1-4. Yanlış = **-2 seviye** (kullanıcı şartı,
   değişmez). L3→L4 = üst üste 2 doğru (`consecutiveCorrect`). Seçici:
   görülmemişler müfredat sırasıyla, art arda aynı öğe yok, ağırlıklar

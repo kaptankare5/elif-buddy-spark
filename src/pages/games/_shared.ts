@@ -36,9 +36,17 @@ export function setGamePremium(_v: boolean) {
 // aşamalı müfredatı izler — çocuk oyunda henüz öğrenmediği harfle
 // karşılaşmaz (bilişsel yük + başarı hissi). `lang` parametresi tutuluyor
 // ama Elifbâda tüm içerik Türkçe okunuş etiketiyle geliyor.
+//
+// ⚠️ SES ŞARTI: oyunların sorusu SESLE sorulur ("şu sesi duy, kapıyı seç").
+// Kaydı olmayan öğe soru olamaz — `playItem` tarayıcı TTS'ine düşer, o da
+// çoğu cihazda hiç ses çıkarmaz: çocuk kapıyı sessizce görür, ne sorulduğunu
+// bilmez. (Test kilidi 1234 ile bütün konular açılınca kayıtsız 90+ öğe
+// havuza giriyordu — "bazı sorularda soru sormadı, sadece cevaplar vardı".)
+// Kayıtsız öğeler konu sayfasında/Flashcard'da görünmeye devam eder; orada
+// soru GÖRSEL sorulur.
 export function gamePool(_lang?: Lang): ContentItem[] {
   const unlockedIds = getUnlockedItemIdSet();
-  return flattenItems().filter((it) => !!it.emoji && unlockedIds.has(it.id));
+  return flattenItems().filter((it) => !!it.emoji && !!it.audio && unlockedIds.has(it.id));
 }
 
 export function pickN<T>(arr: T[], n: number): T[] {
