@@ -48,6 +48,39 @@ var pad2 = (n) => n < 10 ? `0${n}` : String(n);
 var audioPath = (name) => `/audio/elifba/${name}`;
 var byName = new Map(LETTERS.map((l) => [l.name, l]));
 var bolum = (n) => `${Math.floor((n - 1) / 4) + 1}. B\xF6l\xFCm`;
+var YAZILIS_SECTIONS = [
+  [1, 22, 23],
+  // ا ك ل — dikey çizgililer
+  [2, 3, 4],
+  // ب ت ث — diş + nokta
+  [5, 6, 7],
+  // ج ح خ — çanaklılar
+  [8, 9],
+  // د ذ
+  [10, 11],
+  // ر ز
+  [12, 13],
+  // س ش
+  [14, 15],
+  // ص ض
+  [16, 17],
+  // ط ظ
+  [18, 19],
+  // ع غ
+  [20, 21],
+  // ف ق
+  [24, 27],
+  // م ه — ilmekliler
+  [25, 28],
+  // ن ي — diş ailesinin devamı
+  [26]
+  // و
+];
+var YAZILIS_SECTION_OF = /* @__PURE__ */ new Map();
+YAZILIS_SECTIONS.forEach((letters, i) => {
+  for (const n of letters) YAZILIS_SECTION_OF.set(n, `${i + 1}. B\xF6l\xFCm`);
+});
+var bolumYazilis = (n) => YAZILIS_SECTION_OF.get(n) ?? "Ekstralar";
 var P = "elifba";
 var t1_harfler = {
   id: "harfler",
@@ -85,7 +118,7 @@ var t2_yazilislar = {
       emoji: l.init,
       translit: `${l.name} (ba\u015Fta)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolum(l.n)
+      section: bolumYazilis(l.n)
     },
     {
       id: `l2-${pad2(l.n)}-med`,
@@ -95,7 +128,7 @@ var t2_yazilislar = {
       emoji: l.med,
       translit: `${l.name} (ortada)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolum(l.n)
+      section: bolumYazilis(l.n)
     },
     {
       id: `l2-${pad2(l.n)}-fin`,
@@ -105,7 +138,7 @@ var t2_yazilislar = {
       emoji: l.fin,
       translit: `${l.name} (sonda)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolum(l.n)
+      section: bolumYazilis(l.n)
     }
   ])
 };
