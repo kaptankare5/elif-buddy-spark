@@ -143,9 +143,16 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
     engeller reçeteden PROSEDÜREL dizilir. İlerleme `elifba-party-progress-v1`,
     test kilidi (1234) hepsini açar. Bölümü bitirmek sonrakini açar (derece
     şartı yok). Bitiş ekranında "Devamı gelecek" notu var.
-  - **Soru kapıları seyrek** ve çevrelerinde `GATE_CLEAR` (40 birim) yarıçapında
-    HİÇ engel yok — kullanıcı şartı: çocuk harfi seçerken aynı anda çekiçten
-    kaçmak zorunda kalmasın, "biraz dinlensin". Kapı sesi de o mesafede çalar.
+  - **Soru kapıları seyrek**: kapılar parkurun iki ucuna YAYILIR ve aralarında
+    `PROMPT_LEAD`'den (100 birim) fazla mesafe olmak ZORUNDA — yoksa bir kapıyı
+    geçer geçmez sonrakinin sesi çalıp çocuk hiç nefes almıyor. Kapı sayısını
+    artırırken `len`'i de artır (kabaca her 150 birime bir kapı).
+    Kapı çevresindeki engelsiz pay ASİMETRİK: önü 48, arkası 12 birim
+    (simetrik yapılınca kapılar arası tamamen boşalıyor).
+  - **Soru sesi ERKEN çalar** (`PROMPT_LEAD` = 100 birim ≈ 9 sn) ve kapıya
+    `PROMPT_REPEAT` (30) kalınca bir kez daha — kullanıcı şartı: 40 birimle
+    (3.5 sn) çocuk "anca yetişiyordu", bilinmeyen harf + çocuk refleksi
+    birleşince imkânsıza yakındı. Gate'teki `said` alanı iki çalmayı ayırır.
     Aynı anda yalnız SIRADAKİ kapı görünür (iki kapı üst üste görününce çocuk
     hangisine cevap vereceğini şaşırıyor).
   - **Kontrol hyper-casual**: canvas'ta parmağı basılı tutup KAYDIRINCA karakter

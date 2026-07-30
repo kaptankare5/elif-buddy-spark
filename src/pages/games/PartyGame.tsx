@@ -73,7 +73,20 @@ const DT_MAX = 0.05;
 // Soru kapısının ÖNÜNDE ve ARKASINDA engelsiz "nefes alma" payı. Kapı hemen
 // bir engelin ardından gelince çocuk hem çekiçten kaçmaya hem harfi seçmeye
 // çalışıyor, ikisini de kaçırıyordu (kullanıcı şartı: "biraz dinlenelim").
-const GATE_CLEAR = 40;
+// Kapı çevresindeki engelsiz "nefes" payı ASİMETRİKTİR: kapının ÖNÜ geniş
+// (çocuk sesi dinleyip şeridini seçerken çekiçten kaçmak zorunda kalmasın),
+// ARKASI dar (kapıyı geçti, cevabını verdi — oyun devam edebilir). Simetrik
+// yapılınca kapılar arası neredeyse tamamen boşalıyordu.
+const GATE_CLEAR_BEFORE = 48;
+const GATE_CLEAR_AFTER = 12;
+
+// Soru sesinin kapıdan KAÇ BİRİM ÖNCE çalacağı. 40 birim (≈3.5 sn) çok geçti:
+// çocuk sesi duyup harfi hatırlayıp şeridi seçmeye ancak yetişiyordu —
+// bilinmeyen bir harf + çocuk refleksi birleşince imkânsıza yakındı.
+// 100 birim ≈ 9 sn: dinle, düşün, yerleş. Kapıya yaklaşınca bir kez daha
+// çalar (uzakta duyduğunu unutmuş olabilir).
+const PROMPT_LEAD = 100;
+const PROMPT_REPEAT = 30;
 
 // ================= bölümler =================
 // 10 bölüm, giderek zorlaşır. Her bölüm bir "reçete": hangi engel tipleri,
@@ -92,17 +105,20 @@ interface LevelDef {
   botSkill: [number, number];
 }
 
+// gates sayısı bilinçli olarak AZ: kapılar arası mesafe PROMPT_LEAD'i (100
+// birim) aşmalı, yoksa soru sesleri birbirine giriyor. len büyüdükçe kapı
+// eklenebilir; oran kabaca "her 150 birime bir kapı".
 const LEVELS: LevelDef[] = [
-  { name: "Isınma Turu",     len: 300, gates: 2, kinds: ["mud", "spinner"],                                  gap: 46, speed: 0.8, botSkill: [0.40, 0.62] },
-  { name: "Çekiç Tarlası",   len: 340, gates: 2, kinds: ["hammer", "mud", "hammer", "spinner"],               gap: 44, speed: 0.9, botSkill: [0.45, 0.66] },
-  { name: "Sallanan Toplar", len: 360, gates: 3, kinds: ["pendulum", "spinner", "pendulum", "mud"],           gap: 42, speed: 0.95, botSkill: [0.48, 0.70] },
-  { name: "Yuvarlananlar",   len: 380, gates: 3, kinds: ["roller", "spinner", "roller", "mud"],               gap: 42, speed: 1.0, botSkill: [0.50, 0.72] },
-  { name: "Karışık Parti",   len: 400, gates: 3, kinds: ["hammer", "pendulum", "spinner", "roller", "mud"],   gap: 40, speed: 1.05, botSkill: [0.52, 0.74] },
-  { name: "Hızlı Çekiçler",  len: 420, gates: 3, kinds: ["hammer", "hammer", "spinner", "mud"],               gap: 38, speed: 1.3, botSkill: [0.55, 0.76] },
-  { name: "Dar Geçit",       len: 440, gates: 4, kinds: ["roller", "spinner", "pendulum", "spinner"],         gap: 36, speed: 1.25, botSkill: [0.57, 0.78] },
-  { name: "Zıpla Zıpla",     len: 460, gates: 4, kinds: ["spinner", "spinner", "hammer", "mud", "spinner"],   gap: 34, speed: 1.35, botSkill: [0.58, 0.80] },
-  { name: "Fırtına",         len: 490, gates: 4, kinds: ["hammer", "pendulum", "roller", "spinner", "hammer"],gap: 33, speed: 1.45, botSkill: [0.60, 0.82] },
-  { name: "Büyük Final 👑",  len: 540, gates: 5, kinds: ["hammer", "pendulum", "spinner", "roller", "hammer", "mud", "spinner"], gap: 31, speed: 1.6, botSkill: [0.62, 0.85] },
+  { name: "Isınma Turu",     len: 320, gates: 2, kinds: ["mud", "spinner"],                                  gap: 40, speed: 0.8, botSkill: [0.40, 0.62] },
+  { name: "Çekiç Tarlası",   len: 360, gates: 2, kinds: ["hammer", "mud", "hammer", "spinner"],               gap: 38, speed: 0.9, botSkill: [0.45, 0.66] },
+  { name: "Sallanan Toplar", len: 400, gates: 2, kinds: ["pendulum", "spinner", "pendulum", "mud"],           gap: 37, speed: 0.95, botSkill: [0.48, 0.70] },
+  { name: "Yuvarlananlar",   len: 440, gates: 3, kinds: ["roller", "spinner", "roller", "mud"],               gap: 36, speed: 1.0, botSkill: [0.50, 0.72] },
+  { name: "Karışık Parti",   len: 480, gates: 3, kinds: ["hammer", "pendulum", "spinner", "roller", "mud"],   gap: 35, speed: 1.05, botSkill: [0.52, 0.74] },
+  { name: "Hızlı Çekiçler",  len: 520, gates: 3, kinds: ["hammer", "hammer", "spinner", "mud"],               gap: 34, speed: 1.3, botSkill: [0.55, 0.76] },
+  { name: "Dar Geçit",       len: 560, gates: 3, kinds: ["roller", "spinner", "pendulum", "spinner"],         gap: 33, speed: 1.25, botSkill: [0.57, 0.78] },
+  { name: "Zıpla Zıpla",     len: 600, gates: 4, kinds: ["spinner", "spinner", "hammer", "mud", "spinner"],   gap: 32, speed: 1.35, botSkill: [0.58, 0.80] },
+  { name: "Fırtına",         len: 650, gates: 4, kinds: ["hammer", "pendulum", "roller", "spinner", "hammer"],gap: 31, speed: 1.45, botSkill: [0.60, 0.82] },
+  { name: "Büyük Final 👑",  len: 720, gates: 5, kinds: ["hammer", "pendulum", "spinner", "roller", "hammer", "mud", "spinner"], gap: 30, speed: 1.6, botSkill: [0.62, 0.85] },
 ];
 const LEVEL_COUNT = LEVELS.length;
 
@@ -264,6 +280,7 @@ interface Gate {
   target: ContentItem;
   options: ContentItem[];   // 3 şık, soldan sağa
   done: boolean;
+  said: number;             // 0 = ses hiç çalmadı, 1 = uzaktan çaldı, 2 = yakında tekrar
   botDone: Set<number>;
   panels: THREE.Mesh[];     // şık panoları (doğru/yanlış renklendirmesi için)
   group: THREE.Group;       // geçildikten sonra gizlenir (kamerayı kapatmasın)
@@ -552,19 +569,23 @@ const PartyGame = () => {
         panels.push(p);
       }
       scene.add(g);
-      gates.push({ z, target, options, done: false, botDone: new Set(), panels, group: g });
+      gates.push({ z, target, options, done: false, said: 0, botDone: new Set(), panels, group: g });
     };
 
     // ---------- parkur dizilimi (bölüm reçetesinden prosedürel) ----------
     // Ritim: uzun engel bölümü → soru kapısı → uzun engel bölümü …
-    // Kapılar parkuru eşit parçalara böler, ve her kapının ±GATE_CLEAR
-    // kadar çevresine HİÇ engel konmaz — çocuk sesi dinleyip harfi seçerken
-    // aynı anda çekiçten kaçmak zorunda kalmasın (kullanıcı şartı).
+    // Kapılar parkurun İKİ UCUNA YAYILIR (eşit parçalara bölmek yerine):
+    // aralarında PROMPT_LEAD'den fazla mesafe kalması şart, yoksa bir kapıyı
+    // geçer geçmez sonrakinin sesi çalıp çocuk hiç nefes alamıyor.
+    const gStart = 82;
+    const gEnd = TRACK_LEN - 50;
     const gateZs: number[] = [];
     for (let i = 0; i < def.gates; i++) {
-      gateZs.push(Math.round(70 + ((i + 1) / (def.gates + 1)) * (TRACK_LEN - 110)));
+      const t = def.gates === 1 ? 0.5 : i / (def.gates - 1);
+      gateZs.push(Math.round(gStart + t * (gEnd - gStart)));
     }
-    const nearGate = (z: number) => gateZs.some((gz) => Math.abs(gz - z) < GATE_CLEAR);
+    const nearGate = (z: number) =>
+      gateZs.some((gz) => z <= gz ? gz - z < GATE_CLEAR_BEFORE : z - gz < GATE_CLEAR_AFTER);
 
     let ki = 0;
     for (let z = 34; z < TRACK_LEN - 24; z += def.gap) {
@@ -1167,14 +1188,25 @@ const PartyGame = () => {
       // --- sıradaki kapının sesi ---
       // Ses çalma YAN ETKİDİR: setState güncelleyicisinin içine konulamaz
       // (StrictMode güncelleyiciyi iki kez çağırır → ses çift çalar).
+      // İKİ KEZ çalar: PROMPT_LEAD kadar UZAKTAN (dinle-düşün-yerleş için bol
+      // zaman) ve kapıya PROMPT_REPEAT kalınca bir daha (hatırlatma).
       const d = nextGate ? nextGate.z - player.z : Infinity;
-      // Kapı GATE_CLEAR kadar önceden engelsiz — ses de o anda çalsın ki
-      // çocuğun dinleyip şerit seçmeye bol vakti olsun.
-      const wantId = nextGate && d > 0 && d < GATE_CLEAR ? nextGate.target.id : null;
-      if (wantId !== promptIdRef.current) {
-        promptIdRef.current = wantId;
-        if (nextGate && wantId) { setPrompt(nextGate.target); playItem(nextGate.target); }
-        else setPrompt(null);
+      if (nextGate && d > 0 && d < PROMPT_LEAD) {
+        if (nextGate.said === 0) {
+          nextGate.said = 1;
+          setPrompt(nextGate.target);
+          playItem(nextGate.target);
+        } else if (nextGate.said === 1 && d < PROMPT_REPEAT) {
+          nextGate.said = 2;
+          playItem(nextGate.target);
+        }
+        if (promptIdRef.current !== nextGate.target.id) {
+          promptIdRef.current = nextGate.target.id;
+          setPrompt(nextGate.target);
+        }
+      } else if (promptIdRef.current !== null) {
+        promptIdRef.current = null;
+        setPrompt(null);
       }
 
       // --- kamera: oyuncunun arkasından, yukarıdan, yumuşak takip ---
@@ -1358,39 +1390,52 @@ const PartyGame = () => {
           {/* Kontroller yüzer: ekranın geri kalanı SÜRÜKLEME alanıdır.
               Alt bara sabit düğme koyulunca parmak oraya takılıyor ve
               hyper-casual "kaydır" hissi kayboluyordu. */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between p-4">
-            <button
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); ctrlRef.current.jump = true; }}
-              aria-label="Zıpla"
-              className="pointer-events-auto flex h-20 w-20 touch-none select-none flex-col items-center justify-center rounded-full bg-success/90 text-success-foreground shadow-card backdrop-blur active:scale-90"
-            >
-              <span className="text-3xl leading-none">🦘</span>
-              <span className="text-[10px] font-extrabold">ZIPLA</span>
-            </button>
-
-            <div className="pointer-events-none flex flex-col items-center gap-1">
-              <span className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-extrabold text-muted-foreground backdrop-blur">
-                👆 parmağını kaydır
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-1 px-5 pb-3">
+            <div className="flex flex-col items-center gap-1">
+              <button
+                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); ctrlRef.current.jump = true; }}
+                aria-label="Zıpla"
+                className="pointer-events-auto flex h-20 w-20 touch-none select-none flex-col items-center justify-center rounded-full bg-success/90 text-success-foreground shadow-card backdrop-blur active:scale-90"
+              >
+                <span className="text-3xl leading-none">🦘</span>
+                <span className="text-[10px] font-extrabold">ZIPLA</span>
+              </button>
+              {/* Zıplamanın ikinci yolu: ekranın herhangi bir yerine dokunmak */}
+              <span className="rounded-full bg-white/85 px-2 py-0.5 text-center text-[10px] font-extrabold leading-tight text-success">
+                ya da ekrana<br />tıkla
               </span>
             </div>
 
-            {/* TEK özel güç düğmesi — dolu olduğunda parlar ve titrer */}
-            <button
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); ctrlRef.current.usePower = true; }}
-              disabled={!power}
-              aria-label={power ? `${POWERS[power].label} kullan` : "Özel güç yok"}
-              className={cn(
-                "pointer-events-auto flex h-24 w-24 touch-none select-none flex-col items-center justify-center rounded-full border-4 shadow-card transition-bouncy active:scale-90",
-                power
-                  ? "animate-pulse border-white bg-warning text-warning-foreground ring-4 ring-warning/50"
-                  : "border-white/60 bg-white/70 text-muted-foreground opacity-70 backdrop-blur",
-              )}
-            >
-              <span className="text-4xl leading-none">{power ? POWERS[power].emoji : "✨"}</span>
-              <span className="mt-0.5 text-[10px] font-extrabold">
-                {power ? POWERS[power].label : "GÜÇ YOK"}
+            <span className="mb-2 rounded-full bg-white/85 px-3 py-1 text-[11px] font-extrabold text-muted-foreground backdrop-blur">
+              👆 parmağını kaydır
+            </span>
+
+            {/* TEK özel güç düğmesi — oyunun ANA düğmesi: büyük, kalın çerçeveli,
+                dolu olduğunda halkalarıyla birlikte yanıp söner. */}
+            <div className="flex flex-col items-center gap-1">
+              <button
+                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); ctrlRef.current.usePower = true; }}
+                disabled={!power}
+                aria-label={power ? `${POWERS[power].label} kullan` : "Özel güç yok"}
+                className={cn(
+                  "pointer-events-auto flex h-32 w-32 touch-none select-none flex-col items-center justify-center rounded-full border-[6px] shadow-elegant transition-bouncy active:scale-90",
+                  power
+                    ? "animate-pulse border-white bg-warning text-warning-foreground ring-[6px] ring-warning/45"
+                    : "border-white/70 bg-white/70 text-muted-foreground opacity-75 backdrop-blur",
+                )}
+              >
+                <span className="text-6xl leading-none drop-shadow">{power ? POWERS[power].emoji : "✨"}</span>
+                <span className="mt-1 text-[11px] font-extrabold uppercase leading-none">
+                  {power ? POWERS[power].label : "GÜÇ YOK"}
+                </span>
+              </button>
+              <span className={cn(
+                "rounded-full px-2 py-0.5 text-center text-[10px] font-extrabold leading-tight",
+                power ? "bg-warning text-warning-foreground" : "bg-white/85 text-muted-foreground",
+              )}>
+                {power ? "BAS ve kullan!" : "doğru kapı = güç"}
               </span>
-            </button>
+            </div>
           </div>
 
           {/* Güç ETKİNKEN ekran kenarı da parlar — çocuk gücünün çalıştığını görür */}
@@ -1454,7 +1499,7 @@ const PartyGame = () => {
 
           <div className="mx-auto mt-3 grid w-full max-w-sm gap-1.5 text-left text-xs font-bold">
             <div className="rounded-xl border-2 border-primary/30 bg-primary/10 px-3 py-2">👆 Parmağını ekrana bas ve sağa/sola KAYDIR</div>
-            <div className="rounded-xl border-2 border-info/30 bg-info/10 px-3 py-2">🦘 ZIPLA → çubuğun, hatta çekicin üstünden geç</div>
+            <div className="rounded-xl border-2 border-info/30 bg-info/10 px-3 py-2">🦘 Ekrana TIKLA (ya da ZIPLA düğmesi) → çubuğun, hatta çekicin üstünden geç</div>
             <div className="rounded-xl border-2 border-destructive/30 bg-destructive/10 px-3 py-2">🔨 Dönen çekiç → değersen takla atarsın</div>
             <div className="rounded-xl border-2 border-success/30 bg-success/10 px-3 py-2">✅ Doğru kapı → 🚀 hız + SÜRPRİZ güç</div>
             <div className="rounded-xl border-2 border-warning/30 bg-warning/10 px-3 py-2">✨ Güç düğmesi: 🚀 roket · ⭐ zıplama · 🕸️ ağ · 🛡️ kalkan</div>
