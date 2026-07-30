@@ -2,10 +2,13 @@
 //
 // MOD MANTIĞI (tek merkez):
 // - Süper Öğrenme modu: her oyun cevabı ilerlemeye (SRS) etki eder — tam
-//   öğrenme deneyimi.
-// - Normal oyun modu: eğlence önceliklidir; her cevap SRS'i grind'lemez.
-//   Yalnızca her N (NORMAL_TEST_EVERY) cevapta 1'i "arada test" olarak
-//   sayılır (sık değil). Böylece çocuk oynarken az da olsa ilerler.
+//   öğrenme deneyimi. (Varsayılan mod budur.)
+// - Normal oyun modu: SADECE EĞLENCE — hiçbir oyun cevabı seviyeyi
+//   değiştirmez. Eskiden her 3 cevaptan 1'i "arada test" diye sayılıyordu;
+//   kullanıcı şartıyla kaldırıldı: çocuk hangi cevabın sayıldığını
+//   bilemediği için ilerleme rastlantısal görünüyordu ve oyun "düzgün test
+//   etmiyor" hissi veriyordu. Normal modda ilerleme Test/Flashcard'dan
+//   ve oyun-içi gerçek mini testten (recordInGameTest) gelir.
 // - Gerçek Test/Quiz oyunu (gameId "quiz") her zaman sayılır — o bir testtir.
 // Not: Topic Test ve Flashcard bu fonksiyondan geçmez; onlar recordSrsAnswer'ı
 // doğrudan çağırır ve her zaman ilerlemeye etki eder.
@@ -17,9 +20,6 @@ import { considerRemedy, queueRemedy } from "@/lib/remedial";
 import type { ContentItem } from "@/data/types";
 
 const NS = "quiz" as const;
-const NORMAL_TEST_EVERY = 3; // normal modda her 3 cevapta 1'i SRS'e sayılır
-let _normalAnswerCount = 0;
-const GAME_TEST_EVENT = "elifba-game-test-counted";
 
 export function recordGameAnswer(
   item: ContentItem | undefined | null,
@@ -36,14 +36,10 @@ export function recordGameAnswer(
   // a-priori benzerlere hafif ısı dağıtılır.
   recordConfusionSignal(item.id, correct, meta?.chosenId, meta?.shownIds);
 
-  // Süper mod veya gerçek Quiz oyunu → her zaman say. Normal mod → her 3'te 1.
-  const alwaysCount = getGameMode() === "super" || meta?.gameId === "quiz";
-  if (!alwaysCount) {
-    _normalAnswerCount += 1;
-    if (_normalAnswerCount % NORMAL_TEST_EVERY !== 0) return; // bu cevap eğlence, sayılmaz
-    // Bu cevap "arada test" olarak sayılıyor — küçük görsel sinyal için olay yay.
-    try { window.dispatchEvent(new CustomEvent(GAME_TEST_EVENT, { detail: { correct } })); } catch { /* ignore */ }
-  }
+  // Süper mod veya gerçek Quiz oyunu → SRS'e yazılır. Normal mod → yazılmaz
+  // (yalnız yukarıdaki karışıklık ölçümü çalışır; o bir seviye değişikliği
+  // değil, çocuğun neyi neyle karıştırdığının kaydıdır).
+  if (getGameMode() !== "super" && meta?.gameId !== "quiz") return;
 
   try {
     recordSrsAnswer(NS, t.topicId, item.id, correct, meta);

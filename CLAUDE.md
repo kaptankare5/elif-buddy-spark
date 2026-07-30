@@ -98,10 +98,15 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
 ### Oyun modları (`src/lib/gameMode.ts`)
 - Varsayılan **süper** ("super"); kullanıcı Ayarlar'dan normale döner.
 - Süper: her oyun cevabı SRS'e sayılır; ipucu halkası yalnız L1'de.
-- Normal: eğlence — `recordGameAnswer` (src/lib/gameProgress.ts) her 3
-  cevapta 1'ini sayar; Hafıza'da her 3 eşleşmede `InGameQuiz` (gerçek
-  çoktan seçmeli, `recordInGameTest` her zaman sayar) çıkar; Balon/Koşu'da
-  doğru cevapta ışık + ipucu halkası hep görünür.
+- Normal: SADECE eğlence — oyun cevabı SRS'e HİÇ yazılmaz
+  (`recordGameAnswer` erken döner). Eskiden her 3 cevaptan 1'i sayılıp
+  "📝 Test sorusu sayıldı" bildirimi çıkıyordu; **kullanıcı şartıyla
+  kaldırıldı** (çocuk hangi cevabın sayıldığını bilemediği için ilerleme
+  rastlantısal görünüyor, oyun "düzgün test etmiyor" hissi veriyordu).
+  Karışıklık ölçümü moddan bağımsız çalışmaya devam eder — o seviye değil,
+  neyin neyle karıştırıldığı bilgisidir. Hafıza'da her 3 eşleşmede
+  `InGameQuiz` (gerçek çoktan seçmeli, `recordInGameTest` her zaman sayar)
+  çıkar; Balon/Koşu'da doğru cevapta ışık + ipucu halkası hep görünür.
 - Topic Test + Flashcard recordSrsAnswer'ı doğrudan çağırır → hep sayılır;
   testte yanlış cevaplanan soru bir kez tekrar sorulur (questionSource.ts).
 
@@ -234,6 +239,15 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   tekrar YOK; kullanıcı şartı: aynı soruyu iki kez sormak (biri uzakta, biri
   kapıya yakın) rahatsız ediyor. Tekrar dinlemek "Hangi kapı? — dinle"
   bandına dokunmakla olur.
+- ⚠️ **KAPI SORUSU SIRASI GELİNCE DAĞITILIR** (`armGate`, Partisi + Yarışı).
+  Bölüm/yarış kurulurken bütün kapılara birden soru dağıtılamaz: aralarında
+  hiç cevap kaydedilmediği için SRS durumu değişmez ve `pickNextGameItem` her
+  çağrıda müfredatın ilk görülmemiş harfini (Elif) döndürür → çocuk bütün
+  bölüm boyunca tek harf görür. Aynı sebeple **cevap kaydı, sıradaki kapının
+  seçilmesinden ÖNCE** gelmeli: Yarışı'nda pist halka olduğu için kapı geçilen
+  KAREDE, o kapı `done` işaretlenmeden sıradaki kapı "en yakın" seçilip
+  silahlanıyordu (Partisi'nde `find(!done)` dizi sırasıyla baktığı için sorun
+  çıkmıyor). Regresyon testi: `src/test/gameGates.test.ts`.
 - Arapça glif + `leading-none` = taşma; `leading-[1.5+]` kullan ve cn()
   içinde leading'i text-* SONRASINA koy (tailwind-merge yutar).
 - Grid'ler `dir="rtl"` (Arapça sağdan sola).

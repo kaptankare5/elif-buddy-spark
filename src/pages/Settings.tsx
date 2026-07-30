@@ -151,7 +151,7 @@ const Settings = () => {
                 )}
               >
                 🎮 Normal
-                <div className="text-[10px] font-bold text-muted-foreground mt-1">Arada test sorusu</div>
+                <div className="text-[10px] font-bold text-muted-foreground mt-1">Sadece eğlence</div>
               </button>
               <button
                 onClick={() => setMode("super")}
@@ -167,7 +167,8 @@ const Settings = () => {
               </button>
             </div>
             <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
-              Süper modda sadece şu oyunlar gösterilir: Tren Sörfü, Elif Ba Macerası, Elifbâ Partisi, Elifbâ Yarışı, Yılan, Uzay, Balon, Kutu Boşalt, Uçan Kuş, Hızlı Quiz. İpucu halkası yalnız seviye 1'de görünür.
+              Süper modda her oyun cevabı harf seviyesine işler ve sadece şu oyunlar gösterilir: Tren Sörfü, Elif Ba Macerası, Elifbâ Partisi, Elifbâ Yarışı, Yılan, Uzay, Balon, Kutu Boşalt, Uçan Kuş, Hızlı Quiz. İpucu halkası yalnız seviye 1'de görünür.
+              Normal modda oyunlar seviyeyi değiştirmez; ilerleme Test ve Flashcard'dan gelir.
             </p>
           </div>
 
