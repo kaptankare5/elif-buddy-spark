@@ -349,7 +349,16 @@ const KartGame = () => {
     const idxOf = (s: number) => Math.floor(wrapS(s) / SEG) % SAMPLES;
     const tmpA = new THREE.Vector3();
     const tmpB = new THREE.Vector3();
-    /** Mantıksal (s,u) → dünya konumu. */
+    /**
+     * Mantıksal (s,u) → dünya konumu.
+     *
+     * ⚠️ u'nun İŞARETİ: `normals` = UP × teğet, ama ileri bakan bir sürücünün
+     * SAĞI = teğet × UP = −normal'dir. u'yu doğrudan normal'e eklemek
+     * "u pozitif = SOL" anlamına geliyordu; sonuç: parmağı sağa kaydırınca
+     * araç sola gidiyor, kapı şıkları ters sırada diziliyordu. Bu yüzden
+     * u burada NEGATİF işaretle uygulanır — böylece u pozitif = sağ.
+     * (Yol/kerb/çim şeritleri simetrik üretildiği için etkilenmez.)
+     */
     const worldAt = (s: number, u: number, out: THREE.Vector3) => {
       const w = wrapS(s);
       const f = w / SEG;
@@ -358,7 +367,7 @@ const KartGame = () => {
       const k = f - Math.floor(f);
       out.copy(pts[i]).lerp(pts[j], k);
       tmpA.copy(normals[i]).lerp(normals[j], k).normalize();
-      out.addScaledVector(tmpA, u);
+      out.addScaledVector(tmpA, -u);
       return out;
     };
 
@@ -523,8 +532,8 @@ const KartGame = () => {
       const flagSprite = new THREE.Sprite(keep(new THREE.SpriteMaterial({
         map: keep(emojiTexture("🏁", 256)), transparent: true, depthWrite: false,
       })));
-      flagSprite.position.set(p.x, p.y + 15, p.z);
-      flagSprite.scale.setScalar(7);
+      flagSprite.position.set(p.x, p.y + 19, p.z);
+      flagSprite.scale.setScalar(5);
       scene.add(flagSprite);
     }
 
@@ -572,7 +581,9 @@ const KartGame = () => {
           map: letterTexture(options[i].emoji ?? "؟"), side: THREE.DoubleSide,
         }));
         const p = new THREE.Mesh(panelGeo, mat);
-        p.position.set(-laneU(i), 4.2, 0);   // yerel +X = -normal (yukarıya bak)
+        // Grup lookAt(ileri) ile döndüğü için yerel +X = −normal = sürücünün
+        // SAĞI; u da artık sağ yönünde ölçüldüğünden yerel x doğrudan laneU(i).
+        p.position.set(laneU(i), 4.2, 0);
         g.add(p);
         panels.push(p);
       }
@@ -588,7 +599,34 @@ const KartGame = () => {
       });
 
     // ---------- hız rampaları ----------
-    const padMat = keep(new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85 }));
+    // Hız rampası: üstünde İLERİ bakan oklar. Düz mavi bir dikdörtgen
+    // hızlandırdığını anlatmıyordu; akan ok deseni "buraya bas, fırla" der.
+    const padCv = document.createElement("canvas");
+    padCv.width = 64; padCv.height = 64;
+    {
+      const g = padCv.getContext("2d")!;
+      g.fillStyle = "#0ea5e9";
+      g.fillRect(0, 0, 64, 64);
+      g.strokeStyle = "#ffffff";
+      g.lineWidth = 9;
+      g.lineCap = "round";
+      g.lineJoin = "round";
+      // Doku "yukarısı" (+v) ileri yöne bakar → oklar ileriyi gösterir
+      for (const cy of [20, 44]) {
+        g.beginPath();
+        g.moveTo(12, cy + 11);
+        g.lineTo(32, cy - 9);
+        g.lineTo(52, cy + 11);
+        g.stroke();
+      }
+    }
+    const padTex = keep(new THREE.CanvasTexture(padCv));
+    padTex.wrapS = padTex.wrapT = THREE.RepeatWrapping;
+    padTex.repeat.set(1, 2);
+    padTex.colorSpace = THREE.SRGBColorSpace;
+    const padMat = keep(new THREE.MeshBasicMaterial({
+      map: padTex, transparent: true, opacity: 0.95,
+    }));
     const pads: { s: number; u: number }[] = [];
     for (let i = 0; i < def.pads; i++) {
       const s = wrapS(TRACK_LEN * ((i + 0.22) / def.pads));
@@ -821,6 +859,28 @@ const KartGame = () => {
     const wnext = new THREE.Vector3();
     const camPos = new THREE.Vector3();
     const camLook = new THREE.Vector3();
+
+    /**
+     * Araçları (s,u)'dan dünyaya yerleştirir ve tekerlek/eğim animasyonunu
+     * uygular. AYRI bir fonksiyon çünkü GERİ SAYIM sırasında da çağrılmalı:
+     * yalnız step() içinde kalınca yarış başlamadan önce bütün araçlar
+     * sahnenin merkezinde üst üste duruyordu.
+     */
+    const placeRacers = () => {
+      for (const r of racers) {
+        worldAt(r.s, r.u, wpos);
+        r.group.position.set(wpos.x, wpos.y + r.y, wpos.z);
+        worldAt(r.s + 4, r.u + r.drift * 2.2, wnext);
+        r.group.lookAt(wnext.x, wnext.y + r.y, wnext.z);
+        // drift eğimi + savrulma dönüşü
+        r.body.rotation.z = -r.drift * 0.22;
+        r.body.rotation.y = r.spinT > 0 ? (SPIN_TIME - r.spinT) * 14 : 0;
+        const spin = r.v * 0.9;
+        for (const w of r.wheels) w.rotation.x -= spin * 0.016;
+        // ön tekerlekleri direksiyona çevir
+        r.wheels[0].rotation.y = r.wheels[1].rotation.y = -r.drift * 0.4;
+      }
+    };
     camera.position.copy(worldAt(-12, 0, camPos)).setY(7);
 
     // ---------- adım ----------
@@ -1078,20 +1138,7 @@ const KartGame = () => {
         setPrompt(null);
       }
 
-      // --- yerleştirme + animasyon ---
-      for (const r of racers) {
-        worldAt(r.s, r.u, wpos);
-        r.group.position.set(wpos.x, wpos.y + r.y, wpos.z);
-        worldAt(r.s + 4, r.u + r.drift * 2.2, wnext);
-        r.group.lookAt(wnext.x, wnext.y + r.y, wnext.z);
-        // drift eğimi + savrulma dönüşü
-        r.body.rotation.z = -r.drift * 0.22;
-        r.body.rotation.y = r.spinT > 0 ? (SPIN_TIME - r.spinT) * 14 : 0;
-        const spin = r.v * 0.9;
-        for (const w of r.wheels) w.rotation.x -= spin * 0.016;
-        // ön tekerlekleri direksiyona çevir
-        r.wheels[0].rotation.y = r.wheels[1].rotation.y = -r.drift * 0.4;
-      }
+      placeRacers();
 
       // --- drift kıvılcımları (oyuncu) ---
       if (Math.abs(player.drift) > 0.55 && player.y < 0.3) {
@@ -1139,6 +1186,8 @@ const KartGame = () => {
       }
       const marker = player.group.getObjectByName("marker");
       if (marker) marker.position.y = 4.2 + Math.abs(Math.sin(tNow * 4)) * 0.4;
+      // rampadaki oklar ileri doğru akar → "hızlandırıyor" hissi
+      padTex.offset.y = (padTex.offset.y - dt * 1.6) % 1;
 
       // --- kamera: aracın arkasından, hıza göre geri çekilir ---
       // Yanal takip GÜÇLÜ olmalı: zayıf takiple (u*0.55) çime çıkan oyuncu
@@ -1195,6 +1244,7 @@ const KartGame = () => {
           setCountdown(null);
           playSfx("dove");
         }
+        placeRacers();
         // Geri sayımda kamera geride ve yukarıda: hem ızgarayı hem pistin
         // ilk virajını göstersin (çocuk nereye gideceğini önceden görsün).
         worldAt(player.s - 20, 0, camPos);
