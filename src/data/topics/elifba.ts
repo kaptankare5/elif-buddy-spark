@@ -505,6 +505,24 @@ const MED_EKSTRA: Array<[string, string, number]> = [
   ["هِي", "hî", 3],   // 1.091
 ];
 
+// Med hecesinin gerçek hoca kaydını bul: med-{harfNo}-{hareke}.mp3.
+// YALNIZ "harf + hareke + uzatma harfi" biçimindeki 3 kod noktalı heceler
+// eşleşir; قَالَ/كَانَ gibi kelimelerin kaydı yok ve ilk hecesinin sesini
+// (kâ) kelimeye iliştirmek çocuğa yanlış öğretir — onlar sessiz kalır.
+const HARAKA_SUF: Record<string, "fetha" | "esre" | "otre"> = {
+  "َ": "fetha", "ِ": "esre", "ُ": "otre",
+};
+const MADD_HARFI = new Set(["ا", "ى", "ي", "و"]); // ا ى ي و
+const byIso = new Map(LETTERS.map((l) => [l.iso, l]));
+function medAudio(ar: string): string | undefined {
+  const cp = [...ar];
+  if (cp.length !== 3) return undefined;
+  const l = byIso.get(cp[0]);
+  const suf = HARAKA_SUF[cp[1]];
+  if (!l || !suf || !MADD_HARFI.has(cp[2])) return undefined;
+  return audioPath(`med-${pad2(l.n)}-${suf}.mp3`);
+}
+
 const t6_med: ContentTopic = {
   id: "med",
   parent: P,
@@ -530,6 +548,11 @@ const t6_med: ContentTopic = {
       lang: "tr" as const,
       emoji: it.ar,
       translit: it.sp,
+      // GERÇEK HOCA KAYDI: med-NN-{fetha|esre|otre}.mp3 (84 dosya) diskte
+      // duruyordu ama hiç bağlanmamıştı — bütün konu sessizdi ve oyunlarda
+      // soru sorulmadan kapı geliyordu (tarayıcı TTS'i çoğu cihazda hiç
+      // ses çıkarmıyor). NN = harf numarası, ek = uzatma harfinin harekesi.
+      audio: medAudio(it.ar),
       // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
       section: `${Math.floor(i / 6) + 1}. Bölüm`,
     })),
@@ -540,6 +563,7 @@ const t6_med: ContentTopic = {
       lang: "tr" as const,
       emoji: ar,
       translit: sp,
+      audio: medAudio(ar),
       section: "Ekstralar",
       weight: w,
     })),
