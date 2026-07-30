@@ -1,10 +1,11 @@
-// 3B oyunların paylaştığı doku üretimi: Arapça harf panosu ve isim etiketi.
+// 3B oyunların paylaştığı doku üretimi: Arapça harf panosu, isim etiketi,
+// karakter yüzü ve emoji ikonu.
 //
-// Neden ortak: Elifbâ Partisi ve Elifbâ Yarışı aynı işi yapıyordu. Harfin
+// Neden ortak: Elifbâ Partisi ve Elifbâ Yarışı aynı işleri yapıyordu. Harfin
 // panoya SIĞDIRILMASI (ölçüp ölçekleme) önemsiz bir detay değil — derin
 // çanaklı harfler (ج ح خ ع غ) sabit font boyutuyla kesiliyor, ufak harfler
 // (ا) panonun ortasında kayboluyor. Tek yerde durması ikisinin de bozulmasını
-// engeller.
+// engeller; aynısı sevimli yüz için de geçerli.
 import * as THREE from "three";
 
 const FONT_STACK = '"Amiri Quran", "Scheherazade New", "Traditional Arabic", serif';
@@ -79,6 +80,50 @@ export function nameTexture(name: string, color: string): THREE.CanvasTexture {
   g.textAlign = "center";
   g.textBaseline = "middle";
   g.fillText(name, 128, 34);
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  cache.set(key, t);
+  return t;
+}
+
+/**
+ * Sevimli karakter yüzü — şeffaf doku, gövdenin/kafanın önüne yapıştırılır.
+ * 3B primitiflerle (küre göz + küre bebek) yapılan yüz cansız duruyordu;
+ * çizilmiş yüz hem çok daha sevimli hem tek çizim çağrısı. Oranlar Animal
+ * Crossing mantığında: BÜYÜK parlak gözler, küçük ağız, belirgin yanak allığı.
+ */
+export function faceTexture(): THREE.CanvasTexture {
+  const key = "F:cute";
+  const hit = cache.get(key);
+  if (hit) return hit;
+
+  const S = 256;
+  const c = document.createElement("canvas");
+  c.width = S; c.height = S;
+  const g = c.getContext("2d")!;
+
+  // yanak allığı
+  g.fillStyle = "rgba(255,120,160,0.45)";
+  g.beginPath(); g.ellipse(52, 158, 26, 17, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(204, 158, 26, 17, 0, 0, Math.PI * 2); g.fill();
+
+  // gözler: büyük, koyu, iki parlama noktalı
+  for (const ex of [88, 168]) {
+    g.fillStyle = "#241f1c";
+    g.beginPath(); g.ellipse(ex, 112, 25, 31, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#ffffff";
+    g.beginPath(); g.ellipse(ex - 7, 100, 8.5, 10, -0.3, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(ex + 9, 126, 4, 0, Math.PI * 2); g.fill();
+  }
+
+  // gülümseme
+  g.strokeStyle = "#241f1c";
+  g.lineWidth = 7;
+  g.lineCap = "round";
+  g.beginPath();
+  g.arc(128, 156, 24, 0.2 * Math.PI, 0.8 * Math.PI);
+  g.stroke();
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;

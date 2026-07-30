@@ -38,7 +38,7 @@ import { playItem, playFeedback, playSfx } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
-import { letterTexture, nameTexture, emojiTexture } from "./_letterTexture";
+import { letterTexture, nameTexture, emojiTexture, faceTexture } from "./_letterTexture";
 import type { ContentItem } from "@/data/types";
 
 // ---- yarış sabitleri ----
@@ -69,7 +69,6 @@ const GRAVITY = 30;
 // Soru kapısının sesi kapıdan kaç birim önce çalsın. Kart hızlı (27 b/sn):
 // 260 birim ≈ 9-10 sn. Çocuk dinleyip düşünüp şeridine yerleşebilsin.
 const PROMPT_LEAD = 260;
-const PROMPT_REPEAT = 80;
 // Kapının ÖNÜNDE engelsiz pay geniş, arkasında dar (Partisi'yle aynı gerekçe).
 const GATE_CLEAR_BEFORE = 120;
 const GATE_CLEAR_AFTER = 30;
@@ -418,6 +417,21 @@ const KartGame = () => {
     road.receiveShadow = true;
     scene.add(road);
 
+    // Yol kenar ÇİZGİSİ — asfaltın iki yanında düz beyaz şerit. Yol ile
+    // dışını (kerb/çim/toprak) ayıran net bir kenar olmadan pistin sınırı
+    // hız yaparken okunmuyordu; gerçek yollarda da bu çizgi vardır.
+    const edgeMat = keep(new THREE.MeshStandardMaterial({
+      color: 0xfdfdfd, roughness: 0.55, emissive: 0x2a2a2a,
+    }));
+    for (const s of [-1, 1]) {
+      const e = new THREE.Mesh(
+        buildRibbon(s * (ROAD_HALF - 0.75), s * (ROAD_HALF - 0.15), 0.045),
+        edgeMat,
+      );
+      e.receiveShadow = true;
+      scene.add(e);
+    }
+
     // kerb (kırmızı-beyaz) — virajı okumayı kolaylaştırır
     const kerbCv = document.createElement("canvas");
     kerbCv.width = 8; kerbCv.height = 8;
@@ -678,23 +692,35 @@ const KartGame = () => {
     bananasRef.current = bananas;
 
     // ---------- kartlar ----------
+    // Sürücü ANIMAL CROSSING oranlarında: her parça YUVARLAK (küre/kapsül/
+    // torus), kafa gövdeye göre büyük, yüz ÇİZİLMİŞ ve AÇIKTA. Kapalı vizör
+    // camı kullanılmıyordu — küre "kuşağı" olarak kaskın çevresini sardığı
+    // için arkadan bakınca cam çocuğa dönük görünüyor, sürücü geri bakıyor
+    // sanılıyordu. Açık kask hem sorunu bitirir hem sevimliliği artırır.
     const chassisGeo = keep(new THREE.BoxGeometry(2.3, 0.6, 3.6));
-    const noseGeo = keep(new THREE.BoxGeometry(1.9, 0.35, 1.1));
-    const seatGeo = keep(new THREE.BoxGeometry(1.3, 0.75, 1.1));
-    const spoilerGeo = keep(new THREE.BoxGeometry(2.2, 0.14, 0.7));
-    const spoilerLegGeo = keep(new THREE.BoxGeometry(0.16, 0.6, 0.16));
+    const noseGeo = keep(new THREE.CapsuleGeometry(0.62, 1.5, 5, 12));
+    const seatGeo = keep(new THREE.SphereGeometry(0.62, 16, 12));
+    const spoilerGeo = keep(new THREE.BoxGeometry(2.2, 0.16, 0.7));
+    const spoilerLegGeo = keep(new THREE.CylinderGeometry(0.09, 0.09, 0.6, 8));
     const wheelGeo = keep(new THREE.CylinderGeometry(0.62, 0.62, 0.55, 16));
     const rimGeo = keep(new THREE.CylinderGeometry(0.3, 0.3, 0.58, 12));
-    const torsoGeo = keep(new THREE.CapsuleGeometry(0.42, 0.5, 5, 12));
-    const helmetGeo = keep(new THREE.SphereGeometry(0.44, 16, 12));
-    const visorGeo = keep(new THREE.SphereGeometry(0.45, 16, 12, 0, Math.PI * 2, Math.PI * 0.34, Math.PI * 0.22));
     const auraGeo = keep(new THREE.SphereGeometry(2.6, 18, 14));
+    // sürücü parçaları
+    const dTorsoGeo = keep(new THREE.SphereGeometry(0.46, 18, 14));
+    const dHeadGeo = keep(new THREE.SphereGeometry(0.48, 20, 16));
+    const dFaceGeo = keep(new THREE.PlaneGeometry(0.76, 0.76));
+    const dArmGeo = keep(new THREE.CapsuleGeometry(0.11, 0.26, 4, 10));
+    const dHandGeo = keep(new THREE.SphereGeometry(0.14, 12, 10));
+    // kask: kafanın ÜST yarısını saran yarım küre + yuvarlak siperlik
+    const dHelmetGeo = keep(new THREE.SphereGeometry(0.53, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.5));
+    const dBrimGeo = keep(new THREE.TorusGeometry(0.5, 0.07, 8, 20, Math.PI));
+    const wheelRingGeo = keep(new THREE.TorusGeometry(0.26, 0.06, 8, 16));
 
-    const tyreMat = keep(new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.9 }));
-    const rimMat = keep(new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.35, metalness: 0.7 }));
-    const darkMat = keep(new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.6, metalness: 0.3 }));
-    const skinMat = keep(new THREE.MeshStandardMaterial({ color: 0xfcd9a8, roughness: 0.75 }));
-    const visorMat = keep(new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.15, metalness: 0.6 }));
+    const tyreMat = keep(new THREE.MeshStandardMaterial({ color: 0x2b2724, roughness: 0.92 }));
+    const rimMat = keep(new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.35, metalness: 0.6 }));
+    const darkMat = keep(new THREE.MeshStandardMaterial({ color: 0x4b5563, roughness: 0.6, metalness: 0.25 }));
+    const skinMat = keep(new THREE.MeshStandardMaterial({ color: 0xffdcb4, roughness: 0.85 }));
+    const faceMat = keep(new THREE.MeshBasicMaterial({ map: faceTexture(), transparent: true }));
 
     const makeRacer = (id: number, name: string, color: number, isPlayer: boolean, homeU: number): Racer => {
       const group = new THREE.Group();
@@ -708,11 +734,17 @@ const KartGame = () => {
       chassis.position.y = 0.75;
       chassis.castShadow = true;
       body.add(chassis);
+      // yuvarlak burun (kapsül, yatık) — köşeli kutu yerine
       const nose = new THREE.Mesh(noseGeo, bodyMat);
-      nose.position.set(0, 0.62, 2.1);
+      nose.rotation.x = Math.PI / 2;
+      nose.scale.set(1, 1, 0.55);
+      nose.position.set(0, 0.66, 1.75);
       body.add(nose);
+      // Koltuk sürücünün ARKASINDA ince bir sırtlık. Küre olarak gövdenin
+      // üstüne konduğunda sürücüyü tamamen yutuyordu.
       const seat = new THREE.Mesh(seatGeo, darkMat);
-      seat.position.set(0, 1.3, -0.45);
+      seat.scale.set(0.95, 0.95, 0.42);
+      seat.position.set(0, 1.32, -0.95);
       body.add(seat);
       const spoiler = new THREE.Mesh(spoilerGeo, bodyMat);
       spoiler.position.set(0, 1.55, -1.85);
@@ -722,21 +754,67 @@ const KartGame = () => {
         leg.position.set(sx, 1.22, -1.85);
         body.add(leg);
       }
-      // sürücü (vizör +Z'ye = ileriye bakar)
-      const torso = new THREE.Mesh(torsoGeo, bodyMat);
-      torso.position.set(0, 1.72, -0.25);
+      // ---- SÜRÜCÜ (yuvarlak, sevimli; yüz ileriye = +Z bakar) ----
+      const driver = new THREE.Group();
+      driver.position.set(0, 1.42, -0.22);
+      driver.scale.setScalar(1.12);
+      // Tulum, aracın AÇIK tonu: aynı renk olunca sürücünün gövdesi kaportaya
+      // karışıp görünmüyordu.
+      const suitMat = keep(new THREE.MeshStandardMaterial({
+        color: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.42),
+        roughness: 0.7,
+      }));
+      const torso = new THREE.Mesh(dTorsoGeo, suitMat);
+      torso.scale.set(1, 0.9, 0.9);
       torso.castShadow = true;
-      body.add(torso);
-      const helmet = new THREE.Mesh(helmetGeo, bodyMat);
-      helmet.position.set(0, 2.34, -0.2);
-      body.add(helmet);
-      const visor = new THREE.Mesh(visorGeo, visorMat);
-      visor.position.set(0, 2.34, -0.2);
-      visor.rotation.x = 0.35;
-      body.add(visor);
-      const chin = new THREE.Mesh(keep(new THREE.SphereGeometry(0.2, 10, 8)), skinMat);
-      chin.position.set(0, 2.18, 0.16);
-      body.add(chin);
+      driver.add(torso);
+      // kollar direksiyona uzanır + yuvarlak eller
+      for (const sx of [-1, 1]) {
+        const arm = new THREE.Mesh(dArmGeo, skinMat);
+        arm.position.set(sx * 0.32, 0.06, 0.26);
+        arm.rotation.x = -1.05;
+        driver.add(arm);
+        const hand = new THREE.Mesh(dHandGeo, skinMat);
+        hand.position.set(sx * 0.3, -0.02, 0.54);
+        driver.add(hand);
+      }
+      // direksiyon
+      const wheelRing = new THREE.Mesh(wheelRingGeo, darkMat);
+      wheelRing.position.set(0, 0.0, 0.56);
+      wheelRing.rotation.x = 1.15;
+      driver.add(wheelRing);
+      // KAFA: gövdeye göre büyük (Animal Crossing oranı)
+      const head = new THREE.Mesh(dHeadGeo, skinMat);
+      head.position.y = 0.62;
+      head.scale.set(1, 0.97, 0.95);
+      head.castShadow = true;
+      driver.add(head);
+      // çizilmiş yüz — kafanın ön yüzünde, hafif dışında
+      const face = new THREE.Mesh(dFaceGeo, faceMat);
+      face.position.set(0, 0.63, 0.45);
+      driver.add(face);
+      // AÇIK kask: yalnız kafanın üstünü sarar, yüz görünür kalır
+      const helmet = new THREE.Mesh(dHelmetGeo, bodyMat);
+      helmet.position.y = 0.6;
+      driver.add(helmet);
+      const brim = new THREE.Mesh(dBrimGeo, bodyMat);
+      brim.position.set(0, 0.62, 0.06);
+      brim.rotation.set(-0.25, 0, 0);
+      driver.add(brim);
+      // Kamera hep ARKADAN baktığı için sevimlilik arkadan da okunmalı:
+      // iki yanda yuvarlak kulaklık + kaskın tepesinde krem ponpon.
+      const trimMat = keep(new THREE.MeshStandardMaterial({ color: 0xfff7ed, roughness: 0.8 }));
+      for (const sx of [-1, 1]) {
+        const ear = new THREE.Mesh(dHandGeo, trimMat);
+        ear.scale.set(0.8, 1, 0.8);
+        ear.position.set(sx * 0.49, 0.6, 0);
+        driver.add(ear);
+      }
+      const pom = new THREE.Mesh(dHandGeo, trimMat);
+      pom.scale.setScalar(0.85);
+      pom.position.set(0, 1.12, 0);
+      driver.add(pom);
+      body.add(driver);
 
       // İlk iki eleman ÖN tekerlek (direksiyona çevrilenler) — ön artık +Z.
       const wheels: THREE.Object3D[] = [];
@@ -1144,14 +1222,14 @@ const KartGame = () => {
         }
       }
 
-      // --- kapı sesi: ERKEN + kapıya yaklaşınca bir kez daha ---
+      // --- kapı sesi: kapı başına TEK KEZ, erkenden ---
+      // Otomatik tekrar YOK (kullanıcı şartı: "soru cevaplamadan 2 defa
+      // soruyor" — biri uzakta biri kapıya yakınken). Tekrar dinlemek isteyen
+      // çocuk üstteki "Hangi kapı? — dinle" bandına dokunur.
       if (nextGate && nextD < PROMPT_LEAD) {
         if (nextGate.said === 0) {
           nextGate.said = 1;
           setPrompt(nextGate.target);
-          playItem(nextGate.target);
-        } else if (nextGate.said === 1 && nextD < PROMPT_REPEAT) {
-          nextGate.said = 2;
           playItem(nextGate.target);
         }
         if (promptIdRef.current !== nextGate.target.id) {
