@@ -41,6 +41,7 @@ import { useRemedyOnGameOver } from "@/lib/remedial";
 import { playItem, playFeedback, playSfx } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
+import { letterTexture, nameTexture } from "./_letterTexture";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import type { ContentItem } from "@/data/types";
 
@@ -142,42 +143,6 @@ const BOT_NAMES = ["Zeynep", "Yusuf", "Ayşe", "Ömer", "Elif"];
 const BOT_COLORS = [0xf59e0b, 0xef4444, 0x8b5cf6, 0x06b6d4, 0xec4899];
 const PLAYER_COLOR = 0x22c55e;
 
-// ================= Arapça harf dokusu =================
-// Harf gerçek piksel sınırları ölçülerek panoya SIĞDIRILIR: derin çanaklı
-// harfler (ج ح خ ع غ) kesilmez, ufak harfler panoyu doldurur.
-const FONT_STACK = '"Amiri Quran", "Scheherazade New", "Traditional Arabic", serif';
-const texCache = new Map<string, THREE.CanvasTexture>();
-function letterTexture(text: string): THREE.CanvasTexture {
-  const hit = texCache.get(text);
-  if (hit) return hit;
-  const cW = 512, cH = 512;
-  const c = document.createElement("canvas");
-  c.width = cW; c.height = cH;
-  const g = c.getContext("2d")!;
-  g.direction = "rtl";
-  g.fillStyle = "#ffffff";
-  g.fillRect(0, 0, cW, cH);
-  const base = 320;
-  g.textAlign = "center";
-  g.textBaseline = "alphabetic";
-  g.font = `${base}px ${FONT_STACK}`;
-  const m = g.measureText(text);
-  const asc = m.actualBoundingBoxAscent || base * 0.75;
-  const desc = m.actualBoundingBoxDescent || base * 0.25;
-  const w = Math.max((m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || 0), m.width, 1);
-  const pad = 60;
-  const scale = Math.min((cH - pad * 2) / (asc + desc), (cW - pad * 2) / w, 1.6);
-  const size = Math.floor(base * scale);
-  g.font = `${size}px ${FONT_STACK}`;
-  const m2 = g.measureText(text);
-  const asc2 = m2.actualBoundingBoxAscent || size * 0.75;
-  const desc2 = m2.actualBoundingBoxDescent || size * 0.25;
-  g.fillStyle = "#065f46";
-  g.fillText(text, cW / 2, (cH - (asc2 + desc2)) / 2 + asc2);
-  const t = new THREE.CanvasTexture(c);
-  texCache.set(text, t);
-  return t;
-}
 
 /**
  * Karakter yüzü — tek bir şeffaf doku olarak gövdenin önüne yapıştırılır.
@@ -218,27 +183,6 @@ const faceTexture = (() => {
   };
 })();
 
-/** İsim etiketi dokusu (botların üstünde uçan tabela) */
-function nameTexture(name: string, color: string): THREE.CanvasTexture {
-  const key = `n:${name}`;
-  const hit = texCache.get(key);
-  if (hit) return hit;
-  const c = document.createElement("canvas");
-  c.width = 256; c.height = 64;
-  const g = c.getContext("2d")!;
-  g.fillStyle = "rgba(255,255,255,0.92)";
-  g.beginPath();
-  const r = 22;
-  g.moveTo(r, 4); g.arcTo(252, 4, 252, 60, r); g.arcTo(252, 60, 4, 60, r);
-  g.arcTo(4, 60, 4, 4, r); g.arcTo(4, 4, 252, 4, r); g.closePath(); g.fill();
-  g.fillStyle = color;
-  g.font = "700 34px system-ui, sans-serif";
-  g.textAlign = "center"; g.textBaseline = "middle";
-  g.fillText(name, 128, 34);
-  const t = new THREE.CanvasTexture(c);
-  texCache.set(key, t);
-  return t;
-}
 
 // ================= tipler =================
 type Phase = "levels" | "race" | "finish";

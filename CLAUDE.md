@@ -113,7 +113,7 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   Hoca Modu. Öğrenci yoksa düğme görünmez.
 
 ### Oyunlar
-- 12 oyun `src/pages/games/`; kayıt: Game.tsx (route) + Games.tsx (liste,
+- 13 oyun `src/pages/games/`; kayıt: Game.tsx (route) + Games.tsx (liste,
   Kolay/Zor gruplu) + `SUPER_MODE_GAMES` (gameMode.ts) + Settings metni.
 - "Elif Ba Macerası" (`PlatformGame.tsx`, id "platform"): 10 bölüm, cami
   finali. **Şiddetsiz tasarım korunacak** — canavar öldürülmez, Nur'a değen
@@ -175,6 +175,33 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
     gizlenmeli, kameraya yakın yarışmacı `visible=false`; çekiç direği pivotun
     çocuğu OLMAYACAK (yoksa çekiçle döner); yüz düzlemi kapsülün DIŞINDA ve
     -Z'ye bakar; bot şeritleri orta şeridi (oyuncunun) boş bırakır.
+- "Elifbâ Yarışı" (`KartGame.tsx`, id "kart"): **Mario Kart tarzı 3B kart
+  yarışı**, 3 pist × 2 tur, 5 bot. Partisi'nden AYRI oyun: orası düz koridorda
+  koşu, burası VİRAJ ALMA — pist bir eğri (spline), çime çıkmak yavaşlatır,
+  viraja hızlı girmek savurur.
+  - ⚠️ **PİST BİR EĞRİDİR**: oyun mantığı iki sayıyla çalışır — `s` (pist
+    boyunca mesafe) ve `u` (ortadan yanal sapma). Dünya konumu her karede
+    `worldAt(s,u)` ile eğriden hesaplanır. Çarpışma/bot/kapı mantığı düz bir
+    koridordaymış gibi basit kalır. Eğri `getSpacedPoints` ile örneklenip
+    LOOKUP tablosuna alınır (`getPointAt` her karede çağrılırsa pahalı) —
+    eşit aralıklı örnekleme şart, parametrik olursa virajda hız dalgalanır.
+  - Pist KAPALI: `s` sarmalanır (`wrapS`), mesafe karşılaştırmaları iki yönden
+    ölçülüp küçüğü alınmalı, yoksa bitiş çizgisi civarında çarpışma kaçar.
+  - **Yol düzlemine yatık nesne** (bitiş çizgisi, hız rampası) için `flatOnTrack`
+    kullan: grup lookAt ile teğete döner, düzlem grubun İÇİNDE yatırılır.
+    Aynı nesnede `rotation.x` + `rotation.z` vermek Euler sırası yüzünden
+    nesneyi eğriltiyor.
+  - Kapı grubu `lookAt(ileri)` ile döner → grubun yerel **+X = -normal**,
+    bu yüzden pano yanal konumu `-laneU(i)`. (Ters kurulunca harf aynalanır.)
+  - Görüntü kalitesi: `ACESFilmicToneMapping` + sRGB çıkış + PCFSoft gölge +
+    `MeshStandardMaterial` + gradyan gökyüzü kubbesi (ShaderMaterial).
+    Gölge kamerası aracı takip eder (tüm pisti kapsayamaz, çözünürlük erir).
+  - Çime çıkan oyuncu yavaşça asfalta itilir (`|u| > roadHalf` iken) — küçük
+    çocuk pistin dışında takılıp kalmasın; ceza yavaşlık, kilitlenme değil.
+  - Şiddetsiz: muz yalnız KAYDIRIR, yıldız yalnız korur. Güçler tek slot ve
+    rastgele (🍄 turbo · ⭐ yıldız · 🍌 muz · 🪶 tüy), Partisi'yle aynı kural.
+  - `_letterTexture.ts` ortak: harf panosu / isim etiketi / emoji dokusu.
+    Partisi de bunu kullanır — harfi panoya sığdırma mantığı tek yerde.
 - Arapça glif + `leading-none` = taşma; `leading-[1.5+]` kullan ve cn()
   içinde leading'i text-* SONRASINA koy (tailwind-merge yutar).
 - Grid'ler `dir="rtl"` (Arapça sağdan sola).

@@ -19,8 +19,9 @@ import RunnerGame from "./games/RunnerGame";
 import SubwayGame from "./games/SubwayGame";
 import PlatformGame from "./games/PlatformGame";
 import PartyGame from "./games/PartyGame";
+import KartGame from "./games/KartGame";
 
-const GAMES = ["memory", "balloon", "sorter", "match3", "triple", "quiz", "snake", "flappy", "puzzle", "runner", "subway", "platform", "party"] as const;
+const GAMES = ["memory", "balloon", "sorter", "match3", "triple", "quiz", "snake", "flappy", "puzzle", "runner", "subway", "platform", "party", "kart"] as const;
 
 const GAME_META: Record<string, { title: string; desc: string }> = {
   memory: { title: "Hafıza Kartları", desc: "Eşleşen Elifbâ harflerini bul." },
@@ -36,6 +37,7 @@ const GAME_META: Record<string, { title: string; desc: string }> = {
   subway: { title: "ElifBa Koşusu", desc: "3D koşu — doğru harfin rayına geç." },
   platform: { title: "Elif Ba Macerası", desc: "10 bölümlük platform macerası: zıpla, koş, harf topla." },
   party: { title: "Elifbâ Partisi", desc: "5 botla 3B engel parkuru: çekiçten kaç, çubuğu zıpla, doğru harfin kapısından geç." },
+  kart: { title: "Elifbâ Yarışı", desc: "5 botla 3B kart yarışı: virajları al, doğru harfin kapısından geç, turbo kap." },
 };
 
 const Game = () => {
@@ -88,6 +90,7 @@ const TrackedGame = ({ gameId }: { gameId: string }) => {
       case "subway": return <SubwayGame />;
       case "platform": return <PlatformGame />;
       case "party": return <PartyGame />;
+      case "kart": return <KartGame />;
       default: return <Navigate to="/oyunlar" replace />;
     }
   })();
