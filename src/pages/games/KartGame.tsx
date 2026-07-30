@@ -499,13 +499,18 @@ const KartGame = () => {
     // kur, grubu lookAt ile teğete çevir, düzlemi grubun İÇİNDE yatır.
     // rotation.x ve rotation.z'yi aynı nesnede birlikte vermek Euler sırası
     // yüzünden beklenmeyen eğrilik üretiyor.
+    // Grubun +Z'si ileri (Object3D.lookAt +Z'yi hedefe çevirir). Düzlem
+    // rotation.x = −90° ile yere yatar; bu dönüş düzlemin +Y'sini grubun
+    // −Z'sine (GERİYE) taşır, bu yüzden dokunun "yukarısı" geriyi gösterirdi.
+    // rotation.z = 180° düzlemi kendi içinde çevirip dokuyu ileri döndürür
+    // (yüzey normali yine yukarı kaldığı için görünürlük bozulmaz).
     const flatOnTrack = (s: number, u: number, mesh: THREE.Object3D, lift = 0.1) => {
       const g = new THREE.Group();
       g.position.copy(worldAt(s, u, new THREE.Vector3()));
       g.position.y += lift;
       const ahead = worldAt(s + 10, u, new THREE.Vector3());
       g.lookAt(ahead.x, g.position.y, ahead.z);
-      mesh.rotation.x = -Math.PI / 2;
+      mesh.rotation.set(-Math.PI / 2, 0, Math.PI);
       g.add(mesh);
       scene.add(g);
       return g;
@@ -559,12 +564,13 @@ const KartGame = () => {
       const g = new THREE.Group();
       const c = worldAt(gs, 0, new THREE.Vector3());
       g.position.copy(c);
-      // lookAt ileriye (teğet yönüne): grubun -Z'si ileri, +Z aracın geldiği
-      // yön → pano ÖN yüzü çocuğa bakar (aksi hâlde harf aynalanır).
-      // Bu dönüşle grubun yerel +X ekseni -normal yönünde kalır, dolayısıyla
-      // şeridin yanal konumu yerel x = -u ile verilir.
-      const ahead = worldAt(gs + 10, 0, new THREE.Vector3());
-      g.lookAt(ahead.x, c.y, ahead.z);
+      // lookAt GERİYE (aracın geldiği yön): Object3D.lookAt yerel +Z'yi
+      // hedefe çevirdiğinden, böylece panonun ön yüzü (+Z normali) çocuğa
+      // bakar — ileriye baktırılınca harfler AYNALANIYOR ve şeritler ters
+      // sıralanıyordu. Bu dönüşle yerel +X = −normal = sürücünün sağı,
+      // yani pano yanal konumu doğrudan laneU(i).
+      const behind = worldAt(gs - 10, 0, new THREE.Vector3());
+      g.lookAt(behind.x, c.y, behind.z);
       const panels: THREE.Mesh[] = [];
       // üst kiriş
       const beam = new THREE.Mesh(keep(new THREE.BoxGeometry(ROAD_HALF * 2 + 2, 0.7, 0.7)), frameMat);
@@ -605,34 +611,49 @@ const KartGame = () => {
     padCv.width = 64; padCv.height = 64;
     {
       const g = padCv.getContext("2d")!;
-      g.fillStyle = "#0ea5e9";
+      g.fillStyle = "#0284c7";
       g.fillRect(0, 0, 64, 64);
       g.strokeStyle = "#ffffff";
-      g.lineWidth = 9;
+      g.lineWidth = 13;
       g.lineCap = "round";
       g.lineJoin = "round";
-      // Doku "yukarısı" (+v) ileri yöne bakar → oklar ileriyi gösterir
-      for (const cy of [20, 44]) {
+      // Doku "yukarısı" (+v) ileri yöne bakar → oklar ileriyi gösterir.
+      // İki İRİ ok: uzaktan ve eğik açıdan bakınca sık/ince oklar düz çizgiye
+      // dönüşüp "ok" olarak okunmuyordu.
+      for (const cy of [17, 47]) {
         g.beginPath();
-        g.moveTo(12, cy + 11);
-        g.lineTo(32, cy - 9);
-        g.lineTo(52, cy + 11);
+        g.moveTo(9, cy + 13);
+        g.lineTo(32, cy - 12);
+        g.lineTo(55, cy + 13);
         g.stroke();
       }
     }
     const padTex = keep(new THREE.CanvasTexture(padCv));
     padTex.wrapS = padTex.wrapT = THREE.RepeatWrapping;
-    padTex.repeat.set(1, 2);
+    padTex.repeat.set(1, 1);
     padTex.colorSpace = THREE.SRGBColorSpace;
     const padMat = keep(new THREE.MeshBasicMaterial({
       map: padTex, transparent: true, opacity: 0.95,
     }));
+    // Rampanın ÜSTÜNDE havada duran ok işareti. Yerdeki desen yalnız üstüne
+    // gelindiğinde okunuyor (yatık düzleme çok eğik açıdan bakılıyor); sprite
+    // her zaman kameraya döndüğü için uzaktan da "burada hızlanacaksın" der.
+    const padSignMat = keep(new THREE.SpriteMaterial({
+      map: keep(emojiTexture("⏫", 128)), transparent: true, depthWrite: false,
+    }));
+    const padSigns: THREE.Sprite[] = [];
     const pads: { s: number; u: number }[] = [];
     for (let i = 0; i < def.pads; i++) {
       const s = wrapS(TRACK_LEN * ((i + 0.22) / def.pads));
       if (nearGate(s)) continue;
       const u = (i % 2 ? 1 : -1) * ROAD_HALF * 0.45;
-      flatOnTrack(s, u, new THREE.Mesh(keep(new THREE.PlaneGeometry(ROAD_HALF * 0.7, 9)), padMat), 0.14);
+      flatOnTrack(s, u, new THREE.Mesh(keep(new THREE.PlaneGeometry(ROAD_HALF * 0.75, 13)), padMat), 0.14);
+      const sign = new THREE.Sprite(padSignMat);
+      const sp = worldAt(s, u, new THREE.Vector3());
+      sign.position.set(sp.x, sp.y + 3.4, sp.z);
+      sign.scale.setScalar(4.2);
+      scene.add(sign);
+      padSigns.push(sign);
       pads.push({ s, u });
     }
 
@@ -680,42 +701,46 @@ const KartGame = () => {
       const body = new THREE.Group();
       const bodyMat = keep(new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.35 }));
 
+      // ⚠️ MODELİN ÖNÜ +Z'DİR. `Object3D.lookAt` kamera OLMAYAN nesnelerde
+      // yerel **+Z** eksenini hedefe çevirir (kameralarda −Z). Model −Z'ye
+      // bakacak şekilde kurulduğunda araç bütün yarışı geri geri gidiyordu.
       const chassis = new THREE.Mesh(chassisGeo, bodyMat);
       chassis.position.y = 0.75;
       chassis.castShadow = true;
       body.add(chassis);
       const nose = new THREE.Mesh(noseGeo, bodyMat);
-      nose.position.set(0, 0.62, -2.1);
+      nose.position.set(0, 0.62, 2.1);
       body.add(nose);
       const seat = new THREE.Mesh(seatGeo, darkMat);
-      seat.position.set(0, 1.3, 0.45);
+      seat.position.set(0, 1.3, -0.45);
       body.add(seat);
       const spoiler = new THREE.Mesh(spoilerGeo, bodyMat);
-      spoiler.position.set(0, 1.55, 1.85);
+      spoiler.position.set(0, 1.55, -1.85);
       body.add(spoiler);
       for (const sx of [-0.85, 0.85]) {
         const leg = new THREE.Mesh(spoilerLegGeo, darkMat);
-        leg.position.set(sx, 1.22, 1.85);
+        leg.position.set(sx, 1.22, -1.85);
         body.add(leg);
       }
-      // sürücü
+      // sürücü (vizör +Z'ye = ileriye bakar)
       const torso = new THREE.Mesh(torsoGeo, bodyMat);
-      torso.position.set(0, 1.72, 0.25);
+      torso.position.set(0, 1.72, -0.25);
       torso.castShadow = true;
       body.add(torso);
       const helmet = new THREE.Mesh(helmetGeo, bodyMat);
-      helmet.position.set(0, 2.34, 0.2);
+      helmet.position.set(0, 2.34, -0.2);
       body.add(helmet);
       const visor = new THREE.Mesh(visorGeo, visorMat);
-      visor.position.set(0, 2.34, 0.2);
-      visor.rotation.x = -0.35;
+      visor.position.set(0, 2.34, -0.2);
+      visor.rotation.x = 0.35;
       body.add(visor);
       const chin = new THREE.Mesh(keep(new THREE.SphereGeometry(0.2, 10, 8)), skinMat);
-      chin.position.set(0, 2.18, -0.16);
+      chin.position.set(0, 2.18, 0.16);
       body.add(chin);
 
+      // İlk iki eleman ÖN tekerlek (direksiyona çevrilenler) — ön artık +Z.
       const wheels: THREE.Object3D[] = [];
-      for (const [wx, wz, ws] of [[-1.25, -1.25, 1], [1.25, -1.25, 1], [-1.3, 1.35, 1.14], [1.3, 1.35, 1.14]] as const) {
+      for (const [wx, wz, ws] of [[-1.25, 1.25, 1], [1.25, 1.25, 1], [-1.3, -1.35, 1.14], [1.3, -1.35, 1.14]] as const) {
         const w = new THREE.Group();
         const tyre = new THREE.Mesh(wheelGeo, tyreMat);
         tyre.rotation.z = Math.PI / 2;
@@ -1186,8 +1211,10 @@ const KartGame = () => {
       }
       const marker = player.group.getObjectByName("marker");
       if (marker) marker.position.y = 4.2 + Math.abs(Math.sin(tNow * 4)) * 0.4;
-      // rampadaki oklar ileri doğru akar → "hızlandırıyor" hissi
+      // rampadaki oklar ileri doğru akar + havadaki ok zıplar → "hızlandırıyor"
       padTex.offset.y = (padTex.offset.y - dt * 1.6) % 1;
+      const bob = Math.abs(Math.sin(tNow * 3)) * 0.7;
+      for (const sg of padSigns) sg.scale.setScalar(4.2 + bob);
 
       // --- kamera: aracın arkasından, hıza göre geri çekilir ---
       // Yanal takip GÜÇLÜ olmalı: zayıf takiple (u*0.55) çime çıkan oyuncu

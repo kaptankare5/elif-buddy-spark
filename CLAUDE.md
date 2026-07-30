@@ -185,6 +185,13 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
     koridordaymış gibi basit kalır. Eğri `getSpacedPoints` ile örneklenip
     LOOKUP tablosuna alınır (`getPointAt` her karede çağrılırsa pahalı) —
     eşit aralıklı örnekleme şart, parametrik olursa virajda hız dalgalanır.
+  - ⚠️ **`Object3D.lookAt` yerel +Z'yi hedefe çevirir** (KAMERA ve IŞIK'ta −Z!).
+    Bu yüzden kart modelinin ÖNÜ +Z'dedir (nose +2.1, spoiler −1.85); model
+    −Z'ye bakacak şekilde kurulunca araç bütün yarışı geri geri gidiyordu.
+    Aynı sebeple kapı grubu `lookAt(GERİYE)` döner — ileriye baktırılınca pano
+    ön yüzü çocuktan uzağa bakıp harfler AYNALANIYOR ve şeritler ters
+    sıralanıyordu. `flatOnTrack`'te düzlem `rotation.z = π` alır, yoksa yerdeki
+    ok deseninin "yukarısı" geriyi gösterir.
   - ⚠️ **u'nun İŞARETİ**: `normals = UP × teğet` ama ileri bakan sürücünün
     SAĞI `teğet × UP = −normal`'dir. Bu yüzden `worldAt` u'yu **negatif**
     işaretle uygular (`addScaledVector(normal, -u)`) → u pozitif = SAĞ.
