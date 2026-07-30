@@ -426,6 +426,13 @@ const SEDDE_EKSTRA: Array<[string, string, number]> = [
   ["حَتَّ", "hatte", 1],  //   142
 ];
 
+// Şeddeli hecenin önüne konan harekeli elif (cezm konusundakiyle aynı kural).
+const SEDDE_ELIF_PRE: Record<"fetha" | "esre" | "otre", string> = {
+  fetha: "اَ",
+  esre: "إِ",
+  otre: "أُ",
+};
+
 const t5_sedde: ContentTopic = {
   id: "sedde",
   parent: P,
@@ -451,8 +458,12 @@ const t5_sedde: ContentTopic = {
           label: sesMap[h.vowel],
           speech: sesMap[h.vowel],
           lang: "tr" as const,
-          // Örn: بَّ / بِّ / بُّ
-          emoji: l.iso + "ّ" + h.mark,
+          // Şeddeli hece TEK BAŞINA okunamaz: "بَّ" yazıp "ebbe" demek
+          // olmuyor, şeddenin ikizlediği ilk sessizin bir önceki heceye
+          // yaslanması gerekiyor. Cezm konusunda olduğu gibi harekeli elif
+          // ön eki konur → أَبَّ / إِبِّ / أُبُّ (ebbe / ibbi / übbü).
+          // Ekstra kartlar (اِنَّ, رَبِّ…) da zaten bu biçimde.
+          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}ّ${h.mark}`,
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
           section: bolum(l.n),
