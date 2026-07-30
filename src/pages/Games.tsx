@@ -20,6 +20,7 @@ const GAMES: GameDef[] = [
   { id: "subway", title: "ElifBa Koşusu", emoji: "🏃", color: "from-sky-500 to-emerald-500", desc: "3D koşu! Doğru harfin rayına geç", diff: "zor" },
   { id: "platform", title: "Elif Ba Macerası", emoji: "🕌", color: "from-red-500 to-orange-400", desc: "10 bölüm! Zıpla, koş, harf topla", diff: "zor" },
   { id: "party", title: "Elifbâ Partisi", emoji: "🎉", color: "from-fuchsia-500 to-amber-400", desc: "3B engel parkuru: çekiçten kaç, doğru kapıdan geç", diff: "zor" },
+  { id: "kart", title: "Elifbâ Yarışı", emoji: "🏎️", color: "from-rose-500 to-sky-400", desc: "3B kart yarışı: virajları al, doğru kapıdan geç", diff: "zor" },
   { id: "flappy", title: "Uçan Kuş", emoji: "🐤", color: "from-info to-primary", desc: "Doğru harfi yut, sorulara cevap ver", diff: "zor" },
   { id: "snake", title: "Yılan Oyunu", emoji: "🐍", color: "from-success to-topic-doga", desc: "Harfleri ye, sınavı geç", diff: "zor" },
   { id: "runner", title: "Uzay Savaşı", emoji: "🚀", color: "from-indigo-500 to-fuchsia-500", desc: "Doğru hedefi vur, yanlışı vurma", diff: "zor" },
