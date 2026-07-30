@@ -213,8 +213,21 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
     çocuk pistin dışında takılıp kalmasın; ceza yavaşlık, kilitlenme değil.
   - Şiddetsiz: muz yalnız KAYDIRIR, yıldız yalnız korur. Güçler tek slot ve
     rastgele (🍄 turbo · ⭐ yıldız · 🍌 muz · 🪶 tüy), Partisi'yle aynı kural.
-  - `_letterTexture.ts` ortak: harf panosu / isim etiketi / emoji dokusu.
-    Partisi de bunu kullanır — harfi panoya sığdırma mantığı tek yerde.
+  - Sürücü ANIMAL CROSSING oranlarında ve YUVARLAK parçalardan (küre/kapsül/
+    torus): büyük kafa, çizilmiş sevimli yüz, AÇIK kask (kapalı vizör camı
+    YOK — küre "kuşağı" kaskın çevresini sardığı için arkadan bakınca cam
+    çocuğa dönük görünüp sürücü geri bakıyor sanılıyordu), kulaklık + ponpon
+    (kamera hep arkada, sevimlilik arkadan okunmalı), tulum aracın AÇIK tonu
+    (aynı renk olunca gövde kaportaya karışıyor).
+  - Yolun iki yanında beyaz KENAR ÇİZGİSİ (asfalt/kerb sınırı) — hız yaparken
+    pistin sınırı yoksa okunmuyor.
+  - `_letterTexture.ts` ortak: harf panosu / isim etiketi / sevimli yüz /
+    emoji dokusu. Partisi de bunu kullanır — harfi panoya sığdırma ve yüz
+    çizimi tek yerde.
+- **Soru sesi kapı başına TEK KEZ** çalar (Partisi ve Yarışı) — otomatik
+  tekrar YOK; kullanıcı şartı: aynı soruyu iki kez sormak (biri uzakta, biri
+  kapıya yakın) rahatsız ediyor. Tekrar dinlemek "Hangi kapı? — dinle"
+  bandına dokunmakla olur.
 - Arapça glif + `leading-none` = taşma; `leading-[1.5+]` kullan ve cn()
   içinde leading'i text-* SONRASINA koy (tailwind-merge yutar).
 - Grid'ler `dir="rtl"` (Arapça sağdan sola).

@@ -87,7 +87,6 @@ const GATE_CLEAR_AFTER = 12;
 // 100 birim ≈ 9 sn: dinle, düşün, yerleş. Kapıya yaklaşınca bir kez daha
 // çalar (uzakta duyduğunu unutmuş olabilir).
 const PROMPT_LEAD = 100;
-const PROMPT_REPEAT = 30;
 
 // ================= bölümler =================
 // 10 bölüm, giderek zorlaşır. Her bölüm bir "reçete": hangi engel tipleri,
@@ -1132,16 +1131,14 @@ const PartyGame = () => {
       // --- sıradaki kapının sesi ---
       // Ses çalma YAN ETKİDİR: setState güncelleyicisinin içine konulamaz
       // (StrictMode güncelleyiciyi iki kez çağırır → ses çift çalar).
-      // İKİ KEZ çalar: PROMPT_LEAD kadar UZAKTAN (dinle-düşün-yerleş için bol
-      // zaman) ve kapıya PROMPT_REPEAT kalınca bir daha (hatırlatma).
+      // Kapı başına TEK KEZ, PROMPT_LEAD kadar uzaktan çalar. Otomatik tekrar
+      // YOK (kullanıcı şartı: aynı soruyu iki kez sormak rahatsız ediyor);
+      // tekrar dinlemek isteyen çocuk "Hangi kapı? — dinle" bandına dokunur.
       const d = nextGate ? nextGate.z - player.z : Infinity;
       if (nextGate && d > 0 && d < PROMPT_LEAD) {
         if (nextGate.said === 0) {
           nextGate.said = 1;
           setPrompt(nextGate.target);
-          playItem(nextGate.target);
-        } else if (nextGate.said === 1 && d < PROMPT_REPEAT) {
-          nextGate.said = 2;
           playItem(nextGate.target);
         }
         if (promptIdRef.current !== nextGate.target.id) {
