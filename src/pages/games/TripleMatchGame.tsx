@@ -37,8 +37,10 @@ function buildBoard(lang: Lang): BoxItem[] {
       items.push({
         id: nid(),
         item: it,
-        x: 8 + Math.random() * 84,
-        y: 8 + Math.random() * 84,
+        // Taş merkezden konumlanır (translate -50%), bu yüzden %8..%92
+        // aralığında alt/sağ kenardaki taşlar tahtanın dışına taşıyordu.
+        x: 13 + Math.random() * 74,
+        y: 13 + Math.random() * 74,
         rot: -15 + Math.random() * 30,
       });
     }
@@ -156,7 +158,7 @@ const TripleMatchGame = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-topic-blue/20 to-background">
       <main className="container mx-auto max-w-xl px-4 pb-8">
-        <PageHeader title="🧩 Triple Match" backTo="/oyunlar" centered onReset={reset} />
+        <PageHeader title="🔗 Üçlü Eşle" backTo="/oyunlar" centered onReset={reset} />
 
         <div className="mb-3 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-primary/30">
@@ -183,7 +185,10 @@ const TripleMatchGame = () => {
               key={b.id}
               onClick={() => tap(b)}
               className={cn(
-                "absolute flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-card border-4 border-primary/40 shadow-card text-5xl sm:text-6xl font-extrabold active:scale-90 transition-bouncy hover:scale-110 hover:z-10 animate-bounce-in",
+                // Kutu biraz büyütüldü, font küçültüldü ve taşma kırpılıyor:
+                // Arapça satır kutusu font'un 1.6 katı olduğu için text-5xl
+                // (48px) bir 64px karede taşıyordu. 36px × 1.6 = 57.6 < 68.
+                "absolute flex items-center justify-center overflow-hidden w-[4.25rem] h-[4.25rem] sm:w-[5.5rem] sm:h-[5.5rem] rounded-2xl bg-card border-4 border-primary/40 shadow-card text-4xl sm:text-5xl font-extrabold active:scale-90 transition-bouncy hover:scale-110 hover:z-10 animate-bounce-in",
                 hintId === b.id && "ring-4 ring-warning bg-warning/30 animate-pulse z-20"
               )}
               style={{
@@ -192,7 +197,7 @@ const TripleMatchGame = () => {
                 transform: `translate(-50%, -50%) rotate(${b.rot}deg)`,
               }}
             >
-              <EmojiView value={b.item.emoji} />
+              <EmojiView value={b.item.emoji} fit />
             </button>
           ))}
           {floatText && (
@@ -225,11 +230,11 @@ const TripleMatchGame = () => {
               <div
                 key={i}
                 className={cn(
-                  "aspect-square rounded-xl border-2 flex items-center justify-center text-3xl",
+                  "aspect-square overflow-hidden rounded-xl border-2 flex items-center justify-center text-2xl",
                   slot ? "bg-primary-soft border-primary animate-pop" : "bg-muted/40 border-dashed border-muted-foreground/30"
                 )}
               >
-                {slot && <EmojiView value={slot.item.emoji} />}
+                {slot && <EmojiView value={slot.item.emoji} fit />}
               </div>
             ))}
           </div>

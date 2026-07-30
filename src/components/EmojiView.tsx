@@ -18,12 +18,32 @@ import { cn } from "@/lib/utils";
 // giriyordu) — kod noktası kaçışı hem güvenli hem net.
 const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFC]/;
 
-export function EmojiView({ value, className }: { value?: string; className?: string }) {
+/**
+ * `fit`: değeri SABİT BİR KUTUYA sığdırmak gerektiğinde (oyun taşları,
+ * tepsi gözleri). Havuzda tek harfler de var, harekeli/med'li diziler de
+ * (كَانَ gibi 4 glif) — hepsine aynı font boyutu verilince uzun olanlar
+ * kutunun dışına taşıyordu. Ölçek ebeveynin font boyutuna GÖRECELİdir
+ * (em), böylece kutu büyüdükçe harf de büyür.
+ */
+function fitScale(value: string): number {
+  const n = [...value].length;
+  if (n <= 1) return 0.86;
+  if (n === 2) return 0.72;
+  if (n === 3) return 0.58;
+  if (n <= 5) return 0.46;
+  return 0.36;
+}
+
+export function EmojiView({ value, className, fit }: { value?: string; className?: string; fit?: boolean }) {
   if (!value) return null;
 
   if (ARABIC_RE.test(value)) {
     return (
-      <span dir="rtl" className={cn("font-arabic inline-block leading-[1.6]", className)}>
+      <span
+        dir="rtl"
+        className={cn("font-arabic inline-block leading-[1.6]", fit && "max-w-full whitespace-nowrap", className)}
+        style={fit ? { fontSize: `${fitScale(value)}em` } : undefined}
+      >
         {value}
       </span>
     );
