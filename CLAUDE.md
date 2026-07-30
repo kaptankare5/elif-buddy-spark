@@ -220,7 +220,13 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
     (kamera hep arkada, sevimlilik arkadan okunmalı), tulum aracın AÇIK tonu
     (aynı renk olunca gövde kaportaya karışıyor).
   - Yolun iki yanında beyaz KENAR ÇİZGİSİ (asfalt/kerb sınırı) — hız yaparken
-    pistin sınırı yoksa okunmuyor.
+    pistin sınırı yoksa okunmuyor. ⚠️ `buildRibbon` kenarları küçükten büyüğe
+    sıralar: ters verilirse (sol taraf −11 → −12.6) üçgen sarımı döner, normal
+    aşağı bakar ve şerit YALNIZ BİR TARAFTA görünür.
+  - Rakip gizleme ölçütü KAMERAYA MESAFE (< 5 birim); "oyuncunun gerisindeki
+    herkes" denince geçilen rakip daha yanı başındayken yok oluyordu.
+  - Yarış ekranında sol üstte ÇIKIŞ (X) düğmesi var — yoksa çocuk yarışın
+    ortasında oyunlara dönemiyor.
   - `_letterTexture.ts` ortak: harf panosu / isim etiketi / sevimli yüz /
     emoji dokusu. Partisi de bunu kullanır — harfi panoya sığdırma ve yüz
     çizimi tek yerde.
