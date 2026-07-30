@@ -25,13 +25,19 @@ const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\
  * kutunun dışına taşıyordu. Ölçek ebeveynin font boyutuna GÖRECELİdir
  * (em), böylece kutu büyüdükçe harf de büyür.
  */
+// Ölçekler TAHMİN DEĞİL: Amiri Quran'da canvas measureText ile gerçek mürekkep
+// oranları ölçüldü (mürekkep yüksekliği ÷ font boyutu):
+//   tek glif 0.70–0.96 (en derin ع), harekeli/şeddeli diziler 1.10–1.52 (رَبِّ).
+// Genişlikte: tek glif ≤0.74, 5 glif ≤1.24 em.
+// Buradaki k'lar, mürekkep kutunun ~%70'ini dolduracak biçimde seçildi:
+// harf kutuyu dolduracak kadar büyük, ama kuyruğu kesilmeyecek kadar küçük.
 function fitScale(value: string): number {
   const n = [...value].length;
-  if (n <= 1) return 0.86;
-  if (n === 2) return 0.72;
-  if (n === 3) return 0.58;
-  if (n <= 5) return 0.46;
-  return 0.36;
+  if (n <= 1) return 1.25;
+  if (n === 2) return 0.95;
+  if (n === 3) return 0.9;
+  if (n <= 5) return 0.82;
+  return 0.68;
 }
 
 export function EmojiView({ value, className, fit }: { value?: string; className?: string; fit?: boolean }) {
@@ -41,7 +47,14 @@ export function EmojiView({ value, className, fit }: { value?: string; className
     return (
       <span
         dir="rtl"
-        className={cn("font-arabic inline-block leading-[1.6]", fit && "max-w-full whitespace-nowrap", className)}
+        className={cn(
+          "font-arabic inline-block",
+          // fit modunda leading ölçülen en derin mürekkebi (1.52) rahat
+          // kapsar; kutuda `overflow-hidden` KULLANMA — ح ج ع gibi harflerin
+          // kuyruğu kesilip "harfin yarısı görünmüyor" hâline geliyor.
+          fit ? "leading-[1.7] max-w-full whitespace-nowrap" : "leading-[1.6]",
+          className,
+        )}
         style={fit ? { fontSize: `${fitScale(value)}em` } : undefined}
       >
         {value}

@@ -185,10 +185,10 @@ const TripleMatchGame = () => {
               key={b.id}
               onClick={() => tap(b)}
               className={cn(
-                // Kutu biraz büyütüldü, font küçültüldü ve taşma kırpılıyor:
-                // Arapça satır kutusu font'un 1.6 katı olduğu için text-5xl
-                // (48px) bir 64px karede taşıyordu. 36px × 1.6 = 57.6 < 68.
-                "absolute flex items-center justify-center overflow-hidden w-[4.25rem] h-[4.25rem] sm:w-[5.5rem] sm:h-[5.5rem] rounded-2xl bg-card border-4 border-primary/40 shadow-card text-4xl sm:text-5xl font-extrabold active:scale-90 transition-bouncy hover:scale-110 hover:z-10 animate-bounce-in",
+                // Kutu büyütüldü + font küçültüldü; sığdırmayı EmojiView'ın
+                // `fit`'i yapar. overflow-hidden YOK: kırpma, derin kuyruklu
+                // harflerin (ح ج ع) yarısını yok ediyordu.
+                "absolute flex items-center justify-center w-[4.25rem] h-[4.25rem] sm:w-[5.5rem] sm:h-[5.5rem] rounded-2xl bg-card border-4 border-primary/40 shadow-card text-4xl sm:text-5xl font-extrabold active:scale-90 transition-bouncy hover:scale-110 hover:z-10 animate-bounce-in",
                 hintId === b.id && "ring-4 ring-warning bg-warning/30 animate-pulse z-20"
               )}
               style={{
@@ -230,7 +230,7 @@ const TripleMatchGame = () => {
               <div
                 key={i}
                 className={cn(
-                  "aspect-square overflow-hidden rounded-xl border-2 flex items-center justify-center text-2xl",
+                  "aspect-square rounded-xl border-2 flex items-center justify-center text-2xl",
                   slot ? "bg-primary-soft border-primary animate-pop" : "bg-muted/40 border-dashed border-muted-foreground/30"
                 )}
               >
