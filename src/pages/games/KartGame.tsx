@@ -29,7 +29,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
-import { Volume2, Maximize2, Lock } from "lucide-react";
+import { Volume2, Maximize2, Lock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
@@ -63,7 +63,12 @@ const TURBO_TIME = 2.8;        // "doğru kapıya giderse 2-3 saniye hız"
 const STAR_TIME = 5.0;
 const MUD_TIME = 1.6;
 const SPIN_TIME = 0.9;         // muza değince savrulma
-const HOP_V = 11;              // 🪶 tüy: kısa zıplama
+// 🪶 tüy: yüksek zıplama. 11 iken tepe ancak 2 birimdi, çocuk hiçbir şeyin
+// değiştiğini fark etmiyordu ("tüy bir işe yaramıyor"). 18 ile tepe ≈5.4
+// birim, havada ~1.2 sn kalınır: muzların ve çimin üstünden uçulur, inişte
+// kısa turbo verilir — artık kullanıldığı belli olan bir güç.
+const HOP_V = 18;
+const HOP_BOOST = 1.4;         // inişte verilen kısa hız
 const GRAVITY = 30;
 
 // Soru kapısının sesi kapıdan kaç birim önce çalsın. Kart hızlı (27 b/sn):
@@ -374,14 +379,20 @@ const KartGame = () => {
     // Eğri boyunca şerit: her örnekte sol/sağ kenar → iki üçgen. Kenarlarda
     // ayrıca "kırmızı-beyaz kerb" ve dış çim yakası.
     const buildRibbon = (halfIn: number, halfOut: number, y: number) => {
+      // ⚠️ Kenarlar her zaman KÜÇÜKTEN BÜYÜĞE sıralanır. Aksi hâlde (örneğin
+      // sol taraf için −11 → −12.6 verilince) üçgen sarımı ters dönüyor,
+      // yüzey normali aşağı bakıyor ve şerit görünmez oluyordu: kenar çizgisi
+      // ile kerb yalnız bir tarafta çıkıyordu.
+      const lo = Math.min(halfIn, halfOut);
+      const hi = Math.max(halfIn, halfOut);
       const pos: number[] = [];
       const uv: number[] = [];
       const idx: number[] = [];
       for (let i = 0; i <= SAMPLES; i++) {
         const m = i % SAMPLES;
         const p = pts[m], n = normals[m];
-        pos.push(p.x + n.x * halfIn, p.y + y, p.z + n.z * halfIn);
-        pos.push(p.x + n.x * halfOut, p.y + y, p.z + n.z * halfOut);
+        pos.push(p.x + n.x * lo, p.y + y, p.z + n.z * lo);
+        pos.push(p.x + n.x * hi, p.y + y, p.z + n.z * hi);
         const v = (i * SEG) / 12;
         uv.push(0, v, 1, v);
       }
@@ -839,6 +850,7 @@ const KartGame = () => {
       })));
       tag.scale.set(3.2, 0.8, 1);
       tag.position.y = isPlayer ? 5.9 : 4.2;
+      tag.name = "tag";
       group.add(tag);
 
       let aura: THREE.Mesh | null = null;
@@ -916,16 +928,21 @@ const KartGame = () => {
     let dragId: number | null = null;
     let dragPx = 0;
     let dragU0 = 0;
+    let dragMoved = false;
+    let dragAt = 0;
     const pxToU = () => (ROAD_HALF * 2.4) / Math.max(1, wrap.clientWidth);
     const onDown = (e: PointerEvent) => {
       if (dragId !== null) return;
       dragId = e.pointerId;
       dragPx = e.clientX;
       dragU0 = racersRef.current[0]?.u ?? 0;
+      dragMoved = false;
+      dragAt = performance.now();
       ctrlRef.current.dragU = dragU0;
     };
     const onMove = (e: PointerEvent) => {
       if (dragId !== e.pointerId) return;
+      if (Math.abs(e.clientX - dragPx) > 8) dragMoved = true;
       const d = (e.clientX - dragPx) * pxToU();
       ctrlRef.current.dragU = Math.max(-ROAD_HALF - 4, Math.min(ROAD_HALF + 4, dragU0 + d));
     };
@@ -933,6 +950,10 @@ const KartGame = () => {
       if (dragId !== e.pointerId) return;
       dragId = null;
       ctrlRef.current.dragU = null;
+      // Kaydırmadan kısa DOKUNUŞ = özel gücü kullan. Çocuğun parmağı zaten
+      // ekranın ortasında (direksiyon orada); köşedeki düğmeye uzanmak yerine
+      // olduğu yere dokunabilsin.
+      if (!dragMoved && performance.now() - dragAt < 260) ctrlRef.current.usePower = true;
     };
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
@@ -1157,7 +1178,9 @@ const KartGame = () => {
               showFlash("🍌 Muz bıraktın", true);
             } else {
               player.vy = HOP_V;
-              playSfx("coin");
+              player.turboT = Math.max(player.turboT, HOP_BOOST);
+              player.mudT = 0;
+              playSfx("dove");
               showFlash("🪶 TÜY! Havalandın", true);
             }
           }
@@ -1289,6 +1312,12 @@ const KartGame = () => {
       }
       const marker = player.group.getObjectByName("marker");
       if (marker) marker.position.y = 4.2 + Math.abs(Math.sin(tNow * 4)) * 0.4;
+      // Kapıya yaklaşırken oyuncunun oku ve isim tabelası tam ortadaki
+      // panonun ÖNÜNE gelip harfi örtüyordu — o anda gizlenirler.
+      const atGate = nextGate !== null && nextD < 40;
+      if (marker) marker.visible = !atGate;
+      const ptag = player.group.getObjectByName("tag");
+      if (ptag) ptag.visible = !atGate;
       // rampadaki oklar ileri doğru akar + havadaki ok zıplar → "hızlandırıyor"
       padTex.offset.y = (padTex.offset.y - dt * 1.6) % 1;
       const bob = Math.abs(Math.sin(tNow * 3)) * 0.7;
@@ -1298,21 +1327,22 @@ const KartGame = () => {
       // Yanal takip GÜÇLÜ olmalı: zayıf takiple (u*0.55) çime çıkan oyuncu
       // çerçevenin dışında kalıyor ve çocuk kendi aracını göremiyordu.
       const back = 13 + player.v * 0.14;
-
-      // Geride kalan bot kameranın önüne girip ekranı kapatabiliyor: oyuncunun
-      // belirgin şekilde GERİSİNDE kalanı gizle (yarışta koşmaya devam eder).
-      for (const r of racers) {
-        if (r.isPlayer) continue;
-        const behind = wrapS(player.s - r.s);
-        r.group.visible = !(behind > 1 && behind < back + 5);
-      }
-
       worldAt(player.s - back, player.u * 0.75, camPos);
       camPos.y += 6.4 + player.y * 0.4;
       camera.position.lerp(camPos, Math.min(1, dt * 6));
       worldAt(player.s + 20, player.u * 0.55, camLook);
       camLook.y += 2.2;
       camera.lookAt(camLook);
+
+      // Bot yalnızca KAMERANIN İÇİNE girdiğinde gizlenir. Önceden "oyuncunun
+      // gerisindeki herkes" gizleniyordu (1..back+5 bandı) — geçtiğin rakip
+      // daha yanı başındayken yok oluyordu. Ölçüt artık kameraya olan gerçek
+      // mesafe: rakip geride kalmaya devam eder, yalnız kameranın burnuna
+      // girdiğinde (görüntüyü kapatacakken) kaybolur.
+      for (const r of racers) {
+        if (r.isPlayer) continue;
+        r.group.visible = r.group.position.distanceTo(camera.position) > 5;
+      }
       // hız hissi: FOV turboyla açılır
       const wantFov = 62 + (player.turboT > 0 || player.starT > 0 ? 10 : 0) + player.v * 0.12;
       camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 4);
@@ -1437,7 +1467,16 @@ const KartGame = () => {
 
           {/* üst HUD */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-2">
-            <div className="rounded-2xl bg-white/85 px-3 py-1.5 text-center shadow-card backdrop-blur">
+            {/* Yarıştan çıkış: önceden yalnız bitiş ekranında vardı, çocuk
+                yarışın ortasında oyunlara dönemiyordu. */}
+            <button
+              onClick={exit}
+              aria-label="Oyunlara dön"
+              className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-muted-foreground shadow-card backdrop-blur active:scale-90"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <div className="rounded-2xl bg-white/85 px-2.5 py-1.5 text-center shadow-card backdrop-blur">
               <div className="text-[10px] font-bold text-muted-foreground">Sıra</div>
               <div className="text-xl font-extrabold text-primary">{hud.place}<span className="text-xs">/{RACERS}</span></div>
             </div>
@@ -1520,7 +1559,7 @@ const KartGame = () => {
                 "rounded-full px-2 py-0.5 text-center text-[10px] font-extrabold leading-tight",
                 power ? "bg-warning text-warning-foreground" : "bg-white/85 text-muted-foreground",
               )}>
-                {power ? "BAS ve kullan!" : "doğru kapı = güç"}
+                {power ? "BAS ya da ekrana dokun" : "doğru kapı = güç"}
               </span>
             </div>
           </div>
