@@ -185,8 +185,14 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
     koridordaymış gibi basit kalır. Eğri `getSpacedPoints` ile örneklenip
     LOOKUP tablosuna alınır (`getPointAt` her karede çağrılırsa pahalı) —
     eşit aralıklı örnekleme şart, parametrik olursa virajda hız dalgalanır.
+  - ⚠️ **u'nun İŞARETİ**: `normals = UP × teğet` ama ileri bakan sürücünün
+    SAĞI `teğet × UP = −normal`'dir. Bu yüzden `worldAt` u'yu **negatif**
+    işaretle uygular (`addScaledVector(normal, -u)`) → u pozitif = SAĞ.
+    Düzeltilmeden önce parmağı sağa kaydırınca araç sola gidiyordu.
   - Pist KAPALI: `s` sarmalanır (`wrapS`), mesafe karşılaştırmaları iki yönden
     ölçülüp küçüğü alınmalı, yoksa bitiş çizgisi civarında çarpışma kaçar.
+  - Araç yerleştirme `placeRacers()` ile AYRI: yalnız `step()` içinde kalırsa
+    geri sayım boyunca bütün araçlar sahnenin merkezinde üst üste durur.
   - **Yol düzlemine yatık nesne** (bitiş çizgisi, hız rampası) için `flatOnTrack`
     kullan: grup lookAt ile teğete döner, düzlem grubun İÇİNDE yatırılır.
     Aynı nesnede `rotation.x` + `rotation.z` vermek Euler sırası yüzünden
