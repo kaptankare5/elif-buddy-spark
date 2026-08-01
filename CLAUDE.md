@@ -251,6 +251,18 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   tekrar YOK; kullanıcı şartı: aynı soruyu iki kez sormak (biri uzakta, biri
   kapıya yakın) rahatsız ediyor. Tekrar dinlemek "Hangi kapı? — dinle"
   bandına dokunmakla olur.
+- ⚠️ **KAPI ARASI NEFES PAYI = kapı aralığı − PROMPT_LEAD.** Bu pay geri
+  bildirim melodisinden (~0.65 sn) belirgin biçimde büyük olmalı, yoksa
+  sıradaki sorunun sesi geçilen kapının "doğru/yanlış" sesiyle AYNI ANDA
+  çalar ve duyulmaz — çocuk için soru hiç sorulmamış olur ("2. harfte ses
+  gelmedi, sadece şıklar vardı"). Yarışı'nda pist halka ve kapılar eşit
+  bölündüğü için pay pistten piste değişiyordu: Bahçe 366−260=106 (3.5 sn),
+  **Çöl 242−260 = NEGATİF**, **Yıldız 280−260=20 (0.7 sn)**. Çözüm
+  `PROMPT_GAP` (1.6 sn): kapı cevaplandıktan sonra sıradaki soru bu süre
+  dolmadan çalmaz; `nextD < 80` emniyeti bekleme yüzünden sorunun
+  ATLANMAMASINI garanti eder. Partisi'nde pay en dar bölümde bile 4.1 sn
+  (10. bölüm) olduğu için orada gerekmedi — yeni bölüm/pist eklerken bu
+  payı hesapla.
 - ⚠️ **KAPI SORUSU SIRASI GELİNCE DAĞITILIR** (`armGate`, Partisi + Yarışı).
   Bölüm/yarış kurulurken bütün kapılara birden soru dağıtılamaz: aralarında
   hiç cevap kaydedilmediği için SRS durumu değişmez ve `pickNextGameItem` her
