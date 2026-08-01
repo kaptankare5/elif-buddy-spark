@@ -1,28 +1,50 @@
-// HATA ORANI SİMÜLASYONU — "çocuk yüzde kaç yanlış yapar?"
+// HATA ORANI + MÜFREDAT SİMÜLASYONU — "çocuk yüzde kaç yanlış yapar?"
 //
-// Sentetik bir çocuğu (her öğe için hafıza gücü H + unutma eğrisi) modeller ve
-// GERÇEK kodu sürer: gerçek seçici (pickNextLetterFromTopic / pickNextGameItem),
-// gerçek SRS (recordSrsAnswer / recordGameAnswer), gerçek kilit mantığı,
-// gerçek şık sayıları. Yani çıkan sayı "kodun bugünkü hâlinin" tahminidir.
+// Sentetik bir çocuğu GERÇEK kod üzerinden sürer: gerçek seçici
+// (pickNextLetterFromTopic / pickNextGameItem), gerçek SRS (recordSrsAnswer /
+// recordGameAnswer), gerçek BÖLÜM ve KONU KİLİDİ (getUnlockedItemsOf,
+// isTopicCompleted), gerçek çeldirici seçimi (pickWrongs / pickDistractors) ve
+// her yüzeyin gerçek şık sayısı. Yani çıkan sayı "kodun bugünkü hâlinin"
+// tahminidir, elle uydurulmuş bir eğri değil.
 //
-// ÇOCUK MODELİ (varsayımlar açık):
-//  - hatırlama r = 2^(-geçenGün / H); hiç görülmemişse önbilgi (çoğu 0.05).
-//  - Çoktan seçmelide: r olasılıkla hatırlar → doğru. Hatırlamazsa şıklardan
-//    RASTGELE seçer (1/N). Çeldiriciler KARIŞAN harflerden geldiği için yarım
-//    bilgi kurtarmaz — bu yüzden düzgün tahmin doğru modeldir.
-//  - Flashcard'da çocuk kendi puanlar → tahmin yok, yalnız gerçekten bilirse doğru.
-//  - Doğru geri-getirme H'yi büyütür (aralık bonuslu), yanlış H'yi yarılar,
-//    tahminle "doğru" çok az öğretir.
-//  - Oturumlar arası +1 gün → unutma işler.
+// MÜFREDAT KAPISI MODELDE (kullanıcı sorusu: "o 4 harfi doğru cevaplamadan
+// yeni harflere geçilmiyor, hesaba kattın mı?"). Üç kapı da gerçek koddan gelir:
+//   1) Öğrenme seti (srs.ts LEARNING_SET_K=3): aynı anda en fazla 3 harf
+//      "öğrenilmekte" (görülmüş ama L3 altı) olabilir; set doluyken YENİ harf
+//      tanıtılmaz, eldeki pekişene kadar sorular onlardan gelir.
+//   2) Bölüm kilidi (unlock.ts): bir sonraki bölüm ancak bölümdeki TÜM öğeler
+//      L3+ iken VE bölüm içinde sıcak karışıklık kalmamışken açılır.
+//   3) Konu kilidi: konudaki tüm öğeler L3+ olmadan sonraki konu açılmaz.
+// L3 = 2 doğru (L1→L2→L3, her biri tek doğru), L4 = üstüne ÜST ÜSTE 2 hızlı
+// doğru. Yanlış = 2 seviye düşer. Simülasyon bu sayıları ölçüp raporlar.
+//
+// ÇOCUK MODELİ — literatüre göre kalibre edildi (kaynaklar):
+//  * Rawson & Dunlosky 2022 (Current Directions in Psych. Sci.), "successive
+//    relearning": kalıcı bilgi için reçete = başlangıçta 3 doğru geri getirme,
+//    sonra GENİŞ ARALIKLI 3 tekrar. Ayrı 3 oturumda 1'er doğru, tek oturumda
+//    3 doğrudan İKİ KATINDAN fazla tutulum sağlıyor → aralık şart.
+//  * Harf-ses müdahale çalışmalarında ustalık ölçütü: iki ayrı oturumda %80
+//    doğruluk.
+//  * Önerilen tanıtım hızı: haftada 2-4 harf-ses ilişkisi (okul öncesi için
+//    kimi kaynaklar haftada 1-2 diyor).
+// Buna göre: hatırlama r = 2^(-geçenGün / H). Yeni harfte H≈0.2 gün (birkaç
+// saatte unutulur). ARALIKLI ve BAŞARILI her geri getirme H'yi büyütür; büyüme
+// zor geri getirmede (düşük r) daha fazladır. Kalibrasyon hedefi: 3-4 aralıklı
+// doğrudan sonra bir hafta sonraki hatırlama ~%80-90 (yukarıdaki reçete).
+// Yanlış H'yi yarılar; TAHMİNLE bulunan doğru neredeyse hiç öğretmez (SRS
+// şişmesi buradan doğar ve raporda ayrıca görünür).
 //
 // Çalıştırmak için:  SIM=1 npx vitest run src/test/errorRate.test.ts
 import { describe, it, expect, afterAll } from "vitest";
 import { pickNextLetterFromTopic, recordSrsAnswer, getTopicSrs, __resetSelectorState } from "@/data/srs";
 import { clearRecentAsked, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { getAllTopics } from "@/data/subjects";
-import { getUnlockedItemsOf, isTopicCompleted, getUnlockedTopicIds } from "@/lib/unlock";
+import { getUnlockedItemsOf, isTopicCompleted, getUnlockedTopicIds, getUnlockedSections } from "@/lib/unlock";
 import { gamePool, pickWrongs } from "@/pages/games/_shared";
-import { pickDistractors, recordConfusionPick, recordDiscrimination } from "@/lib/confusion";
+import {
+  pickDistractors, recordConfusionPick, recordDiscrimination,
+  resetConfusion, __resetConfusionCache,
+} from "@/lib/confusion";
 import { setGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 
@@ -51,44 +73,67 @@ function recall(m: Mem, day: number): number {
   const r = Math.pow(2, -(day - m.last) / m.H);
   return r < 0 ? 0 : r > 1 ? 1 : r;
 }
+// Kalibrasyon: H *= (2.2 + 2.5·(1−r)). Yeni harf H=0.2'den başlar; günlük
+// aralıklı doğrularla H ≈ 0.9 → 3.2 → 8.6 → 21 gün olur, yani 4. doğrudan
+// sonra bir hafta sonraki hatırlama ≈ %80. Rawson & Dunlosky'nin "3 doğru +
+// aralıklı 3 tekrar" reçetesiyle aynı büyüklük sırası.
 function updateMem(m: Mem, retrieved: boolean, reported: boolean, r: number, day: number, hiz: number) {
   m.studied = true;
-  // hiz: öğrenme hızı profili — doğru geri-getirmenin hafızayı ne kadar
-  // güçlendirdiğini ölçekler (yavaş çocuk aynı tekrardan daha az kazanır).
-  if (retrieved) m.H = Math.min(400, m.H * (1 + (0.5 + 0.8 * (1 - r)) * hiz));
-  else if (reported) m.H = m.H * (1 + 0.05 * hiz) + 0.15 * hiz;   // tahminle doğru — az öğrenme
-  else m.H = Math.max(0.4, m.H * 0.5);                            // yanlış — düzeltici
+  if (retrieved) m.H = Math.min(400, m.H * (1 + (1.2 + 2.5 * (1 - r)) * hiz));
+  else if (reported) m.H = m.H * (1 + 0.05 * hiz) + 0.1 * hiz;  // tahminle doğru: neredeyse hiç öğrenme
+  else m.H = Math.max(0.35, m.H * 0.5);                          // yanlış: düzeltici, kısmi
   m.last = day;
 }
 
-// GERÇEK yüzeyler ve şık sayıları (koddan):
-//   Topic testi 4 şık · Flashcard kendi puanlar · Parti/Yarış/Tren/Macera 3 şık
-//   Balon 5 şık · Uzay 4 şık · Yılan/Şerit 2 şık
+// GERÇEK yüzeyler ve şık sayıları (koddan okundu):
+//   Topic testi 4 şık (pickDistractors ...,3) · Flashcard kendi puanlar
+//   Parti/Yarış/Tren/Macera 3 şık · Balon 5 şık · Yılan/Şerit 2 şık
 type Surface = { ad: string; n: number; oyun: boolean };
-const SURFACES: Surface[] = [
-  { ad: "Test (4 şık)", n: 4, oyun: false },
-  { ad: "Flashcard (kendi)", n: 0, oyun: false },
-  { ad: "Parti/Yarış (3 şık)", n: 3, oyun: true },
-  { ad: "Balon (5 şık)", n: 5, oyun: true },
-  { ad: "Yılan (2 şık)", n: 2, oyun: true },
-];
+const S_TEST: Surface = { ad: "Test (4 şık)", n: 4, oyun: false };
+const S_FLASH: Surface = { ad: "Flashcard (kendi)", n: 0, oyun: false };
+const S_G3: Surface = { ad: "Parti/Yarış (3 şık)", n: 3, oyun: true };
+const S_G5: Surface = { ad: "Balon (5 şık)", n: 5, oyun: true };
+const S_G2: Surface = { ad: "Yılan (2 şık)", n: 2, oyun: true };
 
-const SESSIONS = 40;
-const Q_PER = 30;
+type Senaryo = "test" | "flashcard" | "oyun" | "karisik";
+function yuzeySec(sen: Senaryo, u: number): Surface {
+  if (sen === "test") return S_TEST;
+  if (sen === "flashcard") return S_FLASH;
+  if (sen === "oyun") return u < 0.62 ? S_G3 : u < 0.84 ? S_G5 : S_G2;
+  // karışık: %35 test · %20 flashcard · %45 oyun
+  return u < 0.35 ? S_TEST : u < 0.55 ? S_FLASH : u < 0.80 ? S_G3 : u < 0.90 ? S_G5 : S_G2;
+}
 
-interface Log { yuzey: string; dogru: boolean; ilkGorus: boolean; gun: number }
+const SESSIONS = 40;      // her gün bir oturum
+const Q_PER = 30;         // oturum başına soru
+const FLUENT_MS = 5000;   // srs.ts ile aynı eşik
 
-function runSim(seed: number, mode: "super" | "normal", profil: "orta" | "hizli" | "yavas") {
+interface Log { yuzey: string; dogru: boolean; tahmin: boolean; ilkGorus: boolean; gun: number }
+interface Sonuc {
+  log: Log[];
+  tanitilan: number; l3: number; l4: number;
+  kaliciBilgi: number;             // model gerçeği: +7 gün hatırlama ≥ 0.85
+  sahteUstalik: number;            // L3+ ama +7 gün hatırlama < 0.5
+  acilanBolum: number; acilanKonu: number;
+  dogruylaL3: number[]; dogruylaL4: number[];
+}
+
+function runSim(seed: number, sen: Senaryo, profil: "orta" | "hizli" | "yavas" = "orta"): Sonuc {
   localStorage.clear();
+  // ⚠️ confusion.ts karışıklık ısısını MODÜL DÜZEYİNDE önbelleğe alır;
+  // localStorage.clear() onu temizlemez. Sıfırlanmazsa bir senaryonun ısısı
+  // sonrakine sızar ve konular "sıcak ikili" yüzünden hiç tamamlanmaz
+  // (ilk ölçümde yalnız-Flashcard bu yüzden 1. konuda takılı kalmıştı).
+  __resetConfusionCache();
+  resetConfusion();
   __resetSelectorState();
   clearRecentAsked();
-  setGameMode(mode);
+  setGameMode("super");
   const rnd = mulberry32(seed);
   Math.random = rnd;
 
-  // Öğrenme hızı profili: doğru cevabın H'yi ne kadar büyüttüğü.
-  const hiz = profil === "hizli" ? 1.6 : profil === "yavas" ? 0.5 : 1;
-  const P_KNOWN = 0.1;   // acemi çocuk öğelerin ~%10'unu zaten biliyor
+  const hiz = profil === "hizli" ? 1.5 : profil === "yavas" ? 0.55 : 1;
+  const P_KNOWN = 0.1;
 
   const mem = new Map<string, Mem>();
   for (const t of practiceTopics) {
@@ -98,6 +143,9 @@ function runSim(seed: number, mode: "super" | "normal", profil: "orta" | "hizli"
     }
   }
   const gorulmus = new Set<string>();
+  const dogruSayaci = new Map<string, number>();   // öğe → o ana kadarki doğru
+  const l3De = new Map<string, number>();
+  const l4De = new Map<string, number>();
   const log: Log[] = [];
 
   const frontierTopic = () =>
@@ -106,17 +154,8 @@ function runSim(seed: number, mode: "super" | "normal", profil: "orta" | "hizli"
   for (let day = 0; day < SESSIONS; day++) {
     Date.now = () => day * DAYMS + 1;
     for (let q = 0; q < Q_PER; q++) {
-      // Gerçekçi karışım: %35 test, %20 flashcard, %45 oyun
-      const u = rnd();
-      const s: Surface =
-        u < 0.35 ? SURFACES[0] :
-        u < 0.55 ? SURFACES[1] :
-        u < 0.80 ? SURFACES[2] :
-        u < 0.90 ? SURFACES[3] : SURFACES[4];
+      const s = yuzeySec(sen, rnd());
 
-      // Hedef + ŞIKLAR gerçek seçicilerden gelir: çeldiriciler karışan
-      // harflerden kurulduğu için tahminin gerçek zorluğu modellenmiş olur
-      // ve karışıklık motoru (ısı → sıklık) simülasyon boyunca gerçekten işler.
       let hedef: ContentItem | null = null;
       let siklar: ContentItem[] = [];
       let recTopic = "";
@@ -146,105 +185,183 @@ function runSim(seed: number, mode: "super" | "normal", profil: "orta" | "hizli"
       gorulmus.add(id);
 
       const retrieved = rnd() < r;
-      // Hatırlamazsa ekrandaki şıklardan rastgele birini seçer.
-      const secilen = retrieved ? hedef : siklar[Math.floor(rnd() * siklar.length)] ?? hedef;
+      const secilen = retrieved ? hedef : (siklar[Math.floor(rnd() * siklar.length)] ?? hedef);
       const reported = s.n > 0 ? secilen.id === id : retrieved;
+      const tahmin = reported && !retrieved;   // bilmeden tuttu → SRS şişmesi
+      // Tepki süresi: kolay hatırlayan hızlı, zorlanan yavaş. L4 mandalı
+      // (srs.ts) akıcılık ister — bu yüzden modellenmesi gerekiyor.
+      const responseMs = Math.round(900 + 5200 * (1 - r) + rnd() * 800);
 
       if (s.oyun) {
         recordGameAnswer(hedef, reported, {
-          gameId: "party", chosenId: secilen.id, shownIds: siklar.map((o) => o.id),
+          responseMs, gameId: "party", chosenId: secilen.id, shownIds: siklar.map((o) => o.id),
         });
       } else {
-        void recordSrsAnswer("quiz", recTopic, id, reported);
+        void recordSrsAnswer("quiz", recTopic, id, reported, { responseMs });
         if (s.n > 0) {
           if (reported) recordDiscrimination(id, siklar.map((o) => o.id));
           else recordConfusionPick(id, secilen.id);
         }
       }
+      if (reported) dogruSayaci.set(id, (dogruSayaci.get(id) ?? 0) + 1);
+      const e = getTopicSrs("quiz", recTopic)[id];
+      if (e) {
+        if (e.level >= 3 && !l3De.has(id)) l3De.set(id, dogruSayaci.get(id) ?? 0);
+        if (e.level >= 4 && !l4De.has(id)) l4De.set(id, dogruSayaci.get(id) ?? 0);
+      }
       updateMem(m, retrieved, reported, r, day, hiz);
-      log.push({ yuzey: s.ad, dogru: reported, ilkGorus, gun: day });
+      log.push({ yuzey: s.ad, dogru: reported, tahmin, ilkGorus, gun: day });
     }
   }
-  return log;
-}
 
-const pct = (dogru: number, top: number) => (top === 0 ? "—" : `%${(100 * (1 - dogru / top)).toFixed(0)}`);
-
-function ozet(log: Log[]) {
-  const grup = (f: (l: Log) => boolean) => {
-    const g = log.filter(f);
-    return { n: g.length, d: g.filter((l) => l.dogru).length };
+  // --- müfredat ve gerçek bilgi metrikleri (son gün + 7) ---
+  const son = SESSIONS + 7;
+  let tanitilan = 0, l3 = 0, l4 = 0, kaliciBilgi = 0, sahteUstalik = 0, acilanBolum = 0, acilanKonu = 0;
+  const acikKonular = getUnlockedTopicIds();
+  for (const t of practiceTopics) {
+    // Bölüm yalnız AÇIK konularda sayılır: getUnlockedSections kilitli bir
+    // konuda da ilk bölümü "açık" döndürür, hepsi toplanınca sayı şişiyordu.
+    if (acikKonular.has(t.id)) { acilanKonu++; acilanBolum += getUnlockedSections(t).size; }
+    const srs = getTopicSrs("quiz", t.id);
+    for (const it of t.items) {
+      const e = srs[it.id];
+      const m = mem.get(it.id)!;
+      const rr = recall(m, son);
+      if (e && (e.seen ?? 0) > 0) tanitilan++;
+      if (e && e.level >= 3) { l3++; if (rr < 0.5) sahteUstalik++; }
+      if (e && e.level >= 4) l4++;
+      if (rr >= 0.85) kaliciBilgi++;
+    }
+  }
+  if (process.env.DBG === "1") {
+    console.log(`[DBG ${sen}] açıkKonu=${[...acikKonular].join(",")}`);
+    for (const t of practiceTopics.slice(0, 3)) {
+      const srs = getTopicSrs("quiz", t.id);
+      const n3 = t.items.filter((i) => (srs[i.id]?.level ?? 1) >= 3).length;
+      const gor = t.items.filter((i) => (srs[i.id]?.seen ?? 0) > 0).length;
+      console.log(`   ${t.id}: görülen ${gor}/${t.items.length} L3+ ${n3} tamam=${isTopicCompleted(t)} açıkÖğe=${getUnlockedItemsOf(t).length}`);
+    }
+  }
+  return {
+    log, tanitilan, l3, l4, kaliciBilgi, sahteUstalik, acilanBolum, acilanKonu,
+    dogruylaL3: [...l3De.values()], dogruylaL4: [...l4De.values()],
   };
-  return { grup, toplam: grup(() => true) };
 }
+
+const yanlisPct = (log: Log[]) =>
+  log.length === 0 ? "—" : `%${(100 * (1 - log.filter((l) => l.dogru).length / log.length)).toFixed(0)}`;
+const ort = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
 
 const RUN_SIM = process.env.SIM === "1";
-describe("hata oranı simülasyonu", () => {
-  (RUN_SIM ? it : it.skip)("yüzeye ve zamana göre yanlış yüzdesi", { timeout: 300_000 }, () => {
+describe("hata oranı + müfredat simülasyonu", () => {
+  (RUN_SIM ? it : it.skip)("4 senaryo: yalnız test / yalnız flashcard / yalnız oyun / karışık",
+    { timeout: 900_000 }, () => {
     const seeds = [1, 2, 3, 4, 5, 6];
-    const kosular = seeds.map((s) => runSim(s, "super", "orta"));
-    const hepsi = kosular.flat();
-    const { grup, toplam } = ozet(hepsi);
+    const senaryolar: Senaryo[] = ["test", "flashcard", "oyun", "karisik"];
+    const ad: Record<Senaryo, string> = {
+      test: "YALNIZ TEST", flashcard: "YALNIZ FLASHCARD", oyun: "YALNIZ OYUN", karisik: "KARIŞIK",
+    };
+    const R: Record<string, Sonuc[]> = {};
+    for (const sen of senaryolar) R[sen] = seeds.map((s) => runSim(s, sen));
 
-    console.log(`\n===== HATA ORANI SİMÜLASYONU =====`);
-    console.log(`${SESSIONS} oturum × ${Q_PER} soru × ${seeds.length} çocuk = ${hepsi.length} cevap · süper mod`);
-    console.log(`Karışım: %35 Test · %20 Flashcard · %45 oyun\n`);
-    console.log(`GENEL YANLIŞ ORANI: ${pct(toplam.d, toplam.n)}\n`);
+    console.log(`\n===== HATA ORANI + MÜFREDAT SİMÜLASYONU =====`);
+    console.log(`${SESSIONS} gün × ${Q_PER} soru × ${seeds.length} çocuk · süper mod`);
+    console.log(`Model kalibrasyonu: Rawson & Dunlosky 2022 (3 doğru + aralıklı 3 tekrar),`);
+    console.log(`harf-ses ustalık ölçütü %80×2 oturum, tanıtım hızı haftada 2-4 harf.\n`);
 
-    console.log("YÜZEYE GÖRE");
-    for (const s of SURFACES) {
-      const g = grup((l) => l.yuzey === s.ad);
-      const sans = s.n > 0 ? ` (rastgele tahminin tabanı %${(100 * (1 - 1 / s.n)).toFixed(0)})` : " (tahmin yok)";
-      console.log(`  ${s.ad.padEnd(22)} yanlış ${pct(g.d, g.n).padStart(5)}  n=${g.n}${sans}`);
+    const kol = (sen: Senaryo) => R[sen].flatMap((x) => x.log);
+    const say = (sen: Senaryo, f: (s: Sonuc) => number) => ort(R[sen].map(f));
+
+    console.log("GENEL YANLIŞ ORANI");
+    for (const sen of senaryolar) {
+      const l = kol(sen);
+      console.log(`  ${ad[sen].padEnd(20)} ${yanlisPct(l).padStart(5)}   (n=${l.length})`);
     }
 
-    console.log("\nZAMANA GÖRE (oturum aralığı)");
+    console.log("\nZAMANA GÖRE YANLIŞ");
     const bloklar: Array<[string, number, number]> = [
-      ["1-3 (ilk günler)", 0, 3], ["4-10", 3, 10], ["11-20", 10, 20], ["21-40", 20, 40],
+      ["1-3. gün", 0, 3], ["4-10. gün", 3, 10], ["11-20. gün", 10, 20], ["21-40. gün", 20, 40],
     ];
-    for (const [ad, a, b] of bloklar) {
-      const g = grup((l) => l.gun >= a && l.gun < b);
-      console.log(`  ${ad.padEnd(22)} yanlış ${pct(g.d, g.n).padStart(5)}  n=${g.n}`);
+    console.log(`  ${"".padEnd(14)}${senaryolar.map((s) => ad[s].slice(0, 9).padStart(11)).join("")}`);
+    for (const [b, a, z] of bloklar) {
+      const hucre = senaryolar.map((sen) =>
+        yanlisPct(kol(sen).filter((l) => l.gun >= a && l.gun < z)).padStart(11)).join("");
+      console.log(`  ${b.padEnd(14)}${hucre}`);
     }
 
     console.log("\nİLK KARŞILAŞMA / TEKRAR");
-    const ilk = grup((l) => l.ilkGorus);
-    const tekrar = grup((l) => !l.ilkGorus);
-    console.log(`  İlk kez görülen harf     yanlış ${pct(ilk.d, ilk.n).padStart(5)}  n=${ilk.n}`);
-    console.log(`  Daha önce görülmüş       yanlış ${pct(tekrar.d, tekrar.n).padStart(5)}  n=${tekrar.n}`);
+    console.log(`  ${"".padEnd(14)}${senaryolar.map((s) => ad[s].slice(0, 9).padStart(11)).join("")}`);
+    console.log(`  ${"ilk kez".padEnd(14)}${senaryolar.map((sen) => yanlisPct(kol(sen).filter((l) => l.ilkGorus)).padStart(11)).join("")}`);
+    console.log(`  ${"tekrar".padEnd(14)}${senaryolar.map((sen) => yanlisPct(kol(sen).filter((l) => !l.ilkGorus)).padStart(11)).join("")}`);
 
-    // Akış kanalı: sistem ~%85 doğruluğu hedefler (ne sıkıcı ne bunaltıcı).
-    // Oturum başına doğruluk dağılımı bunun tutup tutmadığını gösterir.
-    console.log("\nOTURUM BAŞINA DOĞRULUK DAĞILIMI (akış kanalı %85 hedefi)");
-    const oturumlar: number[] = [];
-    for (const k of kosular) {
-      for (let g = 0; g < SESSIONS; g++) {
-        const o = k.filter((l) => l.gun === g);
-        if (o.length >= 10) oturumlar.push(o.filter((l) => l.dogru).length / o.length);
+    console.log("\nMÜFREDAT İLERLEMESİ (40 günün sonunda, çocuk başına ort.)");
+    const sat = (etiket: string, f: (s: Sonuc) => number, ondalik = 0) =>
+      console.log(`  ${etiket.padEnd(30)}${senaryolar.map((sen) => say(sen, f).toFixed(ondalik).padStart(11)).join("")}`);
+    console.log(`  ${"".padEnd(30)}${senaryolar.map((s) => ad[s].slice(0, 9).padStart(11)).join("")}`);
+    sat("Tanıtılan harf", (s) => s.tanitilan);
+    sat("SRS'e göre öğrenilmiş (L3+)", (s) => s.l3);
+    sat("Otomatikleşmiş (L4)", (s) => s.l4);
+    sat("Açılan bölüm", (s) => s.acilanBolum);
+    sat("Açılan konu", (s) => s.acilanKonu);
+    sat("Haftada tanıtılan harf", (s) => (s.tanitilan / SESSIONS) * 7, 1);
+    sat("GERÇEKTEN kalıcı (+7g ≥%85)", (s) => s.kaliciBilgi);
+    sat("Sahte ustalık (L3+ ama unutmuş)", (s) => s.sahteUstalik);
+
+    console.log("\nKAÇ DOĞRU CEVAPTA ÖĞRENİYOR (ort.)");
+    console.log(`  ${"".padEnd(30)}${senaryolar.map((s) => ad[s].slice(0, 9).padStart(11)).join("")}`);
+    sat("L3'e (öğrenildi) kadar doğru", (s) => ort(s.dogruylaL3), 1);
+    sat("L4'e (otomatik) kadar doğru", (s) => ort(s.dogruylaL4), 1);
+    const tahminOrani = (sen: Senaryo) => {
+      const l = kol(sen).filter((x) => x.dogru);
+      return l.length ? `%${(100 * l.filter((x) => x.tahmin).length / l.length).toFixed(0)}` : "—";
+    };
+    console.log(`  ${"Doğruların tahminle olanı".padEnd(30)}${senaryolar.map((s) => tahminOrani(s).padStart(11)).join("")}`);
+
+    console.log("\nOTURUM DOĞRULUK DAĞILIMI — akış kanalı (%85 hedefi)");
+    console.log(`  ${"".padEnd(24)}${senaryolar.map((s) => ad[s].slice(0, 9).padStart(11)).join("")}`);
+    const bantlar: Array<[string, number, number]> = [
+      ["çok zor (<%60)", 0, 0.6], ["zorlanıyor (%60-75)", 0.6, 0.75],
+      ["ideal (%75-92)", 0.75, 0.92], ["çok kolay (>%92)", 0.92, 1.01],
+    ];
+    const oturumDog = (sen: Senaryo) => {
+      const out: number[] = [];
+      for (const k of R[sen]) {
+        for (let g = 0; g < SESSIONS; g++) {
+          const o = k.log.filter((l) => l.gun === g);
+          if (o.length >= 10) out.push(o.filter((l) => l.dogru).length / o.length);
+        }
       }
+      return out;
+    };
+    const od: Record<string, number[]> = {};
+    for (const sen of senaryolar) od[sen] = oturumDog(sen);
+    for (const [b, a, z] of bantlar) {
+      const hucre = senaryolar.map((sen) => {
+        const d = od[sen];
+        return (d.length ? `%${((100 * d.filter((x) => x >= a && x < z).length) / d.length).toFixed(0)}` : "—").padStart(11);
+      }).join("");
+      console.log(`  ${b.padEnd(24)}${hucre}`);
     }
-    const bant = (a: number, b: number) => oturumlar.filter((x) => x >= a && x < b).length;
-    const yuz = (n: number) => `%${((100 * n) / oturumlar.length).toFixed(0)}`;
-    console.log(`  çok zor    (<%60 doğru)   ${yuz(bant(0, 0.6)).padStart(5)}`);
-    console.log(`  zorlanıyor (%60-75)       ${yuz(bant(0.6, 0.75)).padStart(5)}`);
-    console.log(`  ideal      (%75-92)       ${yuz(bant(0.75, 0.92)).padStart(5)}  ← hedef bant`);
-    console.log(`  çok kolay  (>%92)         ${yuz(bant(0.92, 1.01)).padStart(5)}`);
-    const ort = oturumlar.reduce((a, b) => a + b, 0) / oturumlar.length;
-    console.log(`  ortalama oturum doğruluğu %${(100 * ort).toFixed(0)}`);
+    console.log(`  ${"ortalama doğruluk".padEnd(24)}${senaryolar.map((sen) => `%${(100 * ort(od[sen])).toFixed(0)}`.padStart(11)).join("")}`);
 
-    console.log("\nÖĞRENME HIZI PROFİLİ (genel yanlış)");
+    // Uyarlanır zorluğun imzası: hızlı çocuk DAHA AZ yanlış yapmaz, DAHA
+    // HIZLI ilerler. Hata oranı sabit kalır, fark müfredat hızına yansır.
+    console.log("\nÖĞRENME HIZI PROFİLİ (karışık senaryo)");
+    console.log(`  ${"".padEnd(12)}${"yanlış".padStart(9)}${"öğrenilen".padStart(11)}${"otomatik".padStart(10)}${"kalıcı".padStart(9)}`);
     for (const p of ["hizli", "orta", "yavas"] as const) {
-      const l = seeds.slice(0, 4).map((s) => runSim(s, "super", p)).flat();
-      console.log(`  ${p.padEnd(22)} ${pct(l.filter((x) => x.dogru).length, l.length).padStart(5)}`);
-    }
-
-    console.log("\nMOD KARŞILAŞTIRMASI (genel yanlış)");
-    for (const md of ["super", "normal"] as const) {
-      const l = seeds.slice(0, 4).map((s) => runSim(s, md, "orta")).flat();
-      console.log(`  ${md.padEnd(22)} ${pct(l.filter((x) => x.dogru).length, l.length).padStart(5)}`);
+      const rs = seeds.slice(0, 4).map((s) => runSim(s, "karisik", p));
+      const l = rs.flatMap((x) => x.log);
+      console.log(`  ${p.padEnd(12)}${yanlisPct(l).padStart(9)}` +
+        `${ort(rs.map((x) => x.l3)).toFixed(0).padStart(11)}` +
+        `${ort(rs.map((x) => x.l4)).toFixed(0).padStart(10)}` +
+        `${ort(rs.map((x) => x.kaliciBilgi)).toFixed(0).padStart(9)}`);
     }
     console.log();
 
-    expect(hepsi.length).toBeGreaterThan(1000);
+    expect(kol("karisik").length).toBeGreaterThan(1000);
+    // Müfredat kapısı gerçekten iş görüyor mu: tanıtılan harf, tüm havuzun
+    // çok altında kalmalı (çocuk 40 günde her şeye maruz kalamaz).
+    const toplamOge = practiceTopics.reduce((a, t) => a + t.items.length, 0);
+    expect(say("karisik", (s) => s.tanitilan)).toBeLessThan(toplamOge * 0.6);
   });
 });
