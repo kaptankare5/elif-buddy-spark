@@ -74,6 +74,13 @@ const GRAVITY = 30;
 // Soru kapısının sesi kapıdan kaç birim önce çalsın. Kart hızlı (27 b/sn):
 // 260 birim ≈ 9-10 sn. Çocuk dinleyip düşünüp şeridine yerleşebilsin.
 const PROMPT_LEAD = 260;
+// Bir kapı cevaplandıktan sonra SIRADAKİ sorunun çalması için beklenen
+// en az süre (sn). Pistler halka olduğu için kapı aralığı PROMPT_LEAD'e
+// yakın çıkabiliyor (Çöl Virajı 242 < 260, Yıldız Vadisi 280): sonraki
+// sorunun sesi, geçilen kapının "doğru/yanlış" melodisinin ÜSTÜNE binip
+// duyulmuyordu — çocuk için soru hiç sorulmamış oluyordu ("2. harfte ses
+// gelmedi, sadece şıklar vardı"). Geri bildirim melodisi en fazla ~0.65 sn.
+const PROMPT_GAP = 1.6;
 // Kapının ÖNÜNDE engelsiz pay geniş, arkasında dar (Partisi'yle aynı gerekçe).
 const GATE_CLEAR_BEFORE = 120;
 const GATE_CLEAR_AFTER = 30;
@@ -623,6 +630,9 @@ const KartGame = () => {
       gates.push({ s: gs, target: null, options: [], done: false, said: 0, botDone: new Set(), panels, group: g });
     }
     gatesRef.current = gates;
+    // Son kapının cevaplandığı an (sn) — sıradaki sorunun sesi bunun üstüne
+    // binmesin diye PROMPT_GAP kadar beklenir.
+    let lastGateT = -99;
 
     // Kapıya SIRASI GELİNCE soru dağıt. Bir önceki kapı cevaplanıp
     // recordGameAnswer çalıştıktan sonra çağrıldığı için SRS durumu güncel:
@@ -1216,6 +1226,7 @@ const KartGame = () => {
         if (!g.done && g.target && player.finished === null && wrapS(player.s - g.s) < 8) {
           const target = g.target;
           g.done = true;
+          lastGateT = tNow;      // sıradaki soru bu anın üstüne binmesin
           const idx = laneOf(player.u);
           const chosen = g.options[idx];
           const correct = chosen.id === target.id;
@@ -1278,9 +1289,15 @@ const KartGame = () => {
       // Otomatik tekrar YOK (kullanıcı şartı: "soru cevaplamadan 2 defa
       // soruyor" — biri uzakta biri kapıya yakınken). Tekrar dinlemek isteyen
       // çocuk üstteki "Hangi kapı? — dinle" bandına dokunur.
+      // ⚠️ PROMPT_GAP: geçilen kapının doğru/yanlış sesi bitmeden sıradaki
+      // soru ÇALMAZ. Kapı aralığı PROMPT_LEAD'e yakın olan pistlerde (Çöl
+      // Virajı 242, Yıldız Vadisi 280) soru, önceki kapının melodisiyle aynı
+      // anda çalıp duyulmuyordu.
       if (nextGate?.target && nextD < PROMPT_LEAD) {
         const gt = nextGate.target;
-        if (nextGate.said === 0) {
+        // `nextD < 80` emniyeti: bekleme soruyu GECİKTİRİR, asla atlamaz —
+        // kapı yaklaştıysa süre dolmasa da sorulur.
+        if (nextGate.said === 0 && (tNow - lastGateT >= PROMPT_GAP || nextD < 80)) {
           nextGate.said = 1;
           setPrompt(gt);
           playItem(gt);
