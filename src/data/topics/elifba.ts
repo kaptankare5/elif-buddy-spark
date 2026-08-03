@@ -45,7 +45,7 @@ const LETTERS: LetterDef[] = [
   { n: 18, name: "Ayn",  iso: "ع", init: "ﻋ",  med: "ﻌ",  fin: "ﻊ",  speech: "ayn",  cons: "",  thick: "ince" },
   { n: 19, name: "Gayn", iso: "غ", init: "ﻏ",  med: "ﻐ",  fin: "ﻎ",  speech: "gayın", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe",   iso: "ف", init: "ﻓ",  med: "ﻔ",  fin: "ﻒ",  speech: "fe",   cons: "f", thick: "ince" },
-  { n: 21, name: "Kaf",  iso: "ق", init: "ﻗ",  med: "ﻘ",  fin: "ﻖ",  speech: "kaf",  cons: "k", thick: "kalin" },
+  { n: 21, name: "Kaf",  iso: "ق", init: "ﻗ",  med: "ﻘ",  fin: "ﻖ",  speech: "kaf",  cons: "g", thick: "kalin" },
   { n: 22, name: "Kef",  iso: "ك", init: "ﻛ",  med: "ﻜ",  fin: "ﻚ",  speech: "kef",  cons: "k", thick: "ince" },
   { n: 23, name: "Lem",  iso: "ل", init: "ﻟ",  med: "ﻠ",  fin: "ﻞ",  speech: "lem",  cons: "l", thick: "ince" },
   { n: 24, name: "Mim",  iso: "م", init: "ﻣ",  med: "ﻤ",  fin: "ﻢ",  speech: "mim",  cons: "m", thick: "ince" },
@@ -523,6 +523,25 @@ function medAudio(ar: string): string | undefined {
   return audioPath(`med-${pad2(l.n)}-${suf}.mp3`);
 }
 
+// Med heceleri artık ELİF → BE → TE → SE … müfredat sırasında üretilir
+// (eskiden elle yazılmış karışık bir listeydi ve Elif ile bazı harfler hiç
+// yoktu). Her harf için üç uzatma: fetha+elif (â), esre+ye (î), ötre+vav (û).
+// Ses: med-NN-{fetha|esre|otre}.mp3 — 28 × 3 = 84 kayıt diskte tam.
+const MED_FORMS: Array<{ suf: "fetha" | "esre" | "otre"; mark: string; harf: string }> = [
+  { suf: "fetha", mark: "َ", harf: "ا" },
+  { suf: "esre", mark: "ِ", harf: "ى" },
+  { suf: "otre", mark: "ُ", harf: "و" },
+];
+
+// Uzatmalı okunuş da ince/kalın kuralına uyar: kalın harfler "â" (bâ değil
+// sâ, tâ…), ince harfler "ê" (bê, tê, sê…), Râ istisnadır (râ, rî, rû).
+function medVowel(thick: Thickness, suf: "fetha" | "esre" | "otre"): string {
+  if (suf === "esre") return "î";
+  if (suf === "otre") return "û";
+  return thick === "ince" ? "ê" : "â";
+}
+
+
 const t6_med: ContentTopic = {
   id: "med",
   parent: P,
@@ -532,30 +551,23 @@ const t6_med: ContentTopic = {
   practiceMode: "visual",
   gridCols: 3,
   items: [
-    ...[
-      { ar: "بَا", sp: "bâ" }, { ar: "بِى", sp: "bî" }, { ar: "بُو", sp: "bû" },
-      { ar: "تَا", sp: "tâ" }, { ar: "تِى", sp: "tî" }, { ar: "تُو", sp: "tû" },
-      { ar: "ثَا", sp: "sâ" }, { ar: "ثِى", sp: "sî" }, { ar: "ثُو", sp: "sû" },
-      { ar: "جَا", sp: "câ" }, { ar: "جِى", sp: "cî" }, { ar: "جُو", sp: "cû" },
-      { ar: "حَا", sp: "hâ" }, { ar: "حِى", sp: "hî" }, { ar: "حُو", sp: "hû" },
-      { ar: "دَا", sp: "dâ" }, { ar: "ذَا", sp: "zâ" }, { ar: "رَا", sp: "râ" },
-      { ar: "زَا", sp: "zâ" }, { ar: "سَا", sp: "sâ" }, { ar: "شَا", sp: "şâ" },
-      { ar: "قَالَ", sp: "kâle" }, { ar: "كَانَ", sp: "kâne" }, { ar: "كِتَابُ", sp: "kitâbü" },
-    ].map((it, i) => ({
-      id: `l6-${pad2(i + 1)}`,
-      label: it.sp,
-      speech: it.sp,
-      lang: "tr" as const,
-      emoji: it.ar,
-      translit: it.sp,
-      // GERÇEK HOCA KAYDI: med-NN-{fetha|esre|otre}.mp3 (84 dosya) diskte
-      // duruyordu ama hiç bağlanmamıştı — bütün konu sessizdi ve oyunlarda
-      // soru sorulmadan kapı geliyordu (tarayıcı TTS'i çoğu cihazda hiç
-      // ses çıkarmıyor). NN = harf numarası, ek = uzatma harfinin harekesi.
-      audio: medAudio(it.ar),
-      // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
-      section: `${Math.floor(i / 6) + 1}. Bölüm`,
-    })),
+    ...LETTERS.flatMap((l) =>
+      MED_FORMS.map((m) => {
+        const sp = `${l.cons}${medVowel(l.thick, m.suf)}`;
+        // Elif + fetha + elif yazılmaz; medli elif "آ" ile gösterilir.
+        const ar = l.n === 1 && m.suf === "fetha" ? "آ" : l.iso + m.mark + m.harf;
+        return {
+          id: `l6-${pad2(l.n)}-${m.suf}`,
+          label: sp,
+          speech: sp,
+          lang: "tr" as const,
+          emoji: ar,
+          translit: sp,
+          audio: audioPath(`med-${pad2(l.n)}-${m.suf}.mp3`),
+          section: bolum(l.n),
+        };
+      }),
+    ),
     ...MED_EKSTRA.map(([ar, sp, w], i) => ({
       id: `l6e-${pad2(i + 1)}`,
       label: sp,
