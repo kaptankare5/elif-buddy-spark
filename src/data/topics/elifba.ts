@@ -523,6 +523,16 @@ function medAudio(ar: string): string | undefined {
   return audioPath(`med-${pad2(l.n)}-${suf}.mp3`);
 }
 
+// Med heceleri artık ELİF → BE → TE → SE … müfredat sırasında üretilir
+// (eskiden elle yazılmış karışık bir listeydi ve Elif ile bazı harfler hiç
+// yoktu). Her harf için üç uzatma: fetha+elif (â), esre+ye (î), ötre+vav (û).
+// Ses: med-NN-{fetha|esre|otre}.mp3 — 28 × 3 = 84 kayıt diskte tam.
+const MED_FORMS: Array<{ suf: "fetha" | "esre" | "otre"; mark: string; harf: string; v: string }> = [
+  { suf: "fetha", mark: "َ", harf: "ا", v: "â" },
+  { suf: "esre", mark: "ِ", harf: "ى", v: "î" },
+  { suf: "otre", mark: "ُ", harf: "و", v: "û" },
+];
+
 const t6_med: ContentTopic = {
   id: "med",
   parent: P,
@@ -532,30 +542,23 @@ const t6_med: ContentTopic = {
   practiceMode: "visual",
   gridCols: 3,
   items: [
-    ...[
-      { ar: "بَا", sp: "bâ" }, { ar: "بِى", sp: "bî" }, { ar: "بُو", sp: "bû" },
-      { ar: "تَا", sp: "tâ" }, { ar: "تِى", sp: "tî" }, { ar: "تُو", sp: "tû" },
-      { ar: "ثَا", sp: "sâ" }, { ar: "ثِى", sp: "sî" }, { ar: "ثُو", sp: "sû" },
-      { ar: "جَا", sp: "câ" }, { ar: "جِى", sp: "cî" }, { ar: "جُو", sp: "cû" },
-      { ar: "حَا", sp: "hâ" }, { ar: "حِى", sp: "hî" }, { ar: "حُو", sp: "hû" },
-      { ar: "دَا", sp: "dâ" }, { ar: "ذَا", sp: "zâ" }, { ar: "رَا", sp: "râ" },
-      { ar: "زَا", sp: "zâ" }, { ar: "سَا", sp: "sâ" }, { ar: "شَا", sp: "şâ" },
-      { ar: "قَالَ", sp: "kâle" }, { ar: "كَانَ", sp: "kâne" }, { ar: "كِتَابُ", sp: "kitâbü" },
-    ].map((it, i) => ({
-      id: `l6-${pad2(i + 1)}`,
-      label: it.sp,
-      speech: it.sp,
-      lang: "tr" as const,
-      emoji: it.ar,
-      translit: it.sp,
-      // GERÇEK HOCA KAYDI: med-NN-{fetha|esre|otre}.mp3 (84 dosya) diskte
-      // duruyordu ama hiç bağlanmamıştı — bütün konu sessizdi ve oyunlarda
-      // soru sorulmadan kapı geliyordu (tarayıcı TTS'i çoğu cihazda hiç
-      // ses çıkarmıyor). NN = harf numarası, ek = uzatma harfinin harekesi.
-      audio: medAudio(it.ar),
-      // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
-      section: `${Math.floor(i / 6) + 1}. Bölüm`,
-    })),
+    ...LETTERS.flatMap((l) =>
+      MED_FORMS.map((m) => {
+        const sp = `${l.cons}${m.v}`;
+        // Elif + fetha + elif yazılmaz; medli elif "آ" ile gösterilir.
+        const ar = l.n === 1 && m.suf === "fetha" ? "آ" : l.iso + m.mark + m.harf;
+        return {
+          id: `l6-${pad2(l.n)}-${m.suf}`,
+          label: sp,
+          speech: sp,
+          lang: "tr" as const,
+          emoji: ar,
+          translit: sp,
+          audio: audioPath(`med-${pad2(l.n)}-${m.suf}.mp3`),
+          section: bolum(l.n),
+        };
+      }),
+    ),
     ...MED_EKSTRA.map(([ar, sp, w], i) => ({
       id: `l6e-${pad2(i + 1)}`,
       label: sp,
