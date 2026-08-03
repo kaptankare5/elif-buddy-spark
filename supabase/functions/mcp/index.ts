@@ -439,6 +439,11 @@ var SEDDE_EKSTRA = [
   ["\u062D\u064E\u062A\u064E\u0651", "hatte", 1]
   //   142
 ];
+var SEDDE_ELIF_PRE = {
+  fetha: "\u0627\u064E",
+  esre: "\u0625\u0650",
+  otre: "\u0623\u064F"
+};
 var t5_sedde = {
   id: "sedde",
   parent: P,
@@ -463,8 +468,12 @@ var t5_sedde = {
           label: sesMap[h.vowel],
           speech: sesMap[h.vowel],
           lang: "tr",
-          // Örn: بَّ / بِّ / بُّ
-          emoji: l.iso + "\u0651" + h.mark,
+          // Şeddeli hece TEK BAŞINA okunamaz: "بَّ" yazıp "ebbe" demek
+          // olmuyor, şeddenin ikizlediği ilk sessizin bir önceki heceye
+          // yaslanması gerekiyor. Cezm konusunda olduğu gibi harekeli elif
+          // ön eki konur → أَبَّ / إِبِّ / أُبُّ (ebbe / ibbi / übbü).
+          // Ekstra kartlar (اِنَّ, رَبِّ…) da zaten bu biçimde.
+          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}\u0651${h.mark}`,
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
           section: bolum(l.n)
@@ -513,6 +522,21 @@ var MED_EKSTRA = [
   ["\u0647\u0650\u064A", "h\xEE", 3]
   // 1.091
 ];
+var HARAKA_SUF = {
+  "\u064E": "fetha",
+  "\u0650": "esre",
+  "\u064F": "otre"
+};
+var MADD_HARFI = /* @__PURE__ */ new Set(["\u0627", "\u0649", "\u064A", "\u0648"]);
+var byIso = new Map(LETTERS.map((l) => [l.iso, l]));
+function medAudio(ar) {
+  const cp = [...ar];
+  if (cp.length !== 3) return void 0;
+  const l = byIso.get(cp[0]);
+  const suf = HARAKA_SUF[cp[1]];
+  if (!l || !suf || !MADD_HARFI.has(cp[2])) return void 0;
+  return audioPath(`med-${pad2(l.n)}-${suf}.mp3`);
+}
 var t6_med = {
   id: "med",
   parent: P,
@@ -554,6 +578,11 @@ var t6_med = {
       lang: "tr",
       emoji: it.ar,
       translit: it.sp,
+      // GERÇEK HOCA KAYDI: med-NN-{fetha|esre|otre}.mp3 (84 dosya) diskte
+      // duruyordu ama hiç bağlanmamıştı — bütün konu sessizdi ve oyunlarda
+      // soru sorulmadan kapı geliyordu (tarayıcı TTS'i çoğu cihazda hiç
+      // ses çıkarmıyor). NN = harf numarası, ek = uzatma harfinin harekesi.
+      audio: medAudio(it.ar),
       // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
       section: `${Math.floor(i / 6) + 1}. B\xF6l\xFCm`
     })),
@@ -564,6 +593,7 @@ var t6_med = {
       lang: "tr",
       emoji: ar,
       translit: sp,
+      audio: medAudio(ar),
       section: "Ekstralar",
       weight: w
     }))
