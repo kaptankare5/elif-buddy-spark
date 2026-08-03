@@ -538,9 +538,9 @@ function medAudio(ar) {
   return audioPath(`med-${pad2(l.n)}-${suf}.mp3`);
 }
 var MED_FORMS = [
-  { suf: "fetha", mark: "\u064E", harf: "\u0627", v: "\xE2" },
-  { suf: "esre", mark: "\u0650", harf: "\u0649", v: "\xEE" },
-  { suf: "otre", mark: "\u064F", harf: "\u0648", v: "\xFB" }
+  { suf: "fetha", mark: "\u064E", harf: "\u0627" },
+  { suf: "esre", mark: "\u0650", harf: "\u0649" },
+  { suf: "otre", mark: "\u064F", harf: "\u0648" }
 ];
 var t6_med = {
   id: "med",

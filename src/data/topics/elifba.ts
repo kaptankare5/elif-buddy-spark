@@ -527,11 +527,20 @@ function medAudio(ar: string): string | undefined {
 // (eskiden elle yazılmış karışık bir listeydi ve Elif ile bazı harfler hiç
 // yoktu). Her harf için üç uzatma: fetha+elif (â), esre+ye (î), ötre+vav (û).
 // Ses: med-NN-{fetha|esre|otre}.mp3 — 28 × 3 = 84 kayıt diskte tam.
-const MED_FORMS: Array<{ suf: "fetha" | "esre" | "otre"; mark: string; harf: string; v: string }> = [
-  { suf: "fetha", mark: "َ", harf: "ا", v: "â" },
-  { suf: "esre", mark: "ِ", harf: "ى", v: "î" },
-  { suf: "otre", mark: "ُ", harf: "و", v: "û" },
+const MED_FORMS: Array<{ suf: "fetha" | "esre" | "otre"; mark: string; harf: string }> = [
+  { suf: "fetha", mark: "َ", harf: "ا" },
+  { suf: "esre", mark: "ِ", harf: "ى" },
+  { suf: "otre", mark: "ُ", harf: "و" },
 ];
+
+// Uzatmalı okunuş da ince/kalın kuralına uyar: kalın harfler "â" (bâ değil
+// sâ, tâ…), ince harfler "ê" (bê, tê, sê…), Râ istisnadır (râ, rî, rû).
+function medVowel(thick: Thickness, suf: "fetha" | "esre" | "otre"): string {
+  if (suf === "esre") return "î";
+  if (suf === "otre") return "û";
+  return thick === "ince" ? "ê" : "â";
+}
+
 
 const t6_med: ContentTopic = {
   id: "med",
