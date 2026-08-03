@@ -30,7 +30,7 @@ var LETTERS = [
   { n: 18, name: "Ayn", iso: "\u0639", init: "\uFECB", med: "\uFECC", fin: "\uFECA", speech: "ayn", cons: "", thick: "ince" },
   { n: 19, name: "Gayn", iso: "\u063A", init: "\uFECF", med: "\uFED0", fin: "\uFECE", speech: "gay\u0131n", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe", iso: "\u0641", init: "\uFED3", med: "\uFED4", fin: "\uFED2", speech: "fe", cons: "f", thick: "ince" },
-  { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "k", thick: "kalin" },
+  { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "g", thick: "kalin" },
   { n: 22, name: "Kef", iso: "\u0643", init: "\uFEDB", med: "\uFEDC", fin: "\uFEDA", speech: "kef", cons: "k", thick: "ince" },
   { n: 23, name: "Lem", iso: "\u0644", init: "\uFEDF", med: "\uFEE0", fin: "\uFEDE", speech: "lem", cons: "l", thick: "ince" },
   { n: 24, name: "Mim", iso: "\u0645", init: "\uFEE3", med: "\uFEE4", fin: "\uFEE2", speech: "mim", cons: "m", thick: "ince" },
