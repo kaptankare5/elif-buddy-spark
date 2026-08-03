@@ -263,6 +263,14 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   ATLANMAMASINI garanti eder. Partisi'nde pay en dar bölümde bile 4.1 sn
   (10. bölüm) olduğu için orada gerekmedi — yeni bölüm/pist eklerken bu
   payı hesapla.
+- ⚠️ **SORU "SORULDU" SAYILMASI SESİN GERÇEKTEN ÇALMASINA BAĞLI.** `playItem`
+  artık `onFail` alıyor: `play()` reddedilirse (mobil WebView'de olur) ya da
+  dosya hatası yüzünden robotik TTS'e düşülürse haber veriyor. Kapı bunu
+  duyunca `said`'i sıfırlıyor ve bir kez daha deniyor (en fazla 2). Bu "iki
+  kez sormak" DEĞİL — kullanıcı onu istemedi — "bir kez gerçekten sorabilmek".
+  Eskiden `said = 1` iyimser konuluyordu: ses çalmasa bile soru sorulmuş
+  sayılıp bir daha hiç sorulmuyordu. Kapı silahlanınca `preloadItems([target])`
+  ile mp3 önden indiriliyor (yavaş bağlantıda ses kapıdan sonra geliyordu).
 - ⚠️ **KAPI SORUSU SIRASI GELİNCE DAĞITILIR** (`armGate`, Partisi + Yarışı).
   Bölüm/yarış kurulurken bütün kapılara birden soru dağıtılamaz: aralarında
   hiç cevap kaydedilmediği için SRS durumu değişmez ve `pickNextGameItem` her
