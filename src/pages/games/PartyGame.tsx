@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useRemedyOnGameOver } from "@/lib/remedial";
-import { playItem, playFeedback, playSfx } from "@/lib/audio";
+import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { letterTexture, nameTexture } from "./_letterTexture";
@@ -225,7 +225,8 @@ interface Gate {
   target: ContentItem | null;
   options: ContentItem[];   // 3 şık, soldan sağa (dağıtılana kadar boş)
   done: boolean;
-  said: number;             // 0 = ses hiç çalmadı, 1 = uzaktan çaldı, 2 = yakında tekrar
+  said: number;             // 0 = ses hiç çalmadı, 1 = çaldı
+  tries: number;            // soruyu sesli sorma denemesi (en fazla 2)
   botDone: Set<number>;
   panels: THREE.Mesh[];     // şık panoları (doğru/yanlış renklendirmesi için)
   group: THREE.Group;       // geçildikten sonra gizlenir (kamerayı kapatmasın)
@@ -514,7 +515,7 @@ const PartyGame = () => {
       }
       g.visible = false;   // sorusu dağıtılana kadar boş pano gösterme
       scene.add(g);
-      gates.push({ z, target: null, options: [], done: false, said: 0, botDone: new Set(), panels, group: g });
+      gates.push({ z, target: null, options: [], tries: 0, done: false, said: 0, botDone: new Set(), panels, group: g });
     };
 
     // Kapıya SIRASI GELİNCE soru dağıt. Bir önceki kapı cevaplanıp
@@ -526,6 +527,8 @@ const PartyGame = () => {
       if (wrongs.length < 2) { g.done = true; return; }
       g.target = target;
       g.options = shuffle([target, ...wrongs]);
+      g.tries = 0;
+      preloadItems([target]);   // soru çalana kadar dosya inmiş olsun
       g.panels.forEach((p, i) => {
         const m = p.material as THREE.MeshBasicMaterial;
         m.map = track(letterTexture(g.options[i].emoji ?? "؟"));
@@ -1161,9 +1164,12 @@ const PartyGame = () => {
       if (nextGate?.target && d > 0 && d < PROMPT_LEAD) {
         const gt = nextGate.target;
         if (nextGate.said === 0) {
-          nextGate.said = 1;
+          const g0 = nextGate;
+          g0.said = 1;
+          g0.tries += 1;
           setPrompt(gt);
-          playItem(gt);
+          // Kayıt gerçekten çalmadıysa soru sorulmuş sayılmaz (bkz. KartGame).
+          playItem(gt, { onFail: () => { if (!g0.done && g0.tries < 2) g0.said = 0; } });
         }
         if (promptIdRef.current !== gt.id) {
           promptIdRef.current = gt.id;

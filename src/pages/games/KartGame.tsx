@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useRemedyOnGameOver } from "@/lib/remedial";
-import { playItem, playFeedback, playSfx } from "@/lib/audio";
+import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
@@ -170,6 +170,7 @@ interface Gate {
   // birden dağıtılırsa SRS güncellenmediği için hepsi aynı harfi alıyor.
   target: ContentItem | null;
   options: ContentItem[];
+  tries: number;            // soruyu sesli sorma denemesi (en fazla 2)
   done: boolean;
   said: number;
   botDone: Set<number>;
@@ -627,7 +628,7 @@ const KartGame = () => {
       }
       g.visible = false;   // sorusu dağıtılana kadar boş pano gösterme
       scene.add(g);
-      gates.push({ s: gs, target: null, options: [], done: false, said: 0, botDone: new Set(), panels, group: g });
+      gates.push({ s: gs, target: null, options: [], tries: 0, done: false, said: 0, botDone: new Set(), panels, group: g });
     }
     gatesRef.current = gates;
     // Son kapının cevaplandığı an (sn) — sıradaki sorunun sesi bunun üstüne
@@ -643,6 +644,11 @@ const KartGame = () => {
       if (wrongs.length < 2) { g.done = true; return; }
       g.target = target;
       g.options = shuffle([target, ...wrongs]);
+      g.tries = 0;
+      // Kaydı ŞİMDİDEN yükle: soru PROMPT_GAP kadar sonra çalacak, o arada
+      // dosya inmiş olsun. Yavaş bağlantıda ilk kez duyulan bir harfin mp3'ü
+      // yüklenirken çocuk kapıyı geçebiliyordu.
+      preloadItems([target]);
       g.panels.forEach((p, i) => {
         const m = p.material as THREE.MeshBasicMaterial;
         m.map = keep(letterTexture(g.options[i].emoji ?? "؟"));
@@ -1145,6 +1151,7 @@ const KartGame = () => {
               g.done = false;
               g.said = 0;
               g.target = null;
+              g.tries = 0;
               g.options = [];
               g.group.visible = false;
             }
@@ -1298,9 +1305,18 @@ const KartGame = () => {
         // `nextD < 80` emniyeti: bekleme soruyu GECİKTİRİR, asla atlamaz —
         // kapı yaklaştıysa süre dolmasa da sorulur.
         if (nextGate.said === 0 && (tNow - lastGateT >= PROMPT_GAP || nextD < 80)) {
-          nextGate.said = 1;
+          const g0 = nextGate;
+          g0.said = 1;
+          g0.tries += 1;
           setPrompt(gt);
-          playItem(gt);
+          // Kayıt GERÇEKTEN çalmadıysa (play() reddedildi / dosya hatası →
+          // robotik TTS) soru sorulmuş sayılmaz: said sıfırlanır, bir sonraki
+          // karede yeniden denenir. Bu "iki kez sormak" DEĞİL (kullanıcı onu
+          // istemedi), "bir kez gerçekten sorabilmek" güvencesidir — en fazla
+          // 2 deneme, kapı geçildiyse hiç denenmez.
+          playItem(gt, {
+            onFail: () => { if (!g0.done && g0.tries < 2) g0.said = 0; },
+          });
         }
         if (promptIdRef.current !== gt.id) {
           promptIdRef.current = gt.id;

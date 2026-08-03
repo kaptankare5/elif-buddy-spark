@@ -173,15 +173,27 @@ export function playSpeech(text: string, lang?: Lang, opts?: { gain?: number }):
   return playUrl(url, { fallbackText: text, fallbackLang: lang, gain: opts?.gain });
 }
 
-export function playItem(item: ContentItem): Promise<void> {
+/**
+ * `onFail`: GERÇEK kayıt çalınamadığında (play() reddedildi, dosya hatası →
+ * robotik TTS'e düşüldü) haber verir. Oyunlarda soru SESLE sorulduğu için
+ * çağıran taraf "soruyu sordum" saymadan önce bunu bilmek zorunda: aksi
+ * hâlde çocuk kapıyı sessizce görür ve soru bir daha hiç sorulmaz.
+ */
+export function playItem(item: ContentItem, opts?: { onFail?: () => void }): Promise<void> {
   // Item'a özel bir ses dosyası varsa (Elifbâ mp3'leri) doğrudan onu çal.
   if (item.audio) {
-    return playUrl(item.audio, { fallbackText: item.speech, fallbackLang: item.lang, gain: item.audioGain });
+    return playUrl(item.audio, {
+      fallbackText: item.speech, fallbackLang: item.lang, gain: item.audioGain,
+      onFail: opts?.onFail,
+    });
   }
   return playSpeech(item.speech, item.lang, { gain: item.audioGain });
 }
 
-function playUrl(url: string, opts: { fallbackText?: string; fallbackLang?: Lang; gain?: number }): Promise<void> {
+function playUrl(
+  url: string,
+  opts: { fallbackText?: string; fallbackLang?: Lang; gain?: number; onFail?: () => void },
+): Promise<void> {
   stopCurrent(true);
   const token = playToken;
   const gain = opts.gain && opts.gain > 1 ? opts.gain : 1;
@@ -201,6 +213,7 @@ function playUrl(url: string, opts: { fallbackText?: string; fallbackLang?: Lang
       audio.onerror = () => {
         if (token !== playToken) { resolve(); return; }
         audioCache.delete(url); // bozuk kaydı at
+        try { opts.onFail?.(); } catch { /* ignore */ }
         if (opts.fallbackText) void speakWithSynthesis(opts.fallbackText, opts.fallbackLang, token);
         else settle();
       };
@@ -208,7 +221,10 @@ function playUrl(url: string, opts: { fallbackText?: string; fallbackLang?: Lang
       const p = audio.play();
       if (p && typeof p.catch === "function") {
         p.catch(() => {
+          // token değiştiyse başka bir ses araya girmiştir — bu bir HATA
+          // değil, kasıtlı kesintidir; çağıranı yanıltmamak için haber verme.
           if (token !== playToken) return;
+          try { opts.onFail?.(); } catch { /* ignore */ }
           if (opts.fallbackText) void speakWithSynthesis(opts.fallbackText, opts.fallbackLang, token);
           else stopCurrent(false);
         });
