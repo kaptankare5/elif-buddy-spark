@@ -537,6 +537,11 @@ function medAudio(ar) {
   if (!l || !suf || !MADD_HARFI.has(cp[2])) return void 0;
   return audioPath(`med-${pad2(l.n)}-${suf}.mp3`);
 }
+var MED_FORMS = [
+  { suf: "fetha", mark: "\u064E", harf: "\u0627", v: "\xE2" },
+  { suf: "esre", mark: "\u0650", harf: "\u0649", v: "\xEE" },
+  { suf: "otre", mark: "\u064F", harf: "\u0648", v: "\xFB" }
+];
 var t6_med = {
   id: "med",
   parent: P,
@@ -546,46 +551,22 @@ var t6_med = {
   practiceMode: "visual",
   gridCols: 3,
   items: [
-    ...[
-      { ar: "\u0628\u064E\u0627", sp: "b\xE2" },
-      { ar: "\u0628\u0650\u0649", sp: "b\xEE" },
-      { ar: "\u0628\u064F\u0648", sp: "b\xFB" },
-      { ar: "\u062A\u064E\u0627", sp: "t\xE2" },
-      { ar: "\u062A\u0650\u0649", sp: "t\xEE" },
-      { ar: "\u062A\u064F\u0648", sp: "t\xFB" },
-      { ar: "\u062B\u064E\u0627", sp: "s\xE2" },
-      { ar: "\u062B\u0650\u0649", sp: "s\xEE" },
-      { ar: "\u062B\u064F\u0648", sp: "s\xFB" },
-      { ar: "\u062C\u064E\u0627", sp: "c\xE2" },
-      { ar: "\u062C\u0650\u0649", sp: "c\xEE" },
-      { ar: "\u062C\u064F\u0648", sp: "c\xFB" },
-      { ar: "\u062D\u064E\u0627", sp: "h\xE2" },
-      { ar: "\u062D\u0650\u0649", sp: "h\xEE" },
-      { ar: "\u062D\u064F\u0648", sp: "h\xFB" },
-      { ar: "\u062F\u064E\u0627", sp: "d\xE2" },
-      { ar: "\u0630\u064E\u0627", sp: "z\xE2" },
-      { ar: "\u0631\u064E\u0627", sp: "r\xE2" },
-      { ar: "\u0632\u064E\u0627", sp: "z\xE2" },
-      { ar: "\u0633\u064E\u0627", sp: "s\xE2" },
-      { ar: "\u0634\u064E\u0627", sp: "\u015F\xE2" },
-      { ar: "\u0642\u064E\u0627\u0644\u064E", sp: "k\xE2le" },
-      { ar: "\u0643\u064E\u0627\u0646\u064E", sp: "k\xE2ne" },
-      { ar: "\u0643\u0650\u062A\u064E\u0627\u0628\u064F", sp: "kit\xE2b\xFC" }
-    ].map((it, i) => ({
-      id: `l6-${pad2(i + 1)}`,
-      label: it.sp,
-      speech: it.sp,
-      lang: "tr",
-      emoji: it.ar,
-      translit: it.sp,
-      // GERÇEK HOCA KAYDI: med-NN-{fetha|esre|otre}.mp3 (84 dosya) diskte
-      // duruyordu ama hiç bağlanmamıştı — bütün konu sessizdi ve oyunlarda
-      // soru sorulmadan kapı geliyordu (tarayıcı TTS'i çoğu cihazda hiç
-      // ses çıkarmıyor). NN = harf numarası, ek = uzatma harfinin harekesi.
-      audio: medAudio(it.ar),
-      // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
-      section: `${Math.floor(i / 6) + 1}. B\xF6l\xFCm`
-    })),
+    ...LETTERS.flatMap(
+      (l) => MED_FORMS.map((m) => {
+        const sp = `${l.cons}${m.v}`;
+        const ar = l.n === 1 && m.suf === "fetha" ? "\u0622" : l.iso + m.mark + m.harf;
+        return {
+          id: `l6-${pad2(l.n)}-${m.suf}`,
+          label: sp,
+          speech: sp,
+          lang: "tr",
+          emoji: ar,
+          translit: sp,
+          audio: audioPath(`med-${pad2(l.n)}-${m.suf}.mp3`),
+          section: bolum(l.n)
+        };
+      })
+    ),
     ...MED_EKSTRA.map(([ar, sp, w], i) => ({
       id: `l6e-${pad2(i + 1)}`,
       label: sp,
