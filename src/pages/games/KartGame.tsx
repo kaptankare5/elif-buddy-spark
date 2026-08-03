@@ -361,6 +361,69 @@ const KartGame = () => {
 
     const wrapS = (s: number) => ((s % TRACK_LEN) + TRACK_LEN) % TRACK_LEN;
     const idxOf = (s: number) => Math.floor(wrapS(s) / SEG) % SAMPLES;
+
+    // ---------- soru kapılarının YERİ (eğriliğe göre) ----------
+    // ⚠️ Kapılar pist boyunca EŞİT bölünürse VİRAJ ÇIKIŞINA denk gelebiliyor:
+    // çocuk virajı alıyor, şıkları ancak ~1 sn kala görüyor — cevap verecek
+    // vakit kalmıyor. Ölçüm (Yıldız Vadisi 2. kapı, eşit bölmeyle s=420):
+    // yaklaşımın son 70 biriminde κ=0.019, pistin en sert virajının %45'i.
+    // Bu yüzden kapılar eşit noktadan en fazla ±%15 kayarak, YAKLAŞIMI EN DÜZ
+    // olan yerlere BİRLİKTE yerleştirilir. Kısıt: kapı aralığı eşit aralığın
+    // %75'inin altına inemez (soru sesi için nefes payı korunsun, bkz.
+    // PROMPT_GAP). Ortak arama şart — kapılar tek tek en düze kaçınca
+    // aralıklar bozuluyordu (bir ölçümde 100 birime kadar düşmüştü).
+    /** Kapıya YAKLAŞIRKEN yolun ne kadar büküldüğü = görüş mesafesi ölçüsü. */
+    const approachCurv = (s: number) => {
+      let t = 0, n = 0;
+      for (let d = 0; d < 70; d += SEG) { t += curvature[idxOf(s - d)]; n++; }
+      return t / n;
+    };
+    const gateSs: number[] = (() => {
+      const g = def.gates;
+      const even = TRACK_LEN / g;
+      const minGap = even * 0.78;
+      const win = TRACK_LEN * 0.15;
+      const step = SEG * 8;
+      const cands: Array<Array<{ s: number; k: number }>> = [];
+      for (let i = 0; i < g; i++) {
+        const ideal = TRACK_LEN * ((i + 0.5) / g);
+        const c: Array<{ s: number; k: number }> = [];
+        for (let d = -win; d <= win; d += step) {
+          const s = wrapS(ideal + d);
+          // Başlangıç çizgisinin ilk 110 birimi boş kalsın: geri sayım biter
+          // bitmez kapı gelirse çocuk daha araca alışmadan cevap veriyor.
+          if (s < 110) continue;
+          c.push({ s, k: approachCurv(s) });
+        }
+        if (c.length === 0) c.push({ s: wrapS(ideal), k: approachCurv(ideal) });
+        cands.push(c);
+      }
+      let best: { tot: number; ss: number[] } | null = null;
+      const pick: Array<{ s: number; k: number }> = [];
+      const walk = (i: number) => {
+        if (i === g) {
+          // ⚠️ Aralık kontrolü SIRALI dizide yapılmalı. Arama penceresi
+          // sarmalanınca (ideal ± pencere, 0'ın altına inince) kapılar
+          // sırasını değiştirebiliyor; sıralamadan bakılınca iki kapı 4
+          // birim aralığa düştüğü hâlde kontrol "geçti" diyordu.
+          const ss = pick.map((x) => x.s).sort((a, b) => a - b);
+          for (let j = 0; j < ss.length; j++) {
+            if (wrapS(ss[(j + 1) % ss.length] - ss[j]) < minGap) return;
+          }
+          const tot = pick.reduce((a, x) => a + x.k, 0);
+          if (!best || tot < best.tot) best = { tot, ss };
+          return;
+        }
+        for (const c of cands[i]) { pick.push(c); walk(i + 1); pick.pop(); }
+      };
+      walk(0);
+      const secilen = best?.ss ?? cands.map((_, i) => TRACK_LEN * ((i + 0.5) / g));
+      return secilen.map((s) => Math.round(s));
+    })();
+    /** Kapıya YAKLAŞIM koridoru — dekor buraya konmaz (görüşü kapatmasın). */
+    const inGateSight = (s: number) =>
+      gateSs.some((gs) => { const d = wrapS(gs - s); return d >= 0 && d < 100; });
+
     const tmpA = new THREE.Vector3();
     const tmpB = new THREE.Vector3();
     /**
@@ -493,6 +556,12 @@ const KartGame = () => {
     const rockGeo = keep(new THREE.DodecahedronGeometry(2.4, 0));
     const decoPos = new THREE.Vector3();
     for (let i = 0; i < SAMPLES; i += 11) {
+      // ⚠️ Kapıya YAKLAŞIRKEN ağaç/kaya konmaz: 15-31 birim yanda duran ~10
+      // birim boyundaki ağaç, virajın içinde kalınca kapıyı tam olarak
+      // gizliyordu ("viraja girmeden bir yer var, orada da ağaç var, o yüzden
+      // yine görülmüyor"). Koridor 100 birim — kapının kendisi ve sonrası
+      // dekorlu kalır, yalnız görüş hattı temizlenir.
+      if (inGateSight(i * SEG)) continue;
       for (const side of [-1, 1]) {
         if ((i / 11 + (side > 0 ? 1 : 0)) % 3 === 0) continue;
         const off = (ROAD_HALF + 6) + ((i * 7) % 16);
@@ -580,10 +649,7 @@ const KartGame = () => {
     // ---------- soru kapıları ----------
     const pool = gamePool();
     const gates: Gate[] = [];
-    const gateSs: number[] = [];
-    for (let i = 0; i < def.gates; i++) {
-      gateSs.push(Math.round(TRACK_LEN * ((i + 0.5) / def.gates)));
-    }
+    // gateSs yukarıda, eğrilik profiline göre hesaplandı (viraj çıkışı yok).
     const panelGeo = keep(new THREE.PlaneGeometry(ROAD_HALF * 0.62, ROAD_HALF * 0.62));
     const postGeo = keep(new THREE.BoxGeometry(0.55, 8, 0.55));
     const frameMat = keep(new THREE.MeshStandardMaterial({ color: 0x0f766e, roughness: 0.6, metalness: 0.25 }));

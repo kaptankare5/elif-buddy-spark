@@ -251,6 +251,21 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   tekrar YOK; kullanıcı şartı: aynı soruyu iki kez sormak (biri uzakta, biri
   kapıya yakın) rahatsız ediyor. Tekrar dinlemek "Hangi kapı? — dinle"
   bandına dokunmakla olur.
+- ⚠️ **KAPILAR EĞRİLİĞE GÖRE YERLEŞİR (Yarışı).** Pist boyunca EŞİT bölmek
+  kapıyı VİRAJ ÇIKIŞINA düşürebiliyor: çocuk virajı alıyor, şıkları ancak
+  ~1 sn kala görüyor. Ölçüm (Yıldız Vadisi 2. kapı, eşit bölmeyle s=420):
+  yaklaşımın son 70 biriminde κ=0.019 — pistin en sert virajının %45'i,
+  bütün pistlerdeki en kötü değer. Artık kapılar eşit noktadan ±%15 kayarak
+  yaklaşımı EN DÜZ yerlere BİRLİKTE yerleştirilir; kapı aralığı eşit aralığın
+  %78'inin altına inemez ve ilk 110 birim boş kalır. Sonuç: her pistte her
+  kapının yaklaşım κ'sı ≤0.0102 (Yıldız 2. kapı 0.0190→0.0102).
+  ⚠️ Ortak arama ŞART — kapılar tek tek en düze kaçınca aralıklar bozuluyor
+  (bir denemede 100 birime düşmüştü). Aralık kontrolü de SIRALI dizide
+  yapılmalı: pencere sarmalanınca kapılar sıra değiştirip iki kapı 4 birim
+  aralığa düştüğü hâlde kontrol "geçti" diyordu.
+- ⚠️ **Dekor kapı YAKLAŞIMINA konmaz** (`inGateSight`, 100 birim): 15-31 birim
+  yanda duran ~10 birim boyundaki ağaç, virajın içinde kalınca kapıyı tam
+  olarak gizliyordu ("viraja girmeden bir yer var, orada da ağaç var").
 - ⚠️ **KAPI ARASI NEFES PAYI = kapı aralığı − PROMPT_LEAD.** Bu pay geri
   bildirim melodisinden (~0.65 sn) belirgin biçimde büyük olmalı, yoksa
   sıradaki sorunun sesi geçilen kapının "doğru/yanlış" sesiyle AYNI ANDA
