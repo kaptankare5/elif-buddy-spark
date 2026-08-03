@@ -542,6 +542,11 @@ var MED_FORMS = [
   { suf: "esre", mark: "\u0650", harf: "\u0649" },
   { suf: "otre", mark: "\u064F", harf: "\u0648" }
 ];
+function medVowel(thick, suf) {
+  if (suf === "esre") return "\xEE";
+  if (suf === "otre") return "\xFB";
+  return thick === "ince" ? "\xEA" : "\xE2";
+}
 var t6_med = {
   id: "med",
   parent: P,
@@ -553,7 +558,7 @@ var t6_med = {
   items: [
     ...LETTERS.flatMap(
       (l) => MED_FORMS.map((m) => {
-        const sp = `${l.cons}${m.v}`;
+        const sp = `${l.cons}${medVowel(l.thick, m.suf)}`;
         const ar = l.n === 1 && m.suf === "fetha" ? "\u0622" : l.iso + m.mark + m.harf;
         return {
           id: `l6-${pad2(l.n)}-${m.suf}`,

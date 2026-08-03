@@ -553,7 +553,7 @@ const t6_med: ContentTopic = {
   items: [
     ...LETTERS.flatMap((l) =>
       MED_FORMS.map((m) => {
-        const sp = `${l.cons}${m.v}`;
+        const sp = `${l.cons}${medVowel(l.thick, m.suf)}`;
         // Elif + fetha + elif yazılmaz; medli elif "آ" ile gösterilir.
         const ar = l.n === 1 && m.suf === "fetha" ? "آ" : l.iso + m.mark + m.harf;
         return {
