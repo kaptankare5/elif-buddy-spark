@@ -8,7 +8,7 @@ import {
   considerRemedy, showRemedy, queueRemedy, releaseRemedy, hasQueuedRemedy,
   __resetRemedial, REMEDY_LIMITS, REMEDY_EVENT,
 } from "@/lib/remedial";
-import { DOT_GROUPS } from "@/data/writingMnemonics";
+import { DOT_GROUPS, STROKE_PAIRS } from "@/data/writingMnemonics";
 import {
   recordConfusionPick, resetConfusion, __resetConfusionCache,
 } from "@/lib/confusion";
@@ -211,5 +211,56 @@ describe("nokta grupları ve telafi partneri", () => {
     expect(grupFor(13, 12)?.id).toBe("sin");        // Şın'ı Sin'le karıştırdı
     expect(grupFor(13, 4)?.id).toBe("nokta-3");     // Şın'ı Peltek Se'yle karıştırdı
     expect(grupFor(4)?.id).toBe("nokta-3");         // Peltek Se tek grupta
+  });
+});
+
+// ÇİZGİ KARTININ KUR'AN ÖRNEKLERİ — iki bekçi:
+//  (1) Harekeler yalnız fetha/esre/ötre. Cezm ve şedde konusuna daha
+//      gelinmedi; tanımadığı işaret çocuğun dikkatini kuraldan kaçırır.
+//  (2) Lem'den HEMEN SONRA Elif gelmesin. "ل + ا" ekranda zorunlu olarak tek
+//      bir "لا" bitişik harfine dönüşür — kartın öğrettiği "Lem'in ortadaki
+//      hâli" o kelimede hiç görünmez. (كَلَامَ bu yüzden elendi.)
+describe("çizgi kartı — Kur'an örneği kısıtları", () => {
+  const FETHA = "َ", ESRE = "ِ", OTRE = "ُ";
+  const IZINLI = new Set([FETHA, ESRE, OTRE]);
+  // Arapça birleşen işaretler bloğu: 064B-065F + 0670 (küçük elif)
+  const isaretMi = (c: string) => {
+    const cp = c.codePointAt(0)!;
+    return (cp >= 0x064b && cp <= 0x065f) || cp === 0x0670;
+  };
+  const LEM = "ل", ELIF = "ا";
+
+  const ornekler = STROKE_PAIRS.flatMap((p) =>
+    Object.entries(p.quran ?? {}).map(([form, q]) => ({ id: `${p.id}/${form}`, ...q })));
+
+  it("en az bir örnek var ve her hâl için ayrı", () => {
+    expect(ornekler.length).toBeGreaterThanOrEqual(2);
+    for (const o of ornekler) expect(o.okunus && o.kaynak && o.not).toBeTruthy();
+  });
+
+  it("yalnız fetha/esre/ötre — cezm, şedde, tenvin, med yok", () => {
+    for (const o of ornekler) {
+      const yasak = [...o.ar].filter((c) => isaretMi(c) && !IZINLI.has(c));
+      expect(yasak, `${o.id} → ${o.ar}`).toEqual([]);
+    }
+  });
+
+  it("Lem'in hemen ardından Elif gelmez (لا bitişik harfi kuralı gizler)", () => {
+    for (const o of ornekler) {
+      const harfler = [...o.ar].filter((c) => !isaretMi(c));   // harekeleri at
+      for (let i = 0; i < harfler.length - 1; i++) {
+        expect(
+          harfler[i] === LEM && harfler[i + 1] === ELIF,
+          `${o.id} → ${o.ar} içinde لا var`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("her örnekte hem Elif hem Lem geçer (kural iki taraflı gösterilsin)", () => {
+    for (const o of ornekler) {
+      expect([...o.ar], `${o.id}`).toContain(ELIF);
+      expect([...o.ar], `${o.id}`).toContain(LEM);
+    }
   });
 });
