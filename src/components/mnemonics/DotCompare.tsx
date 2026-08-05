@@ -99,7 +99,7 @@ export function DotCompare({ group, initialForm = "init" }: { group: DotGroup; i
       <div className="mt-2 flex items-center gap-2">
         <span className="h-1 flex-1 origin-right rounded-full bg-gradient-to-l from-warning to-warning/20 animate-skeleton-underline" />
         <span className="shrink-0 text-[10px] font-extrabold text-warning">
-          hepsinin iskeleti aynı: {group.skeleton}
+          {group.sharedNote ?? `hepsinin iskeleti aynı: ${group.skeleton}`}
         </span>
       </div>
 

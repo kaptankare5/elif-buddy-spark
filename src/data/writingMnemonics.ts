@@ -71,6 +71,12 @@ export interface DotGroup {
   letters: MnemonicLetter[];
   /** Dürüstlük notu (varsa) — kuralın sınırı. */
   caveat?: string;
+  /**
+   * Alt şeritteki "hepsinin iskeleti aynı: …" cümlesinin yerine geçer.
+   * Ortak olan şey İSKELET değilse gerekir: Şın ile Peltek Se'yi birleştiren
+   * şey nokta SAYISI (üç), iskeletleri farklı (bir diş / üç diş).
+   */
+  sharedNote?: string;
 }
 
 const L = (
@@ -194,19 +200,44 @@ export const TAIL_RULES: TailRule[] = [
 // 3) NOKTA YÖNTEMİ — aynı iskelet, farklı nokta
 // ---------------------------------------------------------------------------
 export const DOT_GROUPS: DotGroup[] = [
+  // NOKTA SAYISINA GÖRE İKİŞERLİ — tek bir "Diş Kardeşler" grubu değil.
+  // Beş harfi tek listede göstermek "hepsi aynı, noktaya bak" diyordu ama
+  // çocuğa SOMUT bir ayrım vermiyordu (kullanıcı: "diş kardeşler diyorsun
+  // da yeterince açıklayıcı değil"). Aynı NOKTA SAYISINA sahip iki harfi
+  // karşı karşıya koyunca geriye tek bir soru kalıyor: nokta üstte mi altta mı?
+  // Üçüncü ikili (üç nokta) iskeletle değil, nokta sayısıyla eşleşir.
   {
-    id: "dis",
-    title: "Diş Kardeşler",
+    id: "nokta-1",
+    title: "Nun ile Be — 1 nokta",
     skeleton: "diş",
-    hint: "Başta ve ortada BEŞİ DE tıpatıp aynı! Onları ayıran tek şey: noktanın SAYISI ve YERİ (üstte mi, altta mı).",
+    hint: "İkisinin de TEK noktası var. Nokta ÜSTTEyse Nun, ALTTAysa Be.",
     letters: [
-      L(2, "Be", "ب", "ﺑ", "ﺒ", "ﺐ", 1, "alt"),
-      L(3, "Te", "ت", "ﺗ", "ﺘ", "ﺖ", 2, "ust"),
-      L(4, "Se", "ث", "ﺛ", "ﺜ", "ﺚ", 3, "ust"),
       L(25, "Nun", "ن", "ﻧ", "ﻨ", "ﻦ", 1, "ust"),
-      L(28, "Ye", "ي", "ﻳ", "ﻴ", "ﻲ", 2, "alt"),
+      L(2, "Be", "ب", "ﺑ", "ﺒ", "ﺐ", 1, "alt"),
     ],
-    caveat: "Yalın ve sonda hâllerinde Nun'un çanağı daha derin, Ye'nin kuyruğu farklıdır. Tıpatıp aynı olan BAŞTA ve ORTADA hâlleridir — karışıklık da zaten orada olur.",
+    caveat: "Başta ve ortada tıpatıp aynılar — karışıklık zaten orada olur. Yalın ve sonda hâlinde Nun'un çanağı daha derindir.",
+  },
+  {
+    id: "nokta-2",
+    title: "Ye ile Te — 2 nokta",
+    skeleton: "diş",
+    hint: "İkisinin de İKİ noktası var. Noktalar ALTTAysa Ye, ÜSTTEyse Te.",
+    letters: [
+      L(28, "Ye", "ي", "ﻳ", "ﻴ", "ﻲ", 2, "alt"),
+      L(3, "Te", "ت", "ﺗ", "ﺘ", "ﺖ", 2, "ust"),
+    ],
+    caveat: "Başta ve ortada tıpatıp aynılar. Yalın ve sonda hâlinde Ye'nin kuyruğu aşağı doğru uzanır.",
+  },
+  {
+    id: "nokta-3",
+    title: "Şın ile Peltek Se — 3 nokta",
+    skeleton: "üç nokta",
+    hint: "İkisinin de ÜÇ noktası var ve ikisi de ÜSTTE. Bu sefer noktaya değil DİŞE bak: Peltek Se'nin TEK dişi, Şın'ın ÜÇ dişi var.",
+    letters: [
+      L(13, "Şın", "ش", "ﺷ", "ﺸ", "ﺶ", 3, "ust"),
+      L(4, "Peltek Se", "ث", "ﺛ", "ﺜ", "ﺚ", 3, "ust"),
+    ],
+    sharedNote: "ikisinde de üç nokta var — ayıran şey diş sayısı",
   },
   {
     id: "cim",

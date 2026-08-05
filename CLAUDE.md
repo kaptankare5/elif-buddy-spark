@@ -97,6 +97,17 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
 - Debug HUD'da "Karışıklık Isısı" bölümü çifti okunur gösterir (Elif↔Lem).
 
 ### Telafi (`src/lib/remedial.ts` + `RemedyOverlay`)
+- **Nokta grupları İKİŞERLİ** (`DOT_GROUPS`, writingMnemonics.ts): tek bir
+  "Diş Kardeşler" listesi (be te se nun ye) çocuğa somut ayrım vermiyordu
+  (kullanıcı: "yeterince açıklayıcı değil"). Artık AYNI NOKTA SAYISINDAKİ
+  ikili karşı karşıya: **Nun–Be** (1 nokta, üstte/altta), **Ye–Te**
+  (2 nokta, altta/üstte), **Şın–Peltek Se** (3 nokta, ikisi de üstte →
+  ayrım DİŞ sayısında; bu yüzden `sharedNote` alanı var, alt şerit
+  "iskeleti aynı" demez).
+- ⚠️ Şın İKİ grupta: `sin` (aynı iskelet) ve `nokta-3` (aynı nokta sayısı).
+  Bu yüzden `Remedy.partner` var — telafi ekranı çocuğun GERÇEKTEN
+  karıştırdığı harfle aynı gruptakini seçer, yoksa `find` ilk grubu verip
+  alakasız karşılaştırma gösteriyordu.
 - Yalnız `l2-*` (başta/ortada/sonda) hatalarında; harfin hafıza yöntemi
   tam ekran açılır. Yöntem HATANIN EKSENİNE göre: farklı harf karıştırdıysa
   nokta (`DotCompare`, hata yapılan hâlle açılır), aynı harfin başka hâliyle
