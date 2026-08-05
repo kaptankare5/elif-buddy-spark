@@ -583,10 +583,14 @@ function YazilisHafizaPreview() {
         </div>
         {/* 4) Çizgi yöntemi — Elif ile Lem. Noktası olmayan tek karışan ikili;
             konuya girişte görünsün ki çocuk "bunların noktası yok, nasıl
-            ayıracağım?" sorusunun cevabının burada olduğunu bilsin. */}
+            ayıracağım?" sorusunun cevabının burada olduğunu bilsin.
+            Ayrım harfin KENDİSİNDE değil KOMŞUSUNDA. "اب" içinde Elif soluna
+            bağlanmaz (arada boşluk), "لب" içinde Lem bağlanır (yapışık) —
+            aynı dikey çizgi, farklı komşu. Ekstra birleştirici koyma, font
+            şekillendirmesi zaten doğrusunu üretir. */}
         <div className="flex flex-col items-center gap-1 rounded-xl bg-info/10 p-2 text-center">
-          <span className="font-arabic text-xl leading-[1.6] text-emerald-900" dir="rtl">ﺍ ﻟ</span>
-          <span className="text-[9px] font-extrabold leading-tight text-info">çizgi devam mı</span>
+          <span className="font-arabic text-xl leading-[1.6] text-emerald-900" dir="rtl">اب · لب</span>
+          <span className="text-[9px] font-extrabold leading-tight text-info">soluna bak</span>
         </div>
       </div>
       <Link

@@ -327,10 +327,10 @@ export const DOT_GROUPS: DotGroup[] = [
 // 3b) ÇİZGİ YÖNTEMİ — aynı dikey çizgi, fark BAĞLANMA
 // ---------------------------------------------------------------------------
 // Nokta yöntemi noktası olan harflere çalışır. Elif ile Lem'in ise NOKTASI
-// YOK — ikisi de düpedüz bir dikey çizgi. Onları ayıran şey şekil değil,
-// ÇİZGİNİN DEVAM EDİP ETMEMESİ:
-//   Elif sola bağlanmaz → çizgi orada BİTER (ا / ـا)
-//   Lem sola bağlanır   → çizgi DEVAM EDER (لـ / ـلـ)
+// YOK — ikisi de düpedüz bir dikey çizgi. Harfin KENDİSİNE bakarak ayrım
+// yapılamaz; ayırt edici olan KOMŞUSU:
+//   Elif sola bağlanmaz → solundaki harf AYRI durur  (ا / ـا)
+//   Lem sola bağlanır   → solundaki harf BİTİŞİKtir (لـ / ـلـ)
 // Lem'in SONDA (ـل) ve YALIN (ل) hâlinde derin çanak olduğu için orada
 // karışma yok — bu yüzden kart yalnız BAŞTA ve ORTADA hâllerini karşılaştırır
 // (kullanıcı kararı; confusables.ts'teki form kısıtıyla aynı kural).
@@ -344,21 +344,52 @@ export interface StrokePair {
   /** Yalnız bu hâller karşılaştırılır (Lem'in çanaklı hâlleri karışmıyor). */
   forms: Array<"init" | "med">;
   letters: MnemonicLetter[];
-  /** Kur'an'dan örnek (seçilince doldurulur). */
-  quran?: { ar: string; okunus: string; kaynak: string; not: string };
+  /**
+   * Kur'an'dan örnek — HÂLE göre ayrı. Çocuk hangi sekmedeyse (Lem başta /
+   * Lem ortada) o hâlin gerçekte geçtiği kelimeyi görür; tek örnek koyunca
+   * sekmelerden biri kelimede olmayan bir şekli anlatıyordu.
+   * ⚠️ Harekeler YALNIZ fetha/esre/ötre — cezm ve şedde konusuna daha
+   * gelinmedi, tanıdık olmayan işaret çocuğun dikkatini kuraldan kaçırır
+   * (kullanıcı şartı). Tenvin de yok.
+   */
+  quran?: Partial<Record<"init" | "med", { ar: string; okunus: string; kaynak: string; not: string }>>;
 }
 
 export const STROKE_PAIRS: StrokePair[] = [
   {
     id: "elif-lem",
     title: "Elif ile Lem",
-    rule: "Elif'ten sonra çizgi BİTER. Lem'den sonra çizgi DEVAM EDER.",
-    hint: "İkisinin de noktası yok, ikisi de düz bir dikey çizgi. Bu yüzden noktaya bakmak işe yaramaz — ÇİZGİNİN SOLUNA bak: devam ediyorsa Lem, bitiyorsa Elif.",
+    rule: "Harfin SOLUNA bak: soldaki harf BİTİŞİKSE Lem'dir, AYRIYSA Elif'tir.",
+    hint: "İkisinin de noktası yok, ikisi de düz bir dikey çizgi. Harfin kendisine bakarak ayıramazsın — YANINDAKİ harfe bak. Elif kendinden sonrakine bağlanmaz, arada boşluk kalır; Lem bağlanır, yapışık durur.",
     forms: ["init", "med"],
     letters: [
       L(1, "Elif", "ا", "ا", "ـا", "ـا", 0, "yok"),
       L(23, "Lem", "ل", "ﻟ", "ﻠ", "ﻞ", 0, "yok"),
     ],
+    quran: {
+      // مَالِكِ — Fâtiha 4. Çocuğun EZBERİNDE olan sûre. Tek kelimede kuralın
+      // İKİ yarısı da var: Elif'in solundaki Lem ayrı duruyor, Lem'in
+      // solundaki Kef yapışık. Harekeler: fetha + esre + esre.
+      init: {
+        ar: "مَالِكِ",
+        okunus: "mâliki",
+        kaynak: "Fâtiha 4",
+        not: "Elif'in solundaki Lem AYRI · Lem'in solundaki Kef BİTİŞİK",
+      },
+      // كَلِمَاتُ — Kehf 109. Lem ORTADA (ـلـ), solundaki Mim yapışık; aynı
+      // kelimede Elif'in solundaki Te ayrı duruyor. Fetha + esre + ötre,
+      // başka işaret yok.
+      // ⚠️ Lem'den HEMEN SONRA Elif gelen kelime (كَلَامَ, سَلَامٌ…) BU KARTA
+      // KONULMAZ: ل + ا zorunlu olarak "لا" BİTİŞİK HARFİNE dönüşür, Lem'in
+      // ortadaki hâli ekranda hiç görünmez — yani kartın öğrettiği şekil
+      // kaybolur. Araya başka harf giren kelime seçilmeli.
+      med: {
+        ar: "كَلِمَاتُ",
+        okunus: "kelimâtü",
+        kaynak: "Kehf 109",
+        not: "Lem'in solundaki Mim BİTİŞİK · Elif'in solundaki Te AYRI",
+      },
+    },
   },
 ];
 
