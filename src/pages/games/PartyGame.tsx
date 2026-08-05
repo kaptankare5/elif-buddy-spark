@@ -36,6 +36,7 @@ import * as THREE from "three";
 import { Volume2, Maximize2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
+import { createAdaptiveResolution } from "./_perf";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
@@ -326,7 +327,13 @@ const PartyGame = () => {
     if (!canvas || !wrap) return;
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    // Sabit oran yerine UYARLANIR çözünürlük (bkz. _perf.ts): cihaz
+    // kasıyorsa piksel sayısı düşer, rahatsa geri yükselir. Capacitor
+    // WebView'de en büyük kazanç burada.
+    const adaptiveRes = createAdaptiveResolution(
+      renderer,
+      () => ({ w: wrap.clientWidth || window.innerWidth, h: wrap.clientHeight || window.innerHeight }),
+    );
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x9ad9ff);
     // Sis uzakta başlasın: yakın başlayınca soru kapıları daha okunmadan
@@ -1246,8 +1253,10 @@ const PartyGame = () => {
     ctrl.running = true;
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
-      const dt = Math.min(DT_MAX, (now - last) / 1000);
+      const dtRaw = (now - last) / 1000;
+      const dt = Math.min(DT_MAX, dtRaw);
       last = now;
+      adaptiveRes.sample(dtRaw);
       if (ctrlRef.current.running) step(dt);
       renderer.render(scene, camera);
       hudT -= dt;
