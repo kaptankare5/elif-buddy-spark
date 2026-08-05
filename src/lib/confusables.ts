@@ -63,15 +63,47 @@ export function formOf(id: string): "init" | "med" | "fin" | null {
 }
 
 /**
+ * FORM KISITLI ÇİFTLER — bazı harfler HER hâlinde değil, YALNIZ BELİRLİ
+ * hâllerinde karışır. Elif ↔ Lem böyle (kullanıcı kararı):
+ *
+ *   Elif sola BAĞLANMAZ → her hâlinde düz bir dikey çizgidir (ا / ـا).
+ *   Lem BAŞTA (لـ) ve ORTADA (ـلـ) da düz dikey çizgidir → KARIŞIR.
+ *   Lem SONDA (ـل) ve YALIN (ل) hâlinde derin çanak var → KARIŞMAZ.
+ *
+ * Bu ayrım havuzu doğrudan etkiler: kısıt olmadan Lem'in çanaklı hâli de
+ * Elif'e çeldirici geliyordu — çocuk için bu zor değil, sadece gürültü.
+ * `formOf` yalnız "Yazılışlar" konusunda (l2-*) dolu döner; diğer konulardaki
+ * yalın glifler null verir, yani onlar da eşleşmez (doğrusu bu).
+ */
+type Form = "init" | "med" | "fin";
+const FORM_RESTRICTED: Array<{ a: number; b: number; onlyFormsOf: number; forms: Set<Form> }> = [
+  { a: 1, b: 23, onlyFormsOf: 23, forms: new Set<Form>(["init", "med"]) },
+];
+
+function formRestrictionOk(na: number, nb: number, aId: string, bId: string): boolean {
+  for (const r of FORM_RESTRICTED) {
+    const match = (na === r.a && nb === r.b) || (na === r.b && nb === r.a);
+    if (!match) continue;
+    const id = na === r.onlyFormsOf ? aId : bId;
+    const f = formOf(id);
+    if (f == null || !r.forms.has(f)) return false;
+  }
+  return true;
+}
+
+/**
  * İki öğe doğası gereği karışabilir mi? (ölçümden bağımsız, a priori bilgi)
- * - farklı harfler, aynı karışma öbeğinde → evet
+ * - farklı harfler, aynı karışma öbeğinde → evet (form kısıtı varsa ona uy)
  * - AYNI harfin farklı yazılış hâlleri (başta/ortada/sonda) → evet
  */
 export function baseConfusable(aId: string, bId: string): boolean {
   if (aId === bId) return false;
   const na = letterNumOf(aId), nb = letterNumOf(bId);
   if (na == null || nb == null) return false;
-  if (na !== nb) return CONFUSABLE[na]?.has(nb) ?? false;
+  if (na !== nb) {
+    if (!(CONFUSABLE[na]?.has(nb) ?? false)) return false;
+    return formRestrictionOk(na, nb, aId, bId);
+  }
   const fa = formOf(aId), fb = formOf(bId);
   return fa != null && fb != null && fa !== fb;
 }

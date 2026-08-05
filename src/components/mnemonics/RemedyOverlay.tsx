@@ -12,9 +12,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { REMEDY_EVENT, type Remedy } from "@/lib/remedial";
-import { TAIL_RULES, DOT_GROUPS, STABLE_GROUP } from "@/data/writingMnemonics";
+import { TAIL_RULES, DOT_GROUPS, STABLE_GROUP, STROKE_PAIRS } from "@/data/writingMnemonics";
 import { EraseGame } from "@/components/mnemonics/EraseGame";
 import { DotCompare } from "@/components/mnemonics/DotCompare";
+import { StrokeCompare } from "./StrokeCompare";
 import { findItem } from "@/data/subjects";
 import { playItem } from "@/lib/audio";
 
@@ -54,6 +55,11 @@ export function RemedyOverlay() {
       : undefined)
     ?? DOT_GROUPS.find((g) => g.letters.some((l) => l.n === remedy.letter));
   const stable = STABLE_GROUP.letters.find((l) => l.n === remedy.letter);
+  // Elif↔Lem: noktasız dikey-çizgi ikilisi. Karıştırdığı harf biliniyorsa
+  // ikisini de içeren çifti seç.
+  const strokePair = STROKE_PAIRS.find((p) =>
+    p.letters.some((l) => l.n === remedy.letter) &&
+    (remedy.partner == null || p.letters.some((l) => l.n === remedy.partner)));
   const name = rule?.name ?? group?.letters.find((l) => l.n === remedy.letter)?.name ?? stable?.name ?? "";
   const form = remedy.itemId.match(/-(init|med|fin)$/)?.[1];
   const item = findItem(remedy.itemId);
@@ -90,6 +96,12 @@ export function RemedyOverlay() {
           </button>
         )}
 
+        {remedy.kind === "cizgi" && strokePair && (
+          <StrokeCompare
+            pair={strokePair}
+            initialForm={form === "med" ? "med" : "init"}
+          />
+        )}
         {remedy.kind === "kuyruk" && rule && <EraseGame rule={rule} />}
         {remedy.kind === "nokta" && group && (
           <DotCompare group={group} initialForm={(form as "init" | "med" | "fin") ?? "init"} />

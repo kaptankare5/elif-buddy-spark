@@ -19,8 +19,8 @@
 // alınır, oyun bitince (ölünce/süre dolunca) gösterilir.
 import { useEffect } from "react";
 import { heatBetween, itemHeat } from "@/lib/confusion";
-import { formOf, letterNumOf } from "@/lib/confusables";
-import { TAIL_RULES, DOT_GROUPS, STABLE_GROUP } from "@/data/writingMnemonics";
+import { baseConfusable, formOf, letterNumOf } from "@/lib/confusables";
+import { TAIL_RULES, DOT_GROUPS, STABLE_GROUP, STROKE_PAIRS } from "@/data/writingMnemonics";
 
 const LETTER_COOLDOWN_MS = 30 * 60_000; // aynı harf için
 const ANY_COOLDOWN_MS = 4 * 60_000;     // herhangi bir telafi için
@@ -32,7 +32,7 @@ export type Remedy = {
   itemId: string;
   letter: number;
   /** "kuyruk" = kuyruğu sil oyunu · "nokta" = nokta karşılaştırması · "sabit" = değişmeyen harf */
-  kind: "kuyruk" | "nokta" | "sabit";
+  kind: "kuyruk" | "nokta" | "sabit" | "cizgi";
   /**
    * KARIŞTIRDIĞI harf (biliniyorsa). Bir harf birden çok nokta grubunda
    * olabilir — Şın hem "Sin · Şin" (aynı iskelet) hem "Şın ile Peltek Se"
@@ -54,6 +54,18 @@ export const REMEDY_EVENT = EVENT;
 const hasTail = (n: number) => TAIL_RULES.some((r) => r.n === n);
 const hasDots = (n: number) => DOT_GROUPS.some((g) => g.letters.some((l) => l.n === n));
 const isStable = (n: number) => STABLE_GROUP.letters.some((l) => l.n === n);
+/**
+ * Elif↔Lem gibi NOKTASIZ, aynı dikey çizgiyi paylaşan ikili mi?
+ * ⚠️ Yalnız harf numarasına bakmak YETMEZ: Elif, Lem'in yalnız BAŞTA ve
+ * ORTADA hâlleriyle karışır (sonda/yalın hâlinde derin çanak var). Bu yüzden
+ * `baseConfusable` üzerinden HÂLE de bakılır — yoksa çocuk Elif'i Lem'in
+ * çanaklı hâliyle karıştırdığında alakasız bir "çizgi" dersi açılıyordu.
+ */
+const strokePairFor = (itemId: string, chosenId: string, a: number, b: number) => {
+  if (!baseConfusable(itemId, chosenId)) return null;
+  return STROKE_PAIRS.find((p) =>
+    p.letters.some((l) => l.n === a) && p.letters.some((l) => l.n === b)) ?? null;
+};
 
 /**
  * HANGİ HATAYI YAPTIYSA O YÖNTEM. Bir harf iki yönteme birden girebilir:
@@ -63,11 +75,14 @@ const isStable = (n: number) => STABLE_GROUP.letters.some((l) => l.n === n);
  *   • Be'nin baştaki hâlini sondaki hâliyle karıştırdıysa → KUYRUK yöntemi.
  * Hangi şıkkı seçtiği bilinmiyorsa harfin baskın yöntemine düşülür.
  */
-function methodFor(letter: number, chosenId?: string): Remedy["kind"] | null {
+function methodFor(itemId: string, letter: number, chosenId?: string): Remedy["kind"] | null {
   const chosenLetter = chosenId ? letterNumOf(chosenId) : null;
   const sameLetter = chosenLetter != null && chosenLetter === letter;
 
   if (chosenLetter != null && !sameLetter) {
+    // Noktasız dikey-çizgi ikilisi (Elif↔Lem): nokta yöntemi işe yaramaz,
+    // ayırt edici olan çizginin sola devam edip etmemesi.
+    if (chosenId && strokePairFor(itemId, chosenId, letter, chosenLetter)) return "cizgi";
     // FARKLI HARF karıştırdı → ayırt edici işaret noktadır
     if (hasDots(letter)) return "nokta";
   } else if (sameLetter) {
@@ -91,7 +106,7 @@ export function considerRemedy(itemId: string, chosenId?: string): Remedy | null
   if (!formOf(itemId)) return null;               // başta/ortada/sonda değil
   const letter = letterNumOf(itemId);
   if (letter == null) return null;
-  const kind = methodFor(letter, chosenId);
+  const kind = methodFor(itemId, letter, chosenId);
   if (!kind) return null;                          // bu harfin yöntemi yok
 
   const now = Date.now();
