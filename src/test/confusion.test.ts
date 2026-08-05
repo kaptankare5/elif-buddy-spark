@@ -28,8 +28,14 @@ beforeEach(() => {
 });
 
 describe("statik bilgi (confusables)", () => {
-  it("Elif ile Lem a-priori karışandır", () => {
-    expect(baseConfusable(ELIF, LEM)).toBe(true);
+  it("Elif YALNIZ Lem'in başta/ortada hâliyle karışır (kullanıcı kararı)", () => {
+    // Elif sola bağlanmaz → her hâlinde düz dikey çizgi. Lem'in BAŞTA (لـ) ve
+    // ORTADA (ـلـ) hâlleri de düz çizgi → karışır. SONDA (ـل) ve YALIN (ل)
+    // hâlinde derin çanak var → karışmaz, çeldirici olarak da gelmemeli.
+    expect(baseConfusable("l2-01-init", "l2-23-init")).toBe(true);
+    expect(baseConfusable("l2-01-med", "l2-23-med")).toBe(true);
+    expect(baseConfusable("l2-01-fin", "l2-23-fin")).toBe(false);
+    expect(baseConfusable(ELIF, LEM)).toBe(false);   // ikisi de yalın
   });
 
   it("AYNI harfin başta/ortada/sonda hâlleri de karışan sayılır", () => {
@@ -246,7 +252,14 @@ describe("bölümler ve kilit", () => {
       // Grup, karışabilirlik grafiğinde BAĞLI olmalı: her harfin gruptan
       // en az bir karıştığı komşusu bulunmalı.
       for (const n of letters) {
-        const linked = letters.some((m) => m !== n && baseConfusable(`l1-${String(n).padStart(2, "0")}`, `l1-${String(m).padStart(2, "0")}`));
+        // ⚠️ Bu KONU başta/ortada/sonda hâllerini öğretiyor; bağlantı da o
+        // hâller üzerinden aranmalı. Yalın (l1-) id'leriyle bakmak yanıltıcı:
+        // Elif ile Lem yalın hâlde karışmaz (Lem'in çanağı belli), ama
+        // BAŞTA/ORTADA hâllerinde karışır — bölümü bir arada tutan da bu.
+        const FORMS = ["init", "med", "fin"] as const;
+        const id = (x: number, f: string) => `l2-${String(x).padStart(2, "0")}-${f}`;
+        const linked = letters.some((m) => m !== n && FORMS.some((fa) =>
+          FORMS.some((fb) => baseConfusable(id(n, fa), id(m, fb)))));
         expect(linked, `${sec}: ${n} numaralı harf gruptaki hiçbir harfle karışmıyor`).toBe(true);
       }
     }

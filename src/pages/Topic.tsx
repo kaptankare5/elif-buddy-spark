@@ -563,7 +563,7 @@ function YazilisHafizaPreview() {
         <Brain className="h-5 w-5 shrink-0" />
         <span className="text-sm font-extrabold text-shadow-soft">Hafıza Yöntemi — ezberleme, kuralı öğren</span>
       </div>
-      <div className="grid grid-cols-3 gap-2 p-3">
+      <div className="grid grid-cols-4 gap-2 p-3">
         {/* 1) Değişmeyen harf örneği */}
         <div className="flex flex-col items-center gap-1 rounded-xl bg-success/10 p-2 text-center">
           <span className="font-arabic text-2xl leading-[1.6] text-emerald-900" dir="rtl">{STABLE_GROUP.letters[1].iso}</span>
@@ -580,6 +580,13 @@ function YazilisHafizaPreview() {
         <div className="flex flex-col items-center gap-1 rounded-xl bg-warning/10 p-2 text-center">
           <span className="font-arabic text-xl leading-[1.6] text-emerald-900" dir="rtl">ب ت ث</span>
           <span className="text-[9px] font-extrabold leading-tight text-warning">nokta = fark</span>
+        </div>
+        {/* 4) Çizgi yöntemi — Elif ile Lem. Noktası olmayan tek karışan ikili;
+            konuya girişte görünsün ki çocuk "bunların noktası yok, nasıl
+            ayıracağım?" sorusunun cevabının burada olduğunu bilsin. */}
+        <div className="flex flex-col items-center gap-1 rounded-xl bg-info/10 p-2 text-center">
+          <span className="font-arabic text-xl leading-[1.6] text-emerald-900" dir="rtl">ﺍ ﻟ</span>
+          <span className="text-[9px] font-extrabold leading-tight text-info">çizgi devam mı</span>
         </div>
       </div>
       <Link

@@ -105,9 +105,27 @@ describe("ne zaman telafi ÇIKAR ve hangi yöntem", () => {
     expect(considerRemedy(BE_INIT, "l2-02-fin")?.kind).toBe("kuyruk");
   });
 
-  it("değişmeyen 6 harften birinde → 'hiç değişmez' hatırlatması", () => {
+  it("Elif'i Lem'in SONDA hâliyle karıştırdı → çizgi dersi DEĞİL, 'hiç değişmez'", () => {
+    // Lem'in sonda hâlinde derin çanak var; bu ikili karışan sayılmaz, o
+    // yüzden çizgi karşılaştırması açılmamalı (form körlüğü hatasının bekçisi).
     heatUp(ELIF_FIN, LEM_FIN);
     expect(considerRemedy(ELIF_FIN, LEM_FIN)?.kind).toBe("sabit");
+  });
+
+  it("Elif'i Lem'in BAŞTA hâliyle karıştırdı → ÇİZGİ dersi", () => {
+    // Elif ا ile Lem'in başta hâli ﻟ ikisi de düz dikey çizgi; noktası olmayan
+    // tek karışan ikili. Nokta yöntemi burada işe yaramaz.
+    const ELIF_INIT = "l2-01-init", LEM_INIT = "l2-23-init";
+    heatUp(ELIF_INIT, LEM_INIT);
+    const r = considerRemedy(ELIF_INIT, LEM_INIT);
+    expect(r?.kind).toBe("cizgi");
+    expect(r?.partner).toBe(23);
+  });
+
+  it("Elif'i Lem'in ORTADA hâliyle karıştırdı → ÇİZGİ dersi", () => {
+    const ELIF_MED = "l2-01-med", LEM_MED = "l2-23-med";
+    heatUp(ELIF_MED, LEM_MED);
+    expect(considerRemedy(ELIF_MED, LEM_MED)?.kind).toBe("cizgi");
   });
 
   it("soğuma dolunca aynı harf için tekrar çıkar", () => {

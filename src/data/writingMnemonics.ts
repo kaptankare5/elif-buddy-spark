@@ -324,6 +324,45 @@ export const DOT_GROUPS: DotGroup[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// 3b) ÇİZGİ YÖNTEMİ — aynı dikey çizgi, fark BAĞLANMA
+// ---------------------------------------------------------------------------
+// Nokta yöntemi noktası olan harflere çalışır. Elif ile Lem'in ise NOKTASI
+// YOK — ikisi de düpedüz bir dikey çizgi. Onları ayıran şey şekil değil,
+// ÇİZGİNİN DEVAM EDİP ETMEMESİ:
+//   Elif sola bağlanmaz → çizgi orada BİTER (ا / ـا)
+//   Lem sola bağlanır   → çizgi DEVAM EDER (لـ / ـلـ)
+// Lem'in SONDA (ـل) ve YALIN (ل) hâlinde derin çanak olduğu için orada
+// karışma yok — bu yüzden kart yalnız BAŞTA ve ORTADA hâllerini karşılaştırır
+// (kullanıcı kararı; confusables.ts'teki form kısıtıyla aynı kural).
+
+export interface StrokePair {
+  id: string;
+  title: string;
+  /** Tek cümlelik ayırt edici kural — çocuğun aklında kalacak cümle. */
+  rule: string;
+  hint: string;
+  /** Yalnız bu hâller karşılaştırılır (Lem'in çanaklı hâlleri karışmıyor). */
+  forms: Array<"init" | "med">;
+  letters: MnemonicLetter[];
+  /** Kur'an'dan örnek (seçilince doldurulur). */
+  quran?: { ar: string; okunus: string; kaynak: string; not: string };
+}
+
+export const STROKE_PAIRS: StrokePair[] = [
+  {
+    id: "elif-lem",
+    title: "Elif ile Lem",
+    rule: "Elif'ten sonra çizgi BİTER. Lem'den sonra çizgi DEVAM EDER.",
+    hint: "İkisinin de noktası yok, ikisi de düz bir dikey çizgi. Bu yüzden noktaya bakmak işe yaramaz — ÇİZGİNİN SOLUNA bak: devam ediyorsa Lem, bitiyorsa Elif.",
+    forms: ["init", "med"],
+    letters: [
+      L(1, "Elif", "ا", "ا", "ـا", "ـا", 0, "yok"),
+      L(23, "Lem", "ل", "ﻟ", "ﻠ", "ﻞ", 0, "yok"),
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
 // 4) HAREKE HAFIZA YÖNTEMİ — TÜRKÇE ÖNCELİKLİ
 // ---------------------------------------------------------------------------
 // Bu uygulama TÜRK çocukları için. O yüzden birinci kanca, çocuğun ZATEN

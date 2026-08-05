@@ -111,6 +111,20 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   (2 nokta, altta/üstte), **Şın–Peltek Se** (3 nokta, ikisi de üstte →
   ayrım DİŞ sayısında; bu yüzden `sharedNote` alanı var, alt şerit
   "iskeleti aynı" demez).
+- ⚠️ **ÇİZGİ YÖNTEMİ — Elif ile Lem** (`STROKE_PAIRS`, `StrokeCompare`):
+  ikisinin de NOKTASI YOK, ikisi de düz dikey çizgi → nokta yöntemi işe
+  yaramaz. Ayırt edici kural: **Elif'ten sonra çizgi BİTER (sola bağlanmaz),
+  Lem'den sonra DEVAM EDER.** Kart yalnız BAŞTA ve ORTADA hâllerini
+  karşılaştırır — Lem'in SONDA (ﻞ) ve YALIN (ل) hâlinde derin çanak var,
+  orada karışmaz (kullanıcı kararı). Üç yerde görünür: Yazılış Hafıza
+  sayfası (nokta bölümünün altında), konu girişindeki önizleme (4. karo),
+  telafi ekranı (`kind: "cizgi"`).
+- ⚠️ **FORM KISITI** (`FORM_RESTRICTED`, confusables.ts): Elif↔Lem yalnız
+  Lem'in `init`/`med` hâlinde karışan sayılır. `baseConfusable` bunu uygular
+  → çeldirici seçimi ve MISS_SOFT yayılımı da otomatik uyar. `remedial.ts`
+  "cizgi" dersini `baseConfusable` üzerinden kapıya bağlar — yalnız harf
+  numarasına bakmak YETMEZ, yoksa Lem'in çanaklı hâlinde de çizgi dersi
+  açılıyordu (testi var).
 - ⚠️ Şın İKİ grupta: `sin` (aynı iskelet) ve `nokta-3` (aynı nokta sayısı).
   Bu yüzden `Remedy.partner` var — telafi ekranı çocuğun GERÇEKTEN
   karıştırdığı harfle aynı gruptakini seçer, yoksa `find` ilk grubu verip

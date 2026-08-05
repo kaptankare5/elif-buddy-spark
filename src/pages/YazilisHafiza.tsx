@@ -13,8 +13,9 @@ import { BuddyWithBubble } from "@/components/Buddy";
 import { TailErase } from "@/components/mnemonics/TailErase";
 import { EraseGame } from "@/components/mnemonics/EraseGame";
 import { DotCompare } from "@/components/mnemonics/DotCompare";
+import { StrokeCompare } from "@/components/mnemonics/StrokeCompare";
 import { HarekeMnemo } from "@/components/mnemonics/HarekeMnemo";
-import { STABLE_GROUP, TAIL_RULES, DOT_GROUPS, HAREKE_MNEMONICS, writingItemIds } from "@/data/writingMnemonics";
+import { STABLE_GROUP, TAIL_RULES, DOT_GROUPS, STROKE_PAIRS, HAREKE_MNEMONICS, writingItemIds } from "@/data/writingMnemonics";
 import { findItem } from "@/data/subjects";
 import { playItem } from "@/lib/audio";
 import { Zap } from "lucide-react";
@@ -147,6 +148,16 @@ const YazilisHafiza = () => {
           <div className="space-y-3">
             {DOT_GROUPS.map((g) => (
               <DotCompare key={g.id} group={g} />
+            ))}
+          </div>
+
+          {/* ÇİZGİ YÖNTEMİ — noktası olmayan ikili (Elif ile Lem). Nokta
+              bölümünün hemen ardında duruyor çünkü çocuğun sorusu aynı:
+              "bunlar birbirinin aynısı, nasıl ayıracağım?" Cevap farklı:
+              noktaya değil, çizginin devam edip etmediğine bak. */}
+          <div className="mt-3 space-y-3">
+            {STROKE_PAIRS.map((p) => (
+              <StrokeCompare key={p.id} pair={p} />
             ))}
           </div>
         </section>
