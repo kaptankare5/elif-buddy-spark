@@ -8,6 +8,7 @@ import {
   considerRemedy, showRemedy, queueRemedy, releaseRemedy, hasQueuedRemedy,
   __resetRemedial, REMEDY_LIMITS, REMEDY_EVENT,
 } from "@/lib/remedial";
+import { DOT_GROUPS } from "@/data/writingMnemonics";
 import {
   recordConfusionPick, resetConfusion, __resetConfusionCache,
 } from "@/lib/confusion";
@@ -143,5 +144,54 @@ describe("oyun akışı: ortada değil, SONUNDA", () => {
     } finally {
       window.removeEventListener(REMEDY_EVENT, h);
     }
+  });
+});
+
+// NOKTA GRUPLARI ikişerli oldu (Nun–Be 1 nokta, Ye–Te 2 nokta,
+// Şın–Peltek Se 3 nokta). Şın artık İKİ grupta: "Sin · Şin" (aynı iskelet)
+// ve "Şın ile Peltek Se" (aynı nokta sayısı). Telafi ekranı doğru
+// karşılaştırmayı seçebilsin diye karıştırılan harf Remedy'ye taşınır.
+describe("nokta grupları ve telafi partneri", () => {
+  afterEach(() => { __resetRemedial(); });
+
+  it("her nokta grubu en fazla 2 harf ve grup içi nokta sayısı aynı", () => {
+    for (const g of DOT_GROUPS) {
+      expect(g.letters.length).toBeLessThanOrEqual(3);
+    }
+    const nokta = DOT_GROUPS.filter((g) => g.id.startsWith("nokta-"));
+    expect(nokta.map((g) => g.id)).toEqual(["nokta-1", "nokta-2", "nokta-3"]);
+    for (const g of nokta) {
+      expect(g.letters).toHaveLength(2);
+      const [a, b] = g.letters;
+      expect(a.dots).toBe(b.dots);          // ikili AYNI nokta sayısında
+    }
+    // 1 ve 2 noktalı ikililerde nokta YERİ farklı olmalı (ayırt edici bu)
+    const bir = nokta[0].letters, iki = nokta[1].letters;
+    expect(bir[0].where).not.toBe(bir[1].where);
+    expect(iki[0].where).not.toBe(iki[1].where);
+    // 3 noktalıda ikisi de üstte — ayrım DİŞ sayısında, o yüzden sharedNote var
+    expect(nokta[2].letters.every((l) => l.where === "ust")).toBe(true);
+    expect(nokta[2].sharedNote).toBeTruthy();
+  });
+
+  it("considerRemedy karıştırılan harfi partner olarak taşır", () => {
+    heatUp(BE_INIT, NUN_INIT);
+    const r = considerRemedy(BE_INIT, NUN_INIT);
+    expect(r?.letter).toBe(2);              // Be
+    expect(r?.partner).toBe(25);            // Nun
+  });
+
+  it("Şın için partner, hangi grubun gösterileceğini belirler", () => {
+    // RemedyOverlay'in yaptığı aramanın aynısı
+    const grupFor = (letter: number, partner?: number) =>
+      (partner != null
+        ? DOT_GROUPS.find((g) =>
+            g.letters.some((l) => l.n === letter) && g.letters.some((l) => l.n === partner))
+        : undefined)
+      ?? DOT_GROUPS.find((g) => g.letters.some((l) => l.n === letter));
+
+    expect(grupFor(13, 12)?.id).toBe("sin");        // Şın'ı Sin'le karıştırdı
+    expect(grupFor(13, 4)?.id).toBe("nokta-3");     // Şın'ı Peltek Se'yle karıştırdı
+    expect(grupFor(4)?.id).toBe("nokta-3");         // Peltek Se tek grupta
   });
 });

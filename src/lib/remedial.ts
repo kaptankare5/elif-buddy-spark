@@ -33,6 +33,13 @@ export type Remedy = {
   letter: number;
   /** "kuyruk" = kuyruğu sil oyunu · "nokta" = nokta karşılaştırması · "sabit" = değişmeyen harf */
   kind: "kuyruk" | "nokta" | "sabit";
+  /**
+   * KARIŞTIRDIĞI harf (biliniyorsa). Bir harf birden çok nokta grubunda
+   * olabilir — Şın hem "Sin · Şin" (aynı iskelet) hem "Şın ile Peltek Se"
+   * (aynı nokta sayısı) grubunda. Doğru karşılaştırmayı seçmek için hangi
+   * harfle karıştırdığını bilmek gerekir.
+   */
+  partner?: number;
 };
 
 // Seans içi durum (sekme kapanınca sıfırlanır — kalıcı olmasına gerek yok)
@@ -97,7 +104,11 @@ export function considerRemedy(itemId: string, chosenId?: string): Remedy | null
   const paired = chosenId ? heatBetween(itemId, chosenId) : 0;
   if (Math.max(paired, itemHeat(itemId)) < HEAT_GATE) return null;
 
-  return { itemId, letter, kind };
+  const chosenLetter = chosenId ? letterNumOf(chosenId) : null;
+  return {
+    itemId, letter, kind,
+    partner: chosenLetter != null && chosenLetter !== letter ? chosenLetter : undefined,
+  };
 }
 
 function markRemedyShown(r: Remedy) {

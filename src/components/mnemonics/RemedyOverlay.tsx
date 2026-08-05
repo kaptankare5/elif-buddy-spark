@@ -42,7 +42,17 @@ export function RemedyOverlay() {
   if (!remedy) return null;
 
   const rule = TAIL_RULES.find((r) => r.n === remedy.letter);
-  const group = DOT_GROUPS.find((g) => g.letters.some((l) => l.n === remedy.letter));
+  // Harf birden çok nokta grubunda olabilir (Şın: "Sin · Şin" ve "Şın ile
+  // Peltek Se"). Önce KARIŞTIRDIĞI harfle aynı gruptakini ara — çocuğa
+  // gerçekten yaptığı hatanın karşılaştırmasını göster; bulunamazsa harfin
+  // ilk grubuna düş.
+  const group =
+    (remedy.partner != null
+      ? DOT_GROUPS.find((g) =>
+          g.letters.some((l) => l.n === remedy.letter) &&
+          g.letters.some((l) => l.n === remedy.partner))
+      : undefined)
+    ?? DOT_GROUPS.find((g) => g.letters.some((l) => l.n === remedy.letter));
   const stable = STABLE_GROUP.letters.find((l) => l.n === remedy.letter);
   const name = rule?.name ?? group?.letters.find((l) => l.n === remedy.letter)?.name ?? stable?.name ?? "";
   const form = remedy.itemId.match(/-(init|med|fin)$/)?.[1];
