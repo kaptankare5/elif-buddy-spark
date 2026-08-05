@@ -32,6 +32,7 @@ import * as THREE from "three";
 import { Volume2, Maximize2, Lock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
+import { createAdaptiveResolution } from "./_perf";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
@@ -42,7 +43,11 @@ import { letterTexture, nameTexture, emojiTexture, faceTexture } from "./_letter
 import type { ContentItem } from "@/data/types";
 
 // ---- yarış sabitleri ----
-const LAPS = 2;
+// Yarış süresi: kullanıcı şartı "birkaç dakika araba kullansınlar".
+// 3 tur × büyütülmüş pist ≈ 2-2.5 dk. Tur sayısını artırmak GEOMETRİ
+// EKLEMEZ (aynı pist tekrar dönülür) — yani bedava süre; pisti büyütmek
+// ise yalnız yol şeridinin üçgen sayısını artırır, o da tek mesh.
+const LAPS = 3;
 const RACERS = 6;
 const DT_MAX = 0.05;
 
@@ -50,7 +55,9 @@ const DT_MAX = 0.05;
 // Ölçeksiz hâlde bir tur ~1100 birim = 40 sn sürüyordu; 2 turluk yarış çocuk
 // için çok uzundu. Küçültmek aynı zamanda virajları sıkılaştırıp "kart"
 // hissini artırıyor.
-const TRACK_SCALE = 0.7;
+// 0.7 → 1.0: pist %43 uzadı. Yan fayda: viraj yarıçapları da büyüdüğü için
+// eğrilik düştü, kapılar daha uzaktan görünüyor.
+const TRACK_SCALE = 1.0;
 
 const ACCEL = 14;              // birim/sn² — otomatik gaz
 const BASE_MAX = 30;           // düz yolda üst hız
@@ -279,7 +286,13 @@ const KartGame = () => {
     const ROAD_HALF = def.roadHalf;
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    // Sabit oran yerine UYARLANIR çözünürlük (bkz. _perf.ts): cihaz
+    // kasıyorsa piksel sayısı düşer, rahatsa geri yükselir. Capacitor
+    // WebView'de en büyük kazanç burada.
+    const adaptiveRes = createAdaptiveResolution(
+      renderer,
+      () => ({ w: wrap.clientWidth || window.innerWidth, h: wrap.clientHeight || window.innerHeight }),
+    );
     // Görüntü kalitesi: filmik ton eşleme + sRGB çıkış + yumuşak gölge.
     // Bunlar olmadan PBR malzemeler "yıkanmış" ve plastik görünüyor.
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -335,7 +348,10 @@ const KartGame = () => {
       def.pts.map(([x, y, z]) => new THREE.Vector3(x * TRACK_SCALE, y * TRACK_SCALE, z * TRACK_SCALE)),
       true, "catmullrom", 0.5,
     );
-    const SAMPLES = 900;
+    // Pist uzadı → aynı örnek sayısında segmentler uzar ve virajlar köşeli
+    // görünür. Örnek sayısı da orantılı artar; yol TEK mesh olduğu için
+    // maliyeti yalnız üçgen sayısı, çizim çağrısı değil.
+    const SAMPLES = 1200;
     // getSpacedPoints EŞİT ARALIKLI örnek verir → s (mesafe) doğrudan indekse
     // çevrilebilir. getPoint (parametrik) kullanılsaydı virajlarda örnekler
     // sıkışıp araç hızı dalgalanırdı.
@@ -1495,8 +1511,10 @@ const KartGame = () => {
 
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
-      const dt = Math.min(DT_MAX, (now - last) / 1000);
+      const dtRaw = (now - last) / 1000;
+      const dt = Math.min(DT_MAX, dtRaw);
       last = now;
+      adaptiveRes.sample(dtRaw);   // GERÇEK kare süresi (kelepçesiz) ölçülür
       const tNow = now * 0.001;
 
       if (!ctrl.running && cd > 0) {

@@ -38,6 +38,13 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   ب ت ث · ج ح خ · د ذ · ر ز · س ش · ص ض · ط ظ · ع غ · ف ق · م ه · ن ي · و).
   Bölüm ADLARI iki tarafta da sade ("N. Bölüm") — aile etiketi YOK
   (kullanıcı şartı). Harf sırası (LETTERS) hiç değişmedi.
+- ⚠️ **TÜRK ELİFBÂSI — hemze KULLANILMAZ.** Harekeli elif hep DÜZ elifle
+  yazılır: `اَ اِ اُ`. Arapça imlâda kelime başı elif teknik olarak hemzedir
+  (`أَ إِ أُ`) ama Diyanet Elifbâ kitabı çocuğa düz elifle öğretir; iki farklı
+  şekil göstermek karıştırır. Cezm ve şedde ön ekleri bu yüzden düzeltildi
+  (önce fetha düz elifle, esre/ötre hemzeyle yazılıyordu — kendi içinde de
+  tutarsızdı). İSTİSNA: gerçek Kur'an ibareleri (`فَإِنَّ اللّٰهَ`) ve medli
+  elif `آ` — onlar doğru imlâdır, dokunma.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
   hareke okunuşları üretilir (kalın 7 harf a/ı/u; Râ karışık ra/ri/ru;
   gerisi e/i/ü). Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
@@ -152,7 +159,12 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   saçılır. Arenaya girince kandil yanar (nur sürekli tazelenir); ışık
   perdesi bulut dağılmadan camiye geçirmez. Bulut yalnız yavaş "gölge
   damlası" gönderir (kaçılacak engel).
-- "ElifBa Koşusu" (`SubwayGame.tsx`, id "subway"): R3F 3D koşu. Arapça
+- "ElifBa Koşusu" (`SubwayGame.tsx`, id "subway"): R3F 3D koşu.
+  ⚠️ **Hız rampası SKORA değil DOĞRU SAYISINA bağlı** (`SPEED_FULL` = 40).
+  Eskiden `BASE + score*0.05` idi; doğru cevap 10-20 puan (2X ile 40)
+  getirdiği için çocuk 6-11 doğruda tavan hıza çıkıyordu ("hemen
+  hızlanıyor"). Skor seri bonusu ve 2X ile şiştiği için kötü ölçüttü.
+  Şimdi 10 doğruda 14.8 (eskiden 23.0), tavan 40 doğruda. Arapça
   harfler canvas dokusuyla (troika değil), pano dokusu ölçüp sığdırır
   (derin çanaklı harfler kesilmez), fog'dan muaf. Tasarım:
   `docs/tren-sorfu-tasarim.md`. rAF arka planda kısılır — DT_MAX kelepçesi var.
@@ -258,6 +270,18 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   - `_letterTexture.ts` ortak: harf panosu / isim etiketi / sevimli yüz /
     emoji dokusu. Partisi de bunu kullanır — harfi panoya sığdırma ve yüz
     çizimi tek yerde.
+- ⚠️ **UYARLANIR ÇÖZÜNÜRLÜK** (`_perf.ts`, Partisi + Yarışı): Capacitor/
+  WebView'de en pahalı şey üçgen değil DOLDURULAN PİKSEL. 2026 telefonlarında
+  dpr 2.6-3.5; sabit `setPixelRatio(2)` ile 412×880 ekran 1.45 MP olarak
+  çizilir, üstüne PCFSoft gölge + antialias binince kare 16 ms'i aşar.
+  `createAdaptiveResolution` kare süresini ÖLÇER (cihaz sınıfı tahmin etmez):
+  >22 ms ise oranı 0.25 düşürür, <13 ms ise yükseltir, [1, 2] arası.
+- **Yarış süresi**: 3 tur × büyütülmüş pist ≈ 2-2.5 dk (kullanıcı şartı
+  "birkaç dakika araba kullansınlar"). Tur sayısı BEDAVA süredir (aynı
+  geometri tekrar dönülür); pisti büyütmek yalnız yol şeridinin üçgenini
+  artırır (tek mesh). Ölçüm: pist %43 uzayıp turlar 2→3 olunca (toplam
+  mesafe ×2.1) çizim çağrısı 216→234, üçgen 46k→51k. Dekor SAMPLES'a bağlı
+  olduğu için uzunlukla artmaz.
 - **Soru sesi kapı başına TEK KEZ** çalar (Partisi ve Yarışı) — otomatik
   tekrar YOK; kullanıcı şartı: aynı soruyu iki kez sormak (biri uzakta, biri
   kapıya yakın) rahatsız ediyor. Tekrar dinlemek "Hangi kapı? — dinle"

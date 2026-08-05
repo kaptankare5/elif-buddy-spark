@@ -377,13 +377,18 @@ const t4_cezm: ContentTopic = {
         { v: "i", audio: `cezm-${pad2(cezmIdx)}-i.mp3`, sp: `${v.i}${base}` },
         { v: "u", audio: `cezm-${pad2(cezmIdx)}-u.mp3`, sp: `${v.u}${base}` },
       ].map((h, idx) => {
-        const elifPre = idx === 0 ? "اَ" : idx === 1 ? "إِ" : "أُ";
+        // ⚠️ TÜRK ELİFBÂSI: DÜZ ELİF, hemze DEĞİL. Diyanet Elifbâ kitabı
+        // harekeyi düz elifle öğretir (اَ اِ اُ). Arapça imlâda kelime başı
+        // elif teknik olarak hemzedir (أَ إِ أُ) ama çocuğa iki farklı şekil
+        // göstermek karışıklık yaratır — üstelik burada fetha düz elifle,
+        // esre/ötre hemzeyle yazılıyordu, yani kendi içinde de tutarsızdı.
+        const elifPre = idx === 0 ? "اَ" : idx === 1 ? "اِ" : "اُ";
         return {
           id: `l4-${pad2(l.n)}-${h.v}`,
           label: `${h.sp}`,
           speech: h.sp,
           lang: "tr" as const,
-          // Örn: أَبْ / إِبْ / أُبْ
+          // Örn: اَبْ / اِبْ / اُبْ
           emoji: `${elifPre}${l.iso}ْ`,
           translit: h.sp,
           audio: hasAudio ? audioPath(h.audio) : undefined,
@@ -427,10 +432,11 @@ const SEDDE_EKSTRA: Array<[string, string, number]> = [
 ];
 
 // Şeddeli hecenin önüne konan harekeli elif (cezm konusundakiyle aynı kural).
+// TÜRK ELİFBÂSI: hepsi DÜZ ELİF — hemze (أ إ) kullanılmaz.
 const SEDDE_ELIF_PRE: Record<"fetha" | "esre" | "otre", string> = {
   fetha: "اَ",
-  esre: "إِ",
-  otre: "أُ",
+  esre: "اِ",
+  otre: "اُ",
 };
 
 const t5_sedde: ContentTopic = {
@@ -461,7 +467,7 @@ const t5_sedde: ContentTopic = {
           // Şeddeli hece TEK BAŞINA okunamaz: "بَّ" yazıp "ebbe" demek
           // olmuyor, şeddenin ikizlediği ilk sessizin bir önceki heceye
           // yaslanması gerekiyor. Cezm konusunda olduğu gibi harekeli elif
-          // ön eki konur → أَبَّ / إِبِّ / أُبُّ (ebbe / ibbi / übbü).
+          // ön eki konur → اَبَّ / اِبِّ / اُبُّ (ebbe / ibbi / übbü).
           // Ekstra kartlar (اِنَّ, رَبِّ…) da zaten bu biçimde.
           emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}ّ${h.mark}`,
           translit: sesMap[h.vowel],

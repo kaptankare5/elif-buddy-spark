@@ -33,6 +33,8 @@ const OBST_Z = -78;        // engel sırasının doğduğu yerel z
 const DESPAWN_Z = 16;
 const BASE_SPEED = 13;
 const MAX_SPEED = 24;
+// Tavan hıza kaç DOĞRU cevapta ulaşılsın (skor değil — bkz. hız rampası).
+const SPEED_FULL = 40;
 const DT_MAX = 0.05;       // sekme arkaplandan dönünce ışınlanmayı önler
 const GRAVITY = -30;
 const JUMP_V = 11.6;       // tepe ≈ 2.24 — tren üstüne (1.7) rahat çıkar
@@ -905,6 +907,9 @@ const SubwayGame = () => {
 
   const [ents, setEnts] = useState<Ent[]>([]);
   const [score, setScore] = useState(0);
+  // Hız artışı SKORA değil DOĞRU SAYISINA bağlı — skor seri bonusu ve 2X ile
+  // şişiyor, aynı beceriye sahip iki çocuk farklı hızlara çıkıyordu.
+  const [correctCount, setCorrectCount] = useState(0);
   const [streak, setStreak] = useState(0);
   const [lives, setLives] = useState(3);
   const [paused, setPaused] = useState(true);
@@ -922,7 +927,16 @@ const SubwayGame = () => {
   useEffect(() => { entsRef.current = ents; }, [ents]);
   useEffect(() => { streakRef.current = streak; }, [streak]);
   useEffect(() => { sim.current.running = !paused && !gameOver; }, [paused, gameOver]);
-  useEffect(() => { sim.current.speed = Math.min(MAX_SPEED, BASE_SPEED + score * 0.05); }, [score]);
+  // HIZ RAMPASI — kullanıcı şartı: "doğru yaptıkça hemen çok hızlanmasın".
+  // Eskiden `BASE + score * 0.05` idi: doğru cevap 10-20 puan (2X ile 40)
+  // getirdiği için çocuk 6-11 doğruda tavan hıza çıkıyordu, oyun bir anda
+  // kontrol edilemez hâle geliyordu. Artık ölçüt DOĞRU SAYISI ve rampa
+  // SPEED_FULL doğruya yayılıyor; ilk cevaplarda artış çok yumuşak
+  // (hızlanma hissi t² ile geliyor), tavan ancak uzun bir seansta görülüyor.
+  useEffect(() => {
+    const t = Math.min(1, correctCount / SPEED_FULL);
+    sim.current.speed = BASE_SPEED + (MAX_SPEED - BASE_SPEED) * (t * t * 0.45 + t * 0.55);
+  }, [correctCount]);
 
   // Arapça font geç yüklendiyse pano dokularını tazele
   useEffect(() => {
@@ -1092,6 +1106,7 @@ const SubwayGame = () => {
       playFeedback(true);
       if (!isSuper) { setFlash(true); setTimeout(() => setFlash(false), 450); } // normal modda ışık
       setStreak((st) => st + 1);
+      setCorrectCount((c) => c + 1);
       setScore((sc) => sc + (10 + Math.min(streakRef.current, 5) * 2) * (s.x2T > 0 ? 2 : 1));
       if (s.jetT <= 0 && s.x2T <= 0 && s.magT <= 0) {
         const r = Math.random();
@@ -1168,7 +1183,7 @@ const SubwayGame = () => {
   }, [gameOver]);
 
   const reset = useCallback(() => {
-    setEnts([]); setScore(0); setStreak(0); setLives(3);
+    setEnts([]); setScore(0); setStreak(0); setLives(3); setCorrectCount(0);
     setGameOver(false); setPaused(true); setStarted(false);
     setQuestion(null); setBanner(null); setPu({ jet: 0, x2: 0, mag: 0 });
     gateActive.current = false;
