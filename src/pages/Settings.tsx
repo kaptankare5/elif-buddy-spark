@@ -6,7 +6,8 @@ import { useSettings } from "@/lib/settings";
 import { playFeedback } from "@/lib/audio";
 import { Volume2, Vibrate, GraduationCap, Shield, Trash2, Smartphone } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useGameMode } from "@/lib/gameMode";
+import { useGameMode, FREE_PLAY_MIN_SEEN } from "@/lib/gameMode";
+import { freePlaySeenCount } from "@/pages/games/_shared";
 import { cn } from "@/lib/utils";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +29,14 @@ const Settings = () => {
   const [confirmDeviceDel, setConfirmDeviceDel] = useState(false);
   const [deviceScope, setDeviceScope] = useState<"active" | "guest" | "all">(session ? "active" : "guest");
   const [testUnlock, setTestUnlock] = useTestUnlock();
+  // Serbest Oyun kilidi: havuz yalnız GÖRÜLMÜŞ harflerden kurulduğu için
+  // yeterince harf tanınmadan oyun 4 şık bile kuramaz.
+  const seenCount = freePlaySeenCount();
+  const freeReady = seenCount >= FREE_PLAY_MIN_SEEN;
+  // Şart bozulduysa (ilerleme silindi vb.) sessizce Süper Öğrenme'ye dön.
+  useEffect(() => {
+    if (!freeReady && mode === "normal") setMode("super");
+  }, [freeReady, mode, setMode]);
   const [unlockCode, setUnlockCode] = useState("");
   const { students, active: activeStudent } = useStudents();
   const [studentName, setStudentName] = useState("");
@@ -131,22 +140,58 @@ const Settings = () => {
             />
           </div>
 
-          {/* Öğrenme — mod SEÇİMİ YOK. "Normal oyun modu" kaldırıldı
-              (kullanıcı kararı): oyun oynayıp da seviyesi değişmeyince
-              uygulama "düzgün test etmiyor" hissi veriyordu. */}
-          <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-warning/40">
-            <div className="flex items-center gap-3">
-              <GraduationCap className="h-7 w-7 text-warning" />
+          {/* Oyun Modu — Serbest Oyun en az FREE_PLAY_MIN_SEEN görülmüş harften
+              sonra açılır: havuzu yalnız görülmüş harfler olduğu için daha
+              azıyla oyun 4 şık kuramaz. */}
+          <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">
+            <div className="flex items-center gap-3 mb-3">
+              <GraduationCap className="h-7 w-7 text-primary" />
               <div className="flex-1">
-                <h3 className="text-base font-extrabold text-foreground">⚡ Süper Öğrenme</h3>
-                <p className="text-xs text-muted-foreground">Her oyun bir alıştırmadır</p>
+                <h3 className="text-base font-extrabold text-foreground">Oyun Modu</h3>
+                <p className="text-xs text-muted-foreground">Öğrenme zorluğunu seç</p>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => freeReady && setMode("normal")}
+                disabled={!freeReady}
+                className={cn(
+                  "rounded-2xl p-3 border-2 font-extrabold text-sm text-left transition-bouncy",
+                  !freeReady
+                    ? "bg-muted/30 border-border text-muted-foreground opacity-60"
+                    : mode === "normal"
+                      ? "bg-primary text-primary-foreground border-primary shadow-soft"
+                      : "bg-muted/40 border-border text-foreground",
+                )}
+              >
+                {freeReady ? "🎮 Serbest Oyun" : "🔒 Serbest Oyun"}
+                <div className="text-[10px] font-bold text-muted-foreground mt-1">
+                  {freeReady
+                    ? "Sadece eğlence"
+                    : `${seenCount}/${FREE_PLAY_MIN_SEEN} harf — önce biraz öğrenelim`}
+                </div>
+              </button>
+              <button
+                onClick={() => setMode("super")}
+                className={cn(
+                  "rounded-2xl p-3 border-2 font-extrabold text-sm text-left transition-bouncy relative",
+                  mode === "super"
+                    ? "bg-warning text-warning-foreground border-warning shadow-soft"
+                    : "bg-muted/40 border-border text-foreground",
+                )}
+              >
+                ⚡ Süper Öğrenme
+                <div className="text-[10px] font-bold text-muted-foreground mt-1">Her zaman test, hep ilerleme</div>
+              </button>
+            </div>
             <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
-              Oyunlarda verilen <b>her cevap</b> harfin seviyesine işler — oynadıkça
-              ilerlersin. Bir harfi <b>ilk kez</b> görüyorsan doğru şık parlamaz
-              (gerçekten biliyor musun, onu ölçüyoruz); ikinci karşılaşmadan
-              itibaren zorlanırsan ipucu halkası yardıma gelir.
+              <b>Süper Öğrenme:</b> her oyun cevabı harfin seviyesine işler. Bir harfi
+              ilk kez görüyorsan doğru şık parlamaz — gerçekten biliyor musun, onu
+              ölçüyoruz; sonraki karşılaşmalarda zorlanırsan ipucu halkası gelir.
+              <br />
+              <b>Serbest Oyun:</b> seviye değişmez, ipuçları hep açıktır ve
+              <b> yalnız daha önce gördüğün harfler</b> çıkar — yeni bir harfle ilk
+              tanışma her zaman Süper Öğrenme'de, Test'te veya Flashcard'da olur.
             </p>
           </div>
 

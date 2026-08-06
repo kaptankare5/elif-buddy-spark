@@ -12,7 +12,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { clearRecentAsked, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
 import { __resetSelectorState, getTopicSrs, resetTopicSrs } from "@/data/srs";
 import { getAllTopics } from "@/data/subjects";
-import { setGameMode } from "@/lib/gameMode";
+import { setGameMode, FREE_PLAY_MIN_SEEN } from "@/lib/gameMode";
+import { canPlayFreeMode, freePlaySeenCount, gamePool } from "@/pages/games/_shared";
 
 const topics = getAllTopics();
 const t1 = topics[0];
@@ -90,5 +91,59 @@ describe("oyun kapılarına soru dağıtımı", () => {
     recordGameAnswer(it, true, { gameId: "party", chosenId: it.id, shownIds: [it.id] });
     // Görüldüğü için seçici artık ikinci harfe geçebilmeli.
     expect(pickNextGameItem(pool)!.id).not.toBe(it.id);
+  });
+});
+
+// SERBEST OYUN (normal mod) HAVUZU — ipucu halkası orada hep açık olduğu
+// için harfin İLK karşılaşması serbest oyunda yaşanmamalı; yoksa çocuk
+// harfi tanımadan ipucuna basar ve "zaten biliyormuş" ölçümü çöker.
+describe("serbest oyun havuzu yalnız görülmüş harfler", () => {
+  it("taze ilerlemede serbest oyun havuzu BOŞ, süper mod havuzu dolu", () => {
+    setGameMode("super");
+    expect(gamePool().length).toBeGreaterThan(0);
+    setGameMode("normal");
+    expect(gamePool()).toHaveLength(0);
+  });
+
+  it("görülen harfler serbest oyun havuzuna girer, görülmeyenler girmez", () => {
+    setGameMode("super");
+    const gorulen = gamePool().slice(0, 3);
+    for (const it of gorulen) {
+      recordGameAnswer(it, true, { gameId: "party", chosenId: it.id, shownIds: [it.id] });
+    }
+    setGameMode("normal");
+    const serbest = gamePool().map((i) => i.id);
+    expect(serbest.sort()).toEqual(gorulen.map((i) => i.id).sort());
+  });
+
+  it("serbest oyun kilidi FREE_PLAY_MIN_SEEN görülmüş harfe kadar kapalı", () => {
+    // Taze ilerlemede yalnız 1. bölüm açık (4 harf). Eşiği sınamak için tüm
+    // bölümleri açan test kilidini kullanıyoruz — gerçek çocukta serbest oyun
+    // 2. bölüm açıldıktan sonra (8 harf görülünce) devreye girer.
+    localStorage.setItem("elifba-test-unlock-v1", "1");
+    setGameMode("super");
+    const hepsi = gamePool();
+    expect(hepsi.length).toBeGreaterThan(FREE_PLAY_MIN_SEEN);
+    expect(canPlayFreeMode()).toBe(false);
+    for (const it of hepsi.slice(0, FREE_PLAY_MIN_SEEN - 1)) {
+      recordGameAnswer(it, true, { gameId: "party", chosenId: it.id, shownIds: [it.id] });
+    }
+    expect(freePlaySeenCount()).toBe(FREE_PLAY_MIN_SEEN - 1);
+    expect(canPlayFreeMode()).toBe(false);          // 1 eksik → hâlâ kapalı
+    const son = hepsi[FREE_PLAY_MIN_SEEN - 1];
+    recordGameAnswer(son, true, { gameId: "party", chosenId: son.id, shownIds: [son.id] });
+    expect(canPlayFreeMode()).toBe(true);           // eşiğe varınca açılır
+  });
+
+  it("serbest oyunda verilen cevap seviyeyi DEĞİŞTİRMEZ (sadece eğlence)", () => {
+    setGameMode("super");
+    const it0 = gamePool()[0];
+    recordGameAnswer(it0, true, { gameId: "party", chosenId: it0.id, shownIds: [it0.id] });
+    const once = getTopicSrs("quiz", t1.id)[it0.id]!.level;
+    setGameMode("normal");
+    for (let i = 0; i < 5; i++) {
+      recordGameAnswer(it0, false, { gameId: "party", chosenId: "l1-99", shownIds: [it0.id] });
+    }
+    expect(getTopicSrs("quiz", t1.id)[it0.id]!.level).toBe(once);
   });
 });
