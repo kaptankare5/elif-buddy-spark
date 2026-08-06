@@ -295,7 +295,14 @@ function buildHarekeExtras(): ContentItem[] {
         emoji: form + HV_MARK[hv],
         translit: read,
         audio: audioPath(`hareke-${pad2(l.n)}-${suf}.mp3`),
-        section: "Ekstralar",
+        section: bolum(l.n),
+        // ÖLÇÜLEN: harekeyi bildiği varsayılır, hata harfin ŞEKLİNE
+        // yazılır. 2. konuda (Yazılışlar) alıştırmasız geçilen
+        // başta/ortada/sonda hâlleri asıl burada ölçülür.
+        skill: `l2-${pad2(l.n)}-${pos}`,
+        // Şıklar AYNI HAREKELİ olmalı: ölçülen harfin şekli,
+        // harekeler karışsaydı çocuk sesteki ünlüden eler, şekle bakmazdı.
+        distractorKey: `hv-${hv}`,
       });
     }
   }
@@ -306,6 +313,9 @@ const t3_harekeler: ContentTopic = {
   id: "harekeler",
   parent: P,
   title: "3. Harekeler",
+  // Şıklar aynı harfin üç harekesi (بَ بِ بُ) — dördüncü şık başka harf
+  // olurdu ve çocuk harekeye bakmadan elerdi.
+  optionCount: 3,
   description: "Fetha, esre ve ötre",
   emoji: "ﹷ",
   practiceMode: "visual",
@@ -329,14 +339,42 @@ const t3_harekeler: ContentTopic = {
           translit: sesMap[h.vowel],
           audio: audioPath(`hareke-${pad2(l.n)}-${h.suf}.mp3`),
           section: bolum(l.n),
+          // ÖLÇÜLEN: harf değil HAREKE. 84 hece sorulur ama yeni bilgi 3
+          // tanedir (28 harf 1. konuda öğrenildi). Çocuk üstün/esre/ötreyi
+          // ayırt edebiliyorsa konu biter — bkz. src/lib/skills.ts.
+          skill: `hrk-${h.suf}`,
+          // Şıklar AYNI HARF olmalı (بَ بِ بُ): ölçülen hareke,
+          // farklı harf koyulsaydı çocuk harften tanır, harekeye bakmazdı.
+          distractorKey: `harf-${pad2(l.n)}`,
         };
       }),
     ),
-    ...buildHarekeExtras(),
   ],
 };
 
-// 4. KONU — CEZM: her harf (Elif hariç, Kef için ses yok)
+// 4. KONU — HARF + HAREKE ALIŞTIRMASI (yeni müfredat).
+//
+// 2. konu (Yazılışlar) alıştırmasız geçiliyor: çocuk başta/ortada/sonda
+// hâllerini görüyor ama tek başına 84 şekil ezberlemiyor. Asıl alıştırma
+// BURADA, harekeyle birlikte: "şe" diye sorulur, doğru cevap şın'ın
+// ORTADAKİ hâli + fetha, şıklar fethalı başka harflerdir.
+//
+// ⚠️ Ölçülen HAREKE DEĞİL, harfin ŞEKLİ (skill: l2-NN-pos). Bu ancak
+// hareke gerçekten biliniyorsa doğru bir çıkarımdır — o yüzden bu konu
+// 3. konu bitmeden açılmaz ve hareke becerileri arada yoklanmaya devam
+// eder (questionSource bakım kanalı).
+const t4_harf_hareke: ContentTopic = {
+  id: "harf-hareke",
+  parent: P,
+  title: "4. Harf + Hareke Alıştırması",
+  description: "Harflerin başta/ortada/sonda hâlleri, harekeyle",
+  emoji: "ﺷَ",
+  practiceMode: "visual",
+  gridCols: 3,
+  items: buildHarekeExtras(),
+};
+
+// 5. KONU — CEZM: her harf (Elif hariç, Kef için ses yok)
 const CEZM_MISSING = new Set([22]); // 22=Kef ses yok
 
 // Kur'an sıklığına göre seçilmiş cezm heceleri (tam Kur'an taraması,
@@ -365,7 +403,7 @@ const CEZM_EKSTRA: Array<[string, string, number]> = [
 const t4_cezm: ContentTopic = {
   id: "cezm",
   parent: P,
-  title: "4. Cezm",
+  title: "5. Cezm",
   description: "Cezimli okuyuş (eb, ib, üb…)",
   emoji: "ﹿ",
   practiceMode: "visual",
@@ -448,7 +486,7 @@ const SEDDE_ELIF_PRE: Record<"fetha" | "esre" | "otre", string> = {
 const t5_sedde: ContentTopic = {
   id: "sedde",
   parent: P,
-  title: "5. Şedde",
+  title: "6. Şedde",
   description: "Şeddeli okuyuş (ebbe, ibbi, übbü…)",
   emoji: "ﹽ",
   practiceMode: "visual",
@@ -557,7 +595,7 @@ function medVowel(thick: Thickness, suf: "fetha" | "esre" | "otre"): string {
 const t6_med: ContentTopic = {
   id: "med",
   parent: P,
-  title: "6. Med Harfleri",
+  title: "7. Med Harfleri",
   description: "Elif, vav ve ye ile uzatma",
   emoji: "ﺁ",
   practiceMode: "visual",
@@ -598,7 +636,7 @@ const t6_med: ContentTopic = {
 const t7_asar: ContentTopic = {
   id: "asar-med-kasr",
   parent: P,
-  title: "7. Âsar, Med ve Kasr",
+  title: "8. Âsar, Med ve Kasr",
   description: "Uzatma işaretleri — videoyu izle",
   emoji: "ﻵ",
   practiceMode: "visual",
@@ -620,7 +658,7 @@ const TENVIN_EKSTRA: Array<[string, string]> = [
 const t8_tenvin: ContentTopic = {
   id: "tenvin",
   parent: P,
-  title: "8. Tenvin",
+  title: "9. Tenvin",
   description: "İki üstün, iki esre, iki ötre",
   emoji: "ࣰ",
   practiceMode: "visual",
@@ -662,7 +700,7 @@ const t8_tenvin: ContentTopic = {
 const t9_zamir: ContentTopic = {
   id: "zamir-lafzatullah",
   parent: P,
-  title: "9. Zamir ve Lafzatullah",
+  title: "10. Zamir ve Lafzatullah",
   description: "Allah lafzının okunuşu",
   emoji: "ﷲ",
   practiceMode: "visual",
@@ -692,7 +730,7 @@ const t9_zamir: ContentTopic = {
 const t10_elif_lam: ContentTopic = {
   id: "elif-lam-ra",
   parent: P,
-  title: "10. Elif-Lâm Takısı ve Râ",
+  title: "11. Elif-Lâm Takısı ve Râ",
   description: "ال takısı ve râ harfinin okunuşu",
   emoji: "ﺍﻟ",
   practiceMode: "visual",
@@ -722,6 +760,7 @@ export const elifbaTopics: ContentTopic[] = [
   t1_harfler,
   t2_yazilislar,
   t3_harekeler,
+  t4_harf_hareke,
   t4_cezm,
   t5_sedde,
   t6_med,
