@@ -9,6 +9,8 @@
 import { PageHeader } from "@/components/PageHeader";
 import { getAllTopics } from "@/data/subjects";
 import { getTopicSrs, useSrsTick } from "@/data/srs";
+import { skillIdsOf } from "@/lib/skills";
+import { practiceItems } from "@/lib/unlock";
 import { getStreak } from "@/lib/streak";
 import { useStudents } from "@/lib/students";
 import { Link } from "react-router-dom";
@@ -53,9 +55,11 @@ function computeSummary() {
   for (const t of topics) {
     const srs = getTopicSrs("quiz", t.id);
     let topicNew = 0;
-    for (const it of t.items) {
+    // Beceri anahtarıyla say (skills.ts): öğe id'siyle sayınca Harekeler
+    // gibi konularda hiçbir şey görünmüyor, toplam da şişiyordu.
+    for (const sk of skillIdsOf(practiceItems(t.items))) {
       total++;
-      const e = srs[it.id];
+      const e = srs[sk];
       if (!e) continue;
       if ((e.lastSeen ?? 0) >= t0) practicedToday++;
       if ((e.learnedAt ?? 0) >= t0) { learnedToday++; topicNew++; }

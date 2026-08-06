@@ -13,14 +13,24 @@ import { useStudents } from "@/lib/students";
 import { StudentSwitcher } from "@/components/StudentSwitcher";
 import type { ContentTopic } from "@/data/types";
 import { cn } from "@/lib/utils";
+import { skillIdsOf } from "@/lib/skills";
+import { practiceItems } from "@/lib/unlock";
 
-// Konu ilerlemesi: kaç öğe ustalaşıldı (seviye 3+). noPractice konular ölçülmez.
+// Konu ilerlemesi: kaç BECERİ ustalaşıldı (seviye 3+). noPractice konular
+// ölçülmez.
+// ⚠️ ÖĞE DEĞİL BECERİ: SRS artık beceri anahtarıyla yazılıyor (skills.ts).
+// Öğe id'siyle okununca Harekeler "0/84" görünüyordu — 84 öğe var ama SRS'te
+// yalnız 3 anahtar (hrk-fetha/esre/otre) tutuluyor. Ayrıca alıştırması
+// olmayan öğeler (practice: false) paydaya girmemeli; Şedde'de 95 öğenin
+// yalnız 26'sı soruluyor.
 function topicProgress(t: ContentTopic): { done: number; total: number; pct: number } {
-  if (t.noPractice || t.items.length === 0) return { done: 0, total: 0, pct: 0 };
+  if (t.noPractice) return { done: 0, total: 0, pct: 0 };
+  const skills = skillIdsOf(practiceItems(t.items));
+  if (skills.length === 0) return { done: 0, total: 0, pct: 0 };
   const srs = getTopicSrs("quiz", t.id);
   let done = 0;
-  for (const it of t.items) if (((srs[it.id]?.level ?? 1) as Level) >= 3) done++;
-  return { done, total: t.items.length, pct: Math.round((done / t.items.length) * 100) };
+  for (const sk of skills) if (((srs[sk]?.level ?? 1) as Level) >= 3) done++;
+  return { done, total: skills.length, pct: Math.round((done / skills.length) * 100) };
 }
 
 const Index = () => {
