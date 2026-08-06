@@ -7,8 +7,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getAllTopics } from "@/data/subjects";
 import { getTopicSrs, recordSrsAnswer, __resetSelectorState, type Level } from "@/data/srs";
-import { isTopicCompleted, getUnlockedSections } from "@/lib/unlock";
-import { skillOf, skillIdsOf, topicSkillIds, itemsForSkill, pickItemForSkill } from "@/lib/skills";
+import { isTopicCompleted, getUnlockedSections, practiceItems } from "@/lib/unlock";
+import { skillOf, skillIdsOf, topicSkillIds, itemsForSkill, pickItemForSkill, blameTarget, skillLevel, PREREQ_LEVEL } from "@/lib/skills";
 import { pickDistractors, resetConfusion, __resetConfusionCache } from "@/lib/confusion";
 import { letterNumOf } from "@/lib/confusables";
 
@@ -181,5 +181,83 @@ describe("çeldirici kısıtı (distractorKey)", () => {
     const wrongs = pickDistractors(harfler.items, be, 3);
     expect(wrongs).toHaveLength(3);
     expect(wrongs.every((w) => w.id !== be.id)).toBe(true);
+  });
+});
+
+// ÖĞRETME ÖRNEKLEMİ + ÖN KOŞUL — yeni müfredatın son iki kuralı.
+describe("öğretme örneklemi (practice: false)", () => {
+  it("Şedde/Med/Tenvin'de yalnız 4 harf sorulur, gerisi görülür", () => {
+    for (const id of ["sedde", "med", "tenvin"]) {
+      const t = T(id);
+      const sorulan = practiceItems(t.items);
+      expect(sorulan.length, id).toBeLessThan(t.items.length);
+      // Çekirdek örneklem 4 harf (× 3 hareke) + Ekstralar
+      const cekirdek = sorulan.filter((i) => i.section !== "Ekstralar");
+      const harfler = new Set(cekirdek.map((i) => i.id.split("-")[1]));
+      expect(harfler.size, id).toBe(4);
+      // Sorulmayan öğeler konu sayfasında DURUYOR (silinmedi)
+      expect(t.items.length).toBeGreaterThan(80);
+    }
+  });
+
+  it("Cezm İSTİSNA: bütün harfler sorulur (yeni alfabe gibi)", () => {
+    const t = T("cezm");
+    expect(practiceItems(t.items)).toHaveLength(t.items.length);
+  });
+
+  it("Ekstralar L4'te bile diğerlerinden daha sık sorulur (bilet ağırlığı)", () => {
+    for (const id of ["cezm", "sedde", "med", "tenvin"]) {
+      const t = T(id);
+      const ekstra = t.items.filter((i) => i.section === "Ekstralar");
+      const cekirdek = t.items.filter((i) => i.section !== "Ekstralar");
+      expect(ekstra.length, id).toBeGreaterThan(0);
+      const enAzEkstra = Math.min(...ekstra.map((i) => i.weight ?? 3));
+      const enCokCekirdek = Math.max(...cekirdek.map((i) => i.weight ?? 3));
+      expect(enAzEkstra, id).toBeGreaterThan(enCokCekirdek);
+    }
+  });
+});
+
+describe("ön koşul (prereqSkill) — yanlış teşhis koymayalım", () => {
+  const t4 = () => T("harf-hareke");
+
+  it("4. konudaki her soru bir hareke ön koşulu taşır", () => {
+    for (const it0 of t4().items) {
+      expect(it0.prereqSkill, it0.id).toMatch(/^hrk-(fetha|esre|otre)$/);
+    }
+  });
+
+  it("hareke ZAYIFSA hata harekeye yazılır, şekle değil", () => {
+    const hedef = t4().items.find((i) => i.prereqSkill === "hrk-fetha")!;
+    // fetha hiç çalışılmamış (L1)
+    const b = blameTarget(hedef, "harf-hareke");
+    expect(b.prereqBlamed).toBe(true);
+    expect(b.skillId).toBe("hrk-fetha");
+    expect(b.topicId).toBe("harekeler");
+  });
+
+  it("hareke L4'teyse hata ŞEKLE yazılır", async () => {
+    await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900 });
+    await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900 });
+    expect(skillLevel("hrk-fetha")).toBe(PREREQ_LEVEL);
+    const hedef = t4().items.find((i) => i.prereqSkill === "hrk-fetha")!;
+    const b = blameTarget(hedef, "harf-hareke");
+    expect(b.prereqBlamed).toBe(false);
+    expect(b.skillId).toBe(skillOf(hedef));
+    expect(b.topicId).toBe("harf-hareke");
+  });
+
+  it("L3 YETMEZ — eşik L4 (biliyor ama tereddütlü sayılmaz)", async () => {
+    // tek doğru → L3
+    await recordSrsAnswer("quiz", "harekeler", "hrk-esre", true, { responseMs: 900 });
+    expect(skillLevel("hrk-esre")).toBe(3);
+    const hedef = t4().items.find((i) => i.prereqSkill === "hrk-esre")!;
+    expect(blameTarget(hedef, "harf-hareke").prereqBlamed).toBe(true);
+  });
+
+  it("ön koşulu olmayan konuda davranış değişmez", () => {
+    const be = T("harfler").items[1];
+    const b = blameTarget(be, "harfler");
+    expect(b).toMatchObject({ topicId: "harfler", skillId: be.id, prereqBlamed: false });
   });
 });

@@ -55,7 +55,7 @@ export function isTopicCompleted(topic: ContentTopic): boolean {
   // (aşırı alıştırma); beceri başına sayınca çocuk harekeyi anladığında
   // biter. Skill'i olmayan konularda skillIdsOf öğe id'lerini döndürür,
   // yani davranış aynen korunur.
-  for (const sk of skillIdsOf(topic.items)) {
+  for (const sk of skillIdsOf(practiceItems(topic.items))) {
     const lvl = (srs[sk]?.level ?? 1) as Level;
     if (lvl < 3) return false;
   }
@@ -127,7 +127,7 @@ export function getUnlockedSections(topic: ContentTopic): Set<string> {
   const srs = getTopicSrs(NS, topic.id);
   for (const sec of order) {
     out.add(sec);
-    const items = topic.items.filter((it) => it.section === sec);
+    const items = practiceItems(topic.items).filter((it) => it.section === sec);
     // Bölüm de BECERİ üzerinden ustalaşır. Harekeler'de her bölüm aynı 3
     // beceriyi taşıdığı için ilk bölüm bitince kalanlar kendiliğinden açılır
     // — özel bir kural gerekmiyor, genelleme doğal olarak çalışıyor.
@@ -142,7 +142,12 @@ export function getUnlockedSections(topic: ContentTopic): Set<string> {
 // Konu içinde şu an çalışılabilir öğeler. Bölümsüz öğeler her zaman açıktır.
 export function getUnlockedItemsOf(topic: ContentTopic): ContentItem[] {
   const secs = getUnlockedSections(topic);
-  return topic.items.filter((it) => !it.section || secs.has(it.section));
+  return practiceItems(topic.items).filter((it) => !it.section || secs.has(it.section));
+}
+
+/** Alıştırmada sorulabilir öğeler — `practice: false` olanlar yalnız görülür. */
+export function practiceItems(items: ContentItem[]): ContentItem[] {
+  return items.filter((it) => it.practice !== false);
 }
 
 // Tüm açık konulardaki açık öğelerin id kümesi — oyun havuzu bunu kullanır.

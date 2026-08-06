@@ -18,7 +18,7 @@ import { getGameMode } from "@/lib/gameMode";
 import { recordConfusionPick, recordDiscrimination, recordMiss } from "@/lib/confusion";
 import { considerRemedy, queueRemedy } from "@/lib/remedial";
 import type { ContentItem } from "@/data/types";
-import { pickItemForSkill, skillOf } from "@/lib/skills";
+import { blameTarget, pickItemForSkill, skillOf } from "@/lib/skills";
 
 const NS = "quiz" as const;
 
@@ -43,7 +43,12 @@ export function recordGameAnswer(
   if (getGameMode() !== "super" && meta?.gameId !== "quiz") return;
 
   try {
-    recordSrsAnswer(NS, t.topicId, skillOf(item), correct, meta);
+    // Yanlışta ön koşul kontrolü (bkz. skills.blameTarget): hareke sağlam
+    // değilse hata şekle değil harekeye yazılır.
+    const hedef = correct
+      ? { topicId: t.topicId, skillId: skillOf(item) }
+      : blameTarget(item, t.topicId);
+    recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct, meta);
   } catch { /* ignore */ }
 }
 
@@ -58,7 +63,10 @@ export function recordInGameTest(
   const t = findTopicOfItem(item.id);
   if (!t) return;
   recordConfusionSignal(skillOf(item), correct, meta?.chosenId, meta?.shownIds);
-  try { recordSrsAnswer(NS, t.topicId, skillOf(item), correct); } catch { /* ignore */ }
+  const hedef = correct
+    ? { topicId: t.topicId, skillId: skillOf(item) }
+    : blameTarget(item, t.topicId);
+  try { recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct); } catch { /* ignore */ }
 }
 
 /** Oyun cevabını karışıklık motoruna aktar (tek merkez). */

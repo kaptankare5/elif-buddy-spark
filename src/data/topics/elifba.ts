@@ -303,6 +303,9 @@ function buildHarekeExtras(): ContentItem[] {
         // Şıklar AYNI HAREKELİ olmalı: ölçülen harfin şekli,
         // harekeler karışsaydı çocuk sesteki ünlüden eler, şekle bakmazdı.
         distractorKey: `hv-${hv}`,
+        // Bu soru harekeyi BİLDİĞİNİ varsayar. Hareke L4 değilse yanlış
+        // cevap şekle değil HAREKEYE yazılır (yanlış teşhis olmasın).
+        prereqSkill: `hrk-${suf}`,
       });
     }
   }
@@ -351,6 +354,31 @@ const t3_harekeler: ContentTopic = {
     ),
   ],
 };
+
+// ÖĞRETME ÖRNEKLEMİ — Şedde / Med / Tenvin konularında alıştırması yapılan
+// harfler. Bu üç konuda kural ÜÇTÜR (fetha/esre/ötre) ve harfler 1. konuda
+// zaten öğrenildi; 28 harfin hepsini tek tek sormak 190 doğru cevap demek —
+// aşırı alıştırma. Kuralı GÖSTERMEYE yetecek kadar örnek sorulur, gerisi
+// konu sayfasında görülüp dinlenir, asıl alıştırma "Ekstralar"daki gerçek
+// Kur'an ibareleridir (kullanıcı kararı).
+//
+// Seçim: Be (diş ailesinin temsilcisi, en sık), Râ (bağlanmayan + kalın/ince
+// karışık), Sin (çanaklı iskelet), Mim (yuvarlak gövde) — dört farklı harf
+// iskeleti, yani kural dört ayrı şekilde görülür.
+// ⚠️ CEZM BU LİSTEYİ KULLANMAZ: orada eb/ib/üb yeni bir alfabe gibi
+// öğreniliyor, bütün harfler sorulur (kullanıcı kararı).
+const OGRETME_ORNEKLEMI = new Set([2, 10, 12, 24]); // Be, Râ, Sin, Mim
+//
+// Ekstralar L4'e çıksa bile diğer L4 öğelerden DAHA SIK sorulmalı
+// (kullanıcı kararı): onlar gerçek Kur'an ibareleri, çekirdek heceler ise
+// yalnız kuralın örneği.
+//
+// ⚠️ Çarpan YETMEZ, TABAN gerekiyor: en seyrek Ekstra'nın kendi frekans
+// ağırlığı 1; ikiyle çarpınca 2 eder ve çekirdeğin varsayılanının (3)
+// ALTINDA kalırdı — yani o Ekstra diğerlerinden daha AZ sorulurdu.
+// Çekirdek tabanı ekleniyor: en seyrek Ekstra bile 5 bilet alır.
+const CEKIRDEK_AGIRLIK = 3;
+const ekstraAgirlik = (frekans: number) => CEKIRDEK_AGIRLIK + frekans * 2;
 
 // 4. KONU — HARF + HAREKE ALIŞTIRMASI (yeni müfredat).
 //
@@ -448,7 +476,7 @@ const t4_cezm: ContentTopic = {
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
-      weight: w,
+      weight: ekstraAgirlik(w),
     })),
   ],
 };
@@ -517,6 +545,8 @@ const t5_sedde: ContentTopic = {
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
           section: bolum(l.n),
+          // Yalnız öğretme örneklemi sorulur; gerisi görülür/dinlenir.
+          practice: OGRETME_ORNEKLEMI.has(l.n),
         };
       });
     }),
@@ -528,7 +558,7 @@ const t5_sedde: ContentTopic = {
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
-      weight: w,
+      weight: ekstraAgirlik(w),
     })),
   ],
 };
@@ -615,6 +645,8 @@ const t6_med: ContentTopic = {
           translit: sp,
           audio: audioPath(`med-${pad2(l.n)}-${m.suf}.mp3`),
           section: bolum(l.n),
+          // Yalnız öğretme örneklemi sorulur; gerisi görülür/dinlenir.
+          practice: OGRETME_ORNEKLEMI.has(l.n),
         };
       }),
     ),
@@ -627,7 +659,7 @@ const t6_med: ContentTopic = {
       translit: sp,
       audio: medAudio(ar),
       section: "Ekstralar",
-      weight: w,
+      weight: ekstraAgirlik(w),
     })),
   ],
 };
@@ -682,6 +714,8 @@ const t8_tenvin: ContentTopic = {
         translit: d.read,
         audio: audioPath(`tenvin-${pad2(l.n)}-${d.file}.mp3`),
         section: bolum(l.n),
+        // Yalnız öğretme örneklemi sorulur; gerisi görülür/dinlenir.
+        practice: OGRETME_ORNEKLEMI.has(l.n),
       }));
     }),
     ...TENVIN_EKSTRA.map(([ar, sp], i) => ({
@@ -692,6 +726,8 @@ const t8_tenvin: ContentTopic = {
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
+      // Ekstralar L4'te bile diğer L4 öğelerden daha sık sorulsun.
+      weight: ekstraAgirlik(3),
     })),
   ],
 };

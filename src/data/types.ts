@@ -58,6 +58,33 @@ export interface ContentItem {
    * Boşsa kısıt yok — bütün havuz aday (eski davranış).
    */
   distractorKey?: string;
+  /**
+   * ALIŞTIRMA HAVUZUNA GİRSİN Mİ? (varsayılan: evet)
+   *
+   * `false` = öğe konu sayfasında GÖRÜNÜR ve dinlenebilir ama test/flashcard/
+   * oyunlarda hiç SORULMAZ, konu tamamlanma sayımına da girmez.
+   *
+   * Şedde/Med/Tenvin konularında 28 harfin hepsini tek tek sormak gereksiz:
+   * kural üçtür (fetha/esre/ötre), harfler 1. konuda zaten öğrenildi. Bu
+   * konularda ÖĞRETME AMAÇLI küçük bir örneklem (4 harf) sorulur, gerisi
+   * yalnız görülür; asıl alıştırma "Ekstralar"daki gerçek Kur'an
+   * ibareleridir. (Cezm İSTİSNA — orada eb/ib/üb yeni bir alfabe gibidir,
+   * bütün harfler sorulur. Kullanıcı kararı.)
+   */
+  practice?: boolean;
+  /**
+   * ÖN KOŞUL BECERİSİ — bu soru başka bir beceriyi BİLDİĞİNİ varsayar.
+   *
+   * "4. Harf + Hareke"de "şe" sorusu şın'ın ortadaki hâlini ölçer AMA bu
+   * ancak çocuk fethayı gerçekten biliyorsa geçerli bir çıkarımdır. Fetha
+   * henüz sağlam değilse hatayı harfin şekline yazmak YANLIŞ teşhis olur —
+   * çocuk aslında harekeyi bilmiyordur.
+   *
+   * Bu yüzden yanlış cevapta ön koşul kontrol edilir: ön koşul L4 ise hata
+   * `skill`'e (şekle) yazılır, değilse ÖN KOŞULA yazılır. Eşik L4'tür
+   * (kullanıcı kararı: "emin ol o konuyu bildiğine").
+   */
+  prereqSkill?: string;
   // Kur'an sıklığı ağırlığı (SRS bilet çarpanı): 3 = çok sık (varsayılan —
   // çekirdek müfredatın tamamı yüksek ve eşit), 2 = sık, 1 = normal.
   // Yalnız Ekstralar öğelerinde 1-2 kullanılır; seviye seçimini değiştirmez,

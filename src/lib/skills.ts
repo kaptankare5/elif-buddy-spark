@@ -19,6 +19,16 @@
 // olur. İkisini karıştırmak sessiz hatalara yol açar (öğe id'siyle yazıp
 // beceri id'siyle okumak gibi).
 import type { ContentItem, ContentTopic } from "@/data/types";
+import { SUBJECTS } from "@/data/subjects";
+import { getTopicSrs, type Level } from "@/data/srs";
+
+/**
+ * ÖN KOŞUL EŞİĞİ — bir beceriyi "kesin biliyor" saymak için gereken seviye.
+ * L4 = otomatiklik (kullanıcı kararı: "emin ol o konuyu bildiğine").
+ * L3 "biliyor ama tereddütlü" demek; o kadarına dayanıp hatayı başka bir
+ * beceriye yazmak yanlış teşhis riski taşır.
+ */
+export const PREREQ_LEVEL: Level = 4;
 
 /** Bu öğe cevaplandığında hangi anahtarın seviyesi değişir? */
 export function skillOf(item: ContentItem): string {
@@ -68,4 +78,55 @@ export function pickItemForSkill(items: ContentItem[], skillId: string): Content
 /** Konu "beceri temelli" mi? (en az bir öğede ayrı skill var) */
 export function isSkillTopic(topic: ContentTopic): boolean {
   return topic.items.some((it) => !!it.skill);
+}
+
+
+// --- ÖN KOŞUL (prereqSkill) ---
+// "4. Harf + Hareke"de "şe" sorusu şın'ın ortadaki hâlini ölçer, AMA bu ancak
+// çocuk fethayı gerçekten biliyorsa geçerli bir çıkarımdır. Fetha sağlam
+// değilse yanlış cevabı harfin şekline yazmak YANLIŞ TEŞHİS olur — çocuk
+// aslında harekeyi bilmiyordur ve şekil boşuna cezalandırılır.
+
+let _skillTopic: Map<string, string> | null = null;
+/** Bu beceri hangi konunun SRS kovasında tutuluyor? */
+export function topicIdOfSkill(skillId: string): string | undefined {
+  if (!_skillTopic) {
+    _skillTopic = new Map();
+    for (const s of SUBJECTS) {
+      for (const t of s.topics) {
+        for (const it of t.items) {
+          const sk = skillOf(it);
+          if (!_skillTopic.has(sk)) _skillTopic.set(sk, t.id);
+        }
+      }
+    }
+  }
+  return _skillTopic.get(skillId);
+}
+
+/** Bir becerinin şu anki seviyesi (bilinmiyorsa 1). */
+export function skillLevel(skillId: string, ns: "quiz" | "games" = "quiz"): Level {
+  const tid = topicIdOfSkill(skillId);
+  if (!tid) return 1;
+  return (getTopicSrs(ns, tid)[skillId]?.level ?? 1) as Level;
+}
+
+/**
+ * YANLIŞ cevap kimin hanesine yazılsın?
+ *
+ * Ön koşul yoksa ya da ön koşul L4'teyse → öğenin kendi becerisi (şekil).
+ * Ön koşul zayıfsa → ÖN KOŞUL. Çocuk "şe"yi bilemediyse ve fethası da
+ * sağlam değilse, sorun büyük ihtimalle şın'ın şekli değil fethadır.
+ */
+export function blameTarget(
+  item: ContentItem,
+  fallbackTopicId: string,
+): { topicId: string; skillId: string; prereqBlamed: boolean } {
+  const own = { topicId: fallbackTopicId, skillId: skillOf(item), prereqBlamed: false };
+  const pre = item.prereqSkill;
+  if (!pre) return own;
+  if (skillLevel(pre) >= PREREQ_LEVEL) return own;
+  const tid = topicIdOfSkill(pre);
+  if (!tid) return own;
+  return { topicId: tid, skillId: pre, prereqBlamed: true };
 }

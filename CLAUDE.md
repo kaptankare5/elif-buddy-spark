@@ -48,12 +48,56 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
   hareke okunuşları üretilir (kalın 7 harf a/ı/u; Râ karışık ra/ri/ru;
   gerisi e/i/ü). Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
-- 10 konu; 7/9/10 video'lu (`topic.video`, YouTube gömme Topic.tsx'te).
+- **11 konu** (yeni müfredat); video'lu olanlar `topic.video`.
+
+### ⚠️ BECERİ KATMANI (`src/lib/skills.ts`) — yeni müfredatın çekirdeği
+"Soru neyi GÖSTERİR" ile "soru neyi ÖLÇER" ayrıdır. `ContentItem.skill`
+boşsa beceri = öğe id'si (eski davranış). Cevaptan sonraki HER ŞEY (SRS
+seviyesi, karışıklık ısısı, telafi) beceriyle çalışır; soru üretimi
+tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
+öğelerden birini soru yapar. İkisini karıştırmak sessiz hata üretir.
+- **3. Harekeler**: 84 hece sorulur, ölçülen **3** şey (`hrk-fetha/esre/otre`).
+  Konu 168 değil **6** cevapta biter. `optionCount: 3` — şıklar aynı harfin
+  üç harekesi (بَ بِ بُ); 4. şık başka harf olurdu, çocuk harekeye bakmadan
+  elerdi. `distractorKey` = harf numarası.
+- **4. Harf + Hareke Alıştırması** (`harf-hareke`): "şe" sorulur, ölçülen
+  şın'ın ORTADAKİ hâli (`skill: l2-13-med`). 2. konuda (Yazılışlar,
+  `noPractice`) alıştırmasız geçilen şekiller asıl burada ölçülür.
+  `distractorKey` = hareke sesi → şıklar hep aynı harekeli.
+- `distractorKey` kısıtı **sessizce düşmez**: aday azsa ŞIK AZ olur. Eskiden
+  düşüyordu ve soru ölçmek istediğini ölçmüyordu (testi var).
+- `prereqSkill` + `blameTarget`: 4. konudaki yanlış, hareke **L4**
+  (`PREREQ_LEVEL`) değilse ŞEKLE değil HAREKEYE yazılır — yanlış teşhis
+  koymamak için. L3 yetmez ("biliyor ama tereddütlü").
+- `practice: false` = öğe sayfada görünür ama HİÇ SORULMAZ, tamamlanma
+  sayımına girmez. Şedde/Med/Tenvin'de yalnız `OGRETME_ORNEKLEMI`
+  (Be, Râ, Sin, Mim) sorulur; asıl alıştırma Ekstralar'dır.
+  **CEZM İSTİSNA** — orada eb/ib/üb yeni alfabe gibi, 28 harfin hepsi.
+- Ekstralar bilet ağırlığı `ekstraAgirlik(f) = 3 + f*2` → L4'te bile
+  çekirdekten sık gelir. ⚠️ Çarpan tek başına YETMEZ: en seyrek Ekstra
+  (f=1) ×2 = 2 ile çekirdeğin altında kalıyordu, taban şart.
+- Topic testi ses şartı uygular (oyun havuzu gibi): kaydı olmayan öğe soru
+  olmaz. Şedde/Tenvin/Cezm Ekstralar'ının kaydı henüz yok — kayıt eklenince
+  süzgeç onları kendiliğinden geri alır. Flashcard süzülmez (soru görsel).
+- Maliyet: Elifbâ'yı bitirmek **1334 → 498** doğru cevap.
+- ⚠️ `git update-index --cacheinfo` YENİ dosya yolu için `--add` ister;
+  onsuz sessizce atlar ve main derlenmez hâlde kalır (bir kez oldu).
 - `item.section` = "N. Bölüm" (yukarı bak) veya "Ekstralar"
   (Diyanet PDF alıştırmalarından). CRLF satır sonları — çok satırlı Edit
   eşleşmesi başarısız olursa nedeni bu (tek satır anchor veya node kullan).
 
 ### Öğrenme sistemi (bilimsel gerekçeli — koru)
+- ⚠️ **HIZLI GEÇİŞ**: harfle İLK KEZ karşılaşıp doğru bilirse doğrudan **L3**,
+  ikinci doğruda L4 (öğrenmek değil "zaten biliyormuş" sayılır). Flashcard'da
+  şık olmadığı için (`meta.selfReport`) tek "Biliyorum" **L4** yapar. Hızlı
+  geçişte SÜRE şartı YOK — ölçtük, koyunca bilen ama temkinli çocuğun geçme
+  oranı %99'dan %87'ye düşüyor.
+- ⚠️ Bunun bekçisi `gameProgress.showHintFor`: oyunda ipucu halkası yalnız L1
+  VE harf DAHA ÖNCE GÖRÜLMÜŞSE yanar. İlk karşılaşmada parlarsa çocuk harfi
+  tanımadan basar ve bilmediği harf L3 olur.
+- **Serbest Oyun** (normal mod) havuzu YALNIZ görülmüş harflerdir ve en az
+  `FREE_PLAY_MIN_SEEN` (8) harf görülmeden açılmaz — orada ipucu hep açık
+  olduğu için ilk karşılaşma yaşanmamalı.
 - ⚠️ `pickNextGameItem` (gameProgress.ts) **son 4 sorulanı havuzdan eler**.
   Seçici SRS durumuna bakar; normal modda cevap SRS'e yazılmadığı için durum
   hiç değişmiyor ve her çağrı aynı harfi döndürüyordu ("sürekli aynı soruyu
