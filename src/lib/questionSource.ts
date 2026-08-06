@@ -19,10 +19,14 @@
 //    çıkıyor (review.ts); önceliği de vermezsek pay hiç kullanılamıyordu.
 import { getFlowBand, type Namespace } from "@/data/srs";
 import { pickReviewItem } from "@/lib/review";
+import { pickForwardProbe } from "@/lib/forwardProbe";
 
 export type QuestionSource =
   | { kind: "retry"; itemId: string }
   | { kind: "review"; topicId: string; itemId: string }
+  /** İleri yoklama: HENÜZ KİLİTLİ sıradaki konudan gizli ölçüm sorusu.
+   *  ⚠️ Cevabı SRS'e YAZILMAZ — çocuk o harfi hiç görmemiş olabilir. */
+  | { kind: "probe"; topicId: string; itemId: string }
   | { kind: "frontier" };
 
 export interface QuestionSourceInput {
@@ -52,6 +56,12 @@ export function pickQuestionSource(input: QuestionSourceInput): QuestionSource {
   if (!struggling) {
     const rev = pickReviewItem(currentTopicId, ns);
     if (rev) return { kind: "review", topicId: rev.topicId, itemId: rev.itemId };
+    // İLERİ YOKLAMA en sonda: bakımın önüne geçmemeli. Bakım ÖĞRETİR
+    // (bilinen harfi tazeler), yoklama yalnız ÖLÇER — biri müfredatın işi,
+    // öteki muhasebesi. Zaten pickForwardProbe kendi içinde de zorlanma
+    // bandında hiç soru vermiyor.
+    const probe = pickForwardProbe(currentTopicId);
+    if (probe) return { kind: "probe", topicId: probe.topicId, itemId: probe.item.id };
   }
 
   return { kind: "frontier" };

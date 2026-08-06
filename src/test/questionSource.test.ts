@@ -101,14 +101,22 @@ describe("zorlanınca kurtarma: önceki konudan soru", () => {
   });
 
   it("önceki konu yoksa (1. konudayken) bakım sorusu gelmez", () => {
-    for (let k = 0; k < 50; k++) {
+    // ⚠️ Artık "frontier" tek seçenek değil: 1. konudayken de İLERİ YOKLAMA
+    // gelebilir (sıradaki kilitli konudan gizli ölçüm). Test bakımın
+    // gelmediğini ölçüyor — onu doğrudan söylüyoruz.
+    let yoklama = 0;
+    for (let k = 0; k < 200; k++) {
       const src = pickQuestionSource({
         retryId: null, retryUsed: false,
         unlockedIds: t1.items.slice(0, 4).map((i) => i.id),
         currentTopicId: t1.id, ns: NS,
       });
-      expect(src.kind).toBe("frontier");
+      expect(src.kind).not.toBe("review");   // geriye bakım YOK
+      expect(["frontier", "probe"]).toContain(src.kind);
+      if (src.kind === "probe") yoklama++;
     }
+    // İleri yoklama seyrek gelir (~%12) — dersin çoğu frontier kalmalı.
+    expect(yoklama).toBeLessThan(80);
   });
 });
 

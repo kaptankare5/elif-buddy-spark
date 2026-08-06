@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { isTopicUnlocked, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
 import { blameTarget, pickItemForSkill, skillIdsOf, skillOf } from "@/lib/skills";
 import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
+import { recordProbe } from "@/lib/forwardProbe";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
 import { SkipTest } from "@/components/SkipTest";
 import { LevelBadge } from "@/components/LevelBadge";
@@ -86,6 +87,9 @@ const Topic = () => {
   // Şu anki soru bir ARA-KONTROL ise, hangi (eski, atlanmış) konudan geldiği.
   // null = normal konu sorusu.
   const backCheckRef = useRef<string | null>(null);
+  // Şu anki soru bir İLERİ YOKLAMA ise (kilitli sıradaki konudan) o konunun
+  // id'si. Yoklama cevabı SRS'e YAZILMAZ — yalnız yoklama sayacına işlenir.
+  const probeRef = useRef<string | null>(null);
 
   const items = topic?.items || [];
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
@@ -117,6 +121,7 @@ const Topic = () => {
 
     const ask = (pool: ContentItem[], targetId: string, reviewTopic: string | null) => {
       backCheckRef.current = reviewTopic;
+      probeRef.current = null;
       setQ(buildQuestion(pool, targetId, topic.optionCount));
       setPicked(null);
       questionStartRef.current = Date.now();
@@ -139,6 +144,22 @@ const Topic = () => {
       retryUsedRef.current = true;   // bu harf tekrar hakkını kullandı
       ask(ownPool(), src.itemId, null);
       return;
+    }
+
+    if (src.kind === "probe") {
+      // Kilitli konudan gizli ölçüm sorusu. Çeldiriciler de O konudan gelir
+      // ki soru normal bir sorudan ayırt edilemesin (stealth assessment).
+      const pt = getTopic("elifba", src.topicId);
+      const pAll = pt ? getUnlockedItemsOf(pt) : [];
+      const pPool = pAll.filter(sesli);
+      if (pPool.length >= 2) {
+        probeRef.current = src.topicId;
+        backCheckRef.current = null;
+        setQ(buildQuestion(pPool, src.itemId, pt?.optionCount));
+        setPicked(null);
+        questionStartRef.current = Date.now();
+        return;
+      }
     }
 
     if (src.kind === "review") {
@@ -445,6 +466,19 @@ const Topic = () => {
     // tanır ve doğru hafıza dersini açabilir.
     if (correct) recordDiscrimination(skillOf(q.target), q.options.map((o) => skillOf(o)));
     else recordConfusionPick(skillOf(q.target), skillOf(opt));
+    // İLERİ YOKLAMA: cevap yalnız yoklama sayacına işlenir, SRS'e DEĞİL.
+    // Kilitli konunun harfini çocuk hiç görmemiş olabilir; −2 seviye yazmak
+    // hiç öğrenmediği bir harfi cezalandırmak olurdu.
+    const probeTopic = probeRef.current;
+    if (probeTopic) {
+      recordProbe(probeTopic, correct);
+      probeRef.current = null;
+      retryIdRef.current = null;
+      retryUsedRef.current = false;
+      setTimeout(() => { setQ(null); setPicked(null); }, 900);
+      return;
+    }
+
     const bcTopic = backCheckRef.current;
     if (bcTopic) {
       // Bakım/ara-kontrol: cevabı O konuya işle (dürüst seviye). Atlanmış konuysa
