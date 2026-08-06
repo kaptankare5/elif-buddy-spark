@@ -17,7 +17,7 @@ import {
 } from "@/data/srs";
 import { cn } from "@/lib/utils";
 import { isTopicUnlocked, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
-import { pickItemForSkill, skillIdsOf, skillOf } from "@/lib/skills";
+import { blameTarget, pickItemForSkill, skillIdsOf, skillOf } from "@/lib/skills";
 import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
 import { SkipTest } from "@/components/SkipTest";
@@ -121,7 +121,18 @@ const Topic = () => {
       setPicked(null);
       questionStartRef.current = Date.now();
     };
-    const ownPool = () => items.filter((it) => unlockedItemIds.includes(it.id));
+    // ⚠️ SES ŞARTI (oyun havuzuyla aynı kural): test sorusu SESLE sorulur
+    // ("Hangisi?" hedefin kaydını çalar). Kaydı olmayan öğe soru olursa
+    // çocuk sessiz bir soru görür, ne sorulduğunu bilemez. Şedde/Tenvin/Cezm
+    // "Ekstralar"ının kaydı henüz yok — kayıtlar eklenince bu süzgeç
+    // kendiliğinden onları geri alır, kodda değişiklik gerekmez.
+    // (Flashcard süzülmez: orada soru GÖRSEL, çocuk kartı görüp beyan eder.)
+    const sesli = (it: ContentItem) => !!it.audio;
+    const ownPool = () => {
+      const acik = items.filter((it) => unlockedItemIds.includes(it.id));
+      const s = acik.filter(sesli);
+      return s.length >= 2 ? s : acik;   // hiç sesli yoksa kilitlenmesin
+    };
 
     if (src.kind === "retry") {
       retryIdRef.current = null;
@@ -134,7 +145,9 @@ const Topic = () => {
       const rt = getTopic("elifba", src.topicId);
       // Çeldiriciler de YALNIZ açık bölümlerden gelmeli — çocuk henüz
       // açmadığı bir harfi şıkta görmesin.
-      const rPool = rt ? getUnlockedItemsOf(rt) : [];
+      const rAll = rt ? getUnlockedItemsOf(rt) : [];
+      const rSesli = rAll.filter(sesli);
+      const rPool = rSesli.length >= 2 ? rSesli : rAll;
       if (rPool.length >= 2) {
         ask(rPool, src.itemId, src.topicId);
         return;
@@ -442,7 +455,15 @@ const Topic = () => {
       retryIdRef.current = null;
       retryUsedRef.current = false;
     } else {
-      await recordSrsAnswer(NS, topic.id, skillOf(q.target), correct, { responseMs });
+      // ⚠️ YANLIŞ cevap kimin hanesine yazılacak? "4. Harf + Hareke"de
+      // "şe" sorusu şın'ın ortadaki hâlini ölçer ama bu ancak fetha
+      // gerçekten biliniyorsa geçerli. Fetha L4 değilse hata ŞEKLE değil
+      // HAREKEYE yazılır — yoksa yanlış teşhis koyup şekli boşuna
+      // cezalandırırdık (kullanıcı kararı, eşik L4).
+      const hedef = correct
+        ? { topicId: topic.id, skillId: skillOf(q.target), prereqBlamed: false }
+        : blameTarget(q.target, topic.id);
+      await recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct, { responseMs });
       // Yanlışsa aynı harf bir sonraki soruda tekrar sorulsun — ama yalnız
       // BİR kez. Tekrar da yanlışsa harf bırakılır; SRS zaten onu yakında
       // geri getirir, bu arada çocuk kolay/eski sorularla toparlanır.

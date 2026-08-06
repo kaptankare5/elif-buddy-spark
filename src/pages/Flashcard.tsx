@@ -14,7 +14,7 @@ import {
   type Level,
 } from "@/data/srs";
 import { isTopicUnlocked, getUnlockedItemsOf } from "@/lib/unlock";
-import { pickItemForSkill, skillIdsOf, skillOf } from "@/lib/skills";
+import { blameTarget, pickItemForSkill, skillIdsOf, skillOf } from "@/lib/skills";
 import { pickReviewItem } from "@/lib/review";
 import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
 import { pickContrastId, recordDiscrimination, recordMiss } from "@/lib/confusion";
@@ -126,7 +126,10 @@ const Flashcard = () => {
     // selfReport: Flashcard'da şık YOK — çocuk kendi beyan ediyor, şansla
     // tutturma ihtimali sıfır. Bu yüzden ilk karşılaşmadaki "Biliyorum"
     // tek seferde ustalık sayılır (doğrudan L4); testte iki doğru gerekir.
-    await recordSrsAnswer(NS, recTopic, skillOf(current), correct, { responseMs, selfReport: true });
+    const hedef = correct
+      ? { topicId: recTopic, skillId: skillOf(current) }
+      : blameTarget(current, recTopic);
+    await recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct, { responseMs, selfReport: true });
     // Karışıklık ölçümü: flashcard'da şık yok, karşıtlık ARDIŞIKTIR — bir
     // önceki kart partnerse doğru cevap gerçek bir ayrımdır. Yanlışta hangi
     // harfle karıştırdığı bilinemez → a-priori partnerlere hafif ısı.
