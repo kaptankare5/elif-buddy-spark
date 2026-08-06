@@ -1,25 +1,43 @@
-// Oyun modu: ARTIK TEK MOD — Süper Öğrenme (kullanıcı kararı).
+// Oyun modu: normal ("Serbest Oyun") | super ("Süper Öğrenme")
+// - normal: SADECE EĞLENCE — ipuçları/halkalar hep açık, cevaplar SRS'e
+//   yazılmaz. ⚠️ Havuzu YALNIZ daha önce görülmüş harflerdir (aşağıya bak).
+// - super: ipucu halkası yalnız L1'de ve ilk karşılaşmada hiç yok; her cevap
+//   seviyeye işler.
 //
-// Eskiden "normal" (sadece eğlence, cevaplar SRS'e yazılmaz) ve "super" (her
-// cevap seviyeye işler) diye iki mod vardı ve Ayarlar'dan seçiliyordu. Normal
-// mod KALDIRILDI: çocuk hangi oyunun ilerlemesine saydığını bilemiyordu,
-// oynadığı hâlde seviyesi değişmeyince uygulama "düzgün test etmiyor"
-// hissi veriyordu. Artık her oyun cevabı sayılır.
-//
-// Tip ve fonksiyonlar İMZASIYLA duruyor (13 oyun ve testler bunları çağırıyor);
-// getGameMode her zaman "super" döner. Oyunlardaki `!isSuper` dalları artık
-// ulaşılamaz — ayrı bir temizlik commit'inde sökülecek, tek commit'te 13
-// oyuna dokunmak gereksiz risk.
+// ⚠️ NEDEN SERBEST OYUN İLK KARŞILAŞMAYA DOKUNAMAZ
+// Bütün ölçüm ilk karşılaşmada yapılıyor: harfi ilk görüşünde doğru bilirse
+// "zaten biliyormuş" sayılıp doğrudan L3'e çıkıyor (srs.ts hızlı geçiş).
+// Serbest oyunda ipucu halkası HEP açık olduğu için çocuk harfi tanımadan da
+// doğru basar. O harf serbest oyunda ilk kez görülürse ölçüm çöker ve
+// bilinmeyen harf ustalaşmış görünür. Bu yüzden serbest oyun havuzu
+// `seen > 0` olan harflerle sınırlıdır — ilk karşılaşmalar YALNIZ süper
+// modda, testte ve Flashcard'da olur. Kullanıcı kararı.
 import { useEffect, useState } from "react";
 
-export type GameMode = "super";
+export type GameMode = "normal" | "super";
 
+const KEY = "elifba-game-mode-v1";
 const EVENT = "elifba-game-mode-updated";
 
-export function getGameMode(): GameMode { return "super"; }
+/**
+ * Serbest Oyun'un açılması için gereken en az GÖRÜLMÜŞ harf sayısı.
+ * Oyunlar 4 şık gösteriyor; havuzda 4'ten az harf varsa şıklar tekrar eder
+ * ya da oyun hiç soru bulamaz. 8, çeşitlilik için rahat bir taban.
+ */
+export const FREE_PLAY_MIN_SEEN = 8;
 
-/** Geriye dönük uyumluluk — mod artık değiştirilemez, çağrı sessizce yutulur. */
-export function setGameMode(_m?: GameMode) {
+// Varsayılan mod Süper Öğrenme — kullanıcı Ayarlar'dan Serbest Oyun'a
+// geçebilir (bu tercih localStorage'a yazılır).
+export function getGameMode(): GameMode {
+  if (typeof window === "undefined") return "super";
+  try {
+    const v = localStorage.getItem(KEY);
+    return v === "normal" ? "normal" : "super";
+  } catch { return "super"; }
+}
+
+export function setGameMode(m: GameMode) {
+  try { localStorage.setItem(KEY, m); } catch { /* ignore */ }
   try { window.dispatchEvent(new Event(EVENT)); } catch { /* ignore */ }
 }
 
@@ -28,7 +46,11 @@ export function useGameMode(): [GameMode, (m: GameMode) => void] {
   useEffect(() => {
     const h = () => setM(getGameMode());
     window.addEventListener(EVENT, h);
-    return () => window.removeEventListener(EVENT, h);
+    window.addEventListener("storage", h);
+    return () => {
+      window.removeEventListener(EVENT, h);
+      window.removeEventListener("storage", h);
+    };
   }, []);
   return [m, setGameMode];
 }

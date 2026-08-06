@@ -1,6 +1,8 @@
 import { flattenItems } from "@/data/subjects";
 import { getUnlockedItemIdSet } from "@/lib/unlock";
 import { pickDistractors, sameSound } from "@/lib/confusion";
+import { FREE_PLAY_MIN_SEEN, getGameMode } from "@/lib/gameMode";
+import { isItemSeen } from "@/lib/gameProgress";
 import type { ContentItem, Lang } from "@/data/types";
 
 export function shuffle<T>(a: T[]): T[] {
@@ -44,9 +46,32 @@ export function setGamePremium(_v: boolean) {
 // havuza giriyordu — "bazı sorularda soru sormadı, sadece cevaplar vardı".)
 // Kayıtsız öğeler konu sayfasında/Flashcard'da görünmeye devam eder; orada
 // soru GÖRSEL sorulur.
+//
+// ⚠️ SERBEST OYUN (normal mod) FİLTRESİ: orada ipucu halkası hep açık ve
+// cevap SRS'e yazılmaz. Harfi İLK KEZ orada görürse, ipucuna basıp doğru
+// yapar ve "zaten biliyormuş" ölçümü çöker. Bu yüzden serbest oyun havuzu
+// yalnız DAHA ÖNCE GÖRÜLMÜŞ (seen > 0) harflerdir; ilk karşılaşmalar
+// süper mod / Test / Flashcard'a aittir. Kullanıcı kararı.
 export function gamePool(_lang?: Lang): ContentItem[] {
   const unlockedIds = getUnlockedItemIdSet();
-  return flattenItems().filter((it) => !!it.emoji && !!it.audio && unlockedIds.has(it.id));
+  const hepsi = flattenItems().filter((it) => !!it.emoji && !!it.audio && unlockedIds.has(it.id));
+  if (getGameMode() === "super") return hepsi;
+  return hepsi.filter((it) => isItemSeen(it));
+}
+
+/**
+ * Serbest Oyun oynanabilir mi? Havuzda en az FREE_PLAY_MIN_SEEN görülmüş
+ * harf olmalı — oyunlar 4 şık gösteriyor, daha azıyla şıklar tekrar eder.
+ */
+export function freePlaySeenCount(): number {
+  const unlockedIds = getUnlockedItemIdSet();
+  return flattenItems()
+    .filter((it) => !!it.emoji && !!it.audio && unlockedIds.has(it.id) && isItemSeen(it))
+    .length;
+}
+
+export function canPlayFreeMode(): boolean {
+  return freePlaySeenCount() >= FREE_PLAY_MIN_SEEN;
 }
 
 export function pickN<T>(arr: T[], n: number): T[] {

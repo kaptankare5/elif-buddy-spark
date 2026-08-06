@@ -158,3 +158,17 @@ export function pickNextGameItem(pool: ContentItem[]): ContentItem | undefined {
   rememberAsked(chosen.id);
   return chosen;
 }
+
+/**
+ * Bu harf DAHA ÖNCE görüldü mü? (SRS'te seen > 0)
+ *
+ * Serbest Oyun havuzu bunu kullanır: ipucu halkasının hep açık olduğu bir
+ * modda harfin İLK karşılaşması yaşanmamalı, yoksa çocuk harfi tanımadan
+ * doğru basar ve "zaten biliyormuş" ölçümü (srs.ts hızlı geçiş) çöker.
+ */
+export function isItemSeen(item: ContentItem | undefined | null): boolean {
+  if (!item) return false;
+  const t = findTopicOfItem(item.id);
+  if (!t) return false;
+  return (getTopicSrs(NS, t.topicId)[item.id]?.seen ?? 0) > 0;
+}
