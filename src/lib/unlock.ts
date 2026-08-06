@@ -135,12 +135,16 @@ export function getUnlockedItemsOf(topic: ContentTopic): ContentItem[] {
 }
 
 // Tüm açık konulardaki açık öğelerin id kümesi — oyun havuzu bunu kullanır.
+// ⚠️ ALIŞTIRMASIZ konular (noPractice) havuza GİRMEZ: "Harflerin Yazılışları"
+// artık görülüp geçilen bir konu (yeni müfredat). Konu sayfasında alıştırma
+// düğmesi yokken oyunun aynı öğeleri sorması tutarsız olurdu — üstelik o
+// şekiller tek başına değil, sıradaki konuda HAREKEYLE BİRLİKTE ölçülüyor.
 export function getUnlockedItemIdSet(): Set<string> {
   const topics = getUnlockedTopicIds();
   const out = new Set<string>();
   for (const s of SUBJECTS) {
     for (const t of s.topics) {
-      if (!topics.has(t.id)) continue;
+      if (!topics.has(t.id) || t.noPractice) continue;
       for (const it of getUnlockedItemsOf(t)) out.add(it.id);
     }
   }

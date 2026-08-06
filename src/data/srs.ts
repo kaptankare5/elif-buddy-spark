@@ -503,6 +503,14 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
 export interface AnswerMeta {
   responseMs?: number;
   gameId?: string;
+  /**
+   * Cevap ÇOKTAN SEÇMELİ değil, çocuğun KENDİ BEYANI mı? (Flashcard'da
+   * "Biliyorum / Bilmiyorum" kaydırması.) Şık yok demek şans yok demek:
+   * 4 şıkta doğru basmanın %25 şansı varken beyanda 0. Bu yüzden ilk
+   * karşılaşmadaki "Biliyorum" tek başına ustalık sayılır (doğrudan L4),
+   * testte/oyunda ise iki doğru gerekir (L3 → L4). Kullanıcı kararı.
+   */
+  selfReport?: boolean;
 }
 
 function dispatchCloudSaveFailure(error: unknown) {
@@ -560,7 +568,11 @@ function recordLocalSrsAnswer(
       // yanlışta −2 seviye, karışıklık radarı ve bakım soruları geri çağırır.
       // ⚠️ Bu yüzden oyunlarda İLK karşılaşmada ipucu halkası GÖSTERİLMEZ
       // (gameProgress.showHintFor): ipuçlu doğru cevap "biliyordu" sayılamaz.
-      e.level = 3;
+      //
+      // FLASHCARD İSTİSNASI: orada şık yok, çocuk "Biliyorum" diye kendi
+      // beyan ediyor → şansla tutturma ihtimali 0 (çoktan seçmelide %25).
+      // Tek beyan ustalık sayılır, doğrudan L4 (kullanıcı kararı).
+      e.level = meta?.selfReport ? 4 : 3;
     } else if (e.level < 3) {
       // L1→L2, L2→L3: tek doğru yeterli
       e.level = ((e.level + 1) as Level);

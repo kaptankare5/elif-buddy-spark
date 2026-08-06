@@ -145,6 +145,12 @@ const t2_yazilislar: ContentTopic = {
   emoji: "ﺑ",
   practiceMode: "visual",
   gridCols: 3,
+  // YENİ MÜFREDAT (kullanıcı kararı): bu konu ALIŞTIRMASIZ — çocuk videoyu
+  // izler ya da harfleri birkaç dakika dinler ve geçer. Başta/ortada/sonda
+  // hâlleri tek başına ezberletilmez; sıradaki konuda HAREKEYLE BİRLİKTE
+  // alıştırması yapılır (şe → şın ortada + fetha). Tek başına 84 şekil
+  // ezberletmek hem sıkıcı hem de okumaya doğrudan katkısı yok.
+  noPractice: true,
   items: LETTERS.flatMap((l) => [
     {
       id: `l2-${pad2(l.n)}-init`,

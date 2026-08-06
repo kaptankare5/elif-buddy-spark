@@ -19,7 +19,7 @@ import {
   recordBackCheck,
   getPlacementDebug,
 } from "@/lib/placement";
-import { getUnlockedTopicIds } from "@/lib/unlock";
+import { getUnlockedTopicIds, getUnlockedItemIdSet, isTopicCompleted } from "@/lib/unlock";
 import { pickReviewItem } from "@/lib/review";
 import { letterNumOf } from "@/lib/confusables";
 import { pickDistractors } from "@/lib/confusion";
@@ -322,5 +322,45 @@ describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
     // Şansla geçmişse (4 şıkta iki kez tutturma ihtimali 1/16) emniyet burada.
     await recordSrsAnswer("quiz", "harfler", "l1-12", false, { responseMs: 1000 });
     expect(lvl("l1-12")).toBe(2);
+  });
+});
+
+// --- YENİ MÜFREDAT: alıştırmasız konu + Flashcard tek-seferde ustalık ---
+describe("yeni müfredat kabulleri", () => {
+  it("Flashcard beyanı (selfReport) ilk karşılaşmada doğrudan L4 yapar", async () => {
+    // Flashcard'da şık yok → şansla tutturma ihtimali 0. Testte iki doğru
+    // gerekirken burada tek "Biliyorum" ustalık sayılır (kullanıcı kararı).
+    await recordSrsAnswer("quiz", "harfler", "l1-13", true, { responseMs: 1500, selfReport: true });
+    expect(getTopicSrs("quiz", "harfler")["l1-13"].level).toBe(4);
+  });
+
+  it("şıklı cevap (selfReport yok) ilk karşılaşmada L3'te kalır", async () => {
+    await recordSrsAnswer("quiz", "harfler", "l1-14", true, { responseMs: 1500 });
+    expect(getTopicSrs("quiz", "harfler")["l1-14"].level).toBe(3);
+  });
+
+  it("'Harflerin Yazılışları' alıştırmasız ve oyun havuzuna girmez", () => {
+    const yaz = topics.find((t) => t.id === "yazilislar")!;
+    expect(yaz.noPractice).toBe(true);
+    expect(isTopicCompleted(yaz)).toBe(true);          // kilit için engel değil
+    const havuz = getUnlockedItemIdSet();
+    for (const it of yaz.items) expect(havuz.has(it.id)).toBe(false);
+  });
+
+  it("alıştırmasız konu sonraki konuyu kilitlemez", () => {
+    const i = topics.findIndex((t) => t.id === "yazilislar");
+    // 1. konu tamamlanmadan 2. konu zaten kilitli; 2. konu açıldığında
+    // alıştırması olmadığı için 3. konu da onunla birlikte açılır.
+    for (const it of topics[0].items) {
+      localStorage.setItem("elifba-srs-quiz-guest-v1", "{}");
+    }
+    const state: Record<string, Record<string, unknown>> = { [topics[0].id]: {} };
+    for (const it of topics[0].items) {
+      state[topics[0].id][it.id] = { level: 4, correct: 2, total: 2, seen: 2, lastSeen: Date.now() };
+    }
+    localStorage.setItem("elifba-srs-quiz-guest-v1", JSON.stringify(state));
+    const acik = getUnlockedTopicIds();
+    expect(acik.has(topics[i].id)).toBe(true);
+    expect(acik.has(topics[i + 1].id)).toBe(true);     // yazılışlar geçildi
   });
 });
