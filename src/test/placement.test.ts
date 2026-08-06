@@ -7,6 +7,10 @@ import {
   LEARNING_SET_K,
   recordSrsAnswer,
   retrievabilityOf,
+  isDue,
+  isGraduated,
+  SPACING,
+  GRADUATED_STEP,
   __resetSelectorState,
   type TopicSrs,
 } from "@/data/srs";
@@ -34,7 +38,12 @@ const seenAt = (level: number): TopicSrs[string] => ({
   level: level as 1 | 2 | 3 | 4, correct: 1, total: 1, seen: 1, lastSeen: Date.now(),
 });
 
-beforeEach(() => { localStorage.clear(); });
+// ⚠️ ARALIKLI TEKRAR: L4 için ikinci doğru BAŞKA BİR GÜN olmalı (aynı gün
+// sayılmaz). Testlerde günü ilerletmek için saati sabitliyoruz.
+const gercekNow = Date.now;
+const gunde = (d: number) => { Date.now = () => d * 86_400_000 + 3_600_000; };
+
+beforeEach(() => { localStorage.clear(); Date.now = gercekNow; });
 
 // --- PROBLEM 1: Öğrenme seti kapısı (saf fonksiyon — _recent boş, struggling yok) ---
 describe("Problem 1 — öğrenme seti kapısı (K)", () => {
@@ -180,15 +189,18 @@ describe("akıcılık / latency (responseMs)", () => {
     // ⚠️ İlk cevap YANLIŞ olmalı: doğru olsaydı hızlı geçiş devreye girip
     // harfi tek cevapta L3'e çıkarırdı ve burada ölçmek istediğimiz ÖĞRENME
     // yolundaki akıcılık kapısı hiç çalışmazdı.
+    gunde(300);
     await rec(false, 1000); // öğrenme yoluna gir (L1'de kalır)
     await rec(true, 1000); // L1→L2
     await rec(true, 1000); // L2→L3
     expect(getTopicSrs("quiz", "harfler")["l1-05"].level).toBe(3);
+    gunde(302);            // L4 kapısı için ertesi gün
     await rec(true, 9000); // YAVAŞ doğru → L3'te kalır, kırılgan
     const e1 = getTopicSrs("quiz", "harfler")["l1-05"];
     expect(e1.level).toBe(3);
     expect(e1.fragile).toBe(true);
     expect(e1.lastMs).toBe(9000);
+    gunde(305);
     await rec(true, 1200); // HIZLI doğru → L4
     const e2 = getTopicSrs("quiz", "harfler")["l1-05"];
     expect(e2.level).toBe(4);
@@ -213,21 +225,92 @@ describe("FSRS-lite — yarı-ömür ve hatırlanabilirlik", () => {
     expect(retrievabilityOf(undefined, t0)).toBe(0); // görülmemiş = en acil
   });
 
-  it("ilk doğru ~0.7g başlatır; taze tekrar AZ, ertesi-gün tekrarı ÇOK büyütür; yanlış küçültür", async () => {
+  it("takvim basamakları: AYNI GÜN ilerletmez, ertesi gün ilerletir", async () => {
+    // ⚠️ Aralıklı tekrarın çekirdeği. Basamak yalnız FARKLI BİR GÜNDE verilen
+    // doğru cevapla ilerler — aynı oturumda üst üste doğru yapmak öğretmez.
     __resetSelectorState();
-    const t0 = 10 * 86_400_000;
-    at(t0); await rec(true);             // ilk karşılaşma (hızlı doğru)
-    const s0 = entry().stab!;
-    expect(s0).toBeCloseTo(0.7, 5);
-    at(t0 + 60_000); await rec(true);    // 1 dk sonra (R≈1) → taban büyüme %15
+    const gun = (d: number) => { Date.now = () => d * 86_400_000 + 3_600_000; };
+
+    gun(600); await rec(true);
+    expect(entry().step).toBe(1);
     const s1 = entry().stab!;
-    expect(s1).toBeCloseTo(s0 * 1.15, 3);
-    at(t0 + 60_000 + 2 * 86_400_000); await rec(true); // 2 gün sonra (R düşük) → büyük sıçrama
-    const s2 = entry().stab!;
-    expect(s2 / s1).toBeGreaterThan(2);  // (1−R)~0.9 → ×~3
-    at(t0 + 60_000 + 3 * 86_400_000); await rec(false); // yanlış → ×0.3
-    expect(entry().stab!).toBeCloseTo(s2 * 0.3, 3);
+
+    await rec(true);                       // AYNI GÜN ikinci doğru
+    expect(entry().step, "aynı gün basamak ilerletmez").toBe(1);
+    expect(entry().stab).toBe(s1);
+
+    gun(601); await rec(true);             // ertesi gün → 2. basamak
+    expect(entry().step).toBe(2);
+    expect(entry().stab!).toBeGreaterThan(s1);
+
+    gun(605); await rec(true);             // 3. basamak
+    expect(entry().step).toBe(3);
+
+    // Yanlış: basamakta 2 geri (seviyedeki −2 kuralıyla aynı ilke)
+    gun(620); await rec(false);
+    expect(entry().step).toBe(1);
     Date.now = realNow;
+  });
+
+  it("basamak aralıkları takvimi izler (1 → 3 → 7 → 21 … gün)", async () => {
+    __resetSelectorState();
+    const gun = (d: number) => { Date.now = () => d * 86_400_000 + 3_600_000; };
+    const araliklar: number[] = [];
+    for (let i = 0; i < SPACING.STEPS_DAYS.length; i++) {
+      gun(700 + i * 400);                  // her seferinde başka gün
+      await rec(true);
+      const e = entry();
+      // Hedef hatırlamaya tam basamak sonunda inilmeli:
+      // R(t) = 2^(−t/stab) = DESIRED_RETENTION  →  t = basamak aralığı
+      const t = SPACING.STEPS_DAYS[i] * SPACING.INTERVAL_SCALE;
+      expect(retrievabilityOf(e, Date.now() + t * 86_400_000))
+        .toBeCloseTo(SPACING.DESIRED_RETENTION, 4);
+      araliklar.push(t);
+    }
+    expect(araliklar).toEqual([1, 3, 7, 21, 60, 150, 365]);
+    Date.now = realNow;
+  });
+
+  it("takvimi deviren öğe MEZUN olur, bir daha programa girmez", async () => {
+    // Bahrick: 733 kişi 50 yıl — bilgi ilk 3-6 yıl düşüyor, sonra 30 yıl
+    // sabit kalıyor ("permastore"). Yılı geçen öğeyi sonsuza kadar sormanın
+    // karşılığı yok.
+    __resetSelectorState();
+    const gun = (d: number) => { Date.now = () => d * 86_400_000 + 3_600_000; };
+    for (let i = 0; i <= SPACING.STEPS_DAYS.length; i++) {
+      gun(800 + i * 500);
+      await rec(true);
+    }
+    const e = entry();
+    expect(e.step).toBeGreaterThanOrEqual(GRADUATED_STEP);
+    expect(isGraduated(e)).toBe(true);
+    // Yıllar geçse bile vadesi gelmez
+    expect(isDue(e, Date.now() + 3 * 365 * 86_400_000)).toBe(false);
+    Date.now = realNow;
+  });
+
+  it("vadesi gelen öğe KURAYA girmez, doğrudan öne alınır", () => {
+    // Eskiden vade yalnız bir bilet çarpanıydı (en fazla ×3) ve kalabalık
+    // havuzda unutulmuş öğe kurayı kaybediyordu — "L3+ ama unutmuş" sayısı
+    // böyle şişiyordu.
+    __resetSelectorState();
+    const now = Date.now();
+    const taze = (id: string): TopicSrs[string] =>
+      ({ level: 4, correct: 5, total: 5, seen: 3, lastSeen: now - 3_600_000, stab: 400, step: 4 });
+    const unutulmus: TopicSrs[string] =
+      { level: 4, correct: 5, total: 5, seen: 3, lastSeen: now - 90 * 86_400_000, stab: 6.6, step: 2 };
+    const topic: TopicSrs = { x: unutulmus };
+    const ids2 = ["x"];
+    for (let i = 0; i < 25; i++) { const k = `t${i}`; topic[k] = taze(k); ids2.push(k); }
+
+    expect(isDue(topic.x, now)).toBe(true);
+    let secildi = 0;
+    for (let i = 0; i < 300; i++) {
+      __resetSelectorState();
+      if (pickNextLetterFromTopic(topic, ids2) === "x") secildi++;
+    }
+    // 26 öğe arasında kura olsaydı ~%4 çıkardı; vade önceliğiyle çok üstünde.
+    expect(secildi / 300).toBeGreaterThan(0.5);
   });
 
   it("seçici düşük-R (unutulmak üzere) öğeye daha çok bilet verir", () => {
@@ -293,9 +376,13 @@ describe("Problem 1 — zorlanınca yeni harf durur", () => {
 describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
   const lvl = (id: string) => getTopicSrs("quiz", "harfler")[id]?.level;
 
-  it("ilk doğru L3 yapar, ikinci doğru L4", async () => {
+  it("ilk doğru L3 yapar; L4 için ERTESİ GÜN bir doğru daha gerekir", async () => {
+    gunde(400);
     await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200 });
     expect(lvl("l1-09")).toBe(3);
+    await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200 });
+    expect(lvl("l1-09"), "aynı gün ikinci doğru L4 YAPMAZ").toBe(3);
+    gunde(402);
     await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200 });
     expect(lvl("l1-09")).toBe(4);
   });
@@ -303,7 +390,9 @@ describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
   it("hızlı geçişte SÜRE şartı aranmaz (yavaş ama bilen çocuk cezalanmaz)", async () => {
     // Ölçüm: L3→L4'e akıcılık şartı koyunca bilen ama temkinli çocuğun
     // geçme oranı %99'dan %87'ye düşüyordu. Hızlı geçiş yolunda şart yok.
+    gunde(410);
     await recordSrsAnswer("quiz", "harfler", "l1-10", true, { responseMs: 9000 });
+    gunde(412);
     await recordSrsAnswer("quiz", "harfler", "l1-10", true, { responseMs: 9000 });
     expect(lvl("l1-10")).toBe(4);
   });
@@ -316,7 +405,9 @@ describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
   });
 
   it("hızlı geçişle L4 olan harf, sonradan yanlışta -2 ile geri düşer", async () => {
+    gunde(420);
     await recordSrsAnswer("quiz", "harfler", "l1-12", true, { responseMs: 1000 });
+    gunde(422);
     await recordSrsAnswer("quiz", "harfler", "l1-12", true, { responseMs: 1000 });
     expect(lvl("l1-12")).toBe(4);
     // Şansla geçmişse (4 şıkta iki kez tutturma ihtimali 1/16) emniyet burada.
@@ -327,9 +418,15 @@ describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
 
 // --- YENİ MÜFREDAT: alıştırmasız konu + Flashcard tek-seferde ustalık ---
 describe("yeni müfredat kabulleri", () => {
-  it("Flashcard beyanı (selfReport) ilk karşılaşmada doğrudan L4 yapar", async () => {
-    // Flashcard'da şık yok → şansla tutturma ihtimali 0. Testte iki doğru
-    // gerekirken burada tek "Biliyorum" ustalık sayılır (kullanıcı kararı).
+  it("Flashcard beyanı da tek dokunuşta L4 YAPMAZ (aynı gün kuralı)", async () => {
+    // Flashcard'da şık yok → şansla tutturma ihtimali 0, o yüzden ilk doğru
+    // doğrudan L3. Ama L4 (ezberledi) için ertesi gün bir doğru daha gerekir:
+    // tek dokunuşla L4 vermek öğeyi programdan düşürüp unutulmaya bırakıyordu
+    // (ölçüm: yalnız Flashcard oynayan çocukta 97 harf sahte ustalıktı).
+    gunde(500);
+    await recordSrsAnswer("quiz", "harfler", "l1-13", true, { responseMs: 1500, selfReport: true });
+    expect(getTopicSrs("quiz", "harfler")["l1-13"].level).toBe(3);
+    gunde(502);
     await recordSrsAnswer("quiz", "harfler", "l1-13", true, { responseMs: 1500, selfReport: true });
     expect(getTopicSrs("quiz", "harfler")["l1-13"].level).toBe(4);
   });
