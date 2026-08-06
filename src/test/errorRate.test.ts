@@ -46,6 +46,7 @@ import {
   resetConfusion, __resetConfusionCache,
 } from "@/lib/confusion";
 import { setGameMode } from "@/lib/gameMode";
+import { blameTarget, pickItemForSkill, skillIdsOf, skillOf } from "@/lib/skills";
 import type { ContentItem } from "@/data/types";
 
 const DAYMS = 86_400_000;
@@ -135,11 +136,16 @@ function runSim(seed: number, sen: Senaryo, profil: "orta" | "hizli" | "yavas" =
   const hiz = profil === "hizli" ? 1.5 : profil === "yavas" ? 0.55 : 1;
   const P_KNOWN = 0.1;
 
+  // ⚠️ BELLEK ARTIK BECERİ BAZINDA (yeni müfredat). Çocuk "fetha = e"yi bir
+  // kez öğrenir ve bu 28 harfe birden taşınır — 3. konunun bütün tasarım
+  // bahsi budur ("öğrendiyse tüm harfleri görmesine gerek yok"). Bellek öğe
+  // bazında tutulsaydı bu varsayımı hiç sınamamış olurduk. skill'i olmayan
+  // konularda beceri = öğe id'si, yani eski model aynen korunur.
   const mem = new Map<string, Mem>();
   for (const t of practiceTopics) {
-    for (const it of t.items) {
+    for (const sk of skillIdsOf(t.items.filter((i) => i.practice !== false))) {
       const known = rnd() < P_KNOWN;
-      mem.set(it.id, { H: known ? 40 : 0.2, last: 0, studied: false, known0: known ? 1 : 0.05 });
+      mem.set(sk, { H: known ? 40 : 0.2, last: 0, studied: false, known0: known ? 1 : 0.05 });
     }
   }
   const gorulmus = new Set<string>();
@@ -171,22 +177,29 @@ function runSim(seed: number, sen: Senaryo, profil: "orta" | "hizli" | "yavas" =
         if (!ct) break;
         const items = getUnlockedItemsOf(ct);
         if (items.length === 0) break;
-        const pickId = pickNextLetterFromTopic(getTopicSrs("quiz", ct.id), items.map((i) => i.id));
-        hedef = items.find((i) => i.id === pickId) ?? null;
+        const pickSk = pickNextLetterFromTopic(getTopicSrs("quiz", ct.id), skillIdsOf(items));
+        hedef = pickItemForSkill(items, pickSk) ?? null;
         if (!hedef) continue;
         siklar = s.n > 0 ? [hedef, ...pickDistractors(items, hedef, s.n - 1)] : [hedef];
         recTopic = ct.id;
       }
-      const id = hedef.id;
-
-      const m = mem.get(id)!;
+      // Ölçülen beceri (soruda görünen öğe değil).
+      const id = skillOf(hedef);
+      const m = mem.get(id);
+      if (!m) continue;
       const r = recall(m, day);
       const ilkGorus = !gorulmus.has(id);
       gorulmus.add(id);
 
       const retrieved = rnd() < r;
       const secilen = retrieved ? hedef : (siklar[Math.floor(rnd() * siklar.length)] ?? hedef);
-      const reported = s.n > 0 ? secilen.id === id : retrieved;
+      // ⚠️ BECERİ ile KARŞILAŞTIR, öğe id'siyle değil. `id` artık skillOf(hedef)
+      // (örn. "hrk-fetha") ama `secilen` bir ÖĞE ("l3-02-fetha") — doğrudan
+      // kıyaslanınca hiçbir zaman eşleşmiyor ve testteki her cevap yanlış
+      // sayılıyordu (%100 hata). Aynı beceriyi taşıyan başka bir şık da
+      // DOĞRU sayılmalı: harekede şıklar aynı harfin üç harekesi, çocuk
+      // doğru harekeyi seçtiyse beceriyi göstermiştir.
+      const reported = s.n > 0 ? skillOf(secilen) === id : retrieved;
       const tahmin = reported && !retrieved;   // bilmeden tuttu → SRS şişmesi
       // Tepki süresi: kolay hatırlayan hızlı, zorlanan yavaş. L4 mandalı
       // (srs.ts) akıcılık ister — bu yüzden modellenmesi gerekiyor.
@@ -197,10 +210,16 @@ function runSim(seed: number, sen: Senaryo, profil: "orta" | "hizli" | "yavas" =
           responseMs, gameId: "party", chosenId: secilen.id, shownIds: siklar.map((o) => o.id),
         });
       } else {
-        void recordSrsAnswer("quiz", recTopic, id, reported, { responseMs });
+        // Topic.tsx/Flashcard ile aynı kural: yanlışta ön koşul kontrolü.
+        const hedefKayit = reported
+          ? { topicId: recTopic, skillId: id }
+          : blameTarget(hedef, recTopic);
+        void recordSrsAnswer("quiz", hedefKayit.topicId, hedefKayit.skillId, reported, {
+          responseMs, selfReport: s.n === 0,
+        });
         if (s.n > 0) {
-          if (reported) recordDiscrimination(id, siklar.map((o) => o.id));
-          else recordConfusionPick(id, secilen.id);
+          if (reported) recordDiscrimination(id, siklar.map((o) => skillOf(o)));
+          else recordConfusionPick(id, skillOf(secilen));
         }
       }
       if (reported) dogruSayaci.set(id, (dogruSayaci.get(id) ?? 0) + 1);
@@ -223,9 +242,10 @@ function runSim(seed: number, sen: Senaryo, profil: "orta" | "hizli" | "yavas" =
     // konuda da ilk bölümü "açık" döndürür, hepsi toplanınca sayı şişiyordu.
     if (acikKonular.has(t.id)) { acilanKonu++; acilanBolum += getUnlockedSections(t).size; }
     const srs = getTopicSrs("quiz", t.id);
-    for (const it of t.items) {
-      const e = srs[it.id];
-      const m = mem.get(it.id)!;
+    for (const sk of skillIdsOf(t.items.filter((i) => i.practice !== false))) {
+      const e = srs[sk];
+      const m = mem.get(sk);
+      if (!m) continue;
       const rr = recall(m, son);
       if (e && (e.seen ?? 0) > 0) tanitilan++;
       if (e && e.level >= 3) { l3++; if (rr < 0.5) sahteUstalik++; }

@@ -30,7 +30,7 @@ var LETTERS = [
   { n: 18, name: "Ayn", iso: "\u0639", init: "\uFECB", med: "\uFECC", fin: "\uFECA", speech: "ayn", cons: "", thick: "ince" },
   { n: 19, name: "Gayn", iso: "\u063A", init: "\uFECF", med: "\uFED0", fin: "\uFECE", speech: "gay\u0131n", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe", iso: "\u0641", init: "\uFED3", med: "\uFED4", fin: "\uFED2", speech: "fe", cons: "f", thick: "ince" },
-  { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "g", thick: "kalin" },
+  { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "k", thick: "kalin" },
   { n: 22, name: "Kef", iso: "\u0643", init: "\uFEDB", med: "\uFEDC", fin: "\uFEDA", speech: "kef", cons: "k", thick: "ince" },
   { n: 23, name: "Lem", iso: "\u0644", init: "\uFEDF", med: "\uFEE0", fin: "\uFEDE", speech: "lem", cons: "l", thick: "ince" },
   { n: 24, name: "Mim", iso: "\u0645", init: "\uFEE3", med: "\uFEE4", fin: "\uFEE2", speech: "mim", cons: "m", thick: "ince" },
@@ -48,39 +48,6 @@ var pad2 = (n) => n < 10 ? `0${n}` : String(n);
 var audioPath = (name) => `/audio/elifba/${name}`;
 var byName = new Map(LETTERS.map((l) => [l.name, l]));
 var bolum = (n) => `${Math.floor((n - 1) / 4) + 1}. B\xF6l\xFCm`;
-var YAZILIS_SECTIONS = [
-  [1, 22, 23],
-  // ا ك ل — dikey çizgililer
-  [2, 3, 4],
-  // ب ت ث — diş + nokta
-  [5, 6, 7],
-  // ج ح خ — çanaklılar
-  [8, 9],
-  // د ذ
-  [10, 11],
-  // ر ز
-  [12, 13],
-  // س ش
-  [14, 15],
-  // ص ض
-  [16, 17],
-  // ط ظ
-  [18, 19],
-  // ع غ
-  [20, 21],
-  // ف ق
-  [24, 27],
-  // م ه — ilmekliler
-  [25, 28],
-  // ن ي — diş ailesinin devamı
-  [26]
-  // و
-];
-var YAZILIS_SECTION_OF = /* @__PURE__ */ new Map();
-YAZILIS_SECTIONS.forEach((letters, i) => {
-  for (const n of letters) YAZILIS_SECTION_OF.set(n, `${i + 1}. B\xF6l\xFCm`);
-});
-var bolumYazilis = (n) => YAZILIS_SECTION_OF.get(n) ?? "Ekstralar";
 var P = "elifba";
 var t1_harfler = {
   id: "harfler",
@@ -118,7 +85,7 @@ var t2_yazilislar = {
       emoji: l.init,
       translit: `${l.name} (ba\u015Fta)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolumYazilis(l.n)
+      section: bolum(l.n)
     },
     {
       id: `l2-${pad2(l.n)}-med`,
@@ -128,7 +95,7 @@ var t2_yazilislar = {
       emoji: l.med,
       translit: `${l.name} (ortada)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolumYazilis(l.n)
+      section: bolum(l.n)
     },
     {
       id: `l2-${pad2(l.n)}-fin`,
@@ -138,7 +105,7 @@ var t2_yazilislar = {
       emoji: l.fin,
       translit: `${l.name} (sonda)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolumYazilis(l.n)
+      section: bolum(l.n)
     }
   ])
 };
@@ -439,11 +406,6 @@ var SEDDE_EKSTRA = [
   ["\u062D\u064E\u062A\u064E\u0651", "hatte", 1]
   //   142
 ];
-var SEDDE_ELIF_PRE = {
-  fetha: "\u0627\u064E",
-  esre: "\u0625\u0650",
-  otre: "\u0623\u064F"
-};
 var t5_sedde = {
   id: "sedde",
   parent: P,
@@ -468,12 +430,8 @@ var t5_sedde = {
           label: sesMap[h.vowel],
           speech: sesMap[h.vowel],
           lang: "tr",
-          // Şeddeli hece TEK BAŞINA okunamaz: "بَّ" yazıp "ebbe" demek
-          // olmuyor, şeddenin ikizlediği ilk sessizin bir önceki heceye
-          // yaslanması gerekiyor. Cezm konusunda olduğu gibi harekeli elif
-          // ön eki konur → أَبَّ / إِبِّ / أُبُّ (ebbe / ibbi / übbü).
-          // Ekstra kartlar (اِنَّ, رَبِّ…) da zaten bu biçimde.
-          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}\u0651${h.mark}`,
+          // Örn: بَّ / بِّ / بُّ
+          emoji: l.iso + "\u0651" + h.mark,
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
           section: bolum(l.n)
@@ -522,31 +480,6 @@ var MED_EKSTRA = [
   ["\u0647\u0650\u064A", "h\xEE", 3]
   // 1.091
 ];
-var HARAKA_SUF = {
-  "\u064E": "fetha",
-  "\u0650": "esre",
-  "\u064F": "otre"
-};
-var MADD_HARFI = /* @__PURE__ */ new Set(["\u0627", "\u0649", "\u064A", "\u0648"]);
-var byIso = new Map(LETTERS.map((l) => [l.iso, l]));
-function medAudio(ar) {
-  const cp = [...ar];
-  if (cp.length !== 3) return void 0;
-  const l = byIso.get(cp[0]);
-  const suf = HARAKA_SUF[cp[1]];
-  if (!l || !suf || !MADD_HARFI.has(cp[2])) return void 0;
-  return audioPath(`med-${pad2(l.n)}-${suf}.mp3`);
-}
-var MED_FORMS = [
-  { suf: "fetha", mark: "\u064E", harf: "\u0627" },
-  { suf: "esre", mark: "\u0650", harf: "\u0649" },
-  { suf: "otre", mark: "\u064F", harf: "\u0648" }
-];
-function medVowel(thick, suf) {
-  if (suf === "esre") return "\xEE";
-  if (suf === "otre") return "\xFB";
-  return thick === "ince" ? "\xEA" : "\xE2";
-}
 var t6_med = {
   id: "med",
   parent: P,
@@ -556,22 +489,41 @@ var t6_med = {
   practiceMode: "visual",
   gridCols: 3,
   items: [
-    ...LETTERS.flatMap(
-      (l) => MED_FORMS.map((m) => {
-        const sp = `${l.cons}${medVowel(l.thick, m.suf)}`;
-        const ar = l.n === 1 && m.suf === "fetha" ? "\u0622" : l.iso + m.mark + m.harf;
-        return {
-          id: `l6-${pad2(l.n)}-${m.suf}`,
-          label: sp,
-          speech: sp,
-          lang: "tr",
-          emoji: ar,
-          translit: sp,
-          audio: audioPath(`med-${pad2(l.n)}-${m.suf}.mp3`),
-          section: bolum(l.n)
-        };
-      })
-    ),
+    ...[
+      { ar: "\u0628\u064E\u0627", sp: "b\xE2" },
+      { ar: "\u0628\u0650\u0649", sp: "b\xEE" },
+      { ar: "\u0628\u064F\u0648", sp: "b\xFB" },
+      { ar: "\u062A\u064E\u0627", sp: "t\xE2" },
+      { ar: "\u062A\u0650\u0649", sp: "t\xEE" },
+      { ar: "\u062A\u064F\u0648", sp: "t\xFB" },
+      { ar: "\u062B\u064E\u0627", sp: "s\xE2" },
+      { ar: "\u062B\u0650\u0649", sp: "s\xEE" },
+      { ar: "\u062B\u064F\u0648", sp: "s\xFB" },
+      { ar: "\u062C\u064E\u0627", sp: "c\xE2" },
+      { ar: "\u062C\u0650\u0649", sp: "c\xEE" },
+      { ar: "\u062C\u064F\u0648", sp: "c\xFB" },
+      { ar: "\u062D\u064E\u0627", sp: "h\xE2" },
+      { ar: "\u062D\u0650\u0649", sp: "h\xEE" },
+      { ar: "\u062D\u064F\u0648", sp: "h\xFB" },
+      { ar: "\u062F\u064E\u0627", sp: "d\xE2" },
+      { ar: "\u0630\u064E\u0627", sp: "z\xE2" },
+      { ar: "\u0631\u064E\u0627", sp: "r\xE2" },
+      { ar: "\u0632\u064E\u0627", sp: "z\xE2" },
+      { ar: "\u0633\u064E\u0627", sp: "s\xE2" },
+      { ar: "\u0634\u064E\u0627", sp: "\u015F\xE2" },
+      { ar: "\u0642\u064E\u0627\u0644\u064E", sp: "k\xE2le" },
+      { ar: "\u0643\u064E\u0627\u0646\u064E", sp: "k\xE2ne" },
+      { ar: "\u0643\u0650\u062A\u064E\u0627\u0628\u064F", sp: "kit\xE2b\xFC" }
+    ].map((it, i) => ({
+      id: `l6-${pad2(i + 1)}`,
+      label: it.sp,
+      speech: it.sp,
+      lang: "tr",
+      emoji: it.ar,
+      translit: it.sp,
+      // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
+      section: `${Math.floor(i / 6) + 1}. B\xF6l\xFCm`
+    })),
     ...MED_EKSTRA.map(([ar, sp, w], i) => ({
       id: `l6e-${pad2(i + 1)}`,
       label: sp,
@@ -579,7 +531,6 @@ var t6_med = {
       lang: "tr",
       emoji: ar,
       translit: sp,
-      audio: medAudio(ar),
       section: "Ekstralar",
       weight: w
     }))

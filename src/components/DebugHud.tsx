@@ -20,6 +20,8 @@ import { getPlacementDebug, getLastBackCheck, resetPlacement, type PlacementDebu
 import { getConfusionDebug, resetConfusion, CONFUSION_EVENT } from "@/lib/confusion";
 import { currentReviewShare } from "@/lib/review";
 import { getStreak } from "@/lib/streak";
+import { skillIdsOf } from "@/lib/skills";
+import { practiceItems } from "@/lib/unlock";
 import { getAllTopics } from "@/data/subjects";
 import { cn } from "@/lib/utils";
 
@@ -29,8 +31,10 @@ function todayCounts() {
   for (const t of getAllTopics()) {
     if (t.noPractice) continue;
     const srs = getTopicSrs("quiz", t.id);
-    for (const it of t.items) {
-      const e = srs[it.id];
+    // Beceri anahtarıyla oku (skills.ts) — öğe id'siyle sayarsak
+    // Harekeler/Şedde gibi konularda hiçbir şey görünmez.
+    for (const sk of skillIdsOf(practiceItems(t.items))) {
+      const e = srs[sk];
       if (!e) continue;
       if ((e.lastSeen ?? 0) >= t0) practiced++;
       if ((e.learnedAt ?? 0) >= t0) learned++;

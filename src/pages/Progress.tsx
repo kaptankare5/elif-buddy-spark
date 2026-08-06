@@ -7,6 +7,8 @@ import { getTopicSrs, getNamespaceStats, getCloudSrsState, useSrsTick, type Leve
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { EmojiView } from "@/components/EmojiView";
+import { skillIdsOf, skillOf } from "@/lib/skills";
+import { practiceItems } from "@/lib/unlock";
 
 const NS = "quiz" as const;
 
@@ -75,7 +77,20 @@ const ProgressPage = () => {
               <div className="p-3 space-y-2">
                 {s.topics.map((t) => {
                   const srs = getTopicSrs(NS, t.id);
-                  const ids = t.items.map((i) => i.id);
+                  // ⚠️ ÖĞE DEĞİL BECERİ sayılır. SRS beceri anahtarıyla
+                  // yazılıyor (skills.ts): Harekeler'de 84 öğe var ama 3
+                  // anahtar. Öğe id'siyle okununca ekran "0/84" gösteriyordu.
+                  // Alıştırması olmayan öğeler (practice: false) de paydaya
+                  // girmez — onlar yalnız görülüp dinlenen kartlar.
+                  const sorulan = practiceItems(t.items);
+                  const ids = skillIdsOf(sorulan);
+                  // Her beceri için TEMSİLCİ öğe (rozet/emoji göstermek için)
+                  const temsilci = new Map<string, typeof t.items[number]>();
+                  for (const it of sorulan) {
+                    const sk = skillOf(it);
+                    if (!temsilci.has(sk)) temsilci.set(sk, it);
+                  }
+                  const gorunenSayisi = t.items.length - sorulan.length;
                   const counts: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
                   let touched = 0;
                   for (const id of ids) {
@@ -91,10 +106,12 @@ const ProgressPage = () => {
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-sm truncate">{t.title}</div>
                           <div className="mt-1 h-2 rounded-full bg-background overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-info via-primary to-success" style={{ width: topicLoading ? "100%" : `${pct}%` }} />
+                            <div className="h-full bg-gradient-to-r from-info via-primary to-success" style={{ width: topicLoading ? "100%" : t.noPractice ? "100%" : `${pct}%` }} />
                           </div>
                           <div className="mt-1 text-[10px] text-muted-foreground font-semibold">
-                            {topicLoading ? "Yükleniyor…" : `${touched}/${ids.length} öğe • %${pct}`}
+                            {topicLoading ? "Yükleniyor…"
+                              : t.noPractice ? "👀 Alıştırma yok — görüp geçilir"
+                              : `${touched}/${ids.length} beceri • %${pct}`}
                           </div>
                         </div>
                         <div className="flex gap-1 text-[10px] font-bold">
@@ -112,11 +129,12 @@ const ProgressPage = () => {
                       </summary>
                       <div className="px-3 pb-3 pt-1">
                         <div className="grid grid-cols-2 gap-1.5 mb-2">
-                          {t.items.map((it) => {
-                            const e = srs[it.id];
+                          {ids.map((sk) => {
+                            const it = temsilci.get(sk)!;
+                            const e = srs[sk];
                             const lv = topicLoading ? 0 : ((e?.level as Level) ?? 0);
                             return (
-                              <div key={it.id} className={cn(
+                              <div key={sk} className={cn(
                                 "flex min-h-11 items-center gap-2 rounded-lg px-2 py-1 text-xs bg-card border",
                                 lv === 0 && "border-border/40 text-muted-foreground",
                                 lv === 1 && "border-info/40",
