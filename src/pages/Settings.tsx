@@ -192,6 +192,11 @@ const Settings = () => {
               <b>Serbest Oyun:</b> seviye değişmez, ipuçları hep açıktır ve
               <b> yalnız daha önce gördüğün harfler</b> çıkar — yeni bir harfle ilk
               tanışma her zaman Süper Öğrenme'de, Test'te veya Flashcard'da olur.
+              <br />
+              <b>⭐⭐⭐⭐ nasıl kazanılır:</b> oyun ve test bir harfi ⭐⭐⭐'e çıkarır ve
+              orada bakımını yapar. Son yıldız <b>Flashcard'da</b> kazanılır — orada
+              çocuk harfi <b>görüp adını kendi söyler</b>, tıpkı Elifbâ kitabındaki
+              gibi. Şıktan seçmek başka, hatırlayıp söylemek başkadır.
             </p>
           </div>
 

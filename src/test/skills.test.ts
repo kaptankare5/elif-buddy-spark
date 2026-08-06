@@ -66,7 +66,8 @@ describe("beceri anahtarı", () => {
 describe("konu tamamlanması BECERİ sayar", () => {
   const cevapla = async (topicId: string, skillId: string, kez: number) => {
     for (let i = 0; i < kez; i++) {
-      await recordSrsAnswer("quiz", topicId, skillId, true, { responseMs: 1200 });
+      await recordSrsAnswer("quiz", topicId, skillId, true,
+        { responseMs: 1200, evidence: "production" });
     }
   };
 
@@ -258,9 +259,9 @@ describe("ön koşul (prereqSkill) — yanlış teşhis koymayalım", () => {
 
   it("hareke L4'teyse hata ŞEKLE yazılır", async () => {
     gunde(200);
-    await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900 });
-    gunde(203);   // L4 için ertesi gün şart
-    await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900 });
+    await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900, evidence: "production" });
+    gunde(203);   // L4 için ertesi gün + üretim kanıtı şart
+    await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900, evidence: "production" });
     expect(skillLevel("hrk-fetha")).toBe(PREREQ_LEVEL);
     const hedef = t4().items.find((i) => i.prereqSkill === "hrk-fetha")!;
     const b = blameTarget(hedef, "harf-hareke");

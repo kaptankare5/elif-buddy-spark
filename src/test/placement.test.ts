@@ -184,8 +184,11 @@ describe("karışan harf çeldiricileri (pickDistractors)", () => {
 // --- AKICILIK (tepki süresi): yavaş-doğru L4'ü engeller + kırılgan işaretler ---
 describe("akıcılık / latency (responseMs)", () => {
   it("yavaş-doğru L3'te tutar; hızlı-doğru L4'e çıkarır", async () => {
+    // ⚠️ L4 yalnız ÜRETİM kanıtıyla verilir (Flashcard: harfi gör → söyle).
+    // Akıcılık kapısını sınamak için üretim kanıtı geçiyoruz.
     const rec = (correct: boolean, ms?: number) =>
-      recordSrsAnswer("quiz", "harfler", "l1-05", correct, ms !== undefined ? { responseMs: ms } : {});
+      recordSrsAnswer("quiz", "harfler", "l1-05", correct,
+        { ...(ms !== undefined ? { responseMs: ms } : {}), evidence: "production" as const });
     // ⚠️ İlk cevap YANLIŞ olmalı: doğru olsaydı hızlı geçiş devreye girip
     // harfi tek cevapta L3'e çıkarırdı ve burada ölçmek istediğimiz ÖĞRENME
     // yolundaki akıcılık kapısı hiç çalışmazdı.
@@ -378,12 +381,12 @@ describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
 
   it("ilk doğru L3 yapar; L4 için ERTESİ GÜN bir doğru daha gerekir", async () => {
     gunde(400);
-    await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200 });
+    await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200, evidence: "production" });
     expect(lvl("l1-09")).toBe(3);
-    await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200 });
+    await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200, evidence: "production" });
     expect(lvl("l1-09"), "aynı gün ikinci doğru L4 YAPMAZ").toBe(3);
     gunde(402);
-    await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200 });
+    await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200, evidence: "production" });
     expect(lvl("l1-09")).toBe(4);
   });
 
@@ -391,10 +394,27 @@ describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
     // Ölçüm: L3→L4'e akıcılık şartı koyunca bilen ama temkinli çocuğun
     // geçme oranı %99'dan %87'ye düşüyordu. Hızlı geçiş yolunda şart yok.
     gunde(410);
-    await recordSrsAnswer("quiz", "harfler", "l1-10", true, { responseMs: 9000 });
+    await recordSrsAnswer("quiz", "harfler", "l1-10", true, { responseMs: 9000, evidence: "production" });
     gunde(412);
-    await recordSrsAnswer("quiz", "harfler", "l1-10", true, { responseMs: 9000 });
+    await recordSrsAnswer("quiz", "harfler", "l1-10", true, { responseMs: 9000, evidence: "production" });
     expect(lvl("l1-10")).toBe(4);
+  });
+
+  it("TANIMA kanıtı (şıktan seçme) L4 VERMEZ — tavan L3", async () => {
+    // Gerçek gözlem: çocuk bir saatte bütün harfleri L4 yaptı, sonra
+    // kitaptan sorulunca 2 harfi bilemedi. Şıktan seçmek "ezberledi"
+    // demek değil; üstelik yön ters (kitap "harfi gör → söyle" der).
+    gunde(430);
+    await recordSrsAnswer("quiz", "harfler", "l1-15", true, { responseMs: 900 });
+    for (const g of [432, 435, 440, 450]) {
+      gunde(g);
+      await recordSrsAnswer("quiz", "harfler", "l1-15", true, { responseMs: 900 });
+    }
+    expect(lvl("l1-15"), "tanıma kanıtı ne kadar tekrarlanırsa tekrarlansın L3").toBe(3);
+    // Aynı harf ÜRETİMLE cevaplanınca L4'e çıkar
+    gunde(455);
+    await recordSrsAnswer("quiz", "harfler", "l1-15", true, { responseMs: 900, evidence: "production" });
+    expect(lvl("l1-15")).toBe(4);
   });
 
   it("ilk karşılaşmada YANLIŞ ise hızlı geçiş yok — normal öğrenme yolu", async () => {
@@ -406,9 +426,9 @@ describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
 
   it("hızlı geçişle L4 olan harf, sonradan yanlışta -2 ile geri düşer", async () => {
     gunde(420);
-    await recordSrsAnswer("quiz", "harfler", "l1-12", true, { responseMs: 1000 });
+    await recordSrsAnswer("quiz", "harfler", "l1-12", true, { responseMs: 1000, evidence: "production" });
     gunde(422);
-    await recordSrsAnswer("quiz", "harfler", "l1-12", true, { responseMs: 1000 });
+    await recordSrsAnswer("quiz", "harfler", "l1-12", true, { responseMs: 1000, evidence: "production" });
     expect(lvl("l1-12")).toBe(4);
     // Şansla geçmişse (4 şıkta iki kez tutturma ihtimali 1/16) emniyet burada.
     await recordSrsAnswer("quiz", "harfler", "l1-12", false, { responseMs: 1000 });
