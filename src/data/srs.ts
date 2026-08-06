@@ -51,6 +51,11 @@ export interface LetterSrsEntry {
    * dayanağı: aynı oturumda üst üste doğru yapmak basamak ilerletmez.
    */
   lastCorrectDay?: number;
+  /**
+   * USTALIK PUANI — L4 için biriken kanıt. Her FARKLI GÜNDEKİ doğru cevap
+   * kanıtın cinsine göre puan ekler (bkz. MASTERY). Yanlışta yarılanır.
+   */
+  mastery?: number;
 }
 
 export type TopicSrs = Record<string, LetterSrsEntry>;
@@ -380,6 +385,41 @@ function stabForStep(step: number): number {
 const HL_MIN = 0.25;        // gün — dip (yanlış sonrası bile sıfırlanmaz)
 const HL_FIRST_WRONG = 0.25;   // ilk karşılaşma yanlış
 
+// ---- USTALIK KURU: hangi kanıt ne kadar sayar? ----
+//
+// Önce mutlak tavan koymuştum (oyun/test ASLA L4 veremez). Kullanıcı itiraz
+// etti ve haklıydı: "sürekli harfe maruz kalırsa, ters yönde de olsa,
+// oyun oynaya oynaya öğrenir — belki 2-3 kat daha çok zaman ister."
+//
+// Literatür de bunu söylüyor: hem alıcı (tanıma) hem üretici pratik kelime
+// bilgisini BÜTÜN yönlerde geliştiriyor. Fark verimde: üretici pratik her
+// iki yönde de daha çok kazandırıyor, tanıma pratiği çoğunlukla kendi
+// yönünde. Ve üretici bilgi "daha uzun ve yoğun pratik" istiyor.
+//
+// Yani doğru model DUVAR değil KUR: tanıma kanıtı da sayılır, sadece daha
+// azı sayılır. Yalnız oyun oynayan çocuk da L4'e ulaşır — 2 gün yerine
+// 6 farklı günde.
+const MASTERY = {
+  /** L4 ("ezberledi") için gereken toplam kanıt puanı. */
+  NEEDED: 3,
+  /** ÜRETİM (Flashcard: harfi gör → adını söyle) — tam puan. */
+  PRODUCTION: 1,
+  /**
+   * TANIMA (oyun/test: şıktan seç) — kısmi puan. Sıfır DEĞİL: tanıma
+   * pratiği de üretime katkı yapıyor, sadece daha yavaş. 1/3 = "3 kat
+   * daha çok gün" demek, kullanıcının sezgisiyle aynı büyüklükte.
+   */
+  RECOGNITION: 1 / 2,
+  /** Yanlışta biriken puan yarılanır (sıfırlanmaz — öğrenme silinmez). */
+  WRONG_DECAY: 0.5,
+  /**
+   * ⚠️ Kayan nokta payı: 6 × (1/3) = 1.9999999999999998 çıkıyor ve tam
+   * eşikte kalan çocuk L4'ü ALAMIYORDU. Karşılaştırma bu payla yapılır.
+   */
+  EPS: 1e-9,
+} as const;
+export { MASTERY };
+
 /** Epoch gün — "aynı gün mü?" karşılaştırması bunun üzerinden yapılır. */
 const dayOf = (ms: number) => Math.floor(ms / 86_400_000);
 
@@ -702,12 +742,18 @@ function recordLocalSrsAnswer(
   const ayniGun = e.lastCorrectDay === bugun;
   const yeniGunDogru = correct && !ayniGun;
   if (correct) {
-    if (yeniGunDogru) e.step = (e.step ?? 0) + 1;
+    if (yeniGunDogru) {
+      e.step = (e.step ?? 0) + 1;
+      // Ustalık puanı da yalnız FARKLI GÜNDE birikir — aynı oturumda
+      // üst üste doğru yapmak ustalık kanıtı değildir.
+      e.mastery = (e.mastery ?? 0) + (uretim ? MASTERY.PRODUCTION : MASTERY.RECOGNITION);
+    }
     e.lastCorrectDay = bugun;
     e.stab = wasFirst && !yeniGunDogru ? HL_FIRST_WRONG : stabForStep(e.step ?? 1);
   } else {
     // Yanlış: basamakta 2 geri (seviyedeki −2 kuralıyla aynı ilke).
     e.step = Math.max(0, (e.step ?? 0) - 2);
+    e.mastery = (e.mastery ?? 0) * MASTERY.WRONG_DECAY;
     e.stab = e.step > 0 ? stabForStep(e.step) : Math.max(HL_MIN, HL_FIRST_WRONG);
   }
   void prevR;
@@ -744,15 +790,20 @@ function recordLocalSrsAnswer(
       // süre şartı aranmaz. Küçük çocukta yavaşlık çoğu zaman bilgi eksikliği
       // değil parmak/dikkat; ölçtük, süre şartı koyunca bilen ama temkinli
       // çocuğun geçme oranı %99'dan %87'ye düşüyordu.
-      // ⚠️ L4 (ezberledi) için ikinci doğru BAŞKA BİR GÜN olmalı. Aynı
-      // oturumda arka arkaya iki doğru "ustalaştı" demek değildir — sahte
-      // ustalık tam buradan doğuyordu (ölçtük: yalnız Flashcard oynayan
-      // çocukta 97 harf "biliyor" görünüp bilinmiyordu).
-      // ⚠️ İKİ ŞART BİRDEN: (a) ikinci doğru BAŞKA BİR GÜN olmalı (aynı gün
-      // sayılmaz), (b) kanıt ÜRETİM olmalı — şıktan seçmek "ezberledi"
-      // demek değil. Oyun ve normal test buraya kadar getirir, üstüne
-      // çıkaramaz; L4'ü Flashcard (harfi gör → söyle) verir.
-      if (e.consecutiveCorrect >= 2 && yeniGunDogru && uretim && (fluent || e.total === 2)) {
+      // ⚠️ L4 ("ezberledi") ÜÇ ŞART BİRDEN ister:
+      //  (a) AYNI GÜN SAYILMAZ — bu doğru, öncekinden başka bir günde olmalı.
+      //      Aynı oturumda arka arkaya doğru yapmak ustalık kanıtı değildir.
+      //  (b) KANIT PUANI eşiği geçmeli (MASTERY): üretim 1, tanıma 1/2 puan,
+      //      eşik 3. Yani Flashcard'la 3 ayrı günde, oyun/testle 6 ayrı günde.
+      //      Duvar değil KUR: oyun oynaya oynaya da öğrenilir, sadece daha
+      //      uzun sürer — kullanıcı itirazı ve literatür bu yönde.
+      //  (c) AKICILIK: yavaş-doğru "biliyor ama tereddütlü" demek, otomatiklik
+      //      değil. İSTİSNA: hiç yanlış yapmamış çocuk (correct === total)
+      //      yavaş olsa da cezalanmaz — küçük çocukta yavaşlık çoğu zaman
+      //      bilgi eksikliği değil parmak/dikkat (kullanıcı şartı).
+      const puanTamam = (e.mastery ?? 0) >= MASTERY.NEEDED - MASTERY.EPS;
+      const akiciSayilir = fluent || e.correct === e.total;
+      if (puanTamam && yeniGunDogru && akiciSayilir) {
         e.level = 4;
       }
     }

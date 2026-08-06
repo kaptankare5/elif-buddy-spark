@@ -67,20 +67,37 @@ describe("oyun kapılarına soru dağıtımı", () => {
 
   // HIZLI GEÇİŞ: ilk karşılaşmada doğru → doğrudan L3, ikinci doğru → L4.
   // Konuyu bilerek gelen çocuk harf başına 2 cevapta bitirir.
-  it("OYUN L4 VEREMEZ — tavanı L3 (koşarken şıktan seçmek 'ezberledi' değil)", () => {
-    // Gerçek gözlem: bütün harfler L4 göründüğü hâlde çocuk kitaptan
-    // sorulunca 2 harfi bilemedi. Oyunda çocuk şıklardan SEÇİYOR (şansla
-    // %25, üstelik eleyerek de bulunur) ve yön ters: kitap "harfi gör →
-    // söyle" der. Oyun bakım yapar, ustalık belgesi vermez.
+  it("OYUN da L4 verir — ama 6 farklı GÜN ister (üretimde 2)", () => {
+    // Duvar değil KUR: oyunda çocuk şıktan seçiyor (şansla %25, üstelik
+    // eleyerek de bulunur) ve yön ters — kitap "harfi gör → söyle" der.
+    // Ama maruz kalma da öğretir, sadece daha yavaş: tanıma 1/3 puan,
+    // üretim 1 puan, L4 için 2 puan.
     const gercekNow = Date.now;
     try {
       const gun = (d: number) => { Date.now = () => d * 86_400_000 + 3_600_000; };
       const it0 = pool[0];
       const cevap = () => recordGameAnswer(it0, true, { gameId: "party", chosenId: it0.id, shownIds: [it0.id] });
+      const lvl = () => getTopicSrs("quiz", t1.id)[it0.id]?.level;
       gun(900); cevap();
-      expect(getTopicSrs("quiz", t1.id)[it0.id]?.level).toBe(3);
+      expect(lvl()).toBe(3);
       for (const g of [902, 905, 910, 920]) { gun(g); cevap(); }
-      expect(getTopicSrs("quiz", t1.id)[it0.id]?.level, "oyun ne kadar oynanırsa oynansın L3").toBe(3);
+      expect(lvl(), "5 oyun günü henüz yetmez").toBe(3);
+      gun(930); cevap();
+      expect(lvl(), "6 oyun gününde L4").toBe(4);
+    } finally { Date.now = gercekNow; }
+  });
+
+  it("aynı gün ne kadar oynanırsa oynansın ustalık puanı artmaz", () => {
+    const gercekNow = Date.now;
+    try {
+      Date.now = () => 950 * 86_400_000 + 3_600_000;
+      const it0 = pool[0];
+      for (let i = 0; i < 20; i++) {
+        recordGameAnswer(it0, true, { gameId: "party", chosenId: it0.id, shownIds: [it0.id] });
+      }
+      const e = getTopicSrs("quiz", t1.id)[it0.id]!;
+      expect(e.level).toBe(3);
+      expect(e.mastery).toBeCloseTo(1 / 2, 5);   // 20 cevap ama TEK gün
     } finally { Date.now = gercekNow; }
   });
 

@@ -87,9 +87,10 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   eşleşmesi başarısız olursa nedeni bu (tek satır anchor veya node kullan).
 
 ### Öğrenme sistemi (bilimsel gerekçeli — koru)
-- ⚠️ **HIZLI GEÇİŞ**: harfle İLK KEZ karşılaşıp doğru bilirse doğrudan **L3**,
-  ikinci doğruda L4 (öğrenmek değil "zaten biliyormuş" sayılır). Flashcard'da
-  şık olmadığı için (`meta.selfReport`) tek "Biliyorum" **L4** yapar. Hızlı
+- ⚠️ **HIZLI GEÇİŞ**: harfle İLK KEZ karşılaşıp doğru bilirse doğrudan **L3**
+  (öğrenmek değil "zaten biliyormuş" sayılır). L4 hızlı geçişle VERİLMEZ —
+  kanıt kuru + ayrı gün şartı (aşağı bak) her yolda geçerlidir; Flashcard'ın
+  `meta.selfReport`'u yalnız "üretim kanıtı" demektir, kestirme değil. Hızlı
   geçişte SÜRE şartı YOK — ölçtük, koyunca bilen ama temkinli çocuğun geçme
   oranı %99'dan %87'ye düşüyor.
 - ⚠️ Bunun bekçisi `gameProgress.showHintFor`: oyunda ipucu halkası yalnız L1
@@ -102,20 +103,30 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   Seçici SRS durumuna bakar; normal modda cevap SRS'e yazılmadığı için durum
   hiç değişmiyor ve her çağrı aynı harfi döndürüyordu ("sürekli aynı soruyu
   soruyor"). Tampon seçimi moddan bağımsız ilerletir.
-- ⚠️ **KANIT TAVANI** (`AnswerMeta.evidence`): bütün doğru cevaplar eşit
-  değil. `"recognition"` (varsayılan — oyun/test, şıktan seçme) bir harfi
-  **en fazla L3**'e çıkarır; **L4 yalnız `"production"` kanıtıyla** verilir
-  (Flashcard: harfi gör → adını söyle). İki sebep: (1) 4 şıkta şansla %25
-  tutturulur ve çocuk bilmediği harfi ELEYEREK de bulur; (2) YÖN TERS —
-  Elifbâ kitabı "harfi gör, söyle" der, test "sesi duy, harfi seç" der;
-  bu iki yön ayrı öğrenilir. Gerçek gözlem: çocuk 1 saatte bütün harfleri
-  L4 yaptı, kitaptan sorulunca 2 harfi bilemedi. Oyun BAKIM yapar,
-  ustalık belgesi vermez.
+- ⚠️ **KANIT KURU** (`MASTERY`, srs.ts + `AnswerMeta.evidence`): bütün doğru
+  cevaplar eşit değil ama hiçbiri DEĞERSİZ değil. L4 bir puan eşiğidir:
+  `NEEDED 3`; `"production"` (Flashcard: harfi gör → adını söyle) **1 puan**,
+  `"recognition"` (varsayılan — oyun/test, şıktan seçme) **½ puan**. Yani
+  Flashcard 3 ayrı günde, oyun/test 6 ayrı günde L4 verir; karışık oynanırsa
+  puanlar TOPLANIR. Yanlış cevap biriken puanı yarıya indirir (`WRONG_DECAY`).
+  Kur'un gerekçesi: (1) 4 şıkta şansla %25 tutturulur ve çocuk bilmediği harfi
+  ELEYEREK de bulur; (2) YÖN TERS — Elifbâ kitabı "harfi gör, söyle" der, test
+  "sesi duy, harfi seç" der; bu iki yön ayrı öğrenilir. Gerçek gözlem: çocuk
+  1 saatte bütün harfleri L4 yaptı, kitaptan sorulunca 2 harfi bilemedi.
+  ⚠️ Önce **sert tavan** konmuştu (oyun ASLA L4 veremez); kullanıcı itiraz
+  etti — "ters yönde de olsa sürekli maruz kalırsa öğrenir, 2-3 kat zaman
+  ister ama öğrenir" — literatür de doğruluyor (alımlama ve üretim pratiği
+  ikisi de her yöne aktarılıyor, üretim daha az tekrarla). Tavan yerine KUR:
+  oyun daha uzun yoldan aynı yere varır. Ölçüm (40 gün × 30 soru × 6 çocuk):
+  ⭐⭐⭐⭐ yalan oranı Karışık %16.3 → **%5.0**, Test %0, Oyun %1.
+  ⚠️ `MASTERY.EPS` kayan nokta içindir: `6 × ½ = 1.9999…` eşiği tam sınırda
+  bloke ediyordu.
 - ⚠️ **ARALIKLI TEKRAR TAKVİMİ** (`SPACING`, srs.ts): **AYNI GÜN SAYILMAZ.**
   Basamak yalnız FARKLI BİR GÜNDE verilen doğru cevapla ilerler; aynı
   oturumda üst üste doğru yapmak L4 vermez (güne yayılan tekrar tek seferde
   tekrarın 3 katı kalıcılık veriyor — 5. sınıf ölçümü). Flashcard'ın tek
-  dokunuşta L4'ü bu yüzden kaldırıldı; ilk doğru L3, L4 ertesi gün.
+  dokunuşta L4'ü bu yüzden kaldırıldı; ilk doğru L3, L4 kanıt kuruyla
+  (yukarı bak) en erken 3. AYRI günde.
   Basamaklar `1 → 3 → 7 → 21 → 60 → 150 → 365` gün (Cepeda 2008: 1 hafta
   için sürenin %20-40'ı, 1 yıl için %5-10'u). Son basamağı geçen öğe
   **MEZUN** olur (`GRADUATED_STEP`), bir daha programa girmez — Bahrick:

@@ -115,6 +115,13 @@ interface Sonuc {
   tanitilan: number; l3: number; l4: number;
   kaliciBilgi: number;             // model gerçeği: +7 gün hatırlama ≥ 0.85
   sahteUstalik: number;            // L3+ ama +7 gün hatırlama < 0.5
+  /**
+   * ⚠️ ASIL SORU BU: ⭐⭐⭐⭐ rozeti YALAN SÖYLÜYOR MU? sahteUstalik L3'ü de
+   * saydığı için kanıt kuralını ölçemez — L4'ü zorlaştırmak öğeleri L3'te
+   * park ettiriyor ve o metrik kıpırdamıyor. Bu ayrı sayaç yalnız L4'e
+   * bakar: "ezberledi" dediğimiz hâlde 7 gün sonra unutulmuş olanlar.
+   */
+  sahteL4: number;
   acilanBolum: number; acilanKonu: number;
   dogruylaL3: number[]; dogruylaL4: number[];
 }
@@ -235,7 +242,7 @@ function runSim(seed: number, sen: Senaryo, profil: "orta" | "hizli" | "yavas" =
 
   // --- müfredat ve gerçek bilgi metrikleri (son gün + 7) ---
   const son = SESSIONS + 7;
-  let tanitilan = 0, l3 = 0, l4 = 0, kaliciBilgi = 0, sahteUstalik = 0, acilanBolum = 0, acilanKonu = 0;
+  let tanitilan = 0, l3 = 0, l4 = 0, kaliciBilgi = 0, sahteUstalik = 0, sahteL4 = 0, acilanBolum = 0, acilanKonu = 0;
   const acikKonular = getUnlockedTopicIds();
   for (const t of practiceTopics) {
     // Bölüm yalnız AÇIK konularda sayılır: getUnlockedSections kilitli bir
@@ -249,7 +256,7 @@ function runSim(seed: number, sen: Senaryo, profil: "orta" | "hizli" | "yavas" =
       const rr = recall(m, son);
       if (e && (e.seen ?? 0) > 0) tanitilan++;
       if (e && e.level >= 3) { l3++; if (rr < 0.5) sahteUstalik++; }
-      if (e && e.level >= 4) l4++;
+      if (e && e.level >= 4) { l4++; if (rr < 0.5) sahteL4++; }
       if (rr >= 0.85) kaliciBilgi++;
     }
   }
@@ -263,7 +270,7 @@ function runSim(seed: number, sen: Senaryo, profil: "orta" | "hizli" | "yavas" =
     }
   }
   return {
-    log, tanitilan, l3, l4, kaliciBilgi, sahteUstalik, acilanBolum, acilanKonu,
+    log, tanitilan, l3, l4, kaliciBilgi, sahteUstalik, sahteL4, acilanBolum, acilanKonu,
     dogruylaL3: [...l3De.values()], dogruylaL4: [...l4De.values()],
   };
 }
@@ -326,6 +333,8 @@ describe("hata oranı + müfredat simülasyonu", () => {
     sat("Haftada tanıtılan harf", (s) => (s.tanitilan / SESSIONS) * 7, 1);
     sat("GERÇEKTEN kalıcı (+7g ≥%85)", (s) => s.kaliciBilgi);
     sat("Sahte ustalık (L3+ ama unutmuş)", (s) => s.sahteUstalik);
+    sat("⭐⭐⭐⭐ YALAN (L4 ama unutmuş)", (s) => s.sahteL4);
+    sat("⭐⭐⭐⭐ yalan oranı %", (s) => (s.l4 ? (100 * s.sahteL4) / s.l4 : 0), 1);
 
     console.log("\nKAÇ DOĞRU CEVAPTA ÖĞRENİYOR (ort.)");
     console.log(`  ${"".padEnd(30)}${senaryolar.map((s) => ad[s].slice(0, 9).padStart(11)).join("")}`);
