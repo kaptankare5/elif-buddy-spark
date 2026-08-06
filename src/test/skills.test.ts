@@ -89,7 +89,10 @@ describe("konu tamamlanması BECERİ sayar", () => {
     let srs = getTopicSrs("quiz", t.id);
     // Aynı oturumda kaç doğru yaparsa yapsın L3'te kalır — aynı gün sayılmaz.
     expect(Object.values(srs).every((e) => (e.level as Level) === 3)).toBe(true);
+    // Üretim kanıtı 1 puan/gün, eşik 3 → 3 AYRI gün gerekiyor.
     gunde(103);
+    for (const sk of topicSkillIds(t)) await cevapla(t.id, sk, 1);
+    gunde(110);
     for (const sk of topicSkillIds(t)) await cevapla(t.id, sk, 1);
     srs = getTopicSrs("quiz", t.id);
     expect(Object.values(srs).every((e) => (e.level as Level) === 4)).toBe(true);
@@ -258,10 +261,10 @@ describe("ön koşul (prereqSkill) — yanlış teşhis koymayalım", () => {
   });
 
   it("hareke L4'teyse hata ŞEKLE yazılır", async () => {
-    gunde(200);
-    await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900, evidence: "production" });
-    gunde(203);   // L4 için ertesi gün + üretim kanıtı şart
-    await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900, evidence: "production" });
+    for (const g of [200, 203, 210]) {   // 3 ayrı gün × üretim = 3 puan
+      gunde(g);
+      await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900, evidence: "production" });
+    }
     expect(skillLevel("hrk-fetha")).toBe(PREREQ_LEVEL);
     const hedef = t4().items.find((i) => i.prereqSkill === "hrk-fetha")!;
     const b = blameTarget(hedef, "harf-hareke");
