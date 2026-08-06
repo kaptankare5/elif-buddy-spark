@@ -129,7 +129,7 @@ const Flashcard = () => {
     const hedef = correct
       ? { topicId: recTopic, skillId: skillOf(current) }
       : blameTarget(current, recTopic);
-    await recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct, { responseMs, selfReport: true });
+    await recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct, { responseMs, selfReport: true, evidence: "production" });
     // Karışıklık ölçümü: flashcard'da şık yok, karşıtlık ARDIŞIKTIR — bir
     // önceki kart partnerse doğru cevap gerçek bir ayrımdır. Yanlışta hangi
     // harfle karıştırdığı bilinemez → a-priori partnerlere hafif ısı.

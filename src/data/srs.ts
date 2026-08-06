@@ -638,6 +638,27 @@ export interface AnswerMeta {
    * testte/oyunda ise iki doğru gerekir (L3 → L4). Kullanıcı kararı.
    */
   selfReport?: boolean;
+  /**
+   * KANITIN CİNSİ — bu cevap hangi seviyeye kadar çıkarabilir?
+   *
+   * Bütün doğru cevaplar eşit değildir:
+   *  • "recognition" (VARSAYILAN) — çocuk şıklar arasından SEÇTİ. Oyunda
+   *    koşarken 4 şık, testte ses→harf. Şansla %25 tutturulabilir, üstelik
+   *    çocuk bilmediği harfi ELEYEREK de bulabilir. Dahası yön TERSTİR:
+   *    Elifbâ kitabı "harfi gör, adını SÖYLE" diye sorar, biz "sesi duy,
+   *    harfi seç" diye soruyoruz — bu iki yön ayrı ayrı öğrenilir, birini
+   *    bilmek ötekini vermez.
+   *  • "production" — çocuk cevabı ÜRETTİ (Flashcard: harfi görür, adını
+   *    söyler, sonra kontrol eder). Şans yok ve yön kitabınkiyle aynı.
+   *
+   * ⚠️ L4 ("ezberledi") YALNIZ üretim kanıtıyla verilir. Oyun ve normal
+   * test bir harfi L3'e çıkarır ve orada BAKIMINI yapar — ama "ezberledi"
+   * kararını veremez. Gerçek gözlem: çocuk bir saatte bütün harfleri L4
+   * yaptı, sonra kitaptan sorulunca 2 harfi bilemedi.
+   * Araştırma da bu yönde: cevabı ÜRETTİREN testler, cevabı SEÇTİREN
+   * testlerden daha güçlü iz bırakır (Roediger & Karpicke çizgisi).
+   */
+  evidence?: "recognition" | "production";
 }
 
 function dispatchCloudSaveFailure(error: unknown) {
@@ -670,6 +691,8 @@ function recordLocalSrsAnswer(
     ? Math.min(meta.responseMs, 60_000) : undefined;
   if (rt !== undefined) { e.totalMs = (e.totalMs || 0) + rt; e.lastMs = rt; }
   const fluent = rt === undefined || rt <= FLUENT_MS;
+  // Kanıtın cinsi: üretim mi (Flashcard) yoksa tanıma mı (şıktan seçme)?
+  const uretim = meta?.evidence === "production" || meta?.selfReport === true;
 
   // ---- ARALIKLI TEKRAR TAKVİMİ ----
   // ⚠️ AYNI GÜN SAYILMAZ. Basamak yalnız FARKLI BİR GÜNDE verilen doğru
@@ -725,7 +748,13 @@ function recordLocalSrsAnswer(
       // oturumda arka arkaya iki doğru "ustalaştı" demek değildir — sahte
       // ustalık tam buradan doğuyordu (ölçtük: yalnız Flashcard oynayan
       // çocukta 97 harf "biliyor" görünüp bilinmiyordu).
-      if (e.consecutiveCorrect >= 2 && yeniGunDogru && (fluent || e.total === 2)) e.level = 4;
+      // ⚠️ İKİ ŞART BİRDEN: (a) ikinci doğru BAŞKA BİR GÜN olmalı (aynı gün
+      // sayılmaz), (b) kanıt ÜRETİM olmalı — şıktan seçmek "ezberledi"
+      // demek değil. Oyun ve normal test buraya kadar getirir, üstüne
+      // çıkaramaz; L4'ü Flashcard (harfi gör → söyle) verir.
+      if (e.consecutiveCorrect >= 2 && yeniGunDogru && uretim && (fluent || e.total === 2)) {
+        e.level = 4;
+      }
     }
   } else {
     // Yanlışta 2 seviye düş (kullanıcı isteği — sabit kalacak).

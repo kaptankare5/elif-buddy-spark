@@ -102,6 +102,15 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   Seçici SRS durumuna bakar; normal modda cevap SRS'e yazılmadığı için durum
   hiç değişmiyor ve her çağrı aynı harfi döndürüyordu ("sürekli aynı soruyu
   soruyor"). Tampon seçimi moddan bağımsız ilerletir.
+- ⚠️ **KANIT TAVANI** (`AnswerMeta.evidence`): bütün doğru cevaplar eşit
+  değil. `"recognition"` (varsayılan — oyun/test, şıktan seçme) bir harfi
+  **en fazla L3**'e çıkarır; **L4 yalnız `"production"` kanıtıyla** verilir
+  (Flashcard: harfi gör → adını söyle). İki sebep: (1) 4 şıkta şansla %25
+  tutturulur ve çocuk bilmediği harfi ELEYEREK de bulur; (2) YÖN TERS —
+  Elifbâ kitabı "harfi gör, söyle" der, test "sesi duy, harfi seç" der;
+  bu iki yön ayrı öğrenilir. Gerçek gözlem: çocuk 1 saatte bütün harfleri
+  L4 yaptı, kitaptan sorulunca 2 harfi bilemedi. Oyun BAKIM yapar,
+  ustalık belgesi vermez.
 - ⚠️ **ARALIKLI TEKRAR TAKVİMİ** (`SPACING`, srs.ts): **AYNI GÜN SAYILMAZ.**
   Basamak yalnız FARKLI BİR GÜNDE verilen doğru cevapla ilerler; aynı
   oturumda üst üste doğru yapmak L4 vermez (güne yayılan tekrar tek seferde

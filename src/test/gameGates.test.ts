@@ -67,9 +67,11 @@ describe("oyun kapılarına soru dağıtımı", () => {
 
   // HIZLI GEÇİŞ: ilk karşılaşmada doğru → doğrudan L3, ikinci doğru → L4.
   // Konuyu bilerek gelen çocuk harf başına 2 cevapta bitirir.
-  it("ilk karşılaşmada doğru bilen harf L3; L4 için ERTESİ GÜN gerekir", () => {
-    // Oyunlarda da aynı aralıklı tekrar kuralı: aynı oturumda üst üste doğru
-    // yapmak "ezberledi" demek değil (aynı gün sayılmaz).
+  it("OYUN L4 VEREMEZ — tavanı L3 (koşarken şıktan seçmek 'ezberledi' değil)", () => {
+    // Gerçek gözlem: bütün harfler L4 göründüğü hâlde çocuk kitaptan
+    // sorulunca 2 harfi bilemedi. Oyunda çocuk şıklardan SEÇİYOR (şansla
+    // %25, üstelik eleyerek de bulunur) ve yön ters: kitap "harfi gör →
+    // söyle" der. Oyun bakım yapar, ustalık belgesi vermez.
     const gercekNow = Date.now;
     try {
       const gun = (d: number) => { Date.now = () => d * 86_400_000 + 3_600_000; };
@@ -77,10 +79,8 @@ describe("oyun kapılarına soru dağıtımı", () => {
       const cevap = () => recordGameAnswer(it0, true, { gameId: "party", chosenId: it0.id, shownIds: [it0.id] });
       gun(900); cevap();
       expect(getTopicSrs("quiz", t1.id)[it0.id]?.level).toBe(3);
-      cevap();                                    // aynı gün
-      expect(getTopicSrs("quiz", t1.id)[it0.id]?.level).toBe(3);
-      gun(902); cevap();                          // ertesi gün
-      expect(getTopicSrs("quiz", t1.id)[it0.id]?.level).toBe(4);
+      for (const g of [902, 905, 910, 920]) { gun(g); cevap(); }
+      expect(getTopicSrs("quiz", t1.id)[it0.id]?.level, "oyun ne kadar oynanırsa oynansın L3").toBe(3);
     } finally { Date.now = gercekNow; }
   });
 
