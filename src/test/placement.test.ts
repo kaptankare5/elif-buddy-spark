@@ -177,6 +177,10 @@ describe("akıcılık / latency (responseMs)", () => {
   it("yavaş-doğru L3'te tutar; hızlı-doğru L4'e çıkarır", async () => {
     const rec = (correct: boolean, ms?: number) =>
       recordSrsAnswer("quiz", "harfler", "l1-05", correct, ms !== undefined ? { responseMs: ms } : {});
+    // ⚠️ İlk cevap YANLIŞ olmalı: doğru olsaydı hızlı geçiş devreye girip
+    // harfi tek cevapta L3'e çıkarırdı ve burada ölçmek istediğimiz ÖĞRENME
+    // yolundaki akıcılık kapısı hiç çalışmazdı.
+    await rec(false, 1000); // öğrenme yoluna gir (L1'de kalır)
     await rec(true, 1000); // L1→L2
     await rec(true, 1000); // L2→L3
     expect(getTopicSrs("quiz", "harfler")["l1-05"].level).toBe(3);
@@ -279,5 +283,44 @@ describe("Problem 1 — zorlanınca yeni harf durur", () => {
     expect(pick).toBe(ids[0]);       // eldeki tek görülmüş harf
     // Zorlanırken eski-konu bakım payı %50'ye çıkar (kolaylar eski konuda).
     expect(currentReviewShare()).toBeCloseTo(0.50, 5);
+  });
+});
+
+// --- HIZLI GEÇİŞ: konuyu bilerek gelen çocuk oyalanmasın (kullanıcı kararı) ---
+// İlk karşılaşmada doğru bilinen harf ÖĞRENİLMİYOR, ZATEN BİLİNİYOR sayılır →
+// doğrudan L3, ikinci doğruda L4. Eskiden 28 harflik konu için en az 56 doğru
+// cevap gerekiyordu; artık 56 yerine 56 değil, harf başına 2 cevap yeter.
+describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
+  const lvl = (id: string) => getTopicSrs("quiz", "harfler")[id]?.level;
+
+  it("ilk doğru L3 yapar, ikinci doğru L4", async () => {
+    await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200 });
+    expect(lvl("l1-09")).toBe(3);
+    await recordSrsAnswer("quiz", "harfler", "l1-09", true, { responseMs: 1200 });
+    expect(lvl("l1-09")).toBe(4);
+  });
+
+  it("hızlı geçişte SÜRE şartı aranmaz (yavaş ama bilen çocuk cezalanmaz)", async () => {
+    // Ölçüm: L3→L4'e akıcılık şartı koyunca bilen ama temkinli çocuğun
+    // geçme oranı %99'dan %87'ye düşüyordu. Hızlı geçiş yolunda şart yok.
+    await recordSrsAnswer("quiz", "harfler", "l1-10", true, { responseMs: 9000 });
+    await recordSrsAnswer("quiz", "harfler", "l1-10", true, { responseMs: 9000 });
+    expect(lvl("l1-10")).toBe(4);
+  });
+
+  it("ilk karşılaşmada YANLIŞ ise hızlı geçiş yok — normal öğrenme yolu", async () => {
+    await recordSrsAnswer("quiz", "harfler", "l1-11", false, { responseMs: 1200 });
+    expect(lvl("l1-11")).toBe(1);
+    await recordSrsAnswer("quiz", "harfler", "l1-11", true, { responseMs: 1200 });
+    expect(lvl("l1-11")).toBe(2);   // L3'e sıçramaz
+  });
+
+  it("hızlı geçişle L4 olan harf, sonradan yanlışta -2 ile geri düşer", async () => {
+    await recordSrsAnswer("quiz", "harfler", "l1-12", true, { responseMs: 1000 });
+    await recordSrsAnswer("quiz", "harfler", "l1-12", true, { responseMs: 1000 });
+    expect(lvl("l1-12")).toBe(4);
+    // Şansla geçmişse (4 şıkta iki kez tutturma ihtimali 1/16) emniyet burada.
+    await recordSrsAnswer("quiz", "harfler", "l1-12", false, { responseMs: 1000 });
+    expect(lvl("l1-12")).toBe(2);
   });
 });

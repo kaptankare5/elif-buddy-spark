@@ -131,44 +131,22 @@ const Settings = () => {
             />
           </div>
 
-          {/* Oyun Modu */}
-          <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">
-            <div className="flex items-center gap-3 mb-3">
-              <GraduationCap className="h-7 w-7 text-primary" />
+          {/* Öğrenme — mod SEÇİMİ YOK. "Normal oyun modu" kaldırıldı
+              (kullanıcı kararı): oyun oynayıp da seviyesi değişmeyince
+              uygulama "düzgün test etmiyor" hissi veriyordu. */}
+          <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-warning/40">
+            <div className="flex items-center gap-3">
+              <GraduationCap className="h-7 w-7 text-warning" />
               <div className="flex-1">
-                <h3 className="text-base font-extrabold text-foreground">Oyun Modu</h3>
-                <p className="text-xs text-muted-foreground">Öğrenme zorluğunu seç</p>
+                <h3 className="text-base font-extrabold text-foreground">⚡ Süper Öğrenme</h3>
+                <p className="text-xs text-muted-foreground">Her oyun bir alıştırmadır</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setMode("normal")}
-                className={cn(
-                  "rounded-2xl p-3 border-2 font-extrabold text-sm text-left transition-bouncy",
-                  mode === "normal"
-                    ? "bg-primary text-primary-foreground border-primary shadow-soft"
-                    : "bg-muted/40 border-border text-foreground"
-                )}
-              >
-                🎮 Normal
-                <div className="text-[10px] font-bold text-muted-foreground mt-1">Sadece eğlence</div>
-              </button>
-              <button
-                onClick={() => setMode("super")}
-                className={cn(
-                  "rounded-2xl p-3 border-2 font-extrabold text-sm text-left transition-bouncy relative",
-                  mode === "super"
-                    ? "bg-warning text-warning-foreground border-warning shadow-soft"
-                    : "bg-muted/40 border-border text-foreground"
-                )}
-              >
-                ⚡ Süper Öğrenme
-                <div className="text-[10px] font-bold text-muted-foreground mt-1">Her zaman test, hep ilerleme</div>
-              </button>
-            </div>
             <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
-              Süper modda her oyun cevabı harf seviyesine işler ve sadece şu oyunlar gösterilir: Tren Sörfü, Elif Ba Macerası, Elifbâ Partisi, Elifbâ Yarışı, Yılan, Uzay, Balon, Kutu Boşalt, Uçan Kuş, Hızlı Quiz. İpucu halkası yalnız seviye 1'de görünür.
-              Normal modda oyunlar seviyeyi değiştirmez; ilerleme Test ve Flashcard'dan gelir.
+              Oyunlarda verilen <b>her cevap</b> harfin seviyesine işler — oynadıkça
+              ilerlersin. Bir harfi <b>ilk kez</b> görüyorsan doğru şık parlamaz
+              (gerçekten biliyor musun, onu ölçüyoruz); ikinci karşılaşmadan
+              itibaren zorlanırsan ipucu halkası yardıma gelir.
             </p>
           </div>
 

@@ -27,7 +27,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem, playSfx } from "@/lib/audio";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { useRemedyOnGameOver } from "@/lib/remedial";
-import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
+import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
 import { gameMusic } from "@/lib/gameMusic";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { useGameMode } from "@/lib/gameMode";
@@ -1966,8 +1966,8 @@ const PlatformGame = () => {
         b.isTarget = items[i].id === target.id;
       });
       t.target = target;
-      // ipucu: normal modda her zaman, süper modda yalnız seviye 1
-      t.hint = !isSuperRef.current || getGameItemLevel(target) === 1;
+      // ipucu: yalnız seviye 1'de VE ilk karşılaşma değilse
+      t.hint = showHintFor(target);
       trioRef.current = t;
       setQuestion(target.translit || target.label);
       playItem(target);

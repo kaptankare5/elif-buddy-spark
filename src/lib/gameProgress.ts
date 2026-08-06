@@ -84,6 +84,25 @@ export function getGameItemLevel(item: ContentItem | undefined | null): Level {
   return (getTopicSrs(NS, t.topicId)[item.id]?.level ?? 1) as Level;
 }
 
+/**
+ * Oyunda doğru şıkkın çevresinde İPUCU HALKASI yansın mı?
+ *
+ * Kural: seviye 1 ise yanar — AMA harfle İLK KEZ karşılaşıyorsa YANMAZ.
+ * ⚠️ Bu, srs.ts'teki hızlı geçişin ayrılmaz parçası: ilk doğru cevap harfi
+ * doğrudan L3'e çıkarıyor ("zaten biliyormuş" sayılıyor). İlk karşılaşmada
+ * doğru cevabı parlatırsak çocuk harfi tanımadan da doğru basar ve hiç
+ * bilmediği harf L3 olur — ölçüm çöker. İlk karşılaşma DÜRÜST bir yoklama
+ * olmak zorunda; ipucu ikinci karşılaşmadan itibaren devreye girer.
+ */
+export function showHintFor(item: ContentItem | undefined | null): boolean {
+  if (!item) return false;
+  const t = findTopicOfItem(item.id);
+  if (!t) return false;
+  const e = getTopicSrs(NS, t.topicId)[item.id];
+  if (!e || (e.seen ?? 0) === 0) return false;   // ilk karşılaşma → ipucu YOK
+  return ((e.level ?? 1) as Level) === 1;
+}
+
 // --- Süper öğrenme: yanlış cevaplanan soruyu tekrar sorma kuyruğu ---
 // Oyunlar wrong answer'da `enqueueRetryItem(item)` çağırır.
 // Bir sonraki `pickNextGameItem` çağrısı kuyruktaki item'ı verir (havuzda varsa).
