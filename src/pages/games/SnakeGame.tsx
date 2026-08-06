@@ -5,7 +5,7 @@ import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle, pickWrongs } from "./_shared";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
-import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
+import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
@@ -60,9 +60,9 @@ const SnakeGame = () => {
   useRemedyOnGameOver(gameOver);
   const [paused, setPaused] = useState(true);
 
-  // Süper modda hedef harfin SRS seviyesi — sadece L1'de halka göster
-  const targetLevel = getGameItemLevel(quiz?.target);
-  const showHint = !isSuper || targetLevel === 1;
+  // İpucu halkası: yalnız L1'de VE harf daha önce görülmüşse (ilk
+  // karşılaşma dürüst yoklama olmalı — bkz. gameProgress.showHintFor).
+  const showHint = showHintFor(quiz?.target);
 
   const newFood = useCallback((occupied: Cell[]) => {
     const pool = gamePool();

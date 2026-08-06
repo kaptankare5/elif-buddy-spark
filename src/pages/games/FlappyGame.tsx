@@ -5,7 +5,7 @@ import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle, pickWrongs } from "./_shared";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
-import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
+import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
@@ -335,8 +335,7 @@ const FlappyGame = () => {
 
           {/* Letters */}
           {letters.map((l) => {
-            const lvl = getGameItemLevel(l.item);
-            const showRing = l.isTarget && (!isSuper || lvl === 1);
+            const showRing = l.isTarget && showHintFor(l.item);
             return (
               <div
                 key={l.uid}

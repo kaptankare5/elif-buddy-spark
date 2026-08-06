@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Volume2 } from "lucide-react";
 import { gamePool, shuffle, pickWrongs } from "./_shared";
 import { recordLetterMastery } from "@/data/srs";
-import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
+import { pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 
@@ -134,8 +134,8 @@ const BalloonGame = () => {
           )}
           {balloons.map((b, i) => {
             const isCorrect = !!target && b.item.id === target.id;
-            // Normal mod: doğru balon parlayan ipucu halkasıyla belirir (kolaylık).
-            const hint = !isSuper && isCorrect && !b.popped;
+            // İpucu halkası: L1 + daha önce görülmüş harf (showHintFor).
+            const hint = isCorrect && !b.popped && showHintFor(b.item);
             return (
               <button
                 key={b.uid}

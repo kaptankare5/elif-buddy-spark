@@ -551,13 +551,27 @@ function recordLocalSrsAnswer(
     e.consecutiveCorrect = (e.consecutiveCorrect || 0) + 1;
     // Doğru ama yavaşsa kırılgan işaretle (önce geri gelsin); hızlıysa temizle.
     e.fragile = rt !== undefined && !fluent;
-    if (e.level < 3) {
+    if (wasFirst) {
+      // ⚡ HIZLI GEÇİŞ (kullanıcı kararı): harfi İLK KEZ gören çocuk doğru
+      // bildiyse bunu ÖĞRENMEK değil ZATEN BİLMEK sayarız → doğrudan L3.
+      // İkinci doğruda L4. Konuyu bilerek gelen çocuk 2 cevapta bitirir;
+      // eskiden 28 harf için 56 cevap gerekiyordu (aşırı alıştırma).
+      // Bedeli: 4 şıkta iki kez şansla tutturma 1/16. Emniyet üç katmanlı —
+      // yanlışta −2 seviye, karışıklık radarı ve bakım soruları geri çağırır.
+      // ⚠️ Bu yüzden oyunlarda İLK karşılaşmada ipucu halkası GÖSTERİLMEZ
+      // (gameProgress.showHintFor): ipuçlu doğru cevap "biliyordu" sayılamaz.
+      e.level = 3;
+    } else if (e.level < 3) {
       // L1→L2, L2→L3: tek doğru yeterli
       e.level = ((e.level + 1) as Level);
     } else if (e.level === 3) {
       // L3→L4 (en üst = OTOMATİKLİK): üst üste 2 doğru VE akıcı (hızlı) olmalı.
       // Yavaş-doğru "biliyor ama tereddütlü" → henüz ustalık değil, L3'te kalır.
-      if (e.consecutiveCorrect >= 2 && fluent) e.level = 4;
+      // İSTİSNA — hızlı geçiş yolu (ilk iki cevabın ikisi de doğru): burada
+      // süre şartı aranmaz. Küçük çocukta yavaşlık çoğu zaman bilgi eksikliği
+      // değil parmak/dikkat; ölçtük, süre şartı koyunca bilen ama temkinli
+      // çocuğun geçme oranı %99'dan %87'ye düşüyordu.
+      if (e.consecutiveCorrect >= 2 && (fluent || e.total === 2)) e.level = 4;
     }
   } else {
     // Yanlışta 2 seviye düş (kullanıcı isteği — sabit kalacak).
