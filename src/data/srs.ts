@@ -39,6 +39,18 @@ export interface LetterSrsEntry {
   // işe yaramaz). Yanlış stab'ı küçültür. Seçici bileti (1−R)'ye göre verir →
   // "en unutulmak üzere olan önce". Seviye merdiveni UI/kilit için aynen kalır.
   stab?: number;           // yarı-ömür (gün)
+
+  // ---- ARALIKLI TEKRAR TAKVİMİ (aşağıdaki SPACING) ----
+  /**
+   * Takvimde kaçıncı basamakta? 0 = henüz basamağa girmedi.
+   * Basamak YALNIZ farklı bir GÜNDE verilen doğru cevapla ilerler.
+   */
+  step?: number;
+  /**
+   * Son DOĞRU cevabın günü (epoch gün). "Aynı gün sayılmaz" kuralının
+   * dayanağı: aynı oturumda üst üste doğru yapmak basamak ilerletmez.
+   */
+  lastCorrectDay?: number;
 }
 
 export type TopicSrs = Record<string, LetterSrsEntry>;
@@ -312,15 +324,64 @@ export function getAdaptiveDebug(): AdaptiveDebug {
 // Çocuk sesi dinleyip dokunuyor → taban ~2sn; 5sn üstü gerçekten tereddüt.
 const FLUENT_MS = 5000;
 
-// ---- FSRS-lite (yarı-ömür) parametreleri ----
+// ---- ARALIKLI TEKRAR TAKVİMİ ----
+//
+// ⚠️ EN ÖNEMLİ KURAL: AYNI GÜN SAYILMAZ.
+// Aynı oturumda üst üste doğru yapmak öğrenmez. 5. sınıf öğrencilerinde
+// güne YAYILARAK öğrenilen kelimelerin akılda kalma oranı, tek seferde
+// öğrenilenlerin ÜÇ KATI çıkıyor. Bebeklerde bile gün aşırı çalışan grup
+// hem her gün çalışandan hem de tek günde çalışandan hızlı öğreniyor.
+// Bu yüzden basamak yalnız FARKLI BİR GÜNDE verilen doğru cevapla ilerler.
+//
+// TAKVİM (Cepeda 2008, 1350 kişi): ne kadar uzun hatırlanacaksa ara o kadar
+// uzar ama ORAN küçülür — 1 hafta için sürenin %20-40'ı, 1 yıl için %5-10'u.
+// Aşağıdaki basamaklar bu eğriyi izler.
+//
+// SON BASAMAK = MEZUNİYET. Bahrick 733 kişiyi 50 yıl izledi: bilgi ilk 3-6
+// yıl düşüyor, sonra 30 yıl SABİT kalıyor ("permastore"). Yılı devirmiş öğe
+// programdan çıkar — sonsuza kadar tekrar sormanın karşılığı yok.
+const SPACING = {
+  /**
+   * HEDEF HATIRLAMA — öğe tekrar sorulduğunda hatırlanıyor olma olasılığı.
+   * ⚠️ Bu, Wilson'ın "%85 başarı oranı" kuralıyla AYNI ŞEY DEĞİL: o soruların
+   * ZORLUĞUNU ayarlar, bu ise tekrarların NE KADAR SEYREK geleceğini.
+   * Anki/FSRS varsayılanı 0.90; makul aralık 0.70-0.97.
+   * Çocukta düşürmüyoruz: 0.85 daha az iş demek ama tekrar geldiğinde daha
+   * çok yanlış demek, küçük çocukta bunun motivasyon bedeli sayısal
+   * kazançtan büyük (ölçtük: sabit %85 bandında bırakma oranı çok yüksek).
+   */
+  DESIRED_RETENTION: 0.90,
+  /**
+   * ARALIK ÇARPANI — iş yükünü buradan düşürüyoruz, unutmayı göze alarak
+   * değil. Bahrick: 13 tekrar × 56 gün ara = 26 tekrar × 14 gün ara, aynı
+   * kalıcılık. Yani çarpanı 2 yapmak tekrar sayısını yarıya indirir.
+   * İngilizce'de kelime sayısı büyüyünce (B1 ≈ 2000 kelime → günde 38 bakım
+   * sorusu) tek ayarla yükü yarıya indirebilmek için burada duruyor.
+   */
+  INTERVAL_SCALE: 1.0,
+  /** Basamak aralıkları (gün): 1 → 3 → 1 hafta → 3 hafta → 2 ay → 5 ay → 1 yıl */
+  STEPS_DAYS: [1, 3, 7, 21, 60, 150, 365],
+} as const;
+export { SPACING };
+
+/** Takvimi devirmiş (mezun) öğe — bir daha programa alınmaz. */
+export const GRADUATED_STEP = SPACING.STEPS_DAYS.length;
+
+// R = 2^(−gün/stab) eğrisinde hedefe tam basamak sonunda ulaşmak için:
+// 2^(−t/S) = hedef  →  S = t / (−log2(hedef))
+const RET_K = -Math.log2(SPACING.DESIRED_RETENTION);   // 0.90 → 0.152
+
+/** Basamağa karşılık gelen yarı-ömür (gün). */
+function stabForStep(step: number): number {
+  const i = Math.min(Math.max(0, step - 1), SPACING.STEPS_DAYS.length - 1);
+  return (SPACING.STEPS_DAYS[i] * SPACING.INTERVAL_SCALE) / RET_K;
+}
+
 const HL_MIN = 0.25;        // gün — dip (yanlış sonrası bile sıfırlanmaz)
-const HL_MAX = 90;          // gün — tavan
-const HL_FIRST_FLUENT = 0.7;   // ilk başarılı geri getirme (hızlı)
-const HL_FIRST_SLOW = 0.4;     // ilk başarılı geri getirme (yavaş)
 const HL_FIRST_WRONG = 0.25;   // ilk karşılaşma yanlış
-const HL_GROWTH = 2.2;      // büyüme katsayısı: S *= 1 + G·(1−R)·akıcılık
-const HL_MIN_GROWTH = 1.15; // taze tekrarda bile küçük ilerleme (kaçış payı)
-const HL_WRONG_SHRINK = 0.3;
+
+/** Epoch gün — "aynı gün mü?" karşılaştırması bunun üzerinden yapılır. */
+const dayOf = (ms: number) => Math.floor(ms / 86_400_000);
 
 // Eski kayıtlarda stab yok → seviyeden makul yarı-ömür türet (göç köprüsü).
 function deriveStab(e: LetterSrsEntry | undefined): number {
@@ -336,6 +397,35 @@ export function retrievabilityOf(e: LetterSrsEntry | undefined, now: number): nu
   const r = Math.pow(2, -days / deriveStab(e));
   return r < 0 ? 0 : r > 1 ? 1 : r;
 }
+
+/**
+ * Bu öğenin VADESİ GELDİ Mİ? (hatırlama olasılığı hedefin altına düştü)
+ *
+ * ⚠️ Mezun öğe (takvimi devirmiş) asla vadeli olmaz — Bahrick'in
+ * "permastore" bulgusu: yılı geçen bilgi 30 yıl sabit kalıyor, sonsuza
+ * kadar tekrar sormanın karşılığı yok.
+ */
+export function isDue(e: LetterSrsEntry | undefined, now: number): boolean {
+  if (!e || (e.seen ?? 0) === 0) return false;
+  if ((e.step ?? 0) >= GRADUATED_STEP) return false;
+  return retrievabilityOf(e, now) < SPACING.DESIRED_RETENTION;
+}
+
+/** Takvimi devirdi mi? (artık programa alınmaz) */
+export function isGraduated(e: LetterSrsEntry | undefined): boolean {
+  return (e?.step ?? 0) >= GRADUATED_STEP;
+}
+
+/**
+ * VADE PAYI — vadesi gelmiş öğe varsa soruların bu kadarı ondan gelir.
+ *
+ * Eskiden vade yalnız bir bilet ÇARPANIYDI (en fazla ×3) ve 170 öğelik bir
+ * havuzda unutulmuş öğe kurayı kaybediyordu: "L3+ görünüyor ama unutmuş"
+ * sayısı böyle şişiyordu. Artık kura yok, doğrudan öncelik var.
+ * %100 değil: kalan pay yeni öğe tanıtımına bırakılır, yoksa biriken bakım
+ * borcu öğrenmeyi tamamen durdurur ("review debt").
+ */
+const DUE_SHARE = 0.7;
 
 // ---- Akış bandı (tek merkez) — seçici, K kapısı ve bakım payı bunu kullanır ----
 export type FlowBand = "warmup" | "struggling" | "normal" | "flying";
@@ -353,6 +443,8 @@ export function getFlowBand(): FlowBand {
 // conf = karışıklık ısısı (0..1) — bu harf başka bir harfle karıştırılıyor mu.
 export interface LastPickInfo {
   id: string; level: number; weight: number; stale: number; ticket: number; days: number;
+  /** Vade sırasından mı geldi? (kura değil, doğrudan öncelik) */
+  due?: boolean;
   fragile?: boolean; retr?: number; hl?: number; conf?: number;
 }
 let _lastPickInfo: LastPickInfo | null = null;
@@ -420,6 +512,41 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
   // Kapı kapalıysa seçim YALNIZ görülmüş harfler arasında yapılır — yeni harfler
   // sırada bekler, eldeki set pekişir.
   const pickIds = seenCount > 0 ? letterIds.filter((id) => (topic[id]?.seen ?? 0) > 0) : letterIds;
+
+  // ---- VADE SIRASI (kuradan ÖNCE) ----
+  // Hatırlama olasılığı hedefin altına düşen öğe kuraya girmez, doğrudan
+  // öne alınır. En çok gecikmiş olan önce. Mezun öğeler hiç girmez.
+  const simdi = Date.now();
+  const vadeli = pickIds
+    .filter((id) => id !== _lastPickedId && isDue(topic[id], simdi))
+    .sort((a, b) => retrievabilityOf(topic[a], simdi) - retrievabilityOf(topic[b], simdi));
+  if (vadeli.length > 0 && Math.random() < DUE_SHARE) {
+    // En gecikmiş yarıdan çekiliş — hep aynı öğeyi vermemek için.
+    // ⚠️ Karışıklık çarpanı BURADA da uygulanmalı: vade sırası kurayı
+    // atladığı için çarpan yalnız kura yolunda kalsaydı, çocuğun gerçekten
+    // karıştırdığı harf daha sık gelmeyi bırakırdı (testi var).
+    const ust = Math.max(1, Math.ceil(vadeli.length * 0.5));
+    const adaylar = vadeli.slice(0, ust);
+    const biletler = adaylar.map((id) => 1 + CONFUSION_BOOST * itemHeat(id));
+    let rv = Math.random() * biletler.reduce((a, b) => a + b, 0);
+    let sec = adaylar[adaylar.length - 1];
+    for (let i = 0; i < adaylar.length; i++) {
+      rv -= biletler[i];
+      if (rv <= 0) { sec = adaylar[i]; break; }
+    }
+    _lastPickedId = sec;
+    const se = topic[sec];
+    _lastPickInfo = {
+      id: sec, level: se?.level ?? 1, weight: itemWeight(sec),
+      stale: +(1 + 2 * (1 - retrievabilityOf(se, simdi))).toFixed(2),
+      ticket: 0, conf: +itemHeat(sec).toFixed(2),
+      days: se?.lastSeen ? +((simdi - se.lastSeen) / 86_400_000).toFixed(1) : 0,
+      fragile: !!se?.fragile,
+      retr: +retrievabilityOf(se, simdi).toFixed(2), hl: +deriveStab(se).toFixed(1),
+      due: true,
+    };
+    return sec;
+  }
 
   const byLevel: Record<Level, string[]> = { 1: [], 2: [], 3: [], 4: [] };
   for (const id of pickIds) {
@@ -543,17 +670,24 @@ function recordLocalSrsAnswer(
     ? Math.min(meta.responseMs, 60_000) : undefined;
   if (rt !== undefined) { e.totalMs = (e.totalMs || 0) + rt; e.lastMs = rt; }
   const fluent = rt === undefined || rt <= FLUENT_MS;
-  // Yarı-ömür güncellemesi: ilk karşılaşmada başlangıç değeri; sonra doğruda
-  // (1−R) oranında büyüme (unutmak üzereyken kurtarılan iz en çok güçlenir,
-  // taze tekrar az kazandırır), yanlışta küçülme. Yavaş-doğru yarım kazanır.
-  if (wasFirst) {
-    e.stab = correct ? (fluent ? HL_FIRST_FLUENT : HL_FIRST_SLOW) : HL_FIRST_WRONG;
-  } else if (correct) {
-    const growth = Math.max(HL_MIN_GROWTH, 1 + HL_GROWTH * (1 - prevR) * (fluent ? 1 : 0.5));
-    e.stab = Math.min(HL_MAX, deriveStab(e) * growth);
+
+  // ---- ARALIKLI TEKRAR TAKVİMİ ----
+  // ⚠️ AYNI GÜN SAYILMAZ. Basamak yalnız FARKLI BİR GÜNDE verilen doğru
+  // cevapla ilerler; aynı oturumda üst üste doğru yapmak öğretmez (güne
+  // yayılan tekrar, tek seferde tekrarın üç katı kalıcılık veriyor).
+  const bugun = dayOf(Date.now());
+  const ayniGun = e.lastCorrectDay === bugun;
+  const yeniGunDogru = correct && !ayniGun;
+  if (correct) {
+    if (yeniGunDogru) e.step = (e.step ?? 0) + 1;
+    e.lastCorrectDay = bugun;
+    e.stab = wasFirst && !yeniGunDogru ? HL_FIRST_WRONG : stabForStep(e.step ?? 1);
   } else {
-    e.stab = Math.max(HL_MIN, deriveStab(e) * HL_WRONG_SHRINK);
+    // Yanlış: basamakta 2 geri (seviyedeki −2 kuralıyla aynı ilke).
+    e.step = Math.max(0, (e.step ?? 0) - 2);
+    e.stab = e.step > 0 ? stabForStep(e.step) : Math.max(HL_MIN, HL_FIRST_WRONG);
   }
+  void prevR;
   if (correct) {
     e.correct += 1;
     e.consecutiveCorrect = (e.consecutiveCorrect || 0) + 1;
@@ -572,7 +706,11 @@ function recordLocalSrsAnswer(
       // FLASHCARD İSTİSNASI: orada şık yok, çocuk "Biliyorum" diye kendi
       // beyan ediyor → şansla tutturma ihtimali 0 (çoktan seçmelide %25).
       // Tek beyan ustalık sayılır, doğrudan L4 (kullanıcı kararı).
-      e.level = meta?.selfReport ? 4 : 3;
+      // ⚠️ Flashcard beyanı da ARTIK doğrudan L4 YAPMAZ. Şık olmadığı için
+      // şansla tutturma yok, o yüzden ilk doğru L3'e çıkarıyor — ama L4
+      // (ezberledi) için ertesi gün bir doğru daha gerekiyor. Tek dokunuşla
+      // L4 vermek, öğeyi programdan düşürüp unutulmaya bırakıyordu.
+      e.level = 3;
     } else if (e.level < 3) {
       // L1→L2, L2→L3: tek doğru yeterli
       e.level = ((e.level + 1) as Level);
@@ -583,7 +721,11 @@ function recordLocalSrsAnswer(
       // süre şartı aranmaz. Küçük çocukta yavaşlık çoğu zaman bilgi eksikliği
       // değil parmak/dikkat; ölçtük, süre şartı koyunca bilen ama temkinli
       // çocuğun geçme oranı %99'dan %87'ye düşüyordu.
-      if (e.consecutiveCorrect >= 2 && (fluent || e.total === 2)) e.level = 4;
+      // ⚠️ L4 (ezberledi) için ikinci doğru BAŞKA BİR GÜN olmalı. Aynı
+      // oturumda arka arkaya iki doğru "ustalaştı" demek değildir — sahte
+      // ustalık tam buradan doğuyordu (ölçtük: yalnız Flashcard oynayan
+      // çocukta 97 harf "biliyor" görünüp bilinmiyordu).
+      if (e.consecutiveCorrect >= 2 && yeniGunDogru && (fluent || e.total === 2)) e.level = 4;
     }
   } else {
     // Yanlışta 2 seviye düş (kullanıcı isteği — sabit kalacak).

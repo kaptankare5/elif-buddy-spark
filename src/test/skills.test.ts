@@ -4,7 +4,7 @@
 // (üstün/esre/ötre); 4. konuda "şe" sorulur ama ölçülen şın'ın ORTADAKİ
 // hâlidir. Bu testler hem yeni davranışı hem de eski konuların HİÇ
 // değişmediğini kilitler.
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { getAllTopics } from "@/data/subjects";
 import { getTopicSrs, recordSrsAnswer, __resetSelectorState, type Level } from "@/data/srs";
 import { isTopicCompleted, getUnlockedSections, practiceItems } from "@/lib/unlock";
@@ -14,6 +14,12 @@ import { letterNumOf } from "@/lib/confusables";
 
 const topics = getAllTopics();
 const T = (id: string) => topics.find((t) => t.id === id)!;
+
+// ⚠️ ARALIKLI TEKRAR: L4 (ezberledi) için ikinci doğru BAŞKA BİR GÜN olmalı.
+// Testlerde günü ilerletmek için saati sabitliyoruz.
+const gercekNow = Date.now;
+const gunde = (d: number) => { Date.now = () => d * 86_400_000 + 3_600_000; };
+afterEach(() => { Date.now = gercekNow; });
 
 beforeEach(() => {
   localStorage.clear();
@@ -64,13 +70,27 @@ describe("konu tamamlanması BECERİ sayar", () => {
     }
   };
 
-  it("Harekeler 3 beceri × 2 doğru = 6 cevapta biter (eskiden 168)", async () => {
+  it("Harekeler 3 beceri, tek oturumda TAMAMLANIR (eskiden 168 cevap)", async () => {
     const t = T("harekeler");
+    gunde(100);
     expect(isTopicCompleted(t)).toBe(false);
-    for (const sk of topicSkillIds(t)) await cevapla(t.id, sk, 2);
+    for (const sk of topicSkillIds(t)) await cevapla(t.id, sk, 1);
+    // Konu tamamlanması L3 ister → tek oturumda, 3 cevapta biter.
     expect(isTopicCompleted(t)).toBe(true);
     const srs = getTopicSrs("quiz", t.id);
-    // hızlı geçiş: ilk doğru L3, ikinci L4
+    expect(Object.values(srs).every((e) => (e.level as Level) === 3)).toBe(true);
+  });
+
+  it("L4 (ezberledi) için ERTESİ GÜN bir doğru daha gerekir", async () => {
+    const t = T("harekeler");
+    gunde(100);
+    for (const sk of topicSkillIds(t)) await cevapla(t.id, sk, 3);   // aynı gün 3 doğru
+    let srs = getTopicSrs("quiz", t.id);
+    // Aynı oturumda kaç doğru yaparsa yapsın L3'te kalır — aynı gün sayılmaz.
+    expect(Object.values(srs).every((e) => (e.level as Level) === 3)).toBe(true);
+    gunde(103);
+    for (const sk of topicSkillIds(t)) await cevapla(t.id, sk, 1);
+    srs = getTopicSrs("quiz", t.id);
     expect(Object.values(srs).every((e) => (e.level as Level) === 4)).toBe(true);
   });
 
@@ -237,7 +257,9 @@ describe("ön koşul (prereqSkill) — yanlış teşhis koymayalım", () => {
   });
 
   it("hareke L4'teyse hata ŞEKLE yazılır", async () => {
+    gunde(200);
     await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900 });
+    gunde(203);   // L4 için ertesi gün şart
     await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900 });
     expect(skillLevel("hrk-fetha")).toBe(PREREQ_LEVEL);
     const hedef = t4().items.find((i) => i.prereqSkill === "hrk-fetha")!;

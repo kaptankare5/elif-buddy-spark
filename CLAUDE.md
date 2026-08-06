@@ -102,6 +102,28 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   Seçici SRS durumuna bakar; normal modda cevap SRS'e yazılmadığı için durum
   hiç değişmiyor ve her çağrı aynı harfi döndürüyordu ("sürekli aynı soruyu
   soruyor"). Tampon seçimi moddan bağımsız ilerletir.
+- ⚠️ **ARALIKLI TEKRAR TAKVİMİ** (`SPACING`, srs.ts): **AYNI GÜN SAYILMAZ.**
+  Basamak yalnız FARKLI BİR GÜNDE verilen doğru cevapla ilerler; aynı
+  oturumda üst üste doğru yapmak L4 vermez (güne yayılan tekrar tek seferde
+  tekrarın 3 katı kalıcılık veriyor — 5. sınıf ölçümü). Flashcard'ın tek
+  dokunuşta L4'ü bu yüzden kaldırıldı; ilk doğru L3, L4 ertesi gün.
+  Basamaklar `1 → 3 → 7 → 21 → 60 → 150 → 365` gün (Cepeda 2008: 1 hafta
+  için sürenin %20-40'ı, 1 yıl için %5-10'u). Son basamağı geçen öğe
+  **MEZUN** olur (`GRADUATED_STEP`), bir daha programa girmez — Bahrick:
+  yılı devirmiş bilgi 30 yıl sabit kalıyor ("permastore").
+- ⚠️ **VADE SIRASI**: hatırlama olasılığı `DESIRED_RETENTION` (0.90) altına
+  düşen öğe KURAYA GİRMEZ, doğrudan öne alınır (`isDue`, `DUE_SHARE` 0.7).
+  Eskiden vade yalnız bir bilet çarpanıydı (en fazla ×3) ve 170 öğelik
+  havuzda unutulmuş öğe kurayı kaybediyordu → "L3+ ama unutmuş" sayısı
+  şişiyordu. Kalan %30 yeni öğe tanıtımına bırakılır, yoksa biriken bakım
+  borcu öğrenmeyi durdurur. Karışıklık çarpanı vade sırasında DA uygulanır
+  (yoksa karıştırılan harf sık gelmeyi bırakıyor — testi var).
+- `DESIRED_RETENTION` (0.90) ile Wilson'ın **%85 başarı oranı** AYRI
+  şeylerdir: biri tekrarların SEYREKLİĞİNİ, öteki soruların ZORLUĞUNU
+  ayarlar. Çocukta hedefi düşürmüyoruz; iş yükü kazancı `INTERVAL_SCALE`
+  ile aralık uzatmaktan gelir (Bahrick: 13 tekrar × 56 gün = 26 tekrar ×
+  14 gün). İngilizce'de kelime sayısı büyüyünce tek sayıyla yük yarıya
+  iner. Ölçüm: sahte ustalık karışık senaryoda 55 → 19.
 - SRS `src/data/srs.ts`: L1-4. Yanlış = **-2 seviye** (kullanıcı şartı,
   değişmez). L3→L4 = üst üste 2 doğru (`consecutiveCorrect`). Seçici:
   görülmemişler müfredat sırasıyla, art arda aynı öğe yok, ağırlıklar
