@@ -15,6 +15,8 @@
 // hiçbiri bunu içe aktarmaz (döngü yok).
 import { getAllTopics, findTopicOfItem } from "@/data/subjects";
 import { getUnlockedTopicIds, getUnlockedItemsOf } from "@/lib/unlock";
+import { skillOf } from "@/lib/skills";
+import type { ContentItem } from "@/data/types";
 import { isTopicSkipped, backCheckPressure } from "@/lib/placement";
 import { getTopicSrs, pickNextLetterFromTopic, getFlowBand, type Namespace, type TopicSrs } from "@/data/srs";
 
@@ -63,15 +65,26 @@ export function pickReviewItem(currentTopicId: string, ns: Namespace): ReviewPic
   const poolTopics = hotTopic && hotP > REVIEW_BASE ? earlier.filter((t) => t.id === hotTopic) : earlier;
   const ids: string[] = [];
   const merged: TopicSrs = {};
+  // ⚠️ Seçim BECERİ üzerinden yapılır (seviyeler orada tutuluyor), ama geri
+  // dönen şey bir ÖĞE olmalı — soru ekranı gerçek bir harf/hece gösterecek.
+  // Skill'i olmayan konularda beceri = öğe id'si, davranış aynen korunur.
+  const skillItems = new Map<string, ContentItem[]>();
   for (const t of poolTopics) {
     const srs = getTopicSrs(ns, t.id);
     for (const it of getUnlockedItemsOf(t)) {
-      ids.push(it.id);
-      if (srs[it.id]) merged[it.id] = srs[it.id];
+      const sk = skillOf(it);
+      const list = skillItems.get(sk);
+      if (list) { list.push(it); continue; }
+      skillItems.set(sk, [it]);
+      ids.push(sk);
+      if (srs[sk]) merged[sk] = srs[sk];
     }
   }
   if (ids.length === 0) return null;
-  const itemId = pickNextLetterFromTopic(merged, ids);
-  const topicId = findTopicOfItem(itemId)?.topicId ?? poolTopics[0].id;
-  return { topicId, itemId };
+  const skillId = pickNextLetterFromTopic(merged, ids);
+  const adaylar = skillItems.get(skillId) ?? [];
+  const item = adaylar[Math.floor(Math.random() * adaylar.length)];
+  if (!item) return null;
+  const topicId = findTopicOfItem(item.id)?.topicId ?? poolTopics[0].id;
+  return { topicId, itemId: item.id };
 }

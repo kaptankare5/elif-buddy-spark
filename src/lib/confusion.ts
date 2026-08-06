@@ -256,7 +256,23 @@ export function pickDistractors(pool: ContentItem[], target: ContentItem, count 
   // doğru harfi seçtiği hâlde "yanlış" yer. Bu yüzden çeldiriciler hedefle
   // aynı sesi paylaşamaz. (Form ayrımı böyle sorulamaz; sesle sorulan bir
   // soruda "başta mı ortada mı" ayrımı zaten cevaplanabilir değil.)
-  const others = pool.filter((it) => it.id !== target.id && !sameSound(target, it));
+  // ÇELDİRİCİ KISITI (distractorKey): hedef bir kısıt taşıyorsa şıklar aynı
+  // anahtarı paylaşmalı — yoksa çocuk ölçtüğümüz eksene hiç bakmadan eleyebilir
+  // (harekeyi ölçerken şıklar farklı harflerse harften tanır). Kısıtı
+  // karşılayan yeterli aday yoksa kısıt gevşetilir; soru sorulamaz duruma
+  // düşmesindense biraz kolay olsun.
+  // ⚠️ Kısıt SESSİZCE DÜŞMEZ. Harekede aynı harften yalnız 2 çeldirici var
+  // (بَ için بِ ve بُ); "3 çeldirici bul" denince kısıt düşüp havuzun tamamına
+  // açılıyordu ve şıklara başka harfler giriyordu — soru harekeyi ölçmeyi
+  // bırakıyordu. Artık aday azsa ŞIK AZ OLUR (kullanıcı şartı: "3 seçenek
+  // olacak be bi bü diye"). Yalnız hiç aday yoksa havuza düşülür.
+  const kisitli = target.distractorKey
+    ? pool.filter((it) => it.distractorKey === target.distractorKey)
+    : pool;
+  const uygun = kisitli.filter((it) => it.id !== target.id && !sameSound(target, it));
+  const others = uygun.length > 0
+    ? uygun
+    : pool.filter((it) => it.id !== target.id && !sameSound(target, it));
   if (others.length <= count) return shuffle(others);
 
   const hot: ContentItem[] = [];

@@ -17,6 +17,7 @@ import {
 } from "@/data/srs";
 import { cn } from "@/lib/utils";
 import { isTopicUnlocked, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
+import { pickItemForSkill, skillIdsOf, skillOf } from "@/lib/skills";
 import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
 import { SkipTest } from "@/components/SkipTest";
@@ -49,10 +50,11 @@ function shuffle<T>(a: T[]): T[] {
   return r;
 }
 
-function buildQuestion(items: ContentItem[], targetId: string) {
+function buildQuestion(items: ContentItem[], targetId: string, optionCount = 4) {
   const target = items.find((it) => it.id === targetId) || items[0];
   // Çeldiriciler rastgele değil, hedefin KARIŞANLARINDAN (ayrım eğitimi).
-  const wrongs = pickDistractors(items, target, 3);
+  // Şık sayısı konuya bağlı: Harekeler'de 3 (بَ بِ بُ), diğerlerinde 4.
+  const wrongs = pickDistractors(items, target, Math.max(1, optionCount - 1));
   return { target, options: shuffle([target, ...wrongs]) };
 }
 
@@ -115,7 +117,7 @@ const Topic = () => {
 
     const ask = (pool: ContentItem[], targetId: string, reviewTopic: string | null) => {
       backCheckRef.current = reviewTopic;
-      setQ(buildQuestion(pool, targetId));
+      setQ(buildQuestion(pool, targetId, topic.optionCount));
       setPicked(null);
       questionStartRef.current = Date.now();
     };
@@ -140,7 +142,14 @@ const Topic = () => {
     }
 
     // Normal konu içi SRS seçimi.
-    ask(ownPool(), pickNextLetter(NS, topic.id, unlockedItemIds), null);
+    // ⚠️ Seçici BECERİ seçer (seviyeler orada), sonra o beceriyi taşıyan
+    // öğelerden biri soru olur. "3. Harekeler"de 84 öğe 3 beceriyi ölçüyor;
+    // öğe üzerinden seçseydik aynı hareke 28 ayrı "yeni harf" gibi görünür,
+    // konu 168 doğru cevap isterdi.
+    const pool = ownPool();
+    const skillId = pickNextLetter(NS, topic.id, skillIdsOf(pool));
+    const target = pickItemForSkill(pool, skillId);
+    if (target) ask(pool, target.id, null);
   }, [mode, topic, unlockedItemIds, q, items]);
 
   useEffect(() => {
@@ -194,8 +203,11 @@ const Topic = () => {
   // Bir bölümde kaç öğe ustalaşıldı (L3+) — yıldız ilerlemesi
   const sectionMastery = (sec: string) => {
     const its = items.filter((it) => it.section === sec);
-    const done = its.filter((it) => ((srs[it.id]?.level ?? 1) as Level) >= 3).length;
-    return { done, total: its.length };
+    // Yıldız ilerlemesi de BECERİ sayar — Harekeler'de 12 öğelik bir bölüm
+    // aslında 3 beceri ölçüyor, öğe saysaydık "3/12" gibi yanıltıcı olurdu.
+    const sks = skillIdsOf(its);
+    const done = sks.filter((sk) => ((srs[sk]?.level ?? 1) as Level) >= 3).length;
+    return { done, total: sks.length };
   };
   const videoEmbed = topic.video ? ytEmbedUrl(topic.video) : null;
 
@@ -206,7 +218,7 @@ const Topic = () => {
       aria-label={it.translit || it.label || "harf"}
       className="relative aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
     >
-      <LevelBadge itemId={it.id} topicId={topic.id} className="absolute right-1 top-1" />
+      <LevelBadge itemId={skillOf(it)} topicId={topic.id} className="absolute right-1 top-1" />
       {/* Glif bölgesi — hareke işaretleri taşsa bile alttaki etiket bandına binemez */}
       <span className="flex-1 min-h-0 flex w-full items-center justify-center px-1">
         <span className={cn(
@@ -415,19 +427,22 @@ const Topic = () => {
     // KARIŞIKLIK ÖLÇÜMÜ: testte hangi şıkkı seçtiğini biliyoruz — en net sinyal.
     // Yanlış seçim o çiftin ısısını yükseltir; partner ORTADAYKEN doğru cevap
     // gerçek bir ayrımdır ve üst üste 3 olunca ısıyı düşürür.
-    if (correct) recordDiscrimination(q.target.id, q.options.map((o) => o.id));
-    else recordConfusionPick(q.target.id, opt.id);
+    // Karışıklık da BECERİ anahtarıyla ölçülür: 4. konuda beceri
+    // `l2-13-med` olduğu için confusables/telafi katmanı harfin hâlini
+    // tanır ve doğru hafıza dersini açabilir.
+    if (correct) recordDiscrimination(skillOf(q.target), q.options.map((o) => skillOf(o)));
+    else recordConfusionPick(skillOf(q.target), skillOf(opt));
     const bcTopic = backCheckRef.current;
     if (bcTopic) {
       // Bakım/ara-kontrol: cevabı O konuya işle (dürüst seviye). Atlanmış konuysa
       // ayrıca konu-düzeyi yoklama durumunu güncelle (deneme/zayıflık). Yabancı
       // harf hemen tekrar sorulmaz.
-      await recordSrsAnswer(NS, bcTopic, q.target.id, correct, { responseMs });
+      await recordSrsAnswer(NS, bcTopic, skillOf(q.target), correct, { responseMs });
       if (isTopicSkipped(bcTopic)) recordBackCheck(bcTopic, correct);
       retryIdRef.current = null;
       retryUsedRef.current = false;
     } else {
-      await recordSrsAnswer(NS, topic.id, q.target.id, correct, { responseMs });
+      await recordSrsAnswer(NS, topic.id, skillOf(q.target), correct, { responseMs });
       // Yanlışsa aynı harf bir sonraki soruda tekrar sorulsun — ama yalnız
       // BİR kez. Tekrar da yanlışsa harf bırakılır; SRS zaten onu yakında
       // geri getirir, bu arada çocuk kolay/eski sorularla toparlanır.
@@ -494,7 +509,7 @@ const Topic = () => {
         {q && (
           <>
             <div className="relative bg-card rounded-3xl p-6 shadow-card border-4 border-primary/20 mb-4 text-center animate-bounce-in" key={q.target.id}>
-              <LevelBadge itemId={q.target.id} topicId={topic.id} className="absolute right-2 top-2" />
+              <LevelBadge itemId={skillOf(q.target)} topicId={topic.id} className="absolute right-2 top-2" />
               <button
                 onClick={() => playItem(q.target)}
                 className="inline-flex items-center gap-3 rounded-full bg-primary px-8 py-5 text-primary-foreground font-extrabold shadow-soft transition-bouncy hover:scale-105"
@@ -519,7 +534,7 @@ const Topic = () => {
                       isWrong && "bg-destructive border-destructive animate-shake",
                     )}
                   >
-                    <LevelBadge itemId={opt.id} topicId={topic.id} className="absolute right-1.5 top-1.5" />
+                    <LevelBadge itemId={skillOf(opt)} topicId={topic.id} className="absolute right-1.5 top-1.5" />
                     <span className={cn(
                       "font-arabic text-5xl leading-[1.5]",
                       (isCorrect || isWrong) ? "text-white" : "text-emerald-800",

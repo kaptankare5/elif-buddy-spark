@@ -14,6 +14,7 @@ import {
   type Level,
 } from "@/data/srs";
 import { isTopicUnlocked, getUnlockedItemsOf } from "@/lib/unlock";
+import { pickItemForSkill, skillIdsOf, skillOf } from "@/lib/skills";
 import { pickReviewItem } from "@/lib/review";
 import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
 import { pickContrastId, recordDiscrimination, recordMiss } from "@/lib/confusion";
@@ -90,8 +91,10 @@ const Flashcard = () => {
       setCurrentId(rev.itemId);
     } else {
       reviewTopicRef.current = null;
+      // Seçici BECERİ seçer, sonra o beceriyi taşıyan bir kart gösterilir.
       const srs = getTopicSrs(NS, topic!.id);
-      setCurrentId(pickNextLetterFromTopic(srs, itemIds));
+      const sk = pickNextLetterFromTopic(srs, skillIdsOf(items));
+      setCurrentId((pickItemForSkill(items, sk) ?? items[0]).id);
     }
     setFlipped(false);
     setDrag(0);
@@ -123,7 +126,7 @@ const Flashcard = () => {
     // selfReport: Flashcard'da şık YOK — çocuk kendi beyan ediyor, şansla
     // tutturma ihtimali sıfır. Bu yüzden ilk karşılaşmadaki "Biliyorum"
     // tek seferde ustalık sayılır (doğrudan L4); testte iki doğru gerekir.
-    await recordSrsAnswer(NS, recTopic, current.id, correct, { responseMs, selfReport: true });
+    await recordSrsAnswer(NS, recTopic, skillOf(current), correct, { responseMs, selfReport: true });
     // Karışıklık ölçümü: flashcard'da şık yok, karşıtlık ARDIŞIKTIR — bir
     // önceki kart partnerse doğru cevap gerçek bir ayrımdır. Yanlışta hangi
     // harfle karıştırdığı bilinemez → a-priori partnerlere hafif ısı.
@@ -186,7 +189,7 @@ const Flashcard = () => {
   };
 
   const curTopicId = reviewTopicRef.current ?? topic!.id;
-  const level = current ? (getTopicSrs(NS, curTopicId)[current.id]?.level || 1) as Level : 1;
+  const level = current ? (getTopicSrs(NS, curTopicId)[skillOf(current)]?.level || 1) as Level : 1;
   const dragOpacity = Math.min(Math.abs(drag) / 120, 1);
 
   if (!topic) return <Navigate to="/" replace />;

@@ -23,6 +23,7 @@ import type { ContentItem, ContentTopic } from "@/data/types";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { isTopicSkipped } from "@/lib/placement";
 import { heatBetween } from "@/lib/confusion";
+import { skillIdsOf, skillOf } from "@/lib/skills";
 
 const NS: Namespace = "quiz";
 
@@ -35,7 +36,9 @@ const SECTION_CONFUSION_MAX = 0.6;
 export function hotPairInSection(items: ContentItem[]): [ContentItem, ContentItem] | null {
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
-      if (heatBetween(items[i].id, items[j].id) >= SECTION_CONFUSION_MAX) {
+      // Isı BECERİ anahtarıyla kaydediliyor (4. konuda `l2-13-med` gibi),
+      // öğe id'siyle sorulursa hep 0 döner ve kapı hiç kapanmaz.
+      if (heatBetween(skillOf(items[i]), skillOf(items[j])) >= SECTION_CONFUSION_MAX) {
         return [items[i], items[j]];
       }
     }
@@ -47,8 +50,13 @@ export function isTopicCompleted(topic: ContentTopic): boolean {
   if (topic.noPractice) return true;
   const srs = getTopicSrs(NS, topic.id);
   if (topic.items.length === 0) return true;
-  for (const it of topic.items) {
-    const lvl = (srs[it.id]?.level ?? 1) as Level;
+  // ⚠️ ÖĞE değil BECERİ sayılır. "3. Harekeler"de 84 öğe var ama ölçülen 3
+  // şey: üstün/esre/ötre. Öğe başına saysaydık konu 168 doğru cevap isterdi
+  // (aşırı alıştırma); beceri başına sayınca çocuk harekeyi anladığında
+  // biter. Skill'i olmayan konularda skillIdsOf öğe id'lerini döndürür,
+  // yani davranış aynen korunur.
+  for (const sk of skillIdsOf(topic.items)) {
+    const lvl = (srs[sk]?.level ?? 1) as Level;
     if (lvl < 3) return false;
   }
   // Bölüm kilidiyle aynı ilke: seviyeler tamam olsa da hâlâ karıştırdığı bir
@@ -120,7 +128,10 @@ export function getUnlockedSections(topic: ContentTopic): Set<string> {
   for (const sec of order) {
     out.add(sec);
     const items = topic.items.filter((it) => it.section === sec);
-    const leveled = items.every((it) => ((srs[it.id]?.level ?? 1) as Level) >= 3);
+    // Bölüm de BECERİ üzerinden ustalaşır. Harekeler'de her bölüm aynı 3
+    // beceriyi taşıdığı için ilk bölüm bitince kalanlar kendiliğinden açılır
+    // — özel bir kural gerekmiyor, genelleme doğal olarak çalışıyor.
+    const leveled = skillIdsOf(items).every((sk) => ((srs[sk]?.level ?? 1) as Level) >= 3);
     // Seviye yetmez: bölüm içi karışıklık da sönmüş olmalı (ayrım şartı).
     const mastered = leveled && !hotPairInSection(items);
     if (!mastered) break; // burası aktif bölüm — sonrakiler kilitli kalır

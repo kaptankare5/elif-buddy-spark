@@ -18,6 +18,7 @@ import { getGameMode } from "@/lib/gameMode";
 import { recordConfusionPick, recordDiscrimination, recordMiss } from "@/lib/confusion";
 import { considerRemedy, queueRemedy } from "@/lib/remedial";
 import type { ContentItem } from "@/data/types";
+import { pickItemForSkill, skillOf } from "@/lib/skills";
 
 const NS = "quiz" as const;
 
@@ -34,7 +35,7 @@ export function recordGameAnswer(
   // SRS'e sayılmaz ama çocuk yine de karıştırmıştır — o bilgi kaybolmamalı.
   // Oyun hangi harfi seçtiğini bildirdiyse kesin sinyal, bildirmediyse
   // a-priori benzerlere hafif ısı dağıtılır.
-  recordConfusionSignal(item.id, correct, meta?.chosenId, meta?.shownIds);
+  recordConfusionSignal(skillOf(item), correct, meta?.chosenId, meta?.shownIds);
 
   // Süper mod veya gerçek Quiz oyunu → SRS'e yazılır. Normal mod → yazılmaz
   // (yalnız yukarıdaki karışıklık ölçümü çalışır; o bir seviye değişikliği
@@ -42,7 +43,7 @@ export function recordGameAnswer(
   if (getGameMode() !== "super" && meta?.gameId !== "quiz") return;
 
   try {
-    recordSrsAnswer(NS, t.topicId, item.id, correct, meta);
+    recordSrsAnswer(NS, t.topicId, skillOf(item), correct, meta);
   } catch { /* ignore */ }
 }
 
@@ -56,8 +57,8 @@ export function recordInGameTest(
   if (!item) return;
   const t = findTopicOfItem(item.id);
   if (!t) return;
-  recordConfusionSignal(item.id, correct, meta?.chosenId, meta?.shownIds);
-  try { recordSrsAnswer(NS, t.topicId, item.id, correct); } catch { /* ignore */ }
+  recordConfusionSignal(skillOf(item), correct, meta?.chosenId, meta?.shownIds);
+  try { recordSrsAnswer(NS, t.topicId, skillOf(item), correct); } catch { /* ignore */ }
 }
 
 /** Oyun cevabını karışıklık motoruna aktar (tek merkez). */
@@ -81,7 +82,7 @@ export function getGameItemLevel(item: ContentItem | undefined | null): Level {
   if (!item) return 1;
   const t = findTopicOfItem(item.id);
   if (!t) return 1;
-  return (getTopicSrs(NS, t.topicId)[item.id]?.level ?? 1) as Level;
+  return (getTopicSrs(NS, t.topicId)[skillOf(item)]?.level ?? 1) as Level;
 }
 
 /**
@@ -98,7 +99,7 @@ export function showHintFor(item: ContentItem | undefined | null): boolean {
   if (!item) return false;
   const t = findTopicOfItem(item.id);
   if (!t) return false;
-  const e = getTopicSrs(NS, t.topicId)[item.id];
+  const e = getTopicSrs(NS, t.topicId)[skillOf(item)];
   if (!e || (e.seen ?? 0) === 0) return false;   // ilk karşılaşma → ipucu YOK
   return ((e.level ?? 1) as Level) === 1;
 }
@@ -141,21 +142,32 @@ export function pickNextGameItem(pool: ContentItem[]): ContentItem | undefined {
   while (_retryQueue.length > 0) {
     const id = _retryQueue.shift()!;
     const found = pool.find((p) => p.id === id);
-    if (found) { rememberAsked(found.id); return found; }
+    if (found) { rememberAsked(skillOf(found)); return found; }
   }
   // Son sorulanları ele — ama havuz çeldirici kuracak kadar (3) kalmalı.
-  let usable = pool.filter((p) => !_recentAsked.includes(p.id));
+  // Tampon BECERİ tutar: aynı harekeyi arka arkaya sormamak için.
+  let usable = pool.filter((p) => !_recentAsked.includes(skillOf(p)));
   if (usable.length < 3) usable = pool;
 
+  // ⚠️ Seçici ÖĞE değil BECERİ seçer. "3. Harekeler"de 84 öğe tek bir
+  // üstün/esre/ötre üçlüsünü ölçüyor; öğe üzerinden seçseydik aynı beceri
+  // 28 kez ayrı ayrı "yeni harf" gibi görünürdü. Beceri seçildikten sonra
+  // onu taşıyan öğelerden biri rastgele soru olur — böylece çocuk aynı
+  // harekeyi her seferinde başka harfle görür. Skill'i olmayan konularda
+  // beceri = öğe id'si, yani davranış aynen korunur.
   const synthetic: TopicSrs = {};
+  const skillIds: string[] = [];
   for (const item of usable) {
+    const sk = skillOf(item);
+    if (synthetic[sk]) continue;
+    skillIds.push(sk);
     const t = findTopicOfItem(item.id);
-    const entry = t ? getTopicSrs(NS, t.topicId)[item.id] : undefined;
-    synthetic[item.id] = entry ?? { level: 1, correct: 0, total: 0, seen: 0, lastSeen: 0, totalMs: 0 };
+    const entry = t ? getTopicSrs(NS, t.topicId)[sk] : undefined;
+    synthetic[sk] = entry ?? { level: 1, correct: 0, total: 0, seen: 0, lastSeen: 0, totalMs: 0 };
   }
-  const id = pickNextLetterFromTopic(synthetic, usable.map((p) => p.id));
-  const chosen = usable.find((p) => p.id === id) ?? usable[0];
-  rememberAsked(chosen.id);
+  const sk = pickNextLetterFromTopic(synthetic, skillIds);
+  const chosen = pickItemForSkill(usable, sk) ?? usable[0];
+  rememberAsked(skillOf(chosen));
   return chosen;
 }
 
@@ -170,5 +182,5 @@ export function isItemSeen(item: ContentItem | undefined | null): boolean {
   if (!item) return false;
   const t = findTopicOfItem(item.id);
   if (!t) return false;
-  return (getTopicSrs(NS, t.topicId)[item.id]?.seen ?? 0) > 0;
+  return (getTopicSrs(NS, t.topicId)[skillOf(item)]?.seen ?? 0) > 0;
 }
