@@ -363,9 +363,20 @@ const Topic = () => {
             );
           })}
 
+          {/* Alıştırmasız konu: çocuk görür/dinler ve geçer. Test/Flashcard
+              yok, kilit için de öğe sayılmaz (isTopicCompleted → true). */}
           {topic.noPractice && (
-            <div className="rounded-2xl bg-muted/50 p-4 text-center text-sm text-muted-foreground">
-              Bu konuda alıştırma yok. Harflere tıklayarak dinle ve öğren.
+            <div className="rounded-2xl border-2 border-success/30 bg-success/10 p-4 text-center">
+              <div className="text-2xl" aria-hidden>👀</div>
+              <p className="mt-1 text-sm font-extrabold text-success">Bu konuda alıştırma yok</p>
+              <p className="mt-1 text-xs font-bold leading-snug text-muted-foreground">
+                {topic.video
+                  ? "Videoyu izle ya da harflere dokunup 1-2 dakika dinle, sonra sonraki konuya geç."
+                  : "Harflere dokunup 1-2 dakika dinle, sonra sonraki konuya geç."}
+                <br />
+                Bu şekilleri <b>ezberlemene gerek yok</b> — sonraki konuda harekeyle
+                birlikte alıştırmasını yapacaksın.
+              </p>
             </div>
           )}
         </main>

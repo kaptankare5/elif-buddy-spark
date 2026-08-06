@@ -120,7 +120,10 @@ const Flashcard = () => {
     setBusy(true);
     const responseMs = Date.now() - startRef.current;
     const recTopic = reviewTopicRef.current ?? topic!.id;
-    await recordSrsAnswer(NS, recTopic, current.id, correct, { responseMs });
+    // selfReport: Flashcard'da şık YOK — çocuk kendi beyan ediyor, şansla
+    // tutturma ihtimali sıfır. Bu yüzden ilk karşılaşmadaki "Biliyorum"
+    // tek seferde ustalık sayılır (doğrudan L4); testte iki doğru gerekir.
+    await recordSrsAnswer(NS, recTopic, current.id, correct, { responseMs, selfReport: true });
     // Karışıklık ölçümü: flashcard'da şık yok, karşıtlık ARDIŞIKTIR — bir
     // önceki kart partnerse doğru cevap gerçek bir ayrımdır. Yanlışta hangi
     // harfle karıştırdığı bilinemez → a-priori partnerlere hafif ısı.
