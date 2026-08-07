@@ -21,6 +21,9 @@ import { pickContrastId, recordDiscrimination, recordMiss } from "@/lib/confusio
 import { considerRemedy, showRemedy } from "@/lib/remedial";
 import { cn } from "@/lib/utils";
 import { LevelBadge } from "@/components/LevelBadge";
+import { AuditCard } from "@/components/AuditCard";
+import { pickAuditQuestion, type AuditQuestion } from "@/lib/auditQuestion";
+import { auditDue, noteQuestion, recordAudit } from "@/lib/audit";
 import type { ContentItem, SubjectId } from "@/data/types";
 
 const NS = "quiz" as const;
@@ -53,9 +56,19 @@ const Flashcard = () => {
   // çocuk aynı ikilide sıkışıp kalmasın.
   const prevIdRef = useRef<string | null>(null);
   const chainRef = useRef(0);
+  // DENETİM KARTI (lib/audit.ts): 20 kartta bir, "Biliyorum" beyanının
+  // gerçekten tuttuğunu ölçen kontrol sorusu. Doluyken normal kart gizlenir.
+  const [denetim, setDenetim] = useState<AuditQuestion | null>(null);
 
   const pickNext = () => {
     if (itemIds.length === 0) return;
+    // 0a) DENETİM SIRASI MI? 20 kartta bir, "Biliyorum" beyanının gerçekten
+    //     tuttuğunu ölçen kontrol sorusu gelir. Aday yoksa (henüz L3+ harf
+    //     yok) sessizce normal karta düşer — sayaç bir sonrakinde dener.
+    if (auditDue()) {
+      const q = pickAuditQuestion(items, NS, topic!.id);
+      if (q) { setDenetim(q); return; }
+    }
     // 0) ZORLANIYORSA ÖNCE KURTARMA. Karşıtlık zinciri de bakım kanalını aç
     //    bırakabiliyordu: çocuk üst üste yanlış yaparken kartlar hep bu
     //    konunun (hepsi L1) zor harfleri arasında dönüyordu. Kolay olan eski
@@ -123,9 +136,11 @@ const Flashcard = () => {
     setBusy(true);
     const responseMs = Date.now() - startRef.current;
     const recTopic = reviewTopicRef.current ?? topic!.id;
-    // selfReport: Flashcard'da şık YOK — çocuk kendi beyan ediyor, şansla
-    // tutturma ihtimali sıfır. Bu yüzden ilk karşılaşmadaki "Biliyorum"
-    // tek seferde ustalık sayılır (doğrudan L4); testte iki doğru gerekir.
+    // selfReport → "üretim kanıtı" (tam puan). Şık yok, yani ŞANSLA tutturma
+    // yok; ama DOĞRULAMA da yok — çocuk cevabı gördükten sonra beyan ediyor.
+    // Bu yüzden puan, 20 kartta bir gelen denetim kartının ölçtüğü GÜVEN
+    // katsayısıyla ölçekleniyor (srs.ts + lib/audit.ts). Kestirme yok:
+    // ilk doğru L3, ikincisi L4, ustalık (L5) ayrı günler ister.
     const hedef = correct
       ? { topicId: recTopic, skillId: skillOf(current) }
       : blameTarget(current, recTopic);
@@ -146,6 +161,7 @@ const Flashcard = () => {
     if (reviewTopicRef.current && isTopicSkipped(reviewTopicRef.current)) {
       recordBackCheck(reviewTopicRef.current, correct);
     }
+    noteQuestion();   // denetim sayacı
     await playFeedback(correct);
     setDone((d) => d + 1);
     setDrag(correct ? 600 : -600);
@@ -158,6 +174,7 @@ const Flashcard = () => {
   // Klavye kısayolları
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
+      if (denetim) return;   // denetim kartında kart kısayolları kapalı
       if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); }
       else if (e.key === "ArrowRight") answer(true);
       else if (e.key === "ArrowLeft") answer(false);
@@ -165,7 +182,7 @@ const Flashcard = () => {
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, busy, flipped]);
+  }, [current?.id, busy, flipped, denetim]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!flipped) return;
@@ -229,7 +246,18 @@ const Flashcard = () => {
           </span>
         </div>
 
-        {current && (
+        {denetim && (
+          <AuditCard
+            question={denetim}
+            onDone={(dogru) => {
+              recordAudit(dogru);
+              setDenetim(null);
+              pickNext();
+            }}
+          />
+        )}
+
+        {!denetim && current && (
           <>
             <div
               className="perspective-1000 relative h-[min(420px,58svh)] mb-4 select-none"

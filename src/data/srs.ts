@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { findTopicOfItem, flattenItems } from "@/data/subjects";
 import { itemHeat, setConfusionScope } from "@/lib/confusion";
+import { reliability as auditReliability, setAuditScope } from "@/lib/audit";
 
 /**
  * Seviye merdiveni. ⚠️ L5 SONRADAN EKLENDİ ve L4'ün ANLAMINI DEĞİŞTİRDİ:
@@ -105,8 +106,10 @@ try {
 
 export function setActiveStudentScope(sid: string | null) {
   _activeStudent = sid || null;
-  // Karışıklık ısısı da öğrenciye özeldir (bağımlılık tek yönlü: srs → confusion)
+  // Karışıklık ısısı ve denetim kaydı da öğrenciye özeldir
+  // (bağımlılık tek yönlü: srs → confusion/audit)
   setConfusionScope(_activeStudent);
+  setAuditScope(_activeStudent);
   if (typeof window === "undefined") return;
   try {
     if (sid) localStorage.setItem("elifba-active-student-v1", sid);
@@ -800,7 +803,13 @@ function recordLocalSrsAnswer(
       e.step = (e.step ?? 0) + 1;
       // Ustalık puanı da yalnız FARKLI GÜNDE birikir — aynı oturumda
       // üst üste doğru yapmak ustalık kanıtı değildir.
-      e.mastery = (e.mastery ?? 0) + (uretim ? MASTERY.PRODUCTION : MASTERY.RECOGNITION);
+      // ⚠️ ÜRETİM PUANI GÜVEN KATSAYISIYLA ÖLÇEKLENİR (lib/audit.ts): Flashcard
+      // beyanı doğrulanmıyor, çocuk cevabı gördükten sonra "biliyordum" diyor.
+      // 20 soruda bir gelen denetim kartı bu beyanın ne kadar tuttuğunu ölçer
+      // ve puan ona göre kırpılır. Taban MIN_GUVEN — en güvenilmez çocukta bile
+      // Flashcard bir oyun cevabı kadar değer taşır, DEĞERSİZ olmaz.
+      e.mastery = (e.mastery ?? 0)
+        + (uretim ? MASTERY.PRODUCTION * auditReliability() : MASTERY.RECOGNITION);
     }
     e.lastCorrectDay = bugun;
     e.stab = wasFirst && !yeniGunDogru ? HL_FIRST_WRONG : stabForStep(e.step ?? 1);
