@@ -67,11 +67,11 @@ describe("oyun kapılarına soru dağıtımı", () => {
 
   // HIZLI GEÇİŞ: ilk karşılaşmada doğru → doğrudan L3, ikinci doğru → L4.
   // Konuyu bilerek gelen çocuk harf başına 2 cevapta bitirir.
-  it("OYUN da L4 verir — ama 6 farklı GÜN ister (üretimde 2)", () => {
+  it("OYUN da USTALIK (L5) verir — ama 6 farklı GÜN ister (üretimde 5)", () => {
     // Duvar değil KUR: oyunda çocuk şıktan seçiyor (şansla %25, üstelik
     // eleyerek de bulunur) ve yön ters — kitap "harfi gör → söyle" der.
-    // Ama maruz kalma da öğretir, sadece daha yavaş: tanıma 1/3 puan,
-    // üretim 1 puan, L4 için 2 puan.
+    // Ama maruz kalma da öğretir, sadece daha yavaş: tanıma 1/2 puan,
+    // üretim 1 puan, L5 için 3 puan.
     const gercekNow = Date.now;
     try {
       const gun = (d: number) => { Date.now = () => d * 86_400_000 + 3_600_000; };
@@ -79,11 +79,13 @@ describe("oyun kapılarına soru dağıtımı", () => {
       const cevap = () => recordGameAnswer(it0, true, { gameId: "party", chosenId: it0.id, shownIds: [it0.id] });
       const lvl = () => getTopicSrs("quiz", t1.id)[it0.id]?.level;
       gun(900); cevap();
-      expect(lvl()).toBe(3);
+      expect(lvl(), "ilk karşılaşma → L3").toBe(3);
+      cevap();
+      expect(lvl(), "üst üste 2 doğru → L4 (aynı gün olabilir)").toBe(4);
       for (const g of [902, 905, 910, 920]) { gun(g); cevap(); }
-      expect(lvl(), "5 oyun günü henüz yetmez").toBe(3);
+      expect(lvl(), "5 oyun günü = 2.5 puan, henüz yetmez").toBe(4);
       gun(930); cevap();
-      expect(lvl(), "6 oyun gününde L4").toBe(4);
+      expect(lvl(), "6 oyun gününde L5").toBe(5);
     } finally { Date.now = gercekNow; }
   });
 
@@ -96,7 +98,7 @@ describe("oyun kapılarına soru dağıtımı", () => {
         recordGameAnswer(it0, true, { gameId: "party", chosenId: it0.id, shownIds: [it0.id] });
       }
       const e = getTopicSrs("quiz", t1.id)[it0.id]!;
-      expect(e.level).toBe(3);
+      expect(e.level, "L4'e çıkar (2 üst üste doğru) ama ustalık VERMEZ").toBe(4);
       expect(e.mastery).toBeCloseTo(1 / 2, 5);   // 20 cevap ama TEK gün
     } finally { Date.now = gercekNow; }
   });

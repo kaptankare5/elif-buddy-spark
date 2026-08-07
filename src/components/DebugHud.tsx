@@ -67,7 +67,7 @@ function prettyPair(pair: string): string {
   return `${letterName(a)}↔${letterName(b)}`;
 }
 
-const LVL_COLOR = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e"];
+const LVL_COLOR = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e", "#f0b429"];
 const STATUS_COLOR: Record<string, string> = {
   deneme: "#a855f7", // mor — deneme süresi (yoğun yoklama)
   onaylı: "#22c55e", // yeşil — sağlıklı
@@ -177,7 +177,7 @@ export function DebugHud() {
             <>
               <div className="text-white/80 truncate">{pick.id}</div>
               <div className="flex items-center gap-1.5">
-                <span className="rounded px-1 font-extrabold text-black" style={{ background: LVL_COLOR[Math.min(4, pick.level)] }}>
+                <span className="rounded px-1 font-extrabold text-black" style={{ background: LVL_COLOR[Math.min(5, pick.level)] }}>
                   {pick.level === 0 ? "YENİ" : `L${pick.level}`}
                 </span>
                 <span className="text-white/80">bilet <b>{pick.ticket}</b></span>

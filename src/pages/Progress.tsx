@@ -59,8 +59,8 @@ const ProgressPage = () => {
         </div>
 
 
-        <div className="mb-6 grid grid-cols-4 gap-2">
-          {[1, 2, 3, 4].map((l) => (
+        <div className="mb-6 grid grid-cols-5 gap-1.5">
+          {[1, 2, 3, 4, 5].map((l) => (
             <LevelBox key={l} level={l as Level} count={showCloudLoading ? "…" : stats.levelCount[l as Level]} />
           ))}
         </div>
@@ -91,7 +91,7 @@ const ProgressPage = () => {
                     if (!temsilci.has(sk)) temsilci.set(sk, it);
                   }
                   const gorunenSayisi = t.items.length - sorulan.length;
-                  const counts: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+                  const counts: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
                   let touched = 0;
                   for (const id of ids) {
                     const e = srs[id];
@@ -115,12 +115,13 @@ const ProgressPage = () => {
                           </div>
                         </div>
                         <div className="flex gap-1 text-[10px] font-bold">
-                          {[1, 2, 3, 4].map((l) => (
+                          {[1, 2, 3, 4, 5].map((l) => (
                             <span key={l} className={cn("rounded px-1 py-0.5",
                               l === 1 && "bg-info/20 text-info",
                               l === 2 && "bg-warning/20 text-warning",
                               l === 3 && "bg-secondary text-secondary-foreground",
-                              l === 4 && "bg-success/20 text-success")}>
+                              l === 4 && "bg-success/20 text-success",
+                              l === 5 && "bg-gold/25 text-gold-foreground")}>
                               {topicLoading ? "…" : counts[l as Level]}
                             </span>
                           ))}
@@ -141,6 +142,7 @@ const ProgressPage = () => {
                                 lv === 2 && "border-warning/40",
                                 lv === 3 && "border-secondary",
                                 lv === 4 && "border-success/40",
+                                lv === 5 && "border-gold/60 bg-gold/5",
                               )}>
                                 <span className="w-8 shrink-0 text-center text-xl text-emerald-800"><EmojiView value={it.emoji} className="leading-[1.9]" /></span>
                                 <span className={cn("flex-1 truncate font-semibold", lv === 0 && "text-muted-foreground")}>{it.label}</span>
@@ -149,7 +151,8 @@ const ProgressPage = () => {
                                     lv === 1 && "bg-info/20 text-info",
                                     lv === 2 && "bg-warning/20 text-warning",
                                     lv === 3 && "bg-secondary text-secondary-foreground",
-                                    lv === 4 && "bg-success/20 text-success")}>L{lv}</span>
+                                    lv === 4 && "bg-success/20 text-success",
+                                    lv === 5 && "bg-gold/25 text-gold-foreground")}>L{lv}</span>
                                 )}
                               </div>
                             );
@@ -173,7 +176,7 @@ const ProgressPage = () => {
 
 function statsFromState(state: SrsState): ReturnType<typeof getNamespaceStats> {
   let total = 0, correct = 0;
-  const levelCount: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  const levelCount: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   Object.values(state).forEach((topic) => {
     Object.values(topic).forEach((e) => {
       total += e.total;
@@ -199,7 +202,8 @@ function LevelBox({ level, count }: { level: Level; count: number | string }) {
       level === 1 && "bg-info/10 border-info/40",
       level === 2 && "bg-warning/10 border-warning/40",
       level === 3 && "bg-secondary/40 border-secondary",
-      level === 4 && "bg-success/10 border-success/40")}>
+      level === 4 && "bg-success/10 border-success/40",
+      level === 5 && "bg-gold/10 border-gold/50")}>
       <div className="text-[10px] font-bold text-muted-foreground">Seviye {level}</div>
       <div className="text-xl font-extrabold">{count}</div>
     </div>

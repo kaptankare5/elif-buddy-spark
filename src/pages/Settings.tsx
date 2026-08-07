@@ -193,13 +193,16 @@ const Settings = () => {
               <b> yalnız daha önce gördüğün harfler</b> çıkar — yeni bir harfle ilk
               tanışma her zaman Süper Öğrenme'de, Test'te veya Flashcard'da olur.
               <br />
-              <b>⭐⭐⭐⭐ nasıl kazanılır:</b> son yıldız <b>ayrı günlerde</b> biriken
-              kanıtla verilir — aynı gün üst üste doğru yapmak saymaz.
-              <b> Flashcard</b> (harfi gör, adını kendin söyle) <b>3 günde</b>,
+              <b>Yıldızlar nasıl kazanılır:</b> ilk dört yıldız hızlı gelir —
+              harfi ilk kez bilmek ⭐⭐⭐, hemen ardından bir doğru daha
+              <b>⭐⭐⭐⭐ "öğrendi"</b> yapar, aynı oturumda olabilir.
+              <b>⭐⭐⭐⭐⭐ "ustalaştı"</b> ise <b>ayrı günlere yayılmış</b>
+              tekrarla verilir; aynı gün üst üste doğru yapmak saymaz.
+              <b>Flashcard</b> (harfi gör, adını kendin söyle) <b>5 günde</b>,
               oyun ve test (şıktan seçme) <b>6 günde</b> kazandırır: şıkta şansla
               tutturmak ve eleyerek bulmak mümkün olduğu için tek cevap yarım
               sayılır. İkisi karışık oynanırsa kanıtlar toplanır. Yani oyun da
-              ⭐⭐⭐⭐ verir — sadece daha uzun yoldan.
+              son yıldızı verir — sadece daha uzun yoldan.
             </p>
           </div>
 

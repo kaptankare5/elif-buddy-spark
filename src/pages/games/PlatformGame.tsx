@@ -2649,7 +2649,7 @@ const PlatformGame = () => {
           // TEST MODU: bloğun köşesinde SRS seviyesi (elle doğrulama)
           if (testActive && t.announced && b.item) {
             const lv = getGameItemLevel(b.item);
-            g.fillStyle = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e"][Math.min(4, lv)];
+            g.fillStyle = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e", "#f0b429"][Math.min(5, lv)];
             g.fillRect(bx + BLOCK - 16, by, 16, 13);
             g.fillStyle = "#000";
             g.font = "bold 10px system-ui, sans-serif";

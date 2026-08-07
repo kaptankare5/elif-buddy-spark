@@ -9,7 +9,19 @@ import { useEffect, useState } from "react";
 import { findTopicOfItem, flattenItems } from "@/data/subjects";
 import { itemHeat, setConfusionScope } from "@/lib/confusion";
 
-export type Level = 1 | 2 | 3 | 4;
+/**
+ * Seviye merdiveni. ⚠️ L5 SONRADAN EKLENDİ ve L4'ün ANLAMINI DEĞİŞTİRDİ:
+ *   L1-L2-L3 → tek doğruyla ilerler (tanışma)
+ *   L4 "ÖĞRENDİ"   → üst üste 2 doğru; aynı oturumda kazanılabilir (hızlı)
+ *   L5 "USTALAŞTI" → kanıt puanı (MASTERY) + ayrı günler; en erken 5. günde
+ * Neden: kanıt kuru L3→L4'e konunca çocuk günlerce ⭐⭐⭐'te PARK ediyordu —
+ * merdivenin görünen kısmı durunca ilerleme hissi bitiyor. Üstelik L3
+ * kurada en aç kova (bkz. waterfallWeights): orada biriken öğe seyrek
+ * sorulup soru bütçesi yeni harflere kayıyordu (ölçüm: tanıtılan harf
+ * 94 → 158, çocuk bilmediği harflere doğru koşuyordu). Şimdi hızlı rozet
+ * L4'te duruyor, katı kanıt şartı L5'e taşındı.
+ */
+export type Level = 1 | 2 | 3 | 4 | 5;
 export type Namespace = "quiz" | "games";
 
 export interface LetterSrsEntry {
@@ -194,7 +206,7 @@ type CloudLetterRow = {
 
 function rowToEntry(r: CloudLetterRow): LetterSrsEntry {
   return {
-    level: Math.max(1, Math.min(4, r.level || 1)) as Level,
+    level: Math.max(1, Math.min(5, r.level || 1)) as Level,
     correct: r.correct_count || 0,
     total: r.shown_count || 0,
     seen: r.shown_count || 0,
@@ -257,10 +269,17 @@ export function ensureLetters(ns: Namespace, topicId: string, letterIds: string[
 // öğeler ağırlıklı sorulur; ustalaşılanlar (L3-L4) düşük oranda "bakım
 // tekrarı" olarak karışır (aralıklı tekrar + serpiştirme: eski bölümlerin
 // harfleri hiç kaybolmaz, seyrek geri gelir → unutma eğrisi kırılır).
+// ⚠️ L3 AÇ KOVA OLMAMALI. Eski tabloda L3 %10 ile L4'ün (%15) bile altındaydı;
+// kanıt şartı L3→L4'e konunca öğeler orada birikti ve toplu hâlde %10'luk
+// dilimi paylaşıp neredeyse hiç sorulmaz oldu — soru bütçesi L1'e, yani YENİ
+// harflere kaydı ve çocuk bilmediği harflere doğru koştu (tanıtılan harf
+// 94 → 158). Artık merdiven monoton iniyor: üst seviye daha seyrek gelir ama
+// hiçbir seviye açlıktan ölmez. Asıl bakımı zaten vade sırası (isDue) yapıyor.
 function waterfallWeights(filledLevels: Level[]): Record<Level, number> {
-  const w: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  const w: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   const sorted = [...filledLevels].sort((a, b) => a - b);
-  if (sorted.length === 4) { w[1] = 55; w[2] = 20; w[3] = 10; w[4] = 15; }
+  if (sorted.length === 5) { w[1] = 46; w[2] = 20; w[3] = 14; w[4] = 12; w[5] = 8; }
+  else if (sorted.length === 4) { w[sorted[0]] = 52; w[sorted[1]] = 22; w[sorted[2]] = 15; w[sorted[3]] = 11; }
   else if (sorted.length === 3) { w[sorted[0]] = 65; w[sorted[1]] = 25; w[sorted[2]] = 10; }
   else if (sorted.length === 2) { w[sorted[0]] = 70; w[sorted[1]] = 30; }
   else if (sorted.length === 1) { w[sorted[0]] = 100; }
@@ -410,6 +429,12 @@ const MASTERY = {
    * daha çok gün" demek, kullanıcının sezgisiyle aynı büyüklükte.
    */
   RECOGNITION: 1 / 2,
+  /**
+   * L5 için en az bu kadar AYRI GÜN (takvim basamağı). Puan eşiği tek başına
+   * yetmiyor — bkz. L4→L5 kapısındaki (c) şıkkı. Tanıma yolu zaten 6 gün
+   * istediği için bu taban yalnız üretim (Flashcard) kestirmesini kapatır.
+   */
+  MIN_DAYS: 5,
   /** Yanlışta biriken puan yarılanır (sıfırlanmaz — öğrenme silinmez). */
   WRONG_DECAY: 0.5,
   /**
@@ -427,7 +452,7 @@ const dayOf = (ms: number) => Math.floor(ms / 86_400_000);
 function deriveStab(e: LetterSrsEntry | undefined): number {
   if (!e) return HL_MIN;
   if (typeof e.stab === "number" && e.stab > 0) return e.stab;
-  return e.level >= 4 ? 7 : e.level === 3 ? 3 : e.level === 2 ? 1 : 0.4;
+  return e.level >= 5 ? 14 : e.level === 4 ? 7 : e.level === 3 ? 3 : e.level === 2 ? 1 : 0.4;
 }
 
 // Şu anki hatırlama olasılığı R (0..1). Hiç görülmemişse 0 (en acil).
@@ -588,12 +613,12 @@ export function pickNextLetterFromTopic(topic: TopicSrs, letterIds: string[]): s
     return sec;
   }
 
-  const byLevel: Record<Level, string[]> = { 1: [], 2: [], 3: [], 4: [] };
+  const byLevel: Record<Level, string[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
   for (const id of pickIds) {
     const e = topic[id] || { level: 1, seen: 0, lastSeen: 0 };
     byLevel[e.level as Level].push(id);
   }
-  const filled: Level[] = ([1, 2, 3, 4] as Level[]).filter((l) => byLevel[l].length > 0);
+  const filled: Level[] = ([1, 2, 3, 4, 5] as Level[]).filter((l) => byLevel[l].length > 0);
   if (filled.length === 0) return pickIds[Math.floor(Math.random() * pickIds.length)];
   const w = waterfallWeights(filled);
   // Isınma + uyarlanır zorluk (seans yayı): ~%85 akış kanalını korur.
@@ -772,39 +797,51 @@ function recordLocalSrsAnswer(
       // ⚠️ Bu yüzden oyunlarda İLK karşılaşmada ipucu halkası GÖSTERİLMEZ
       // (gameProgress.showHintFor): ipuçlu doğru cevap "biliyordu" sayılamaz.
       //
-      // FLASHCARD İSTİSNASI: orada şık yok, çocuk "Biliyorum" diye kendi
-      // beyan ediyor → şansla tutturma ihtimali 0 (çoktan seçmelide %25).
-      // Tek beyan ustalık sayılır, doğrudan L4 (kullanıcı kararı).
-      // ⚠️ Flashcard beyanı da ARTIK doğrudan L4 YAPMAZ. Şık olmadığı için
-      // şansla tutturma yok, o yüzden ilk doğru L3'e çıkarıyor — ama L4
-      // (ezberledi) için ertesi gün bir doğru daha gerekiyor. Tek dokunuşla
-      // L4 vermek, öğeyi programdan düşürüp unutulmaya bırakıyordu.
+      // ⚠️ FLASHCARD'IN KESTİRMESİ YOK: eskiden orada şık olmadığı için tek
+      // "Biliyorum" beyanı doğrudan L4 yapıyordu. Kaldırıldı — çocuk 1 saatte
+      // bütün harfleri L4 yapıp ertesi hafta kitaptan sorulunca bilemiyordu.
+      // Şık olmaması yalnız ŞANSLA TUTTURMAYI sıfırlar, KALICILIĞI kanıtlamaz;
+      // kalıcılık ayrı günlere yayılmış tekrardan gelir. Beyanın tek ayrıcalığı
+      // MASTERY'de tam puan almasıdır (üretim kanıtı), kestirme değil.
       e.level = 3;
     } else if (e.level < 3) {
       // L1→L2, L2→L3: tek doğru yeterli
       e.level = ((e.level + 1) as Level);
     } else if (e.level === 3) {
-      // L3→L4 (en üst = OTOMATİKLİK): üst üste 2 doğru VE akıcı (hızlı) olmalı.
-      // Yavaş-doğru "biliyor ama tereddütlü" → henüz ustalık değil, L3'te kalır.
-      // İSTİSNA — hızlı geçiş yolu (ilk iki cevabın ikisi de doğru): burada
-      // süre şartı aranmaz. Küçük çocukta yavaşlık çoğu zaman bilgi eksikliği
-      // değil parmak/dikkat; ölçtük, süre şartı koyunca bilen ama temkinli
-      // çocuğun geçme oranı %99'dan %87'ye düşüyordu.
-      // ⚠️ L4 ("ezberledi") ÜÇ ŞART BİRDEN ister:
+      // L3→L4 ("ÖĞRENDİ"): üst üste 2 doğru VE akıcı (hızlı) olmalı.
+      // Yavaş-doğru "biliyor ama tereddütlü" → henüz öğrendi değil, L3'te kalır.
+      // Bu basamak AYNI OTURUMDA kazanılabilir — bilerek: merdivenin görünen
+      // kısmı hızlı ilerlemeli, yoksa çocuk ⭐⭐⭐'te park edip ilerleme
+      // hissini kaybediyor. Katı kanıt şartı bir üst basamakta (L5).
+      // İSTİSNA — hiç yanlış yapmamış çocuk (correct === total) yavaş olsa da
+      // cezalanmaz: küçük çocukta yavaşlık çoğu zaman bilgi eksikliği değil
+      // parmak/dikkat. Ölçtük, süre şartını sertleştirince bilen ama temkinli
+      // çocuğun geçme oranı %99'dan %87'ye düşüyordu (kullanıcı şartı).
+      const akiciSayilir = fluent || e.correct === e.total;
+      if ((e.consecutiveCorrect ?? 0) >= 2 && akiciSayilir) {
+        e.level = 4;
+      }
+    } else if (e.level === 4) {
+      // ⚠️ L4→L5 ("USTALAŞTI" = otomatiklik) DÖRT ŞART BİRDEN ister:
       //  (a) AYNI GÜN SAYILMAZ — bu doğru, öncekinden başka bir günde olmalı.
       //      Aynı oturumda arka arkaya doğru yapmak ustalık kanıtı değildir.
       //  (b) KANIT PUANI eşiği geçmeli (MASTERY): üretim 1, tanıma 1/2 puan,
-      //      eşik 3. Yani Flashcard'la 3 ayrı günde, oyun/testle 6 ayrı günde.
-      //      Duvar değil KUR: oyun oynaya oynaya da öğrenilir, sadece daha
-      //      uzun sürer — kullanıcı itirazı ve literatür bu yönde.
-      //  (c) AKICILIK: yavaş-doğru "biliyor ama tereddütlü" demek, otomatiklik
-      //      değil. İSTİSNA: hiç yanlış yapmamış çocuk (correct === total)
-      //      yavaş olsa da cezalanmaz — küçük çocukta yavaşlık çoğu zaman
-      //      bilgi eksikliği değil parmak/dikkat (kullanıcı şartı).
+      //      eşik 3. Duvar değil KUR: oyun oynaya oynaya da ustalaşılır,
+      //      sadece daha uzun sürer — kullanıcı itirazı ve literatür bu yönde.
+      //  (c) EN AZ `MIN_DAYS` AYRI GÜN. Puan tek başına yetmiyordu: üretim
+      //      yolu 3 günde eşiği geçiyor, o üç hatırlama yarı ömrü ancak ~10
+      //      güne çıkarıyor, sonra takvim aralığı 21-60 güne fırlayınca harf
+      //      bir daha sorulmuyor ve unutuluyordu. Ölçüm: yalnız Flashcard
+      //      oynayan çocukta ⭐ rozetinin %33'ü yalandı (7 gün sonra hatırlama
+      //      %50'nin altı), taban konunca %0. Rawson & Dunlosky'nin reçetesi
+      //      de "3 doğru + 3 kez ARALIKLI yeniden öğrenme" diyor — puan eşiği
+      //      onların yalnız ilk yarısına denk geliyordu.
+      //  (d) AKICILIK: yavaş-doğru otomatiklik değil (aynı istisna geçerli).
       const puanTamam = (e.mastery ?? 0) >= MASTERY.NEEDED - MASTERY.EPS;
+      const gunTamam = (e.step ?? 0) >= MASTERY.MIN_DAYS;
       const akiciSayilir = fluent || e.correct === e.total;
-      if (puanTamam && yeniGunDogru && akiciSayilir) {
-        e.level = 4;
+      if (puanTamam && gunTamam && yeniGunDogru && akiciSayilir) {
+        e.level = 5;
       }
     }
   } else {
@@ -866,7 +903,7 @@ export async function recordSrsAnswer(
 export function getNamespaceStats(ns: Namespace) {
   const s = load(ns);
   let total = 0, correct = 0;
-  const levelCount: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  const levelCount: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   Object.values(s).forEach((topic) => {
     Object.values(topic).forEach((e) => {
       total += e.total; correct += e.correct; levelCount[e.level] += 1;
@@ -882,7 +919,7 @@ export async function getNamespaceStatsFromCloud(uid: string | null) {
     const state = await getCloudSrsState(uid);
     if (!state) return null;
     let total = 0, correct = 0;
-    const levelCount: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    const levelCount: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     Object.values(state).forEach((topic) => {
       Object.values(topic).forEach((e) => {
         total += e.total;
