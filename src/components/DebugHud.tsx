@@ -6,6 +6,10 @@
 //   zorlanıyor→kolay/uçuyor→zor) → cevaplayınca bandın değiştiğini gör.
 // - Öğrenme seti kapısı (Problem 1): kaç harf öğrenilmekte (K), zorlanıyor mu,
 //   yeni harf tanıtımı şu an kapalı mı → yeni harf akışının durduğunu gör.
+// - ⭐ Ustalık merdiveni: L1-L5 dağılımı + vadesi gelen + mezun olan sayısı.
+// - Son cevap: seviye geçişi, kanıt puanı (üretim 1 / tanıma ½), takvim günü
+//   ve "aynı gün mü" bayrağı → rozet neden kıpırdamadı sorusu burada cevaplanır.
+// - İleri yoklama (SPRT): sıradaki kilitli konu, biriken kanıt ve eşik çizgileri.
 // - Son seçilen öğe: seviye + bilet (sıklık × bayatlık) + kaç gün bayat.
 // - Yerleştirme (Problem 2): atlanan konular, ara-kontrol doğruluğu + oranı,
 //   durum (deneme/onaylı/sallantı/zayıf) + son sorunun ara-kontrol olup olmadığı.
@@ -15,15 +19,66 @@
 // - Seri (affedici) + bugünkü öğrenilen/pratik sayısı (veli paneli verisi).
 import { useEffect, useState } from "react";
 import { useTestUnlock } from "@/lib/testUnlock";
-import { getAdaptiveDebug, getLastPickInfo, getIntroGateInfo, getTopicSrs, type AdaptiveDebug, type LastPickInfo, type IntroGateInfo } from "@/data/srs";
+import {
+  getAdaptiveDebug, getLastPickInfo, getIntroGateInfo, getTopicSrs, getLastAnswerInfo,
+  isDue, isGraduated, MASTERY,
+  type AdaptiveDebug, type LastPickInfo, type IntroGateInfo, type LastAnswerInfo, type Level,
+} from "@/data/srs";
+import { nextLockedTopic, probeInfo, skipOffered, PROBE_LIMITS } from "@/lib/forwardProbe";
 import { getPlacementDebug, getLastBackCheck, resetPlacement, type PlacementDebugRow } from "@/lib/placement";
 import { getConfusionDebug, resetConfusion, CONFUSION_EVENT } from "@/lib/confusion";
 import { currentReviewShare } from "@/lib/review";
 import { getStreak } from "@/lib/streak";
 import { skillIdsOf } from "@/lib/skills";
-import { practiceItems } from "@/lib/unlock";
+import { practiceItems, getUnlockedTopicIds } from "@/lib/unlock";
 import { getAllTopics } from "@/data/subjects";
 import { cn } from "@/lib/utils";
+
+// Bütün alıştırmalı konularda seviye dağılımı + vade/mezuniyet sayacı.
+// (Beceri anahtarıyla okunur — öğe id'siyle sayarsak Harekeler boş görünür.)
+function ladderCounts() {
+  const lvl: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let due = 0, mezun = 0;
+  const now = Date.now();
+  for (const t of getAllTopics()) {
+    if (t.noPractice) continue;
+    const srs = getTopicSrs("quiz", t.id);
+    for (const sk of skillIdsOf(practiceItems(t.items))) {
+      const e = srs[sk];
+      if (!e || (e.seen ?? 0) === 0) continue;
+      lvl[e.level as Level]++;
+      if (isGraduated(e)) mezun++;
+      else if (isDue(e, now)) due++;
+    }
+  }
+  return { lvl, due, mezun };
+}
+
+// Sıradaki KİLİTLİ konunun yoklama durumu (SPRT kanıt birikimi).
+function probeState() {
+  // "Şu anki konu" = açık konuların sonuncusu; yoklama onun ARDINDAKİ
+  // kilitli konuyu ölçer.
+  // ⚠️ TEST KİLİDİ (1234) BÜTÜN KONULARI AÇAR → kilitli konu kalmaz ve ileri
+  // yoklama hiç çalışmaz. Panel test modunda göründüğü için bu bölüm hep boş
+  // görünüyordu; bunu "veri yok" diye değil, SEBEBİYLE söylemek gerekiyor.
+  const acik = getUnlockedTopicIds();
+  const topics = getAllTopics().filter((t) => !t.noPractice && t.items.length > 0);
+  const kilitli = topics.some((t) => !acik.has(t.id));
+  // Kayıtlı kanıtı olan konular (kilit açılsa bile geçmiş yoklamalar durur)
+  const kayitli = topics
+    .map((t) => ({ topicId: t.id, ...probeInfo(t.id), teklif: skipOffered(t.id) }))
+    .filter((r) => r.n > 0);
+  const bos = { maskeli: !kilitli, kayitli, sira: null as null | { topicId: string; llr: number; n: number; teklif: boolean } };
+  if (!kilitli) return bos;
+  for (let i = topics.length - 1; i >= 0; i--) {
+    if (!acik.has(topics[i].id)) continue;
+    const next = nextLockedTopic(topics[i].id);
+    if (!next) break;
+    const p = probeInfo(next.id);
+    return { ...bos, sira: { topicId: next.id, llr: p.llr, n: p.n, teklif: skipOffered(next.id) } };
+  }
+  return bos;
+}
 
 function todayCounts() {
   const d = new Date(); d.setHours(0, 0, 0, 0); const t0 = d.getTime();
@@ -86,6 +141,9 @@ export function DebugHud() {
   const [streak, setStreak] = useState(() => getStreak());
   const [today, setToday] = useState(() => todayCounts());
   const [conf, setConf] = useState(() => getConfusionDebug());
+  const [ladder, setLadder] = useState(() => ladderCounts());
+  const [ans, setAns] = useState<LastAnswerInfo | null>(() => getLastAnswerInfo());
+  const [probe, setProbe] = useState(() => probeState());
 
   useEffect(() => {
     if (!active) return;
@@ -98,6 +156,9 @@ export function DebugHud() {
       setStreak(getStreak());
       setToday(todayCounts());
       setConf(getConfusionDebug());
+      setLadder(ladderCounts());
+      setAns(getLastAnswerInfo());
+      setProbe(probeState());
     };
     // her cevap srs event'i yayar; ayrıca güvenlik için 800ms poll
     window.addEventListener("elifba-srs-quiz-updated", refresh);
@@ -169,6 +230,88 @@ export function DebugHud() {
               {gate.nextUnseen && <div className="text-white/50 text-[10px] truncate">sıradaki: {gate.nextUnseen}</div>}
             </>
           ) : <div className="text-white/40">henüz veri yok</div>}
+        </div>
+        {/* ⭐ USTALIK MERDİVENİ — 5 basamak + kanıt kuru + takvim.
+            Bunlar görünmez çalışıyordu: çocuk doğru yapıyor, rozet kıpırdamıyor,
+            sebebi belli olmuyordu. Burada "puan kaç, gün sayıldı mı, neden
+            değişmedi" tek bakışta okunur. */}
+        <div className="border-t border-white/10 pt-1.5">
+          <div className="text-white/50 text-[9px] uppercase mb-0.5">⭐ Ustalık Merdiveni</div>
+          <div className="flex gap-0.5 mb-1">
+            {([1, 2, 3, 4, 5] as const).map((l) => (
+              <span key={l} className="flex-1 rounded text-center font-extrabold text-black py-0.5"
+                style={{ background: LVL_COLOR[l] }}>{ladder.lvl[l]}</span>
+            ))}
+          </div>
+          <div className="text-white/60 text-[10px]">
+            vadesi gelen <b className={cn(ladder.due > 0 && "text-amber-400")}>{ladder.due}</b>
+            {" · "}mezun <b>{ladder.mezun}</b>
+            {" · "}L5 için <b>{MASTERY.NEEDED}</b> puan + <b>{MASTERY.MIN_DAYS}</b> gün
+          </div>
+        </div>
+        {/* Son cevaba ne oldu (kanıt kuru + aynı gün kuralı elle doğrulanabilsin) */}
+        <div className="border-t border-white/10 pt-1.5">
+          <div className="text-white/50 text-[9px] uppercase mb-0.5">Son Cevap</div>
+          {ans ? (
+            <>
+              <div className="text-white/80 truncate">
+                {ans.correct ? "✅" : "❌"} {ans.skillId}
+                <span className="text-white/50"> · {ans.evidence === "production" ? "üretim (1p)" : "tanıma (½p)"}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="rounded px-1 font-extrabold text-black" style={{ background: LVL_COLOR[Math.min(5, ans.levelBefore)] }}>L{ans.levelBefore}</span>
+                <span className="text-white/50">→</span>
+                <span className="rounded px-1 font-extrabold text-black" style={{ background: LVL_COLOR[Math.min(5, ans.levelAfter)] }}>L{ans.levelAfter}</span>
+                {ans.levelAfter === ans.levelBefore && <span className="text-white/40 text-[10px]">değişmedi</span>}
+              </div>
+              <div className="text-white/60 text-[10px]">
+                puan {ans.masteryBefore.toFixed(1)} → <b>{ans.masteryAfter.toFixed(1)}</b>/{MASTERY.NEEDED}
+                {" · "}gün <b>{ans.step}</b>/{MASTERY.MIN_DAYS}
+              </div>
+              {/* ⚠️ "yeni gün" yalnız DOĞRU cevapta puan demek. Yanlışta gün
+                  bilgisi anlamsız — orada olan şey puanın yarılanmasıdır. */}
+              <div className="text-[10px]" style={{ color: !ans.correct ? "#ef4444" : ans.newDay ? "#22c55e" : "#f59e0b" }}>
+                {!ans.correct ? "💥 yanlış — puan yarıya indi, seviye −2"
+                  : ans.newDay ? "🗓 yeni gün — puan sayıldı"
+                  : "🗓 AYNI GÜN — puan sayılmadı"}
+                {ans.correct && !ans.fluent && <span className="text-amber-400"> · yavaş</span>}
+              </div>
+            </>
+          ) : <div className="text-white/40">henüz cevap yok</div>}
+        </div>
+        {/* İleri yoklama (SPRT) — kilitli sıradaki konuyu gizlice ölçer */}
+        <div className="border-t border-white/10 pt-1.5">
+          <div className="text-white/50 text-[9px] uppercase mb-0.5">İleri Yoklama (SPRT)</div>
+          {probe.maskeli && (
+            <div className="text-amber-400 text-[10px] mb-0.5">
+              ⚠ test kilidi açık — her konu açık, yoklama çalışmaz
+            </div>
+          )}
+          {probe.sira && (
+            <>
+              <div className="text-white/80 truncate">sıradaki: {probe.sira.topicId}</div>
+              <div className="text-white/60 text-[10px]">
+                kanıt <b style={{ color: probe.sira.llr >= PROBE_LIMITS.UST_CIZGI ? "#22c55e" : probe.sira.llr <= PROBE_LIMITS.ALT_CIZGI ? "#ef4444" : "#e5e7eb" }}>
+                  {probe.sira.llr.toFixed(2)}
+                </b> · {probe.sira.n} yoklama
+              </div>
+              {probe.sira.teklif && <div className="text-emerald-400 text-[10px]">✔ atlama teklifi verildi</div>}
+            </>
+          )}
+          {!probe.maskeli && !probe.sira && <div className="text-white/40">kilitli konu yok</div>}
+          {probe.kayitli.length > 0 && (
+            <div className="mt-0.5 space-y-0.5">
+              {probe.kayitli.map((r) => (
+                <div key={r.topicId} className="flex justify-between gap-1 text-[10px] text-white/60">
+                  <span className="truncate">{r.topicId}</span>
+                  <span><b>{r.llr.toFixed(2)}</b>/{r.n}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="text-white/40 text-[10px]">
+            atlama ≥ {PROBE_LIMITS.UST_CIZGI.toFixed(2)} · bırak ≤ {PROBE_LIMITS.ALT_CIZGI.toFixed(2)}
+          </div>
         </div>
         {/* Son seçim: sıklık × bayatlık */}
         <div className="border-t border-white/10 pt-1.5">

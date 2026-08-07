@@ -533,6 +533,34 @@ export interface IntroGateInfo {
 let _introGate: IntroGateInfo | null = null;
 export function getIntroGateInfo(): IntroGateInfo | null { return _introGate; }
 
+/**
+ * SON CEVABA NE OLDU — yalnız test panelinde (1234) okunur.
+ * Kanıt kuru (MASTERY) ve "aynı gün sayılmaz" kuralı görünmez çalıştığı için
+ * elle doğrulanamıyordu: çocuk doğru yapıyor, rozet kıpırdamıyor, sebebi
+ * belli değil. Bu iz "puan kaç oldu, gün sayıldı mı, seviye neden değişmedi"
+ * sorularını tek bakışta cevaplar.
+ */
+export interface LastAnswerInfo {
+  topicId: string;
+  skillId: string;
+  correct: boolean;
+  /** "üretim" (Flashcard) = 1 puan · "tanıma" (oyun/test) = ½ puan */
+  evidence: "production" | "recognition";
+  /** Bu cevap YENİ bir güne mi düştü? false ise puan/basamak ilerlemedi. */
+  newDay: boolean;
+  levelBefore: Level;
+  levelAfter: Level;
+  masteryBefore: number;
+  masteryAfter: number;
+  step: number;
+  /** Akıcı mı sayıldı (süre eşiği ya da hiç yanlış yapmamış olma) */
+  fluent: boolean;
+  responseMs?: number;
+  at: number;
+}
+let _lastAnswer: LastAnswerInfo | null = null;
+export function getLastAnswerInfo(): LastAnswerInfo | null { return _lastAnswer; }
+
 // Yalnız test/simülasyon için: seçicinin modül-düzeyi global durumunu sıfırla
 // (uyarlanır band tamponu + son seçim izleri). Üretim akışında çağrılmaz.
 export function __resetSelectorState() {
@@ -743,6 +771,7 @@ function recordLocalSrsAnswer(
   const s = load(ns);
   const e = ensureEntry(s, topicId, letterId);
   const prevLevel = e.level;
+  const prevMastery = e.mastery ?? 0;
   // FSRS-lite: cevap ANINDAKİ hatırlama olasılığı — lastSeen güncellenmeden ÖNCE.
   const wasFirst = (e.seen ?? 0) === 0;
   const prevR = retrievabilityOf(e, Date.now());
@@ -866,6 +895,16 @@ function recordLocalSrsAnswer(
   }
 
   save(ns, s);
+
+  // Test panelinin okuduğu iz (yalnız 1234 modunda görünür).
+  _lastAnswer = {
+    topicId, skillId: letterId, correct,
+    evidence: uretim ? "production" : "recognition",
+    newDay: !ayniGun,
+    levelBefore: prevLevel, levelAfter: e.level,
+    masteryBefore: prevMastery, masteryAfter: e.mastery ?? 0,
+    step: e.step ?? 0, fluent, responseMs: rt, at: Date.now(),
+  };
 
   // Günlük seri: her cevap günü aktif sayar (aynı gün içinde no-op)
   import("@/lib/streak").then((m) => m.recordStreakActivity()).catch(() => {});
