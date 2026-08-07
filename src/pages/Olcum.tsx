@@ -1,5 +1,6 @@
-// Ölçüm Modu — çocuğun harflerin başta/ortada/sonda hallerini ne kadar
-// önceden bildiğini ölçmek için ayrı bir akış. AMAÇ ÖĞRENME DEĞİL, ÖLÇÜM:
+// Ölçüm Modu — çocuğun harfleri GERÇEKTEN bilip bilmediğini ölçen akış.
+// İki konuda çalışır: harf ADLARI (Elifbâ kitabının sorduğu yön) ve harf
+// HALLERİ (başta/ortada/sonda). AMAÇ ÖĞRENME DEĞİL, ÖLÇÜM:
 // - Harfler curriculum sırasında (Elif→Ye × başta→ortada→sonda) sunulur.
 // - Çocuk sesli okur, veli "Bildi / Bilmedi" düğmesine basar.
 // - "Bilmedi" işaretlenirse harf kuyruğun sonuna eklenip tekrar sorulur.
@@ -11,6 +12,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { RouteHead } from "@/components/RouteHead";
 import { getTopic } from "@/data/subjects";
 import { buildReport, loadMeasure, recordMeasure, resetMeasure, useMeasure } from "@/lib/measurement";
+import { buildTransferReport, transferSummaryText } from "@/lib/transfer";
 import { playItem, playFeedback } from "@/lib/audio";
 import { Volume2, Check, X, HelpCircle, RotateCcw, Ruler } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,9 +24,19 @@ function itemLabel(id: string, items: ContentItem[]) {
   return items.find((x) => x.id === id)?.translit ?? id;
 }
 
+// Hangi konuda ölçüm yapılıyor? "harfler" = harfi gör, ADINI söyle (Elifbâ
+// kitabının ve Kur'an okumanın istediği yön — asıl hedef beceri).
+// "yazilislar" = başta/ortada/sonda halleri.
+const KONULAR = [
+  { id: "harfler", ad: "Harf adları", ipucu: "Harfi gör → adını söyle" },
+  { id: "yazilislar", ad: "Yazılışlar", ipucu: "Başta / ortada / sonda" },
+] as const;
+type KonuId = typeof KONULAR[number]["id"];
+
 export default function Olcum() {
-  const topic = getTopic("elifba", "yazilislar");
-  const allItems: ContentItem[] = useMemo(() => topic?.items ?? [], [topic]);
+  const [konuId, setKonuId] = useState<KonuId>("harfler");
+  const topic = getTopic("elifba", konuId);
+  const allItems: ContentItem[] = useMemo(() => (topic?.items ?? []).filter((i) => i.emoji), [topic]);
   const allIds = useMemo(() => allItems.map((i) => i.id), [allItems]);
   const measure = useMeasure();
 
@@ -44,13 +56,16 @@ export default function Olcum() {
   };
   const [queue, setQueue] = useState<string[]>(() => buildQueue());
   const [showReport, setShowReport] = useState(false);
+  const [kopyalandi, setKopyalandi] = useState(false);
   const lastResetKey = useRef(0);
 
   useEffect(() => {
-    // Reset olduğunda queue'yu yeniden kur
+    // Reset olduğunda VE konu değişince kuyruğu yeniden kur.
+    // ⚠️ Bağımlılıkta konuId şart: iki konunun öğe sayısı eşit olsaydı
+    // (allItems.length değişmeseydi) kuyruk eski konuda kalırdı.
     setQueue(buildQueue());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastResetKey.current, allItems.length]);
+  }, [lastResetKey.current, konuId, allItems.length]);
 
   const currentId = queue[0];
   const current = allItems.find((i) => i.id === currentId);
@@ -85,6 +100,11 @@ export default function Olcum() {
   };
 
   const report = useMemo(() => buildReport(allIds), [allIds, measure]);
+  // AKTARIM: uygulamanın verdiği seviye ile çocuğun GERÇEK cevabı yan yana.
+  // `measure` bilerek bağımlılıkta: buildTransferReport localStorage'ı kendisi
+  // okuyor, ama cevap verildikçe yeniden hesaplanması bu abonelikten geliyor.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const aktarim = useMemo(() => buildTransferReport(allIds), [allIds, measure]);
   const finished = remaining === 0;
 
   return (
@@ -108,6 +128,25 @@ export default function Olcum() {
               Harfi çocuk sesli okusun; siz “Bildi / Bilmedi” işaretleyin.
             </div>
           </div>
+        </div>
+
+        {/* Konu seçici — hangi beceriyi ölçüyoruz? */}
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          {KONULAR.map((k) => (
+            <button
+              key={k.id}
+              onClick={() => { setKonuId(k.id); setShowReport(false); }}
+              className={cn(
+                "rounded-2xl border-2 p-2 text-center shadow-soft transition-bouncy",
+                konuId === k.id
+                  ? "border-info bg-info/10"
+                  : "border-border bg-card text-muted-foreground",
+              )}
+            >
+              <div className="text-xs font-extrabold text-foreground">{k.ad}</div>
+              <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">{k.ipucu}</div>
+            </button>
+          ))}
         </div>
 
         {/* İlerleme çubuğu */}
@@ -197,8 +236,64 @@ export default function Olcum() {
         {(showReport || finished) && (
           <div className="mt-5 rounded-2xl bg-card p-4 shadow-card border-2 border-border">
             <div className="text-sm font-extrabold text-foreground mb-3 flex items-center gap-2">
-              📊 Rapor <span className="text-xs text-muted-foreground">({report.total} harf hali)</span>
+              📊 Rapor <span className="text-xs text-muted-foreground">({report.total} öğe)</span>
             </div>
+
+            {/* AKTARIM — asıl merak edilen sayı: uygulama "biliyor" dediklerinin
+                kaçını çocuk GERÇEKTEN bildi? */}
+            {aktarim.bands.length > 0 && (
+              <div className="mb-4 rounded-xl border-2 border-gold/50 bg-gold/5 p-3">
+                <div className="text-xs font-extrabold text-foreground mb-2">
+                  🔁 Aktarım — uygulama ne diyor, çocuk ne yaptı?
+                </div>
+                <div className="space-y-1">
+                  {aktarim.bands.map((b) => {
+                    const oran = b.olculen ? Math.round((100 * b.bilen) / b.olculen) : 0;
+                    return (
+                      <div key={b.level} className="flex items-center gap-2 text-[11px]">
+                        <span className="w-20 shrink-0 font-extrabold text-foreground">
+                          {b.level === 0 ? "Görülmemiş" : `${"⭐".repeat(b.level)}`}
+                        </span>
+                        <div className="h-2.5 flex-1 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full bg-success" style={{ width: `${oran}%` }} />
+                        </div>
+                        <span className="w-20 shrink-0 text-right font-bold text-muted-foreground">
+                          {b.bilen}/{b.olculen} · %{oran}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {aktarim.l4Aktarim.olculen > 0 && (
+                  <div className="mt-2 rounded-lg bg-card border-2 border-border p-2 text-center">
+                    <div className="text-[10px] font-bold text-muted-foreground">
+                      ⭐⭐⭐⭐ ve üstü harflerde AKTARIM ORANI
+                    </div>
+                    <div className="text-xl font-extrabold text-foreground">
+                      %{Math.round((aktarim.l4Aktarim.oran ?? 0) * 100)}
+                      <span className="text-xs font-bold text-muted-foreground">
+                        {" "}({aktarim.l4Aktarim.bilen}/{aktarim.l4Aktarim.olculen})
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    const t = transferSummaryText(aktarim, `Aktarım — ${KONULAR.find((k) => k.id === konuId)?.ad}`);
+                    navigator.clipboard?.writeText(t).catch(() => { /* ignore */ });
+                    setKopyalandi(true);
+                    setTimeout(() => setKopyalandi(false), 1800);
+                  }}
+                  className="mt-2 w-full rounded-lg bg-card border-2 border-border py-2 text-[11px] font-extrabold text-foreground"
+                >
+                  {kopyalandi ? "✓ Kopyalandı" : "📋 Raporu kopyala (paylaşmak için)"}
+                </button>
+                <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
+                  Sadece <b>ilk denemede</b> bilinenler sayılır — ikinci turda bilmek
+                  &quot;biliyordu&quot; değil, arada hatırladı demektir.
+                </p>
+              </div>
+            )}
             <ReportRow color="bg-success" label="1. deneme — hemen bildi" ids={report.first1} items={allItems} highlight />
             <ReportRow color="bg-info" label="2. deneme — bildi" ids={report.first2} items={allItems} highlight />
             <ReportRow color="bg-warning" label="3. deneme — bildi" ids={report.first3} items={allItems} />
