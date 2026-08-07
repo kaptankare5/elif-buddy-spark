@@ -23,6 +23,9 @@ import { recordProbe } from "@/lib/forwardProbe";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
 import { SkipTest } from "@/components/SkipTest";
 import { LevelBadge } from "@/components/LevelBadge";
+import { AuditCard } from "@/components/AuditCard";
+import { pickAuditQuestion, type AuditQuestion } from "@/lib/auditQuestion";
+import { auditDue, noteQuestion, recordAudit } from "@/lib/audit";
 import { BuddyWithBubble } from "@/components/Buddy";
 import { pickDistractors, recordConfusionPick, recordDiscrimination } from "@/lib/confusion";
 import { hotPairInSection } from "@/lib/unlock";
@@ -90,6 +93,9 @@ const Topic = () => {
   // Şu anki soru bir İLERİ YOKLAMA ise (kilitli sıradaki konudan) o konunun
   // id'si. Yoklama cevabı SRS'e YAZILMAZ — yalnız yoklama sayacına işlenir.
   const probeRef = useRef<string | null>(null);
+  // DENETİM KARTI (lib/audit.ts): 20 soruda bir, normal testin AYNASI —
+  // şekli gör, sesi seç. SRS'e yazılmaz, yalnız güven katsayısını günceller.
+  const [denetim, setDenetim] = useState<AuditQuestion | null>(null);
 
   const items = topic?.items || [];
   const itemIds = useMemo(() => items.map((i) => i.id), [items]);
@@ -106,8 +112,16 @@ const Topic = () => {
   }, [topicId, mode]);
 
   useEffect(() => {
-    if (mode !== "test" || !topic || unlockedItemIds.length === 0 || q) return;
+    if (mode !== "test" || !topic || unlockedItemIds.length === 0 || q || denetim) return;
     if (topic.noPractice) return;
+
+    // DENETİM SIRASI MI? Aday yoksa sessizce normal soruya düşer.
+    if (auditDue()) {
+      const dq = pickAuditQuestion(
+        items.filter((it) => unlockedItemIds.includes(it.id)), NS, topic.id,
+      );
+      if (dq) { setDenetim(dq); return; }
+    }
 
     // Soru kaynağı tek yerden seçilir (retry / bakım / frontier) — öncelik
     // kuralları ve "zorlanınca kurtarma" mantığı lib/questionSource.ts'te.
@@ -184,7 +198,7 @@ const Topic = () => {
     const skillId = pickNextLetter(NS, topic.id, skillIdsOf(pool));
     const target = pickItemForSkill(pool, skillId);
     if (target) ask(pool, target.id, null);
-  }, [mode, topic, unlockedItemIds, q, items]);
+  }, [mode, topic, unlockedItemIds, q, items, denetim]);
 
   useEffect(() => {
     if (mode === "test" && q?.target) playItem(q.target);
@@ -511,6 +525,7 @@ const Topic = () => {
         retryUsedRef.current = false;   // sonraki YENİ harf için hak yenilenir
       }
     }
+    noteQuestion();   // denetim sayacı (20 soruda bir kontrol sorusu)
     await playFeedback(correct);
     // TELAFİ: başta/ortada/sonda hâlinde ısrarlı hata → hafıza yöntemi açılır.
     // Politika remedial.ts'te (her yanlışta değil; soğuma + seans tavanı).
@@ -563,7 +578,15 @@ const Topic = () => {
           ))}
         </div>
 
-        {q && (
+        {denetim && (
+          <div className="mb-4">
+            <AuditCard
+              question={denetim}
+              onDone={(dogru) => { recordAudit(dogru); setDenetim(null); }}
+            />
+          </div>
+        )}
+        {!denetim && q && (
           <>
             <div className="relative bg-card rounded-3xl p-6 shadow-card border-4 border-primary/20 mb-4 text-center animate-bounce-in" key={q.target.id}>
               <LevelBadge itemId={skillOf(q.target)} topicId={topic.id} className="absolute right-2 top-2" />

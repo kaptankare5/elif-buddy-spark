@@ -25,6 +25,7 @@ import {
   type AdaptiveDebug, type LastPickInfo, type IntroGateInfo, type LastAnswerInfo, type Level,
 } from "@/data/srs";
 import { nextLockedTopic, probeInfo, skipOffered, PROBE_LIMITS } from "@/lib/forwardProbe";
+import { auditDebug } from "@/lib/audit";
 import { getPlacementDebug, getLastBackCheck, resetPlacement, type PlacementDebugRow } from "@/lib/placement";
 import { getConfusionDebug, resetConfusion, CONFUSION_EVENT } from "@/lib/confusion";
 import { currentReviewShare } from "@/lib/review";
@@ -144,6 +145,7 @@ export function DebugHud() {
   const [ladder, setLadder] = useState(() => ladderCounts());
   const [ans, setAns] = useState<LastAnswerInfo | null>(() => getLastAnswerInfo());
   const [probe, setProbe] = useState(() => probeState());
+  const [denetim, setDenetim] = useState(() => auditDebug());
 
   useEffect(() => {
     if (!active) return;
@@ -159,6 +161,7 @@ export function DebugHud() {
       setLadder(ladderCounts());
       setAns(getLastAnswerInfo());
       setProbe(probeState());
+      setDenetim(auditDebug());
     };
     // her cevap srs event'i yayar; ayrıca güvenlik için 800ms poll
     window.addEventListener("elifba-srs-quiz-updated", refresh);
@@ -278,6 +281,20 @@ export function DebugHud() {
               </div>
             </>
           ) : <div className="text-white/40">henüz cevap yok</div>}
+        </div>
+        {/* Denetim kartı — Flashcard beyanı ne kadar tutuyor */}
+        <div className="border-t border-white/10 pt-1.5">
+          <div className="text-white/50 text-[9px] uppercase mb-0.5">🛡 Beyan Denetimi</div>
+          <div className="text-white/80">
+            güven <b style={{ color: denetim.guven >= 0.9 ? "#22c55e" : denetim.guven > 0.5 ? "#f59e0b" : "#ef4444" }}>
+              %{Math.round(denetim.guven * 100)}
+            </b>
+            <span className="text-white/50"> · {denetim.dogru}/{denetim.toplam} denetim</span>
+          </div>
+          <div className="text-white/60 text-[10px]">
+            sıradaki kontrol: {Math.max(0, denetim.esik - denetim.sayac)} soru sonra
+          </div>
+          <div className="text-white/40 text-[10px]">üretim puanı bu katsayıyla çarpılır</div>
         </div>
         {/* İleri yoklama (SPRT) — kilitli sıradaki konuyu gizlice ölçer */}
         <div className="border-t border-white/10 pt-1.5">
