@@ -233,7 +233,7 @@ function runSim(seed: number, sen: Senaryo, profil: "orta" | "hizli" | "yavas" =
       const e = getTopicSrs("quiz", recTopic)[id];
       if (e) {
         if (e.level >= 3 && !l3De.has(id)) l3De.set(id, dogruSayaci.get(id) ?? 0);
-        if (e.level >= 4 && !l4De.has(id)) l4De.set(id, dogruSayaci.get(id) ?? 0);
+        if (e.level >= 5 && !l4De.has(id)) l4De.set(id, dogruSayaci.get(id) ?? 0);
       }
       updateMem(m, retrieved, reported, r, day, hiz);
       log.push({ yuzey: s.ad, dogru: reported, tahmin, ilkGorus, gun: day });
@@ -256,7 +256,7 @@ function runSim(seed: number, sen: Senaryo, profil: "orta" | "hizli" | "yavas" =
       const rr = recall(m, son);
       if (e && (e.seen ?? 0) > 0) tanitilan++;
       if (e && e.level >= 3) { l3++; if (rr < 0.5) sahteUstalik++; }
-      if (e && e.level >= 4) { l4++; if (rr < 0.5) sahteL4++; }
+      if (e && e.level >= 5) { l4++; if (rr < 0.5) sahteL4++; }
       if (rr >= 0.85) kaliciBilgi++;
     }
   }
@@ -327,19 +327,19 @@ describe("hata oranı + müfredat simülasyonu", () => {
     console.log(`  ${"".padEnd(30)}${senaryolar.map((s) => ad[s].slice(0, 9).padStart(11)).join("")}`);
     sat("Tanıtılan harf", (s) => s.tanitilan);
     sat("SRS'e göre öğrenilmiş (L3+)", (s) => s.l3);
-    sat("Otomatikleşmiş (L4)", (s) => s.l4);
+    sat("Ustalaşmış (L5)", (s) => s.l4);
     sat("Açılan bölüm", (s) => s.acilanBolum);
     sat("Açılan konu", (s) => s.acilanKonu);
     sat("Haftada tanıtılan harf", (s) => (s.tanitilan / SESSIONS) * 7, 1);
     sat("GERÇEKTEN kalıcı (+7g ≥%85)", (s) => s.kaliciBilgi);
     sat("Sahte ustalık (L3+ ama unutmuş)", (s) => s.sahteUstalik);
-    sat("⭐⭐⭐⭐ YALAN (L4 ama unutmuş)", (s) => s.sahteL4);
-    sat("⭐⭐⭐⭐ yalan oranı %", (s) => (s.l4 ? (100 * s.sahteL4) / s.l4 : 0), 1);
+    sat("⭐ YALAN (L5 ama unutmuş)", (s) => s.sahteL4);
+    sat("⭐ yalan oranı %", (s) => (s.l4 ? (100 * s.sahteL4) / s.l4 : 0), 1);
 
     console.log("\nKAÇ DOĞRU CEVAPTA ÖĞRENİYOR (ort.)");
     console.log(`  ${"".padEnd(30)}${senaryolar.map((s) => ad[s].slice(0, 9).padStart(11)).join("")}`);
     sat("L3'e (öğrenildi) kadar doğru", (s) => ort(s.dogruylaL3), 1);
-    sat("L4'e (otomatik) kadar doğru", (s) => ort(s.dogruylaL4), 1);
+    sat("L5'e (ustalık) kadar doğru", (s) => ort(s.dogruylaL4), 1);
     const tahminOrani = (sen: Senaryo) => {
       const l = kol(sen).filter((x) => x.dogru);
       return l.length ? `%${(100 * l.filter((x) => x.tahmin).length / l.length).toFixed(0)}` : "—";

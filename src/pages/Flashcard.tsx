@@ -220,6 +220,7 @@ const Flashcard = () => {
             level === 2 && "bg-warning/10 border-warning/40 text-warning",
             level === 3 && "bg-secondary border-secondary text-secondary-foreground",
             level === 4 && "bg-success/10 border-success/40 text-success",
+            level === 5 && "bg-gold/15 border-gold/50 text-gold-foreground",
           )}>
             Seviye {level} {"⭐".repeat(level)}
           </span>

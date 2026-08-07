@@ -87,8 +87,22 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   eşleşmesi başarısız olursa nedeni bu (tek satır anchor veya node kullan).
 
 ### Öğrenme sistemi (bilimsel gerekçeli — koru)
+- ⚠️ **MERDİVEN 5 BASAMAKLI ve İKİ HIZLIDIR** (`Level = 1..5`, srs.ts):
+  L1→L2→L3 tek doğruyla; **L4 "ÖĞRENDİ"** üst üste 2 doğru + akıcılık (AYNI
+  OTURUMDA kazanılabilir); **L5 "USTALAŞTI"** kanıt puanı + `MIN_DAYS` ayrı
+  gün. L5 sonradan eklendi: katı kanıt kuralı L3→L4'e konunca çocuk günlerce
+  ⭐⭐⭐'te PARK ediyordu — görünen ilerleme durunca uygulama "bir şey olmuyor"
+  hissi veriyor (kullanıcı tespiti). Üstelik L3 kurada en aç kovaydı
+  (`waterfallWeights`), orada biriken öğe seyrek sorulup soru bütçesi yeni
+  harflere kayıyordu (ölçüm: tanıtılan harf 94 → 158 — çocuk bilmediği
+  harflere doğru koşuyordu). Ağırlık tablosu bu yüzden monoton inecek şekilde
+  yeniden yazıldı; hiçbir seviye açlıktan ölmemeli.
+  Eşikler: kilit/bölüm açma **L3+** (değişmedi), `PREREQ_LEVEL` **L4**,
+  Veli panelindeki "Ustalaşan" **L5**, Koleksiyon altın kartı ve Bahçe çiçeği
+  **L4** (ödül temposu korunsun diye).
 - ⚠️ **HIZLI GEÇİŞ**: harfle İLK KEZ karşılaşıp doğru bilirse doğrudan **L3**
-  (öğrenmek değil "zaten biliyormuş" sayılır). L4 hızlı geçişle VERİLMEZ —
+  (öğrenmek değil "zaten biliyormuş" sayılır), ikinci doğruda L4. L5 hızlı
+  geçişle VERİLMEZ —
   kanıt kuru + ayrı gün şartı (aşağı bak) her yolda geçerlidir; Flashcard'ın
   `meta.selfReport`'u yalnız "üretim kanıtı" demektir, kestirme değil. Hızlı
   geçişte SÜRE şartı YOK — ölçtük, koyunca bilen ama temkinli çocuğun geçme
@@ -104,29 +118,35 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   hiç değişmiyor ve her çağrı aynı harfi döndürüyordu ("sürekli aynı soruyu
   soruyor"). Tampon seçimi moddan bağımsız ilerletir.
 - ⚠️ **KANIT KURU** (`MASTERY`, srs.ts + `AnswerMeta.evidence`): bütün doğru
-  cevaplar eşit değil ama hiçbiri DEĞERSİZ değil. L4 bir puan eşiğidir:
+  cevaplar eşit değil ama hiçbiri DEĞERSİZ değil. **L5** bir puan eşiğidir:
   `NEEDED 3`; `"production"` (Flashcard: harfi gör → adını söyle) **1 puan**,
-  `"recognition"` (varsayılan — oyun/test, şıktan seçme) **½ puan**. Yani
-  Flashcard 3 ayrı günde, oyun/test 6 ayrı günde L4 verir; karışık oynanırsa
+  `"recognition"` (varsayılan — oyun/test, şıktan seçme) **½ puan**. Ayrıca
+  `MIN_DAYS 5` TABANI var: puan yetse bile 5 ayrı gün şart — üretim yolu 3
+  günde eşiği geçiyor ama 3 hatırlama yarı ömrü ancak ~10 güne çıkarıyor,
+  sonra takvim aralığı 21-60 güne fırlayınca harf unutuluyordu (ölçüm: yalnız
+  Flashcard oynayan çocukta rozetin **%33'ü yalandı**, taban konunca **%0**).
+  Rawson & Dunlosky da "3 doğru + 3 kez ARALIKLI yeniden öğrenme" diyor; puan
+  eşiği tek başına onların yalnız ilk yarısıydı. Yani
+  Flashcard 5 ayrı günde, oyun/test 6 ayrı günde L5 verir; karışık oynanırsa
   puanlar TOPLANIR. Yanlış cevap biriken puanı yarıya indirir (`WRONG_DECAY`).
   Kur'un gerekçesi: (1) 4 şıkta şansla %25 tutturulur ve çocuk bilmediği harfi
   ELEYEREK de bulur; (2) YÖN TERS — Elifbâ kitabı "harfi gör, söyle" der, test
   "sesi duy, harfi seç" der; bu iki yön ayrı öğrenilir. Gerçek gözlem: çocuk
   1 saatte bütün harfleri L4 yaptı, kitaptan sorulunca 2 harfi bilemedi.
-  ⚠️ Önce **sert tavan** konmuştu (oyun ASLA L4 veremez); kullanıcı itiraz
+  ⚠️ Önce **sert tavan** konmuştu (oyun ASLA ustalık veremez); kullanıcı itiraz
   etti — "ters yönde de olsa sürekli maruz kalırsa öğrenir, 2-3 kat zaman
   ister ama öğrenir" — literatür de doğruluyor (alımlama ve üretim pratiği
   ikisi de her yöne aktarılıyor, üretim daha az tekrarla). Tavan yerine KUR:
   oyun daha uzun yoldan aynı yere varır. Ölçüm (40 gün × 30 soru × 6 çocuk):
-  ⭐⭐⭐⭐ yalan oranı Karışık %16.3 → **%5.0**, Test %0, Oyun %1.
+  ⭐ yalan oranı Karışık %16.3 → **%5.0** (MIN_DAYS tabanıyla daha da aşağı).
   ⚠️ `MASTERY.EPS` kayan nokta içindir: `6 × ½ = 1.9999…` eşiği tam sınırda
   bloke ediyordu.
 - ⚠️ **ARALIKLI TEKRAR TAKVİMİ** (`SPACING`, srs.ts): **AYNI GÜN SAYILMAZ.**
   Basamak yalnız FARKLI BİR GÜNDE verilen doğru cevapla ilerler; aynı
   oturumda üst üste doğru yapmak L4 vermez (güne yayılan tekrar tek seferde
   tekrarın 3 katı kalıcılık veriyor — 5. sınıf ölçümü). Flashcard'ın tek
-  dokunuşta L4'ü bu yüzden kaldırıldı; ilk doğru L3, L4 kanıt kuruyla
-  (yukarı bak) en erken 3. AYRI günde.
+  dokunuşta ustalığı bu yüzden kaldırıldı; ilk doğru L3, ikincisi L4,
+  L5 kanıt kuruyla (yukarı bak) en erken 5. AYRI günde.
   Basamaklar `1 → 3 → 7 → 21 → 60 → 150 → 365` gün (Cepeda 2008: 1 hafta
   için sürenin %20-40'ı, 1 yıl için %5-10'u). Son basamağı geçen öğe
   **MEZUN** olur (`GRADUATED_STEP`), bir daha programa girmez — Bahrick:
@@ -144,10 +164,10 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   ile aralık uzatmaktan gelir (Bahrick: 13 tekrar × 56 gün = 26 tekrar ×
   14 gün). İngilizce'de kelime sayısı büyüyünce tek sayıyla yük yarıya
   iner. Ölçüm: sahte ustalık karışık senaryoda 55 → 19.
-- SRS `src/data/srs.ts`: L1-4. Yanlış = **-2 seviye** (kullanıcı şartı,
-  değişmez). L3→L4 = üst üste 2 doğru (`consecutiveCorrect`). Seçici:
-  görülmemişler müfredat sırasıyla, art arda aynı öğe yok, ağırlıklar
-  L1 %55…L4 %15 (%85 başarı kuralı).
+- SRS `src/data/srs.ts`: L1-5. Yanlış = **-2 seviye** (kullanıcı şartı,
+  değişmez). L3→L4 = üst üste 2 doğru (`consecutiveCorrect`), L4→L5 = kanıt
+  kuru. Seçici: görülmemişler müfredat sırasıyla, art arda aynı öğe yok,
+  ağırlıklar L1 %46 → L5 %8 (%85 başarı kuralı, monoton iniş).
 - Bölüm kilidi `src/lib/unlock.ts`: konu içi section'lar sıralı açılır.
   Açılma şartı İKİ tane: (1) bölümdeki tüm öğeler L3+, (2) bölüm içinde
   sıcak karışıklık kalmamış (`hotPairInSection`, eşik 0.6). Eskiler açık

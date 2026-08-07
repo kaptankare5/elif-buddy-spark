@@ -63,7 +63,9 @@ function computeSummary() {
       if (!e) continue;
       if ((e.lastSeen ?? 0) >= t0) practicedToday++;
       if ((e.learnedAt ?? 0) >= t0) { learnedToday++; topicNew++; }
-      if ((e.level ?? 1) >= 4) mastered++;
+      // "Ustalaşan" = L5. L4 artık "öğrendi" demek (aynı oturumda kazanılabilir);
+      // veliye ustalık diye onu göstermek sayıyı şişirir.
+      if ((e.level ?? 1) >= 5) mastered++;
       if ((e.level ?? 1) >= 3) learned++;
     }
     if (topicNew > 0) newTodayTopics.push(`${t.emoji} ${t.title.replace(/^\d+\.\s*/, "")}`);

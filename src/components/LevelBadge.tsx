@@ -6,7 +6,8 @@ import { getTopicSrs } from "@/data/srs";
 import { findTopicOfItem } from "@/data/subjects";
 import { cn } from "@/lib/utils";
 
-const LVL_COLOR = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e"];
+// dizin = seviye (0 = YENİ). L5 = ustalık, altın.
+const LVL_COLOR = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e", "#f0b429"];
 
 export function LevelBadge({ itemId, topicId, className }: { itemId: string; topicId?: string; className?: string }) {
   const [active] = useTestUnlock();
@@ -19,7 +20,7 @@ export function LevelBadge({ itemId, topicId, className }: { itemId: string; top
   return (
     <span
       className={cn("pointer-events-none z-30 rounded px-1 text-[9px] font-extrabold text-black leading-tight shadow-sm", className)}
-      style={{ background: LVL_COLOR[Math.min(4, seen ? lvl : 0)] }}
+      style={{ background: LVL_COLOR[Math.min(5, seen ? lvl : 0)] }}
     >
       {seen ? `L${lvl}` : "YENİ"}
     </span>

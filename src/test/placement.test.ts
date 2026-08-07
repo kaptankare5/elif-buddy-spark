@@ -379,17 +379,25 @@ describe("Problem 1 — zorlanınca yeni harf durur", () => {
 describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
   const lvl = (id: string) => getTopicSrs("quiz", "harfler")[id]?.level;
 
-  it("ilk doğru L3 yapar; L4 için 3 AYRI GÜN üretim kanıtı gerekir", async () => {
+  it("ilk doğru L3, ikinci doğru L4; L5 için AYRI GÜNLERE yayılmış kanıt gerekir", async () => {
+    // ⚠️ MERDİVENİN İKİ HIZI VAR (bilerek):
+    //   L3→L4 hızlı — üst üste 2 doğru, aynı oturumda olabilir. Çocuk ilerleme
+    //   görmeli, yoksa ⭐⭐⭐'te park edip "bir şey olmuyor" hissine kapılıyor.
+    //   L4→L5 yavaş — kanıt puanı + en az MIN_DAYS ayrı gün. Ustalık rozeti
+    //   ancak burada verilir.
     const uret = () => recordSrsAnswer("quiz", "harfler", "l1-09", true,
       { responseMs: 1200, evidence: "production" as const });
     gunde(400); await uret();
     expect(lvl("l1-09")).toBe(3);
     await uret();
-    expect(lvl("l1-09"), "aynı gün ikinci doğru puan EKLEMEZ").toBe(3);
+    expect(lvl("l1-09"), "üst üste 2 doğru → L4 (aynı gün olabilir)").toBe(4);
     gunde(402); await uret();
-    expect(lvl("l1-09"), "2 gün = 2 puan, eşik 3").toBe(3);
     gunde(405); await uret();
-    expect(lvl("l1-09"), "3 gün = 3 puan → L4").toBe(4);
+    expect(lvl("l1-09"), "3 puan var ama 3 gün var — MIN_DAYS 5").toBe(4);
+    gunde(408); await uret();
+    expect(lvl("l1-09"), "4 gün, hâlâ yetmez").toBe(4);
+    gunde(411); await uret();
+    expect(lvl("l1-09"), "5 ayrı gün üretim kanıtı → L5").toBe(5);
   });
 
   it("hızlı geçişte SÜRE şartı aranmaz (yavaş ama bilen çocuk cezalanmaz)", async () => {
@@ -402,43 +410,48 @@ describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
     expect(lvl("l1-10")).toBe(4);
   });
 
-  it("TANIMA kanıtı da L4 verir — ama 2 KAT daha çok GÜN ister", async () => {
+  it("TANIMA kanıtı da L5 verir — ama 2 KAT daha çok GÜN ister", async () => {
     // Kullanıcı itirazı (haklıydı): "sürekli harfe maruz kalırsa, ters yönde
     // de olsa, oyun oynaya oynaya öğrenir — belki 2-3 kat daha çok zaman
     // ister ama öğrenir." Literatür de öyle: tanıma pratiği de üretim
     // bilgisine katkı yapıyor, sadece daha yavaş. O yüzden DUVAR değil KUR:
-    // üretim 1 puan, tanıma 1/3 puan, L4 için 2 puan gerekiyor.
+    // üretim 1 puan, tanıma 1/2 puan, L5 için 3 puan gerekiyor.
     gunde(430);
     await recordSrsAnswer("quiz", "harfler", "l1-15", true, { responseMs: 900 });
     for (const g of [432, 435, 440, 450]) {           // toplam 5 gün = 2.5 puan
       gunde(g);
       await recordSrsAnswer("quiz", "harfler", "l1-15", true, { responseMs: 900 });
     }
-    expect(lvl("l1-15"), "5 tanıma günü = 2.5 puan, eşik 3 → henüz değil").toBe(3);
+    expect(lvl("l1-15"), "5 tanıma günü = 2.5 puan, eşik 3 → henüz değil").toBe(4);
     gunde(460);                                        // 6. gün = 3.0 puan
     await recordSrsAnswer("quiz", "harfler", "l1-15", true, { responseMs: 900 });
-    expect(lvl("l1-15"), "6 tanıma gününde L4").toBe(4);
+    expect(lvl("l1-15"), "6 tanıma gününde L5").toBe(5);
   });
 
-  it("ÜRETİM kanıtı 2 kat hızlı: 3 günde L4 (tanımada 6)", async () => {
-    for (const g of [470, 472, 475]) {
+  it("ÜRETİM kanıtı 2 kat hızlı: 5 günde L5 (tanımada 6)", async () => {
+    // Üretim puanı 2 katı ama gün TABANI (MIN_DAYS 5) ikisinde de geçerli —
+    // 3 puanı 3 günde toplasa bile hafıza izi o kadar tekrarla ayakta durmuyor.
+    for (const g of [470, 472, 475, 478]) {
       gunde(g);
       await recordSrsAnswer("quiz", "harfler", "l1-16", true, { responseMs: 900, evidence: "production" });
     }
-    expect(lvl("l1-16")).toBe(4);
+    expect(lvl("l1-16"), "4 gün — puan yeter, gün yetmez").toBe(4);
+    gunde(482);
+    await recordSrsAnswer("quiz", "harfler", "l1-16", true, { responseMs: 900, evidence: "production" });
+    expect(lvl("l1-16")).toBe(5);
   });
 
-  it("karışık kanıt TOPLANIR: 1 üretim + 4 tanıma = L4", async () => {
+  it("karışık kanıt TOPLANIR: 1 üretim + 4 tanıma = L5", async () => {
     gunde(480);
     await recordSrsAnswer("quiz", "harfler", "l1-17", true, { responseMs: 900, evidence: "production" });
     for (const g of [482, 485, 490]) {
       gunde(g);
       await recordSrsAnswer("quiz", "harfler", "l1-17", true, { responseMs: 900 });
     }
-    expect(lvl("l1-17"), "1 + 1.5 = 2.5 → henüz değil").toBe(3);
+    expect(lvl("l1-17"), "1 + 1.5 = 2.5 → henüz değil").toBe(4);
     gunde(495);
     await recordSrsAnswer("quiz", "harfler", "l1-17", true, { responseMs: 900 });
-    expect(lvl("l1-17"), "1 + 2.0 = 3.0 → L4").toBe(4);
+    expect(lvl("l1-17"), "1 + 2.0 = 3.0 puan ve 5 gün → L5").toBe(5);
   });
 
   it("ilk karşılaşmada YANLIŞ ise hızlı geçiş yok — normal öğrenme yolu", async () => {
@@ -462,24 +475,24 @@ describe("hızlı geçiş — ilk karşılaşmada doğru", () => {
 
 // --- YENİ MÜFREDAT: alıştırmasız konu + Flashcard tek-seferde ustalık ---
 describe("yeni müfredat kabulleri", () => {
-  it("Flashcard beyanı da tek dokunuşta L4 YAPMAZ (aynı gün kuralı)", async () => {
+  it("Flashcard beyanı tek oturumda USTALIK (L5) vermez", async () => {
     // Flashcard'da şık yok → şansla tutturma ihtimali 0, o yüzden ilk doğru
-    // doğrudan L3. Ama L4 (ezberledi) için AYRI GÜNLERDE kanıt birikmeli:
-    // tek dokunuşla L4 vermek öğeyi programdan düşürüp unutulmaya bırakıyordu
-    // (ölçüm: yalnız Flashcard oynayan çocukta 97 harf sahte ustalıktı).
-    // Üretim kanıtı gün başına 1 puan, eşik MASTERY.NEEDED (3) → 3 ayrı gün.
+    // doğrudan L3, ikincisi L4. Ama USTALIK (L5) için AYRI GÜNLERDE kanıt
+    // birikmeli: tek oturumda ustalık vermek öğeyi programdan düşürüp
+    // unutulmaya bırakıyordu (ölçüm: yalnız Flashcard oynayan çocukta
+    // ⭐ rozetinin %33'ü yalandı — 7 gün sonra hatırlama %50'nin altında).
+    const seviye = () => getTopicSrs("quiz", "harfler")["l1-13"].level;
+    const kart = () => recordSrsAnswer("quiz", "harfler", "l1-13", true,
+      { responseMs: 1500, selfReport: true });
     gunde(500);
-    await recordSrsAnswer("quiz", "harfler", "l1-13", true, { responseMs: 1500, selfReport: true });
-    expect(getTopicSrs("quiz", "harfler")["l1-13"].level).toBe(3);
-    // aynı gün ikinci dokunuş puan EKLEMEZ
-    await recordSrsAnswer("quiz", "harfler", "l1-13", true, { responseMs: 1500, selfReport: true });
-    expect(getTopicSrs("quiz", "harfler")["l1-13"].level, "aynı gün sayılmaz").toBe(3);
-    gunde(502);
-    await recordSrsAnswer("quiz", "harfler", "l1-13", true, { responseMs: 1500, selfReport: true });
-    expect(getTopicSrs("quiz", "harfler")["l1-13"].level, "2 gün = 2 puan, eşik 3").toBe(3);
-    gunde(505);
-    await recordSrsAnswer("quiz", "harfler", "l1-13", true, { responseMs: 1500, selfReport: true });
-    expect(getTopicSrs("quiz", "harfler")["l1-13"].level).toBe(4);
+    await kart();
+    expect(seviye()).toBe(3);
+    await kart();
+    expect(seviye(), "üst üste 2 doğru → L4").toBe(4);
+    for (let i = 0; i < 20; i++) await kart();
+    expect(seviye(), "aynı gün 20 kart daha — ustalık YOK").toBe(4);
+    for (const g of [502, 505, 508, 511]) { gunde(g); await kart(); }
+    expect(seviye(), "5 ayrı gün → L5").toBe(5);
   });
 
   it("şıklı cevap (selfReport yok) ilk karşılaşmada L3'te kalır", async () => {

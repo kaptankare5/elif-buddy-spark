@@ -82,20 +82,21 @@ describe("konu tamamlanması BECERİ sayar", () => {
     expect(Object.values(srs).every((e) => (e.level as Level) === 3)).toBe(true);
   });
 
-  it("L4 (ezberledi) için ERTESİ GÜN bir doğru daha gerekir", async () => {
+  it("USTALIK (L5) için AYRI GÜNLER gerekir — aynı oturum L4'te durur", async () => {
     const t = T("harekeler");
     gunde(100);
     for (const sk of topicSkillIds(t)) await cevapla(t.id, sk, 3);   // aynı gün 3 doğru
     let srs = getTopicSrs("quiz", t.id);
-    // Aynı oturumda kaç doğru yaparsa yapsın L3'te kalır — aynı gün sayılmaz.
-    expect(Object.values(srs).every((e) => (e.level as Level) === 3)).toBe(true);
-    // Üretim kanıtı 1 puan/gün, eşik 3 → 3 AYRI gün gerekiyor.
-    gunde(103);
-    for (const sk of topicSkillIds(t)) await cevapla(t.id, sk, 1);
-    gunde(110);
-    for (const sk of topicSkillIds(t)) await cevapla(t.id, sk, 1);
-    srs = getTopicSrs("quiz", t.id);
+    // Üst üste 2 doğru L4 verir (merdivenin hızlı yarısı) ama orada durur:
+    // aynı oturumda kaç doğru yaparsa yapsın ustalık kanıtı sayılmaz.
     expect(Object.values(srs).every((e) => (e.level as Level) === 4)).toBe(true);
+    // Üretim kanıtı 1 puan/gün, eşik 3 puan VE en az 5 ayrı gün.
+    for (const g of [103, 110, 118, 127]) {
+      gunde(g);
+      for (const sk of topicSkillIds(t)) await cevapla(t.id, sk, 1);
+    }
+    srs = getTopicSrs("quiz", t.id);
+    expect(Object.values(srs).every((e) => (e.level as Level) === 5)).toBe(true);
   });
 
   it("Harekeler'de ilk bölüm bitince bütün bölümler açılır", async () => {

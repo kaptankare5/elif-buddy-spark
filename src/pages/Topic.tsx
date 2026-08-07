@@ -221,7 +221,7 @@ const Topic = () => {
   if (!isTopicUnlocked(topic.id)) return <Navigate to="/" replace />;
 
   const srs = getTopicSrs(NS, topic.id);
-  const levelCount: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  const levelCount: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   for (const id of itemIds) {
     const lvl = (srs[id]?.level || 1) as Level;
     levelCount[lvl] += 1;
@@ -546,16 +546,18 @@ const Topic = () => {
           ← Konuya dön
         </button>
 
-        <div className="mb-4 grid grid-cols-4 gap-2">
-          {[1, 2, 3, 4].map((l) => (
+        <div className="mb-4 grid grid-cols-5 gap-1.5">
+          {[1, 2, 3, 4, 5].map((l) => (
             <div key={l} className={cn(
               "rounded-lg p-1.5 text-center shadow-soft border",
               l === 1 && "bg-info/10 border-info/40",
               l === 2 && "bg-warning/10 border-warning/40",
               l === 3 && "bg-secondary/40 border-secondary",
               l === 4 && "bg-success/10 border-success/40",
+              l === 5 && "bg-gold/10 border-gold/50",
             )}>
-              <div className="text-[10px] leading-none">{"⭐".repeat(l)}</div>
+              {/* 5 yıldız 5 sütuna sığmalı: dar telefonda 10px emoji taşıyor */}
+              <div className="text-[8px] leading-none tracking-tighter">{"⭐".repeat(l)}</div>
               <div className="text-xs font-extrabold text-foreground mt-0.5">{levelCount[l as Level]}</div>
             </div>
           ))}
