@@ -15,7 +15,7 @@ import {
   optionsFor,
   repsDone,
   saveState,
-  spanishVoice,
+  prepareVoices,
   speakEs,
   speakTwice,
   totalReps,
@@ -30,6 +30,7 @@ const TAP = "min-h-[56px]";
 const Deney = () => {
   const [st, setSt] = useState<DeneyState | null>(() => loadState());
   const [hasVoice, setHasVoice] = useState<boolean | null>(null);
+  const [voiceProg, setVoiceProg] = useState({ done: 0, total: WORDS.length });
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [feedback, setFeedback] = useState<null | { ok: boolean; correct: string }>(null);
@@ -37,16 +38,13 @@ const Deney = () => {
   const [marked, setMarked] = useState<number | null>(null);
   const startRef = useRef(performance.now());
 
-  // İspanyolca ses kontrolü
+  // Yapay zekâ sesleri arka planda hazırlanır (bir kez üretilir, sonra saklanır).
   useEffect(() => {
-    const check = () => setHasVoice(!!spanishVoice());
-    check();
-    window.speechSynthesis?.addEventListener?.("voiceschanged", check);
-    const t = setTimeout(check, 800);
-    return () => {
-      window.speechSynthesis?.removeEventListener?.("voiceschanged", check);
-      clearTimeout(t);
-    };
+    let alive = true;
+    void prepareVoices((done, total) => { if (alive) setVoiceProg({ done, total }); }).then((ok) => {
+      if (alive) setHasVoice(ok > 0);
+    });
+    return () => { alive = false; };
   }, []);
 
   const update = (fn: (s: DeneyState) => DeneyState) => {
@@ -224,12 +222,11 @@ const Deney = () => {
     return shell(
       <div className="rounded-2xl border-2 border-destructive/40 bg-destructive/10 p-5">
         <h2 className="text-lg font-extrabold text-destructive mb-2">
-          Bu cihazda İspanyolca ses yok
+          İspanyolca ses hazırlanamadı
         </h2>
         <p className="text-sm font-semibold text-foreground">
-          Deney sesle çalışıyor. Cihazda <b>es-ES</b> konuşma sesi bulunamadı, bu hâliyle
-          deney geçerli olmaz. Cihaz ayarlarından İspanyolca konuşma sesi ekleyip sayfayı
-          yenile.
+          Deney sesle çalışıyor. Kelime seslendirmeleri sunucudan alınamadı; internet
+          bağlantısını kontrol edip sayfayı yenile.
         </p>
       </div>,
     );
@@ -277,7 +274,9 @@ const Deney = () => {
             TAP,
           )}
         >
-          Başlat
+          {hasVoice === true
+            ? "Başlat"
+            : `Sesler hazırlanıyor… ${voiceProg.done}/${voiceProg.total}`}
         </button>
       </div>,
     );
