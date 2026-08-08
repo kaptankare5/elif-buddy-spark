@@ -12,6 +12,7 @@ import Game from "./pages/Game.tsx";
 import Progress from "./pages/Progress.tsx";
 import Settings from "./pages/Settings.tsx";
 import Olcum from "./pages/Olcum.tsx";
+import Deney from "./pages/Deney.tsx";
 import Ezber from "./pages/Ezber.tsx";
 import EzberCalis from "./pages/EzberCalis.tsx";
 import Bahce from "./pages/Bahce.tsx";
