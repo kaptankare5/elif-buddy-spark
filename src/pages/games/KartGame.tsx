@@ -39,7 +39,7 @@ import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
-import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture } from "./_letterTexture";
+import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture, blockedTexture } from "./_letterTexture";
 import { getAskMode, okunurAd, pickNameWrongs, FLASH_SIK, USTTE_SIK, FLASH_MS, type AskMode } from "@/lib/askMode";
 import type { ContentItem } from "@/data/types";
 
@@ -780,8 +780,16 @@ const KartGame = () => {
       // dosya inmiş olsun. Yavaş bağlantıda ilk kez duyulan bir harfin mp3'ü
       // yüklenirken çocuk kapıyı geçebiliyordu.
       preloadItems([target]);
-      // Önce bütün panoları gizle (2 şıkta orta pano boş kalacak).
-      g.panels.forEach((p) => { p.visible = false; });
+      // Kullanılmayan şerit BOŞ BIRAKILMAZ: 2 şıklı modda orta pano boş
+      // kalınca oyun bozuk görünüyordu (kullanıcı bildirdi). Oraya "burası
+      // cevap değil" diyen çapraz taralı kapalı plaka konur.
+      g.panels.forEach((p) => {
+        const m = p.material as THREE.MeshBasicMaterial;
+        m.map = keep(blockedTexture());
+        m.color.set(0xffffff);
+        m.needsUpdate = true;
+        p.visible = true;
+      });
       g.options.forEach((opt, k) => {
         const p = g.panels[g.optionLanes[k]];
         const m = p.material as THREE.MeshBasicMaterial;
@@ -1759,16 +1767,41 @@ const KartGame = () => {
             </button>
           )}
 
-          {/* ŞİMŞEK: glif yarı saydam parlar — arkadaki yarış görünmeye devam
-              eder (kullanıcı şartı), çocuk hem yolu hem harfi takip eder. */}
+          {/* ŞİMŞEK — görme araştırmasına göre ayarlandı:
+              ⚠️ GLİFİN KENDİSİ SAYDAM DEĞİL. İlk sürümde harf %55 opaklıktaydı;
+              harf tanımayı belirleyen şey PARLAKLIK KARŞITLIĞIdır (Legge:
+              renk karşıtlığı eklemek okuma hızını artırmıyor, ama karşıtlığı
+              düşürmek doğrudan düşürüyor). Saydam harf = düşük karşıtlık =
+              zor okunan harf.
+              Bunun yerine ALTLIK saydam: harfin arkasına yarı saydam bir plaka
+              konuyor (video üstü altyazı çözümünün aynısı). Oyun plakanın
+              çevresinde görünmeye devam eder — kullanıcının istediği "yarışı
+              da görsün" şartı korunur, ama harf tam karşıtlıkta kalır.
+              ⚠️ KONUM: yolun tam ortası DEĞİL, üst bölge (gökyüzü şeridi).
+              Üst üste bindirilmiş sabit sembolojinin dikkati TÜNELLEDİĞİ
+              ölçülmüş (HUD araştırması: pilotlar beklenmedik olayı 2.5 sn geç
+              fark ediyor). Sürüş bilgisinin üstünü kapatmıyoruz.
+              ⚠️ SÜRE sorun değil: Sperling'de 50 ms'lik gösterim 9-12 harfi
+              erişilebilir kılıyor; tek glif için 1.1 sn zaten cömert. */}
           {glifFlash && (
-            <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
-              <div
-                className="font-arabic text-[9rem] leading-[1.4] text-emerald-900 drop-shadow-[0_2px_12px_rgba(255,255,255,0.9)]"
-                style={{ opacity: 0.55 }}
-                dir="rtl"
-              >
-                {glifFlash.emoji}
+            <div className="pointer-events-none absolute inset-x-0 top-[18%] z-30 flex justify-center">
+              {/* ⚠️ backdrop-blur YOK: WebGL canvas'ın üstünde backdrop-filter hem
+                  yazılım rasterleştiricide hem mobil WebView'de katmanı hiç
+                  boyamayabiliyor (burada tam bunu yaşadık — düğüm DOM'da,
+                  ölçüsü doğru, ama ekranda yok). Düz yarı saydam zemin
+                  aynı işi görüyor ve her yerde çalışıyor. */}
+              <div className="rounded-[2rem] bg-white/70 px-9 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.22)]">
+                <div
+                  className="font-arabic text-[8rem] leading-[1.35] text-emerald-950"
+                  style={{
+                    // Beyaz hâle: harf hem gökyüzünde hem asfaltta okunsun diye
+                    // (dinamik arka planda karşıtlık polaritesi değişiyor).
+                    textShadow: "0 0 10px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)",
+                  }}
+                  dir="rtl"
+                >
+                  {glifFlash.emoji}
+                </div>
               </div>
             </div>
           )}
