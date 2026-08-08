@@ -222,12 +222,11 @@ const Deney = () => {
     return shell(
       <div className="rounded-2xl border-2 border-destructive/40 bg-destructive/10 p-5">
         <h2 className="text-lg font-extrabold text-destructive mb-2">
-          Bu cihazda İspanyolca ses yok
+          İspanyolca ses hazırlanamadı
         </h2>
         <p className="text-sm font-semibold text-foreground">
-          Deney sesle çalışıyor. Cihazda <b>es-ES</b> konuşma sesi bulunamadı, bu hâliyle
-          deney geçerli olmaz. Cihaz ayarlarından İspanyolca konuşma sesi ekleyip sayfayı
-          yenile.
+          Deney sesle çalışıyor. Kelime seslendirmeleri sunucudan alınamadı; internet
+          bağlantısını kontrol edip sayfayı yenile.
         </p>
       </div>,
     );
