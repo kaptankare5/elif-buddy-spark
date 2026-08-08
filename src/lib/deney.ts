@@ -282,7 +282,56 @@ export function buildReport(s: DeneyState): string {
   return L.join("\n");
 }
 
-/* ─────────── Ses (SpeechSynthesis, es-ES) ─────────── */
+/* ─────────── Ses (yapay zekâ seslendirmesi + TTS yedeği) ─────────── */
+
+// Sesler backend'te bir kez üretilip saklanır; burada blob URL olarak
+// önbelleklenir. Ses gelmezse tarayıcı motoruna düşülür (deney sessiz kalmaz).
+import { supabase } from "@/integrations/supabase/client";
+
+const urlCache = new Map<string, string>();
+const pending = new Map<string, Promise<string | null>>();
+let activeEl: HTMLAudioElement | null = null;
+
+async function fetchVoice(text: string): Promise<string | null> {
+  const hit = urlCache.get(text);
+  if (hit) return hit;
+  const inFlight = pending.get(text);
+  if (inFlight) return inFlight;
+
+  const p = (async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("deney-tts", {
+        body: { word: text },
+      });
+      if (error || !data) return null;
+      const blob = data instanceof Blob ? data : new Blob([data as BlobPart], { type: "audio/mpeg" });
+      if (blob.size < 512) return null;
+      const url = URL.createObjectURL(blob);
+      urlCache.set(text, url);
+      return url;
+    } catch {
+      return null;
+    } finally {
+      pending.delete(text);
+    }
+  })();
+  pending.set(text, p);
+  return p;
+}
+
+/** 18 kelimeyi arka planda hazırla; kaçının hazır olduğunu döndürür. */
+export async function prepareVoices(onProgress?: (done: number, total: number) => void) {
+  const list = WORDS.map((w) => w.es);
+  let done = 0;
+  let ok = 0;
+  for (const w of list) {
+    const u = await fetchVoice(w);
+    if (u) ok++;
+    done++;
+    onProgress?.(done, list.length);
+  }
+  return ok;
+}
 
 export function spanishVoice(): SpeechSynthesisVoice | null {
   if (typeof window === "undefined" || !window.speechSynthesis) return null;
@@ -290,7 +339,7 @@ export function spanishVoice(): SpeechSynthesisVoice | null {
   return vs.find((v) => v.lang?.toLowerCase().startsWith("es")) ?? null;
 }
 
-export function speakEs(text: string, onEnd?: () => void) {
+function browserSpeak(text: string, onEnd?: () => void) {
   if (typeof window === "undefined" || !window.speechSynthesis) { onEnd?.(); return; }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
@@ -303,6 +352,21 @@ export function speakEs(text: string, onEnd?: () => void) {
   window.speechSynthesis.speak(u);
 }
 
+export function speakEs(text: string, onEnd?: () => void) {
+  try { activeEl?.pause(); } catch { /* ignore */ }
+  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+  void fetchVoice(text).then((url) => {
+    if (!url) { browserSpeak(text, onEnd); return; }
+    const el = new Audio(url);
+    el.setAttribute("playsinline", "true");
+    activeEl = el;
+    el.onended = () => onEnd?.();
+    el.onerror = () => browserSpeak(text, onEnd);
+    el.play().catch(() => browserSpeak(text, onEnd));
+  });
+}
+
 export function speakTwice(text: string) {
   speakEs(text, () => setTimeout(() => speakEs(text), 450));
 }
+
