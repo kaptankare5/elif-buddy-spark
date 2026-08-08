@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { useGameMode, FREE_PLAY_MIN_SEEN } from "@/lib/gameMode";
 import { freePlaySeenCount } from "@/pages/games/_shared";
 import { cn } from "@/lib/utils";
+import { ASK_MODES, useAskMode } from "@/lib/askMode";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 // import { AccountCard } from "@/components/AccountCard"; // UI gizlendi
@@ -23,6 +24,7 @@ import { useStudents, addStudent, removeStudent, switchStudent } from "@/lib/stu
 const Settings = () => {
   const [s, set] = useSettings();
   const [mode, setMode] = useGameMode();
+  const [ask, setAsk] = useAskMode();
   const { session } = useAuth();
   const [consent, setConsentState] = useState(consentGiven());
   const [confirmCloudDel, setConfirmCloudDel] = useState(false);
@@ -203,6 +205,44 @@ const Settings = () => {
               tutturmak ve eleyerek bulmak mümkün olduğu için tek cevap yarım
               sayılır. İkisi karışık oynanırsa kanıtlar toplanır. Yani oyun da
               son yıldızı verir — sadece daha uzun yoldan.
+            </p>
+          </div>
+
+          {/* DENEYSEL: oyunda soru sorma yöntemi */}
+          <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-gold/40">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg">🧪</span>
+              <h3 className="font-extrabold text-foreground text-sm">Oyunda soru yöntemi (deneme)</h3>
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
+              Şu an oyunlar <b>sesi duyup harfi seçtiriyor</b>. Asıl hedef ise tersi:
+              harfi <b>görüp adını söylemek</b> (Elifbâ kitabının sorduğu yön). Yeni
+              yöntemler soruyu bu yöne çeviriyor — şıklar harfin <b>yazılı adı</b> olur.
+              Şimdilik yalnız <b>Elifbâ Yarışı</b>'nda çalışır.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {ASK_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setAsk(m.id)}
+                  className={cn(
+                    "rounded-2xl p-2 border-2 text-left transition-bouncy",
+                    ask === m.id
+                      ? "bg-gold/20 border-gold shadow-soft"
+                      : "bg-muted/40 border-border",
+                  )}
+                >
+                  <div className="text-xs font-extrabold text-foreground">{m.ad}</div>
+                  <div className="text-[10px] font-bold text-muted-foreground leading-tight mt-0.5">
+                    {m.aciklama}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
+              ⚠️ Yeni yöntemler <b>Latin harflerini okuyabilmeyi</b> gerektirir — çocuk
+              henüz Türkçe okuyamıyorsa &quot;Klasik&quot;te kalın. Değişiklik
+              <b> bir sonraki yarışta</b> geçerli olur.
             </p>
           </div>
 

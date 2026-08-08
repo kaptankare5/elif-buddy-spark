@@ -56,6 +56,44 @@ export function letterTexture(text: string, opts?: { bg?: string; fg?: string })
   return t;
 }
 
+/**
+ * KARE pano için YAZILI KELİME dokusu (yeni soru modları — bkz. lib/askMode.ts).
+ * nameTexture 256×64 (4:1) — kare panoya gerilir ve okunmaz hâle gelir; bu
+ * yüzden ayrı bir kare doku gerekiyor. Uzun ad sığmazsa font küçültülür.
+ */
+export function wordTexture(word: string, opts?: { bg?: string; fg?: string }): THREE.CanvasTexture {
+  const bg = opts?.bg ?? "#fffdf5";
+  const fg = opts?.fg ?? "#134e4a";
+  const key = `W:${word}:${bg}:${fg}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+
+  const c = document.createElement("canvas");
+  c.width = 256; c.height = 256;
+  const g = c.getContext("2d")!;
+  g.fillStyle = bg;
+  g.fillRect(0, 0, 256, 256);
+  g.strokeStyle = fg;
+  g.lineWidth = 8;
+  g.strokeRect(4, 4, 248, 248);
+  g.fillStyle = fg;
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  // Genişliğe göre font seç — "Elif" ile "Peltek Se" aynı puntoda sığmaz.
+  let px = 84;
+  do {
+    g.font = `800 ${px}px system-ui, sans-serif`;
+    if (g.measureText(word).width <= 216) break;
+    px -= 6;
+  } while (px > 24);
+  g.fillText(word, 128, 132);
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  cache.set(key, t);
+  return t;
+}
+
 /** Yarışmacının başının üstünde uçan isim tabelası dokusu. */
 export function nameTexture(name: string, color: string): THREE.CanvasTexture {
   const key = `N:${name}:${color}`;
