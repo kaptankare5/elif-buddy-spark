@@ -274,7 +274,9 @@ const Deney = () => {
             TAP,
           )}
         >
-          Başlat
+          {hasVoice === true
+            ? "Başlat"
+            : `Sesler hazırlanıyor… ${voiceProg.done}/${voiceProg.total}`}
         </button>
       </div>,
     );
