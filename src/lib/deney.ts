@@ -345,6 +345,19 @@ import { supabase } from "@/integrations/supabase/client";
 const urlCache = new Map<string, string>();
 const pending = new Map<string, Promise<string | null>>();
 let activeEl: HTMLAudioElement | null = null;
+// Her yeni istek bir öncekini iptal eder: geç gelen ses ÇALMAZ (üst üste binme yok).
+let seq = 0;
+let twiceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function stopAll() {
+  seq++;
+  if (twiceTimer) { clearTimeout(twiceTimer); twiceTimer = null; }
+  if (activeEl) {
+    try { activeEl.onended = null; activeEl.onerror = null; activeEl.pause(); } catch { /* ignore */ }
+    activeEl = null;
+  }
+  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+}
 
 async function fetchVoice(text: string): Promise<string | null> {
   const hit = urlCache.get(text);
@@ -379,12 +392,14 @@ export async function prepareVoices(onProgress?: (done: number, total: number) =
   const list = WORDS.map((w) => w.es);
   let done = 0;
   let ok = 0;
-  for (const w of list) {
-    const u = await fetchVoice(w);
-    if (u) ok++;
-    done++;
-    onProgress?.(done, list.length);
-  }
+  await Promise.all(
+    list.map(async (w) => {
+      const u = await fetchVoice(w);
+      if (u) ok++;
+      done++;
+      onProgress?.(done, list.length);
+    }),
+  );
   return ok;
 }
 
@@ -394,7 +409,7 @@ export function spanishVoice(): SpeechSynthesisVoice | null {
   return vs.find((v) => v.lang?.toLowerCase().startsWith("es")) ?? null;
 }
 
-function browserSpeak(text: string, onEnd?: () => void) {
+function browserSpeak(text: string, token: number, onEnd?: () => void) {
   if (typeof window === "undefined" || !window.speechSynthesis) { onEnd?.(); return; }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
@@ -402,26 +417,36 @@ function browserSpeak(text: string, onEnd?: () => void) {
   u.rate = 0.85;
   const v = spanishVoice();
   if (v) u.voice = v;
-  u.onend = () => onEnd?.();
-  u.onerror = () => onEnd?.();
+  u.onend = () => { if (token === seq) onEnd?.(); };
+  u.onerror = () => { if (token === seq) onEnd?.(); };
   window.speechSynthesis.speak(u);
 }
 
 export function speakEs(text: string, onEnd?: () => void) {
-  try { activeEl?.pause(); } catch { /* ignore */ }
-  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+  stopAll();
+  const token = seq;
   void fetchVoice(text).then((url) => {
-    if (!url) { browserSpeak(text, onEnd); return; }
+    if (token !== seq) return; // araya yeni istek girdi
+    if (!url) { browserSpeak(text, token, onEnd); return; }
     const el = new Audio(url);
     el.setAttribute("playsinline", "true");
     activeEl = el;
-    el.onended = () => onEnd?.();
-    el.onerror = () => browserSpeak(text, onEnd);
-    el.play().catch(() => browserSpeak(text, onEnd));
+    el.onended = () => { if (token === seq) onEnd?.(); };
+    el.onerror = () => { if (token === seq) browserSpeak(text, token, onEnd); };
+    el.play().catch(() => { if (token === seq) browserSpeak(text, token, onEnd); });
   });
 }
 
+/** Öğretme adımı: kelimeyi iki kez okur (ikinci okuma birincisi BİTİNCE). */
 export function speakTwice(text: string) {
-  speakEs(text, () => setTimeout(() => speakEs(text), 450));
+  speakEs(text, () => {
+    const token = seq;
+    twiceTimer = setTimeout(() => {
+      if (token !== seq) return;
+      // ikinci okumada seq'i bozmadan çal
+      speakEs(text);
+    }, 450);
+  });
 }
+
 
