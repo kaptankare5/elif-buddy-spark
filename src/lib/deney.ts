@@ -282,10 +282,10 @@ export function buildReport(s: DeneyState): string {
   return L.join("\n");
 }
 
-/* ─────────── Ses (yapay zekâ seslendirmesi + TTS yedeği) ─────────── */
+/* ─────────── Ses (ElevenLabs seslendirmesi + TTS yedeği) ─────────── */
 
-// Sesler backend'te bir kez üretilip saklanır; burada blob URL olarak
-// önbelleklenir. Ses gelmezse tarayıcı motoruna düşülür (deney sessiz kalmaz).
+// Sesler sunucuda BİR KEZ üretilip depoya yazılır; burada imzalı URL
+// önbelleklenir (tarayıcı da mp3'ü kendi önbelleğinde tutar).
 import { supabase } from "@/integrations/supabase/client";
 
 const urlCache = new Map<string, string>();
@@ -300,14 +300,14 @@ async function fetchVoice(text: string): Promise<string | null> {
 
   const p = (async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("deney-tts", {
+      const { data, error } = await supabase.functions.invoke<{ url?: string }>("deney-tts", {
         body: { word: text },
       });
-      if (error || !data) return null;
-      const blob = data instanceof Blob ? data : new Blob([data as BlobPart], { type: "audio/mpeg" });
-      if (blob.size < 512) return null;
-      const url = URL.createObjectURL(blob);
+      const url = data?.url;
+      if (error || !url) return null;
       urlCache.set(text, url);
+      // mp3'ü tarayıcı önbelleğine al: ilk çalmada gecikme olmasın
+      try { void fetch(url, { mode: "cors" }); } catch { /* ignore */ }
       return url;
     } catch {
       return null;
@@ -318,6 +318,7 @@ async function fetchVoice(text: string): Promise<string | null> {
   pending.set(text, p);
   return p;
 }
+
 
 /** 18 kelimeyi arka planda hazırla; kaçının hazır olduğunu döndürür. */
 export async function prepareVoices(onProgress?: (done: number, total: number) => void) {
