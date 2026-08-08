@@ -118,6 +118,24 @@ const Settings = () => {
             </div>
           </Link>
 
+          {/* Araştırma modülü — mevcut ilerlemeye hiç dokunmaz.
+              ⚠️ Bu blok LOVABLE tarafından eklendi; bir kez benim commit'imde
+              ezildi (ben Settings.tsx'i kendi dalımdan alıp main'e yazdım,
+              Lovable'ınki dalımda yoktu). main'e dosya taşırken o dosyayı
+              Lovable de değiştirmiş mi diye BAKMAK gerekiyor. */}
+          <Link
+            to="/deney"
+            className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card border-2 border-border/40 transition-bouncy hover:-translate-y-1"
+          >
+            <span className="text-3xl">🧪</span>
+            <div className="flex-1">
+              <div className="text-base font-extrabold text-foreground">Aktarım Deneyi (araştırma)</div>
+              <div className="text-[11px] font-semibold text-muted-foreground">
+                Ayrı ölçüm aracı — öğrenme ilerlemesine yazmaz →
+              </div>
+            </div>
+          </Link>
+
           <div className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">
             <Volume2 className="h-7 w-7 text-primary" />
             <div className="flex-1">
