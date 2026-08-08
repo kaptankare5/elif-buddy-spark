@@ -62,6 +62,7 @@ export type Step =
 export type Phase =
   | "intro"
   | "train"
+  | "pause"
   | "imm-prod"
   | "imm-rec"
   | "imm-done"
@@ -70,7 +71,7 @@ export type Phase =
   | "del-done";
 
 export type DeneyState = {
-  v: 1;
+  v: 2;
   name: string;
   age: string;
   startedAt: number;
@@ -78,6 +79,12 @@ export type DeneyState = {
   assign: Record<string, Arm>;
   train: Record<string, Rep[]>;
   steps: Step[];
+  /** 1. oturumun bittiği adım sayısı (idx bu değere ulaşınca ara verilir) */
+  session1Len: number;
+  s1EndedAt: number | null;
+  s2StartedAt: number | null;
+  /** 12 saatlik bekleme test amacıyla atlandı mı */
+  gapSkipped: boolean;
   idx: number;
   phase: Phase;
   immediate: TestPhase | null;
