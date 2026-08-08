@@ -284,6 +284,16 @@ export function buildReport(s: DeneyState): string {
   L.push(
     `Gecikmeli test: ${s.delayed ? `var, ${s.delayed.hours} saat sonra` : "yok"}`,
   );
+  const gapH = s.s1EndedAt && s.s2StartedAt ? (s.s2StartedAt - s.s1EndedAt) / 3_600_000 : null;
+  L.push(
+    `1. oturum bitişi: ${s.s1EndedAt ? fmtDate(s.s1EndedAt) : "-"} · 2. oturum başlangıcı: ${
+      s.s2StartedAt ? fmtDate(s.s2StartedAt) : "-"
+    } · Ara: ${gapH === null ? "-" : `${gapH.toFixed(1)} saat`}${
+      s.gapSkipped ? " (BEKLEME ATLANDI — test amaçlı)" : ""
+    }`,
+  );
+  L.push(`Oturum planı: 1. oturum A:${SESSION1_REPS.A} B:${SESSION1_REPS.B} C:${SESSION1_REPS.C} tekrar · 2. oturum A:${
+    ARM_REPS.A - SESSION1_REPS.A} B:${ARM_REPS.B - SESSION1_REPS.B} C:${ARM_REPS.C - SESSION1_REPS.C} tekrar`);
   L.push("");
   if (imm) {
     L.push(armTable(s, imm));
