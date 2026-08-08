@@ -15,7 +15,7 @@ import {
   optionsFor,
   repsDone,
   saveState,
-  spanishVoice,
+  prepareVoices,
   speakEs,
   speakTwice,
   totalReps,
