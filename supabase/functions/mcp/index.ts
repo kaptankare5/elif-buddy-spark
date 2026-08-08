@@ -109,6 +109,12 @@ var t2_yazilislar = {
   emoji: "\uFE91",
   practiceMode: "visual",
   gridCols: 3,
+  // YENİ MÜFREDAT (kullanıcı kararı): bu konu ALIŞTIRMASIZ — çocuk videoyu
+  // izler ya da harfleri birkaç dakika dinler ve geçer. Başta/ortada/sonda
+  // hâlleri tek başına ezberletilmez; sıradaki konuda HAREKEYLE BİRLİKTE
+  // alıştırması yapılır (şe → şın ortada + fetha). Tek başına 84 şekil
+  // ezberletmek hem sıkıcı hem de okumaya doğrudan katkısı yok.
+  noPractice: true,
   items: LETTERS.flatMap((l) => [
     {
       id: `l2-${pad2(l.n)}-init`,
@@ -295,7 +301,17 @@ function buildHarekeExtras() {
         emoji: form + HV_MARK[hv],
         translit: read,
         audio: audioPath(`hareke-${pad2(l.n)}-${suf}.mp3`),
-        section: "Ekstralar"
+        section: bolum(l.n),
+        // ÖLÇÜLEN: harekeyi bildiği varsayılır, hata harfin ŞEKLİNE
+        // yazılır. 2. konuda (Yazılışlar) alıştırmasız geçilen
+        // başta/ortada/sonda hâlleri asıl burada ölçülür.
+        skill: `l2-${pad2(l.n)}-${pos}`,
+        // Şıklar AYNI HAREKELİ olmalı: ölçülen harfin şekli,
+        // harekeler karışsaydı çocuk sesteki ünlüden eler, şekle bakmazdı.
+        distractorKey: `hv-${hv}`,
+        // Bu soru harekeyi BİLDİĞİNİ varsayar. Hareke L4 değilse yanlış
+        // cevap şekle değil HAREKEYE yazılır (yanlış teşhis olmasın).
+        prereqSkill: `hrk-${suf}`
       });
     }
   }
@@ -305,6 +321,9 @@ var t3_harekeler = {
   id: "harekeler",
   parent: P,
   title: "3. Harekeler",
+  // Şıklar aynı harfin üç harekesi (بَ بِ بُ) — dördüncü şık başka harf
+  // olurdu ve çocuk harekeye bakmadan elerdi.
+  optionCount: 3,
   description: "Fetha, esre ve \xF6tre",
   emoji: "\uFE77",
   practiceMode: "visual",
@@ -326,12 +345,31 @@ var t3_harekeler = {
           emoji: l.iso + h.mark,
           translit: sesMap[h.vowel],
           audio: audioPath(`hareke-${pad2(l.n)}-${h.suf}.mp3`),
-          section: bolum(l.n)
+          section: bolum(l.n),
+          // ÖLÇÜLEN: harf değil HAREKE. 84 hece sorulur ama yeni bilgi 3
+          // tanedir (28 harf 1. konuda öğrenildi). Çocuk üstün/esre/ötreyi
+          // ayırt edebiliyorsa konu biter — bkz. src/lib/skills.ts.
+          skill: `hrk-${h.suf}`,
+          // Şıklar AYNI HARF olmalı (بَ بِ بُ): ölçülen hareke,
+          // farklı harf koyulsaydı çocuk harften tanır, harekeye bakmazdı.
+          distractorKey: `harf-${pad2(l.n)}`
         };
       })
-    ),
-    ...buildHarekeExtras()
+    )
   ]
+};
+var OGRETME_ORNEKLEMI = /* @__PURE__ */ new Set([2, 10, 12, 24]);
+var CEKIRDEK_AGIRLIK = 3;
+var ekstraAgirlik = (frekans) => CEKIRDEK_AGIRLIK + frekans * 2;
+var t4_harf_hareke = {
+  id: "harf-hareke",
+  parent: P,
+  title: "4. Harf + Hareke Al\u0131\u015Ft\u0131rmas\u0131",
+  description: "Harflerin ba\u015Fta/ortada/sonda h\xE2lleri, harekeyle",
+  emoji: "\uFEB7\u064E",
+  practiceMode: "visual",
+  gridCols: 3,
+  items: buildHarekeExtras()
 };
 var CEZM_MISSING = /* @__PURE__ */ new Set([22]);
 var CEZM_EKSTRA = [
@@ -367,7 +405,7 @@ var CEZM_EKSTRA = [
 var t4_cezm = {
   id: "cezm",
   parent: P,
-  title: "4. Cezm",
+  title: "5. Cezm",
   description: "Cezimli okuyu\u015F (eb, ib, \xFCb\u2026)",
   emoji: "\uFE7F",
   practiceMode: "visual",
@@ -383,13 +421,13 @@ var t4_cezm = {
         { v: "i", audio: `cezm-${pad2(cezmIdx)}-i.mp3`, sp: `${v.i}${base}` },
         { v: "u", audio: `cezm-${pad2(cezmIdx)}-u.mp3`, sp: `${v.u}${base}` }
       ].map((h, idx) => {
-        const elifPre = idx === 0 ? "\u0627\u064E" : idx === 1 ? "\u0625\u0650" : "\u0623\u064F";
+        const elifPre = idx === 0 ? "\u0627\u064E" : idx === 1 ? "\u0627\u0650" : "\u0627\u064F";
         return {
           id: `l4-${pad2(l.n)}-${h.v}`,
           label: `${h.sp}`,
           speech: h.sp,
           lang: "tr",
-          // Örn: أَبْ / إِبْ / أُبْ
+          // Örn: اَبْ / اِبْ / اُبْ
           emoji: `${elifPre}${l.iso}\u0652`,
           translit: h.sp,
           audio: hasAudio ? audioPath(h.audio) : void 0,
@@ -405,7 +443,7 @@ var t4_cezm = {
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
-      weight: w
+      weight: ekstraAgirlik(w)
     }))
   ]
 };
@@ -441,13 +479,13 @@ var SEDDE_EKSTRA = [
 ];
 var SEDDE_ELIF_PRE = {
   fetha: "\u0627\u064E",
-  esre: "\u0625\u0650",
-  otre: "\u0623\u064F"
+  esre: "\u0627\u0650",
+  otre: "\u0627\u064F"
 };
 var t5_sedde = {
   id: "sedde",
   parent: P,
-  title: "5. \u015Eedde",
+  title: "6. \u015Eedde",
   description: "\u015Eeddeli okuyu\u015F (ebbe, ibbi, \xFCbb\xFC\u2026)",
   emoji: "\uFE7D",
   practiceMode: "visual",
@@ -471,12 +509,14 @@ var t5_sedde = {
           // Şeddeli hece TEK BAŞINA okunamaz: "بَّ" yazıp "ebbe" demek
           // olmuyor, şeddenin ikizlediği ilk sessizin bir önceki heceye
           // yaslanması gerekiyor. Cezm konusunda olduğu gibi harekeli elif
-          // ön eki konur → أَبَّ / إِبِّ / أُبُّ (ebbe / ibbi / übbü).
+          // ön eki konur → اَبَّ / اِبِّ / اُبُّ (ebbe / ibbi / übbü).
           // Ekstra kartlar (اِنَّ, رَبِّ…) da zaten bu biçimde.
           emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}\u0651${h.mark}`,
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
-          section: bolum(l.n)
+          section: bolum(l.n),
+          // Yalnız öğretme örneklemi sorulur; gerisi görülür/dinlenir.
+          practice: OGRETME_ORNEKLEMI.has(l.n)
         };
       });
     }),
@@ -488,7 +528,7 @@ var t5_sedde = {
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
-      weight: w
+      weight: ekstraAgirlik(w)
     }))
   ]
 };
@@ -550,7 +590,7 @@ function medVowel(thick, suf) {
 var t6_med = {
   id: "med",
   parent: P,
-  title: "6. Med Harfleri",
+  title: "7. Med Harfleri",
   description: "Elif, vav ve ye ile uzatma",
   emoji: "\uFE81",
   practiceMode: "visual",
@@ -568,7 +608,9 @@ var t6_med = {
           emoji: ar,
           translit: sp,
           audio: audioPath(`med-${pad2(l.n)}-${m.suf}.mp3`),
-          section: bolum(l.n)
+          section: bolum(l.n),
+          // Yalnız öğretme örneklemi sorulur; gerisi görülür/dinlenir.
+          practice: OGRETME_ORNEKLEMI.has(l.n)
         };
       })
     ),
@@ -581,14 +623,14 @@ var t6_med = {
       translit: sp,
       audio: medAudio(ar),
       section: "Ekstralar",
-      weight: w
+      weight: ekstraAgirlik(w)
     }))
   ]
 };
 var t7_asar = {
   id: "asar-med-kasr",
   parent: P,
-  title: "7. \xC2sar, Med ve Kasr",
+  title: "8. \xC2sar, Med ve Kasr",
   description: "Uzatma i\u015Faretleri \u2014 videoyu izle",
   emoji: "\uFEF5",
   practiceMode: "visual",
@@ -610,7 +652,7 @@ var TENVIN_EKSTRA = [
 var t8_tenvin = {
   id: "tenvin",
   parent: P,
-  title: "8. Tenvin",
+  title: "9. Tenvin",
   description: "\u0130ki \xFCst\xFCn, iki esre, iki \xF6tre",
   emoji: "\u08F0",
   practiceMode: "visual",
@@ -632,7 +674,9 @@ var t8_tenvin = {
         emoji: d.glyph,
         translit: d.read,
         audio: audioPath(`tenvin-${pad2(l.n)}-${d.file}.mp3`),
-        section: bolum(l.n)
+        section: bolum(l.n),
+        // Yalnız öğretme örneklemi sorulur; gerisi görülür/dinlenir.
+        practice: OGRETME_ORNEKLEMI.has(l.n)
       }));
     }),
     ...TENVIN_EKSTRA.map(([ar, sp], i) => ({
@@ -642,14 +686,16 @@ var t8_tenvin = {
       lang: "tr",
       emoji: ar,
       translit: sp,
-      section: "Ekstralar"
+      section: "Ekstralar",
+      // Ekstralar L4'te bile diğer L4 öğelerden daha sık sorulsun.
+      weight: ekstraAgirlik(3)
     }))
   ]
 };
 var t9_zamir = {
   id: "zamir-lafzatullah",
   parent: P,
-  title: "9. Zamir ve Lafzatullah",
+  title: "10. Zamir ve Lafzatullah",
   description: "Allah lafz\u0131n\u0131n okunu\u015Fu",
   emoji: "\uFDF2",
   practiceMode: "visual",
@@ -677,7 +723,7 @@ var t9_zamir = {
 var t10_elif_lam = {
   id: "elif-lam-ra",
   parent: P,
-  title: "10. Elif-L\xE2m Tak\u0131s\u0131 ve R\xE2",
+  title: "11. Elif-L\xE2m Tak\u0131s\u0131 ve R\xE2",
   description: "\u0627\u0644 tak\u0131s\u0131 ve r\xE2 harfinin okunu\u015Fu",
   emoji: "\uFE8D\uFEDF",
   practiceMode: "visual",
@@ -706,6 +752,7 @@ var elifbaTopics = [
   t1_harfler,
   t2_yazilislar,
   t3_harekeler,
+  t4_harf_hareke,
   t4_cezm,
   t5_sedde,
   t6_med,
