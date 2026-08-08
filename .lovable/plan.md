@@ -1,24 +1,21 @@
-## Amaç
-Google/e-posta ile giriş/kayıt akışları arka planda çalışır kalsın, ancak kullanıcı hiçbir yerde giriş/kayıt butonu veya e-posta alanı görmesin. Misafir modu tek deneyim olacak.
+# Deney modülünde İspanyolca sesi: yapay zekâ seslendirmesi
 
-## Yapılacak UI değişiklikleri
+Şu an deney tarayıcının kendi konuşma motorunu (`speechSynthesis`, es-ES) kullanıyor. Çoğu telefonda İspanyolca ses paketi yüklü değil — ses hiç çıkmıyor ya da robotik geliyor. Bu, üretim/tanıma ölçümünü doğrudan bozar.
 
-1. **`src/pages/Settings.tsx`** — `AccountCard` bileşenini render eden satırı kaldır (import'u da). Hesap kartı görünmesin.
+Dili değiştirmek yerine İspanyolcayı koruyup sesi yapay zekâ ile üreteceğiz: kelime listesi sabit ve yalnızca 18 kelime, yani sesler bir kez üretilip saklanabilir. Böylece çocuk her seferinde aynı, doğal ve net telaffuzu duyar (deney için tutarlılık şart).
 
-2. **`src/pages/Index.tsx`** — Sağ üstteki "Giriş" / "Hesap" ikon butonunu kaldır (session'a bağlı `to="/giris"` linkini). Ayarlar zaten alt menüde erişilebilir.
+## Yapılacaklar
 
-3. **`src/pages/Progress.tsx`** — Misafir kullanıcıya gösterilen "Giriş yap" çağrısı bloğunu kaldır (satır 40–48 civarı). Bulut senkron uyarısını nötr bir metne indir ya da tamamen gizle.
+1. **Sunucu tarafı seslendirme**: Yeni bir backend fonksiyonu, verilen İspanyolca kelimeyi yapay zekâ ile seslendirip mp3 döndürür. Anahtar sunucuda kalır.
+2. **Kalıcı önbellek**: Üretilen mp3 depolamaya (public ses klasörü/bucket) kelime adıyla yazılır. Aynı kelime bir daha üretilmez — ilk çalıştırmadan sonra maliyet sıfır, ses anında gelir.
+3. **İstemci**: `speakEs` / `speakTwice` önce bu mp3'ü çalar (tarayıcıda da önbelleklenir). Ses hazır değilse üretilir; herhangi bir hata olursa eskisi gibi tarayıcı motoruna düşer — deney hiçbir durumda sessiz kalmaz.
+4. **Ön ısıtma**: Deney girişinde 18 kelimenin sesi arka planda hazırlanır; "Ses hazır" göstergesi tarayıcı ses paketi yerine bu hazırlığı gösterir.
+5. **Çift okuma**: Öğretme adımındaki iki kez okuma aynı dosya iki kez çalınarak korunur.
 
-4. **`src/pages/Auth.tsx`** — Route dursun ama sayfa doğrudan `/` adresine `<Navigate replace />` ile yönlensin (kimse yanlışlıkla `/giris` URL'sine gidip formu göremesin). Dosyanın geri kalanı silinmesin; ileride tekrar açmak kolay olsun.
+## Teknik notlar
 
-5. **`src/pages/Paywall.tsx`** — `if (!session) navigate("/giris")` satırını, giriş sayfası artık boş olduğu için, toast ile "Şu an giriş kapalı" mesajına çevir veya satın alma butonlarını misafir için gizle. (En sade: bu kontrol bloğunu kaldır, satın alma akışı zaten `useSubscription` üzerinden gerekiyorsa öylece durur.)
-
-## Dokunulmayacaklar
-- `src/App.tsx` route tanımı (Auth route dursun, sadece içerik yönlendirsin).
-- `src/hooks/useAuth.tsx`, `supabase` client, `lovable.auth.*`, `AccountCard.tsx` dosyası — silinmez, sadece render edilmez. Böylece geri açmak tek satırlık iş olur.
-- Öğrenci profili (Hoca modu) ve SRS akışı etkilenmez.
-
-## Doğrulama
-- `/`, `/ayarlar`, `/ilerleme`, `/oyunlar` sayfalarında hiçbir giriş/Google butonu ya da e-posta alanı görünmemeli.
-- `/giris` adresine elle gidildiğinde anasayfaya dönülmeli.
-- Uygulama misafir olarak sorunsuz çalışmalı; tsc temiz olmalı.
+- Seslendirme Lovable AI ses geçidi üzerinden (`openai/gpt-4o-mini-tts`), `stream_format: "audio"`, `response_format: "mp3"` — dosya saklanacağı için akış gerekmiyor.
+- Ses tonu: sakin, net, orta-yavaş tempo; tek bir kadın ses (`alloy`) tüm kelimelerde sabit.
+- Depolama: Supabase Storage'da public `deney-ses` bucket'ı, dosya adı kelimenin sadeleştirilmiş hâli (`pajaro.mp3`).
+- `src/lib/deney.ts` içindeki `speakEs`/`speakTwice` imzaları değişmez; `Deney.tsx` çağrı yerlerine dokunulmaz.
+- SRS, Elifbâ sesleri ve `public/audio/*` hiç etkilenmez — deney modülü ayrı kalır.
