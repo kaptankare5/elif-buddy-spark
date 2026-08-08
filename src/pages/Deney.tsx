@@ -96,9 +96,23 @@ const Deney = () => {
           immediate: { startedAt: Date.now(), endedAt: null, prod: {}, rec: {} },
         };
       }
+      // 1. oturum bitti → en az 12 saat ara
+      if (idx === s.session1Len && !s.s1EndedAt) {
+        return { ...s, idx, s1EndedAt: Date.now(), phase: "pause" };
+      }
       return { ...s, idx };
     });
   };
+
+  const startSession2 = (skipped: boolean) => {
+    update((s) => ({
+      ...s,
+      gapSkipped: s.gapSkipped || skipped,
+      s2StartedAt: s.s2StartedAt ?? Date.now(),
+      phase: "train",
+    }));
+  };
+
 
   const recordRep = (es: string, score: number) => {
     const ms = Math.round(performance.now() - startRef.current);
