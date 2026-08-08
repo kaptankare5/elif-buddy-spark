@@ -34,8 +34,18 @@ export const ASK_MODES: Array<{ id: AskMode; ad: string; aciklama: string }> = [
 export const FLASH_SIK = 2;
 /** Tabela modunda şık sayısı (glif ekranda durduğu için okumaya vakit var). */
 export const USTTE_SIK = 3;
-/** Glifin ekranda parladığı süre (ms). */
-export const FLASH_MS = 1100;
+/**
+ * Glifin ekranda parladığı süre (ms).
+ *
+ * ⚠️ SÜRE DARBOĞAZ DEĞİL: Sperling'in ölçümünde 50 ms'lik bir gösterim
+ * 9-12 harfi erişilebilir kılıyor (ikonik bellek ~250-500 ms tutuyor). Tek
+ * bir glif için 1 saniye zaten fazlasıyla yeterli. Darboğaz ENCODING değil
+ * DİKKAT: çocuk direksiyondayken önce parlamayı fark etmeli, bakışını
+ * kaydırmalı, sonra okumalı. Bakış kaydırmanın kendisi ~200-300 ms.
+ * Bu yüzden 1100 yerine 1300: fazladan süre okumak için değil, BAKIŞI
+ * ÇEVİRMEK için.
+ */
+export const FLASH_MS = 1300;
 
 export function getAskMode(): AskMode {
   if (typeof window === "undefined") return "klasik";

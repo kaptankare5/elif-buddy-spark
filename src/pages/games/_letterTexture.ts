@@ -94,6 +94,34 @@ export function wordTexture(word: string, opts?: { bg?: string; fg?: string }): 
   return t;
 }
 
+/**
+ * KAPALI ŞERİT panosu — 2 şıklı modda ortadaki şerit boş kalıyordu ve oyun
+ * BOZUKMUŞ gibi görünüyordu (kullanıcı bildirdi). Artık oraya "burası cevap
+ * değil" diyen çapraz taralı bir plaka konuyor.
+ */
+export function blockedTexture(): THREE.CanvasTexture {
+  const key = "BLOCKED";
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const c = document.createElement("canvas");
+  c.width = 128; c.height = 128;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#475569";
+  g.fillRect(0, 0, 128, 128);
+  g.strokeStyle = "#94a3b8";
+  g.lineWidth = 10;
+  for (let i = -128; i < 128; i += 26) {
+    g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 128, 128); g.stroke();
+  }
+  g.strokeStyle = "#1e293b";
+  g.lineWidth = 8;
+  g.strokeRect(4, 4, 120, 120);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  cache.set(key, t);
+  return t;
+}
+
 /** Yarışmacının başının üstünde uçan isim tabelası dokusu. */
 export function nameTexture(name: string, color: string): THREE.CanvasTexture {
   const key = `N:${name}:${color}`;
