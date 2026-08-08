@@ -29,7 +29,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
-import { Volume2, Maximize2, Lock, X } from "lucide-react";
+import { Volume2, Maximize2, Lock, X, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { createAdaptiveResolution } from "./_perf";
@@ -39,7 +39,8 @@ import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
-import { letterTexture, nameTexture, emojiTexture, faceTexture } from "./_letterTexture";
+import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture } from "./_letterTexture";
+import { getAskMode, okunurAd, pickNameWrongs, FLASH_SIK, USTTE_SIK, FLASH_MS, type AskMode } from "@/lib/askMode";
 import type { ContentItem } from "@/data/types";
 
 // ---- yarış sabitleri ----
@@ -182,7 +183,13 @@ interface Gate {
   said: number;
   botDone: Set<number>;
   panels: THREE.Mesh[];
+  /** "Tabela" modunda kapının üstünde asılı duran GLİF panosu. */
+  topPanel: THREE.Mesh | null;
+  /** Hangi şıkkın hangi ŞERİTTE durduğu. 3 şıkta [0,1,2]; 2 şıkta [0,2]. */
+  optionLanes: number[];
   group: THREE.Group;
+  /** Bu kapı hangi modda kuruldu — yarış ortasında mod değişse bile sabit. */
+  mode: AskMode;
 }
 
 interface Banana {
@@ -233,6 +240,12 @@ const KartGame = () => {
   const [power, setPower] = useState<PowerKind | null>(null);
   const [activePower, setActivePower] = useState<PowerKind | null>(null);
   const [prompt, setPrompt] = useState<ContentItem | null>(null);
+  // "Şimşek" modu: glif ekranda yarı saydam parlar, FLASH_MS sonra söner.
+  // (Ad `flash` DEĞİL — o zaten oyunun bildirim şeridinde kullanılıyor.)
+  const [glifFlash, setGlifFlash] = useState<ContentItem | null>(null);
+  // Arayüz katmanının okuduğu mod. Sahne içindeki `askMode` yarış başında
+  // dondurulur; bu ref onunla aynı değeri taşır.
+  const askModeRef = useRef<AskMode>(getAskMode());
   const [flash, setFlash] = useState<{ k: number; text: string; good: boolean } | null>(null);
   const [result, setResult] = useState<{ place: number; correct: number; wrong: number } | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -663,6 +676,10 @@ const KartGame = () => {
     }
 
     // ---------- soru kapıları ----------
+    // ⚠️ Mod YARIŞ BAŞINDA bir kez okunur. Ortada değişirse kurulmuş kapıların
+    // geometrisi (üst tabela var/yok) uymaz — bir sonraki yarışta geçerli olur.
+    const askMode = getAskMode();
+    askModeRef.current = askMode;
     const pool = gamePool();
     const gates: Gate[] = [];
     // gateSs yukarıda, eğrilik profiline göre hesaplandı (viraj çıkışı yok).
@@ -708,9 +725,22 @@ const KartGame = () => {
         g.add(p);
         panels.push(p);
       }
+      // "Tabela" modunda glif kapının ÜSTÜNDE asılı durur (kiriş üstü) —
+      // şıklar aşağıda yazılı adlardır. Diğer modlarda hiç oluşturulmaz.
+      let topPanel: THREE.Mesh | null = null;
+      if (askMode === "ustte") {
+        const tm = keep(new THREE.MeshBasicMaterial({ map: null, side: THREE.DoubleSide, transparent: true }));
+        topPanel = new THREE.Mesh(keep(new THREE.PlaneGeometry(ROAD_HALF * 0.8, ROAD_HALF * 0.8)), tm);
+        topPanel.position.set(0, 11.5, 0);
+        g.add(topPanel);
+      }
       g.visible = false;   // sorusu dağıtılana kadar boş pano gösterme
       scene.add(g);
-      gates.push({ s: gs, target: null, options: [], tries: 0, done: false, said: 0, botDone: new Set(), panels, group: g });
+      gates.push({
+        s: gs, target: null, options: [], tries: 0, done: false, said: 0,
+        botDone: new Set(), panels, topPanel, group: g,
+        mode: askMode, optionLanes: [0, 1, 2],
+      });
     }
     gatesRef.current = gates;
     // Son kapının cevaplandığı an (sn) — sıradaki sorunun sesi bunun üstüne
@@ -722,21 +752,52 @@ const KartGame = () => {
     // seviye/aciliyet/karışıklık ısısı hesaba katılır ve harf gerçekten değişir.
     const armGate = (g: Gate) => {
       const target = pickNextGameItem(pool) || pool[0];
-      const wrongs = pickWrongs(pool, target, 2);
-      if (wrongs.length < 2) { g.done = true; return; }
+      // YENİ MODLAR: şıklar harfin YAZILI ADI, soru glifin kendisi.
+      // Adı olmayan öğede (translit boş) ya da yeterli benzer ad bulunamazsa
+      // o kapı sessizce KLASİĞE düşer — oyun kilitlenmesin.
+      const yeniMod = g.mode !== "klasik" && okunurAd(target) !== null;
+      const sikSayisi = g.mode === "flash" ? FLASH_SIK : USTTE_SIK;
+      const wrongs = yeniMod
+        ? pickNameWrongs(pool, target, sikSayisi - 1)
+        : pickWrongs(pool, target, 2);
+      const yeterli = yeniMod ? wrongs.length >= sikSayisi - 1 : wrongs.length >= 2;
+      if (!yeterli) {
+        if (!yeniMod) { g.done = true; return; }
+        // yeni modda çeldirici bulunamadı → klasiğe düş
+        const kw = pickWrongs(pool, target, 2);
+        if (kw.length < 2) { g.done = true; return; }
+        g.mode = "klasik";
+        g.options = shuffle([target, ...kw]);
+      } else {
+        g.options = shuffle([target, ...wrongs]);
+      }
       g.target = target;
-      g.options = shuffle([target, ...wrongs]);
       g.tries = 0;
+      // 2 şıkta ORTA şerit boş kalır: şıklar dışa (0 ve 2) yerleşir, çocuk
+      // sağa mı sola mı gittiğine karar verir. 3 şıkta her şerit dolu.
+      g.optionLanes = g.options.length === 2 ? [0, 2] : [0, 1, 2];
       // Kaydı ŞİMDİDEN yükle: soru PROMPT_GAP kadar sonra çalacak, o arada
       // dosya inmiş olsun. Yavaş bağlantıda ilk kez duyulan bir harfin mp3'ü
       // yüklenirken çocuk kapıyı geçebiliyordu.
       preloadItems([target]);
-      g.panels.forEach((p, i) => {
+      // Önce bütün panoları gizle (2 şıkta orta pano boş kalacak).
+      g.panels.forEach((p) => { p.visible = false; });
+      g.options.forEach((opt, k) => {
+        const p = g.panels[g.optionLanes[k]];
         const m = p.material as THREE.MeshBasicMaterial;
-        m.map = keep(letterTexture(g.options[i].emoji ?? "؟"));
+        m.map = g.mode === "klasik"
+          ? keep(letterTexture(opt.emoji ?? "؟"))
+          : keep(wordTexture(okunurAd(opt) ?? "?"));
         m.color.set(0xffffff);
         m.needsUpdate = true;
+        p.visible = true;
       });
+      if (g.topPanel) {
+        const tm = g.topPanel.material as THREE.MeshBasicMaterial;
+        tm.map = keep(letterTexture(target.emoji ?? "؟"));
+        tm.needsUpdate = true;
+        g.topPanel.visible = g.mode === "ustte";
+      }
     };
 
     const nearGate = (s: number) =>
@@ -1153,7 +1214,9 @@ const KartGame = () => {
           if (g) {
             if (r.gateChoice !== g.s) {
               r.gateChoice = g.s;
-              r.targetU = laneU(Math.floor(Math.random() * 3));
+              // Botlar da yalnız DOLU şeritleri seçer (2 şıkta orta boş).
+              const secenekler = g.optionLanes.length ? g.optionLanes : [0, 1, 2];
+              r.targetU = laneU(secenekler[Math.floor(Math.random() * secenekler.length)]);
             }
           } else {
             r.targetU = r.homeU * (1 - r.skill * 0.7);   // becerikli bot içeriden alır
@@ -1316,17 +1379,23 @@ const KartGame = () => {
           const target = g.target;
           g.done = true;
           lastGateT = tNow;      // sıradaki soru bu anın üstüne binmesin
-          const idx = laneOf(player.u);
-          const chosen = g.options[idx];
+          // 2 şıkta orta şerit yok: sola mı sağa mı gittiğine bakılır.
+          const idx = g.options.length === 2
+            ? (player.u < 0 ? 0 : 1)
+            : g.optionLanes.indexOf(laneOf(player.u));
+          const chosen = g.options[Math.max(0, idx)];
           const correct = chosen.id === target.id;
           recordGameAnswer(target, correct, {
             gameId: "kart", chosenId: chosen.id, shownIds: g.options.map((o) => o.id),
           });
-          g.panels.forEach((p, i) => {
-            (p.material as THREE.MeshBasicMaterial).color.set(
-              g.options[i].id === target.id ? 0x86efac : 0xfca5a5,
+          g.options.forEach((opt, k) => {
+            (g.panels[g.optionLanes[k]].material as THREE.MeshBasicMaterial).color.set(
+              opt.id === target.id ? 0x86efac : 0xfca5a5,
             );
           });
+          // YENİ MODLARDA doğru cevabın SESİ kapıdan geçerken çalar: soru
+          // görseldi, geri bildirim işitsel — çocuk adı hem okur hem duyar.
+          if (g.mode !== "klasik") setTimeout(() => playItem(target), 260);
           if (correct) {
             statsRef.current.correct += 1;
             // "doğru kapıya giderse 2-3 saniye hız kazanabilir" + rastgele güç
@@ -1391,14 +1460,23 @@ const KartGame = () => {
           g0.said = 1;
           g0.tries += 1;
           setPrompt(gt);
-          // Kayıt GERÇEKTEN çalmadıysa (play() reddedildi / dosya hatası →
-          // robotik TTS) soru sorulmuş sayılmaz: said sıfırlanır, bir sonraki
-          // karede yeniden denenir. Bu "iki kez sormak" DEĞİL (kullanıcı onu
-          // istemedi), "bir kez gerçekten sorabilmek" güvencesidir — en fazla
-          // 2 deneme, kapı geçildiyse hiç denenmez.
-          playItem(gt, {
-            onFail: () => { if (!g0.done && g0.tries < 2) g0.said = 0; },
-          });
+          if (g0.mode === "flash") {
+            // ⚠️ YENİ MODLARDA SORU SESLİ SORULMAZ. Sesi çalmak harfin ADINI
+            // söylemek demektir — yani doğru cevabı vermek. Soru GÖRSELdir:
+            // glif yarı saydam parlar, söner; çocuk adını okuyup kapıya gider.
+            setGlifFlash(gt);
+            window.setTimeout(() => setGlifFlash((x) => (x?.id === gt.id ? null : x)), FLASH_MS);
+          } else if (g0.mode === "klasik") {
+            // Kayıt GERÇEKTEN çalmadıysa (play() reddedildi / dosya hatası →
+            // robotik TTS) soru sorulmuş sayılmaz: said sıfırlanır, bir sonraki
+            // karede yeniden denenir. Bu "iki kez sormak" DEĞİL (kullanıcı onu
+            // istemedi), "bir kez gerçekten sorabilmek" güvencesidir — en fazla
+            // 2 deneme, kapı geçildiyse hiç denenmez.
+            playItem(gt, {
+              onFail: () => { if (!g0.done && g0.tries < 2) g0.said = 0; },
+            });
+          }
+          // "ustte" modunda hiçbir şey tetiklenmez — glif zaten kapıda asılı.
         }
         if (promptIdRef.current !== gt.id) {
           promptIdRef.current = gt.id;
@@ -1459,10 +1537,23 @@ const KartGame = () => {
       if (marker) marker.position.y = 4.2 + Math.abs(Math.sin(tNow * 4)) * 0.4;
       // Kapıya yaklaşırken oyuncunun oku ve isim tabelası tam ortadaki
       // panonun ÖNÜNE gelip harfi örtüyordu — o anda gizlenirler.
-      const atGate = nextGate !== null && nextD < 40;
+      // ⚠️ YENİ MODLARDA BÜTÜN yarışmacı etiketleri, ÇOK DAHA ERKEN gizlenir:
+      // pano artık glif değil YAZI, ve yazı okumak glif tanımaktan uzun sürer.
+      // 40 birimde gizlemek geç kalıyordu — "Zeynep/Yusuf" tabelaları sağdaki
+      // şıkkın üstüne biniyor ve çocuk kelimeyi okuyamıyordu (ekran görüntüsünde
+      // yakalandı).
+      const okumaMesafesi = askMode === "klasik" ? 40 : 150;
+      const atGate = nextGate !== null && nextD < okumaMesafesi;
       if (marker) marker.visible = !atGate;
-      const ptag = player.group.getObjectByName("tag");
-      if (ptag) ptag.visible = !atGate;
+      if (askMode === "klasik") {
+        const ptag = player.group.getObjectByName("tag");
+        if (ptag) ptag.visible = !atGate;
+      } else {
+        for (const r of racers) {
+          const tg = r.group.getObjectByName("tag");
+          if (tg) tg.visible = !atGate;
+        }
+      }
       // rampadaki oklar ileri doğru akar + havadaki ok zıplar → "hızlandırıyor"
       padTex.offset.y = (padTex.offset.y - dt * 1.6) % 1;
       const bob = Math.abs(Math.sin(tNow * 3)) * 0.7;
@@ -1642,7 +1733,10 @@ const KartGame = () => {
             </div>
           </div>
 
-          {prompt && (
+          {/* ⚠️ "dinle" bandı YALNIZ klasik modda. Yeni modlarda sesi çalmak
+              harfin ADINI söylemek = cevabı vermek olurdu. Onun yerine
+              "şimşek" modunda glifi tekrar gösteren bir düğme var. */}
+          {prompt && askModeRef.current === "klasik" && (
             <button
               onClick={() => playItem(prompt)}
               className="absolute inset-x-3 top-[70px] z-20 flex items-center justify-center gap-2 rounded-2xl border-2 border-primary/40 bg-white/90 px-3 py-2 font-extrabold text-primary shadow-card backdrop-blur active:scale-95"
@@ -1650,6 +1744,33 @@ const KartGame = () => {
               <Volume2 className="h-5 w-5" />
               Hangi kapı? — dinle
             </button>
+          )}
+          {prompt && askModeRef.current === "flash" && (
+            <button
+              onClick={() => {
+                const p0 = prompt;
+                setGlifFlash(p0);
+                window.setTimeout(() => setGlifFlash((x) => (x?.id === p0.id ? null : x)), FLASH_MS);
+              }}
+              className="absolute inset-x-3 top-[70px] z-20 flex items-center justify-center gap-2 rounded-2xl border-2 border-primary/40 bg-white/90 px-3 py-2 font-extrabold text-primary shadow-card backdrop-blur active:scale-95"
+            >
+              <Eye className="h-5 w-5" />
+              Harfi tekrar göster
+            </button>
+          )}
+
+          {/* ŞİMŞEK: glif yarı saydam parlar — arkadaki yarış görünmeye devam
+              eder (kullanıcı şartı), çocuk hem yolu hem harfi takip eder. */}
+          {glifFlash && (
+            <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+              <div
+                className="font-arabic text-[9rem] leading-[1.4] text-emerald-900 drop-shadow-[0_2px_12px_rgba(255,255,255,0.9)]"
+                style={{ opacity: 0.55 }}
+                dir="rtl"
+              >
+                {glifFlash.emoji}
+              </div>
+            </div>
           )}
 
           {countdown !== null && (
