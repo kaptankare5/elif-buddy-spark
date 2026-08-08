@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   ARM_REPS,
+  SESSION_GAP_HOURS,
+  canStartSession2,
+  hoursSinceSession1,
   WORDS,
   buildReport,
   clearState,
@@ -96,9 +99,23 @@ const Deney = () => {
           immediate: { startedAt: Date.now(), endedAt: null, prod: {}, rec: {} },
         };
       }
+      // 1. oturum bitti → en az 12 saat ara
+      if (idx === s.session1Len && !s.s1EndedAt) {
+        return { ...s, idx, s1EndedAt: Date.now(), phase: "pause" };
+      }
       return { ...s, idx };
     });
   };
+
+  const startSession2 = (skipped: boolean) => {
+    update((s) => ({
+      ...s,
+      gapSkipped: s.gapSkipped || skipped,
+      s2StartedAt: s.s2StartedAt ?? Date.now(),
+      phase: "train",
+    }));
+  };
+
 
   const recordRep = (es: string, score: number) => {
     const ms = Math.round(performance.now() - startRef.current);
@@ -281,6 +298,51 @@ const Deney = () => {
       </div>,
     );
   }
+
+  // OTURUM ARASI
+  if (phase === "pause") {
+    const h = hoursSinceSession1(st);
+    const ready = canStartSession2(st);
+    const kalan = Math.max(0, SESSION_GAP_HOURS - h);
+    return shell(
+      <div className="space-y-4">
+        <div className="rounded-2xl bg-card p-6 shadow-card border-2 border-border/40 text-center space-y-3">
+          <div className="text-5xl">🌙</div>
+          <h2 className="text-lg font-extrabold text-foreground">1. oturum bitti — yarın devam et</h2>
+          <p className="text-sm text-muted-foreground">
+            Yorgunluğu önlemek için eğitim ikiye bölündü. 2. oturum en az{" "}
+            {SESSION_GAP_HOURS} saat sonra açılır.
+          </p>
+          <p className="text-sm font-extrabold text-foreground">
+            Geçen süre: {h.toFixed(1)} saat
+            {!ready && ` · kalan: ${kalan.toFixed(1)} saat`}
+          </p>
+        </div>
+        <button
+          disabled={!ready}
+          onClick={() => startSession2(false)}
+          className={cn(
+            "w-full rounded-2xl bg-primary text-primary-foreground font-extrabold disabled:opacity-50",
+            TAP,
+          )}
+        >
+          2. oturumu başlat
+        </button>
+        {!ready && (
+          <button
+            onClick={() => startSession2(true)}
+            className={cn(
+              "w-full rounded-2xl border-2 border-destructive/40 bg-destructive/10 text-destructive font-extrabold text-sm",
+              TAP,
+            )}
+          >
+            ⏭️ Beklemeyi atla (test amaçlı — rapora yazılır)
+          </button>
+        )}
+      </div>,
+    );
+  }
+
 
   // EĞİTİM
   if (phase === "train" && step) {
