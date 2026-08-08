@@ -111,14 +111,7 @@ export function wordsOfArm(state: DeneyState, arm: Arm): string[] {
 }
 
 // Kollar arası KARIŞIK (interleaved) adım dizisi.
-function buildSteps(assign: Record<string, Arm>): Step[] {
-  const pending: Record<string, Step[]> = {};
-  for (const w of WORDS) {
-    const arm = assign[w.es];
-    const list: Step[] = [{ kind: "teach", es: w.es, arm }];
-    for (let i = 0; i < ARM_REPS[arm]; i++) list.push({ kind: "rep", es: w.es, arm });
-    pending[w.es] = list;
-  }
+function interleave(pending: Record<string, Step[]>): Step[] {
   const out: Step[] = [];
   let last = "";
   for (;;) {
@@ -140,6 +133,30 @@ function buildSteps(assign: Record<string, Arm>): Step[] {
   return out;
 }
 
+/**
+ * İki oturumluk adım dizisi.
+ * 1. oturum: 18 öğretme + her kolun tekrarlarının yarısı (A:3, B:3, C:8)
+ * 2. oturum: kalan tekrarlar (A:2, B:2, C:7)
+ * Her kolun tekrarları İKİ oturuma da dağılır.
+ */
+function buildSteps(assign: Record<string, Arm>): { steps: Step[]; session1Len: number } {
+  const first: Record<string, Step[]> = {};
+  const second: Record<string, Step[]> = {};
+  for (const w of WORDS) {
+    const arm = assign[w.es];
+    const s1: Step[] = [{ kind: "teach", es: w.es, arm }];
+    const n1 = Math.min(SESSION1_REPS[arm], ARM_REPS[arm]);
+    for (let i = 0; i < n1; i++) s1.push({ kind: "rep", es: w.es, arm });
+    const s2: Step[] = [];
+    for (let i = n1; i < ARM_REPS[arm]; i++) s2.push({ kind: "rep", es: w.es, arm });
+    first[w.es] = s1;
+    second[w.es] = s2;
+  }
+  const a = interleave(first);
+  const b = interleave(second);
+  return { steps: [...a, ...b], session1Len: a.length };
+}
+
 export function createState(name: string, age: string): DeneyState {
   const shuffled = shuffle(WORDS.map((w) => w.es));
   const assign: Record<string, Arm> = {};
@@ -149,15 +166,20 @@ export function createState(name: string, age: string): DeneyState {
   const train: Record<string, Rep[]> = {};
   WORDS.forEach((w) => (train[w.es] = []));
   const all = WORDS.map((w) => w.es);
+  const built = buildSteps(assign);
   return {
-    v: 1,
+    v: 2,
     name,
     age,
     startedAt: Date.now(),
     trainEndedAt: null,
     assign,
     train,
-    steps: buildSteps(assign),
+    steps: built.steps,
+    session1Len: built.session1Len,
+    s1EndedAt: null,
+    s2StartedAt: null,
+    gapSkipped: false,
     idx: 0,
     phase: "train",
     immediate: null,
@@ -170,12 +192,22 @@ export function createState(name: string, age: string): DeneyState {
   };
 }
 
+/** 1. oturum bitişinden bu yana geçen saat */
+export function hoursSinceSession1(s: DeneyState): number {
+  if (!s.s1EndedAt) return 0;
+  return (Date.now() - s.s1EndedAt) / 3_600_000;
+}
+
+export function canStartSession2(s: DeneyState): boolean {
+  return hoursSinceSession1(s) >= SESSION_GAP_HOURS;
+}
+
 export function loadState(): DeneyState | null {
   try {
     const raw = localStorage.getItem(DENEY_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as DeneyState;
-    return s && s.v === 1 ? s : null;
+    return s && s.v === 2 ? s : null;
   } catch {
     return null;
   }
