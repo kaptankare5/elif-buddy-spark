@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
       return json({ error: "invalid word" }, 400);
     }
 
-    const path = `${slug(word)}.mp3`;
+    const path = `el/${slug(word)}.mp3`; // el/ = ElevenLabs sürümü
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -44,8 +44,8 @@ Deno.serve(async (req) => {
     };
 
     // 1) Önbellek — dosya varsa üretme, sadece URL ver.
-    const list = await supabase.storage.from(BUCKET).list("", { search: path, limit: 100 });
-    if (list.data?.some((f) => f.name === path)) {
+    const list = await supabase.storage.from(BUCKET).list("el", { search: `${slug(word)}.mp3`, limit: 100 });
+    if (list.data?.some((f) => f.name === `${slug(word)}.mp3`)) {
       return json({ url: await sign(), cached: true });
     }
 
