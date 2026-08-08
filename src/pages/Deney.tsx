@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   ARM_REPS,
+  SESSION_GAP_HOURS,
+  canStartSession2,
+  hoursSinceSession1,
   WORDS,
   buildReport,
   clearState,
