@@ -14,6 +14,11 @@ export const ARM_LABEL: Record<Arm, string> = {
 
 export const ARM_REPS: Record<Arm, number> = { A: 5, B: 5, C: 15 };
 
+// Eğitim İKİ OTURUMA bölünür. HER KOLUN tekrarları iki oturuma da dağılır —
+// "1. gün A+B, 2. gün C" gibi bölme kollar arası karşılaştırmayı bozar.
+export const SESSION1_REPS: Record<Arm, number> = { A: 3, B: 3, C: 8 };
+export const SESSION_GAP_HOURS = 12;
+
 export type Word = { es: string; emoji: string };
 
 // SABİT liste — değiştirme.
