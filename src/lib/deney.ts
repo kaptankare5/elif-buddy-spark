@@ -157,12 +157,41 @@ function buildSteps(assign: Record<string, Arm>): { steps: Step[]; session1Len: 
   return { steps: [...a, ...b], session1Len: a.length };
 }
 
-export function createState(name: string, age: string): DeneyState {
-  const shuffled = shuffle(WORDS.map((w) => w.es));
+/**
+ * Kaba hece sayısı (İspanyolca): ünlü öbeklerini say. Kelime zorluğunun en
+ * güçlü basit yordayıcısı.
+ */
+function heceSayisi(es: string): number {
+  const m = es.toLocaleLowerCase("es").match(/[aeiouáéíóúü]+/g);
+  return m ? m.length : 1;
+}
+
+/**
+ * ⚠️ KOL DAĞITIMI ARTIK RASTGELE DEĞİL, ZORLUĞA GÖRE DENGELİ.
+ *
+ * İlk sürümde 18 kelime rastgele üçe bölünüyordu. n=6 ile bu, zorluğu
+ * dengelemiyor: ilk gerçek denemede B koluna calcetín/caballo/ventana gibi
+ * uzun kelimeler, C koluna hoja/reloj/abeja gibi kısa kelimeler düştü —
+ * yani kollar arası fark, yöntem farkı mı kelime farkı mı ayırt edilemez
+ * hâle geldi. Artık kelimeler hece sayısına göre sıralanıp ÜÇERLİ bloklara
+ * ayrılıyor ve her bloktan birer tane A/B/C'ye gidiyor: her kol aynı zorluk
+ * karışımını alır.
+ */
+function dengeliDagit(): Record<string, Arm> {
+  const sirali = WORDS.map((w) => w.es).sort(
+    (a, b) => heceSayisi(a) - heceSayisi(b) || a.localeCompare(b, "es"),
+  );
   const assign: Record<string, Arm> = {};
-  shuffled.forEach((es, i) => {
-    assign[es] = i < 6 ? "A" : i < 12 ? "B" : "C";
-  });
+  for (let i = 0; i < sirali.length; i += 3) {
+    const blok = shuffle(sirali.slice(i, i + 3));
+    const kollar: Arm[] = ["A", "B", "C"];
+    blok.forEach((es, k) => { assign[es] = kollar[k]; });
+  }
+  return assign;
+}
+
+export function createState(name: string, age: string): DeneyState {
+  const assign = dengeliDagit();
   const train: Record<string, Rep[]> = {};
   WORDS.forEach((w) => (train[w.es] = []));
   const all = WORDS.map((w) => w.es);
@@ -271,6 +300,38 @@ function rawCounts(s: DeneyState, test: TestPhase): string {
     .join("\n");
 }
 
+/**
+ * ⚠️ ASIL SORUYU CEVAPLAYAN ÇÖZÜMLEME: "eğitimde ÖĞRENİLEN kelimelerde
+ * üretime aktarım ne kadar?"
+ *
+ * Kol ortalaması yanıltıyor, çünkü bir kolun puanı iki farklı şeyi
+ * karıştırıyor: (a) kelime eğitimde öğrenilebildi mi, (b) öğrenilen şey
+ * üretime taşındı mı. İlk gerçek denemede B kolunda çocuk 30 denemenin
+ * HİÇBİRİNDE doğru üretemedi — yani orada aktarılacak bir öğrenme hiç
+ * oluşmadı; %0'lık üretim puanı "aktarım yok" demek değil, "öğrenme yok"
+ * demekti. Bu ayrım yapılmazsa aktarım oranı olduğundan çok düşük çıkar.
+ */
+function ogrenilenAktarim(s: DeneyState): string {
+  const test = s.delayed ?? s.immediate;
+  if (!test) return "";
+  const ESIK = 0.6;   // eğitimde en az %60 doğru = "öğrendi"
+  let ogrN = 0, ogrP = 0, hamN = 0, hamP = 0;
+  for (const w of WORDS) {
+    const reps = s.train[w.es] ?? [];
+    if (reps.length === 0) continue;
+    const oran = reps.reduce((t, r) => t + r.score, 0) / reps.length;
+    const p = test.prod[w.es]?.score ?? 0;
+    if (oran >= ESIK) { ogrN++; ogrP += p; } else { hamN++; hamP += p; }
+  }
+  return [
+    "  ÖĞRENİLENLERDE AKTARIM (asıl sayı)",
+    `  Eğitimde ÖĞRENİLEN (≥%${Math.round(ESIK * 100)} doğru): ${ogrN} kelime → üretimde ${ogrP}/${ogrN} (%${pct(ogrP, ogrN)})`,
+    `  Eğitimde ÖĞRENİLEMEYEN            : ${hamN} kelime → üretimde ${hamP}/${hamN} (%${pct(hamP, hamN)})`,
+    "  (Kol ortalaması bu ikisini karıştırır: öğrenilmemiş kelimede aktarım",
+    "   ölçülemez, çünkü aktarılacak bir şey yoktur.)",
+  ].join("\n");
+}
+
 export function buildReport(s: DeneyState): string {
   const imm = s.immediate;
   const L: string[] = [];
@@ -330,6 +391,8 @@ export function buildReport(s: DeneyState): string {
       } | ${(r === 1 ? "doğru" : r === 0 ? "yanlış" : "-").padEnd(7)} | ${avg}`,
     );
   }
+  L.push("");
+  L.push(ogrenilenAktarim(s));
   L.push("");
   L.push("  NOT: tanıma testi 4 şıklı, şans seviyesi %25.");
   L.push("       eğitimde Kol A/C 4 şıklı, çeldiriciler kol içinden (6 kelimelik havuz).");

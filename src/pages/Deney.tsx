@@ -38,6 +38,8 @@ const Deney = () => {
   const [age, setAge] = useState("");
   const [feedback, setFeedback] = useState<null | { ok: boolean; correct: string }>(null);
   const [heard, setHeard] = useState(false);
+  // ⚠️ B KOLU "MODELDEN SONRA TEKRARLA" ADIMI — bkz. recordRep.
+  const [tekrarEs, setTekrarEs] = useState<string | null>(null);
   const [marked, setMarked] = useState<number | null>(null);
   const startRef = useRef(performance.now());
 
@@ -68,6 +70,7 @@ const Deney = () => {
     setFeedback(null);
     setHeard(false);
     setMarked(null);
+    setTekrarEs(null);   // çalışma adımı adımlar arası taşınmasın
   }, [st?.idx, st?.testIdx, phase]);
 
   // Otomatik ses
@@ -117,7 +120,7 @@ const Deney = () => {
   };
 
 
-  const recordRep = (es: string, score: number) => {
+  const recordRep = (es: string, score: number, arm?: string) => {
     const ms = Math.round(performance.now() - startRef.current);
     update((s) => {
       s.train[es] = [...(s.train[es] ?? []), { score, ms, at: Date.now() }];
@@ -125,6 +128,19 @@ const Deney = () => {
     });
     playFeedback(score >= 1);
     setFeedback({ ok: score >= 1, correct: es });
+    // ⚠️ B KOLU BİR BAŞARISIZLIK DÖNGÜSÜYDÜ. İlk gerçek denemede çocuk
+    // 6 kelime × 5 tekrar = 30 denemenin HİÇBİRİNDE doğru üretemedi (0/5,
+    // hepsinde). Sebebi açık: yepyeni bir kelimeyi resimden ÜRETMEK için
+    // önce o kelimenin bellekte olması gerekir — yoksa her tekrar sadece
+    // yeni bir başarısızlık olur ve öğrenme hiç başlamaz. Literatürdeki
+    // "üretim yoluyla öğrenme" koşullarında da hedef biçim ÇALIŞILIR, sonra
+    // üretilir. Düzeltme: yanlış/kısmen cevaptan sonra kısa bir ÇALIŞMA
+    // adımı gelir — kelime tekrar çalınır ve çocuk MODELDEN SONRA tekrarlar.
+    // Böylece bir sonraki denemede tutunacak bir şey olur.
+    if (arm === "B" && score < 1) {
+      setTimeout(() => { setTekrarEs(es); speakEs(es); }, 900);
+      return;
+    }
     setTimeout(advanceTrain, score >= 1 ? 700 : 1500);
   };
 
@@ -369,6 +385,25 @@ const Deney = () => {
               Devam
             </button>
           </div>
+        ) : tekrarEs ? (
+          /* ÇALIŞMA ADIMI: model + çocuğun tekrarı. B kolunun öğrenebilmesi
+             için tek yol bu — bkz. recordRep'teki açıklama. */
+          <div className="rounded-2xl bg-card p-6 shadow-card border-2 border-primary/40 text-center space-y-4">
+            <div className="text-xs font-extrabold text-primary">Şimdi sen söyle</div>
+            <div className={BIG}>{emojiOf(tekrarEs)}</div>
+            <button
+              onClick={() => speakEs(tekrarEs)}
+              className={cn("w-full rounded-xl bg-muted/50 border-2 border-border font-extrabold", TAP)}
+            >
+              🔊 Tekrar dinle
+            </button>
+            <button
+              onClick={() => { setTekrarEs(null); advanceTrain(); }}
+              className={cn("w-full rounded-2xl bg-primary text-primary-foreground font-extrabold", TAP)}
+            >
+              Söyledi → devam
+            </button>
+          </div>
         ) : step.arm === "B" ? (
           <div className="rounded-2xl bg-card p-6 shadow-card border-2 border-border/40 text-center space-y-4">
             <div className="text-xs font-extrabold text-muted-foreground">
@@ -386,7 +421,7 @@ const Deney = () => {
                 <button
                   key={label}
                   disabled={!heard || !!feedback}
-                  onClick={() => recordRep(step.es, sc)}
+                  onClick={() => recordRep(step.es, sc, "B")}
                   className={cn(
                     "rounded-xl border-2 border-border bg-muted/40 font-extrabold text-sm disabled:opacity-40",
                     TAP,
