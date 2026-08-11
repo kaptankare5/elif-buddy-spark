@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem } from "@/lib/audio";
-import { gamePool, pickWrongs } from "./_shared";
+import { gamePool } from "./_shared";
+import { useAskLayer } from "./_askUI";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
-import { Heart, Volume2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, Volume2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 
 /**
  * 🛤️ İki Yol Koşusu — pseudo-3D perspektifli koşu oyunu.
@@ -29,6 +30,8 @@ let UID = 1;
 let POP_UID = 1;
 
 const LaneRunnerGame = () => {
+  // İki şeritli oyun — şimşek modunun 2 şıkkına doğal olarak uyuyor.
+  const ask = useAskLayer();
   const [lane, setLane] = useState<0 | 1>(0);
   const [lastSwitchDir, setLastSwitchDir] = useState<-1 | 0 | 1>(0);
   const [objs, setObjs] = useState<Obj[]>([]);
@@ -43,6 +46,7 @@ const LaneRunnerGame = () => {
   const [pops, setPops] = useState<Pop[]>([]);
   const [flash, setFlash] = useState<"good" | "bad" | null>(null);
 
+  const askRef = useRef(ask); askRef.current = ask;
   const laneRef = useRef<0 | 1>(0); laneRef.current = lane;
   const targetRef = useRef<ContentItem | null>(null); targetRef.current = target;
   const pausedRef = useRef(true); pausedRef.current = paused;
@@ -58,8 +62,9 @@ const LaneRunnerGame = () => {
     setTarget(item);
     if (!silent && !pausedRef.current) {
       // Gerçek hoca sesi: harfin mp3'ünü çal (kompozit "Hangisi X?" cümlesi
-      // manifest'te olmadığından robotik TTS'e düşürüyordu).
-      setTimeout(() => playItem(item), 80);
+      // manifest'te olmadığından robotik TTS'e düşürüyordu). Yeni modlarda
+      // soru sesle değil GLİFLE sorulur — `ask.sor` moda göre karar verir.
+      setTimeout(() => { void askRef.current.sor(item); }, 80);
     }
   }, []);
 
@@ -69,7 +74,7 @@ const LaneRunnerGame = () => {
     if (gameOver) return;
     if (paused) {
       setPaused(false);
-      if (target) setTimeout(() => playItem(target), 120);
+      if (target) setTimeout(() => { void askRef.current.sor(target); }, 120);
       return;
     }
     setLane((l) => {
@@ -112,7 +117,9 @@ const LaneRunnerGame = () => {
           let item: ContentItem;
           if (useTarget) item = targetRef.current!;
           else {
-            const wrongs = pickWrongs(pool, targetRef.current, 1);
+            // Yazılı modda çeldirici ADI hedefe benzeyen harften seçilir
+            // (kısayol öğrenmesin); klasikte şekilce karışan harften.
+            const wrongs = askRef.current.celdiriciler(pool, targetRef.current, 1);
             item = wrongs[0] || targetRef.current!;
           }
           const newLane = (Math.random() < 0.5 ? 0 : 1) as 0 | 1;
@@ -214,17 +221,35 @@ const LaneRunnerGame = () => {
             </div>
           </div>
           <button
-            onClick={() => target && playItem(target)}
-            disabled={!target}
+            onClick={() => ask.tekrar(target)}
+            disabled={!target || ask.mode === "ustte"}
             className="rounded-xl bg-primary text-primary-foreground p-2 shadow-soft border-2 border-primary font-bold flex items-center justify-center gap-1 disabled:opacity-40"
           >
-            <Volume2 className="h-4 w-4" />
+            {ask.mode === "flash" ? <Eye className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
         </div>
 
+        {/* ⚠️ Klasik şerit hedefi hem GLİF hem TÜRKÇE ADIYLA gösteriyor. Şimşek
+            modunda bu bandı olduğu gibi bırakmak cevabı ekrana yazmak olurdu:
+            harf 1 sn parlayıp sönecek ama adı bütün tur boyunca üstte duracaktı.
+            Bu yüzden şimşekte ad da glif de gizlenir; tabelada yalnız GLİF
+            kalır (asılı durması modun tanımı), ad gizlenir. */}
         <div className="rounded-2xl p-3 mb-3 border-2 bg-warning/15 border-warning/50 text-center min-h-[64px]">
-          <p className="text-xs font-bold text-muted-foreground">🎯 Doğru yola geç, topla!</p>
-          <p className="text-3xl mt-1"><EmojiView value={target?.emoji ?? "—"} /> <span className="text-base font-bold text-muted-foreground">{target?.label ?? ""}</span></p>
+          <p className="text-xs font-bold text-muted-foreground">
+            {ask.yazili ? "🎯 Gördüğün harfin ADINI topla!" : "🎯 Doğru yola geç, topla!"}
+          </p>
+          {ask.mode === "flash" ? (
+            <p className="mt-2 text-base font-extrabold text-muted-foreground">
+              👁️ Harf birazdan parlayacak
+            </p>
+          ) : (
+            <p className="text-3xl mt-1">
+              <EmojiView value={target?.emoji ?? "—"} />{" "}
+              {!ask.yazili && (
+                <span className="text-base font-bold text-muted-foreground">{target?.label ?? ""}</span>
+              )}
+            </p>
+          )}
         </div>
 
         <div
@@ -304,14 +329,20 @@ const LaneRunnerGame = () => {
                   left: `${laneX(o.lane, o.z)}%`,
                   top: `${zToTop(o.z)}%`,
                   transform: `translate(-50%, -50%) scale(${s})`,
-                  fontSize: "48px",
+                  // Yazı 48px'te şeride sığmıyor; ad tabelası daha küçük punto.
+                  fontSize: ask.yazili ? "20px" : "48px",
                   zIndex: Math.floor(o.z) + 50,
                   filter: "drop-shadow(0 6px 8px rgba(0,0,0,0.35))",
                 }}>
                 {o.isTarget && (
                   <div className="absolute inset-0 -m-2 rounded-full border-4 border-warning/90 animate-pulse" />
                 )}
-                <span className={cn(o.isTarget && "animate-float")}><EmojiView value={o.item.emoji} /></span>
+                <span className={cn(
+                  o.isTarget && "animate-float",
+                  ask.yazili && "block whitespace-nowrap rounded-xl border-2 border-white/70 bg-indigo-900/90 px-3 py-1.5 text-white",
+                )}>
+                  {ask.sik(o.item)}
+                </span>
               </div>
             );
           })}
@@ -405,6 +436,7 @@ const LaneRunnerGame = () => {
           </button>
         </div>
       </main>
+      {ask.katman}
     </div>
   );
 };

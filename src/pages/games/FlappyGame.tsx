@@ -3,6 +3,7 @@ import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle, pickWrongs } from "./_shared";
+import { useAskLayer } from "./_askUI";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
@@ -43,6 +44,11 @@ interface Letter {
 let UID = 1;
 
 const FlappyGame = () => {
+  // ⚠️ YAZILI ŞIK YOK: burada harfin kendisi ÇARPIŞMA ALANI (HIT_R). Kutuyu
+  // yazı sığacak kadar genişletmek oyunun zorluğunu değiştirir — ölçtüğümüz
+  // şey harf bilgisi olmaktan çıkar. Şimşek/Tabela klasiğe düşer,
+  // "Öğret" modu çalışır.
+  const ask = useAskLayer({ yaziliDestek: false });
   const [mode] = useGameMode();
   const isSuper = mode === "super";
   const [birdY, setBirdY] = useState(40);
@@ -61,6 +67,7 @@ const FlappyGame = () => {
   const velRef = useRef(0); velRef.current = vel;
   const yRef = useRef(40); yRef.current = birdY;
   const targetRef = useRef<ContentItem | null>(null); targetRef.current = target;
+  const askRef = useRef(ask); askRef.current = ask;
 
   const pausedRef = useRef(true); pausedRef.current = paused;
 
@@ -68,7 +75,7 @@ const FlappyGame = () => {
     const pool = gamePool();
     const item = pickNextGameItem(pool) || pool[0];
     setTarget(item);
-    if (!silent && !pausedRef.current) playItem(item);
+    if (!silent && !pausedRef.current) void askRef.current.sor(item);
   }, []);
 
   // İlk hedef — sessiz seç, oyun başlayınca seslendir
@@ -79,7 +86,7 @@ const FlappyGame = () => {
     if (paused) {
       setPaused(false);
       // ilk uçuşta hedefi seslendir
-      if (target) playItem(target);
+      if (target) void askRef.current.sor(target);
     }
     setVel(FLAP);
   }, [gameOver, paused, target]);
@@ -300,7 +307,7 @@ const FlappyGame = () => {
             </div>
           </div>
           <button
-            onClick={() => target && playItem(target)}
+            onClick={() => ask.tekrar(target)}
             disabled={!target}
             className="rounded-xl bg-primary text-primary-foreground p-2 shadow-soft border-2 border-primary font-bold flex items-center justify-center gap-1 disabled:opacity-40"
           >
@@ -394,6 +401,7 @@ const FlappyGame = () => {
           </button>
         </div>
       </main>
+      {ask.katman}
     </div>
   );
 };

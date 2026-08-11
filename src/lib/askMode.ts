@@ -19,7 +19,19 @@ export type AskMode =
   /** Glif 1 sn yarı saydam parlar sönür → yazılı ad şıklarından seç. */
   | "flash"
   /** Glif kapının üstünde ASILI durur → yazılı ad şıklarından seç. */
-  | "ustte";
+  | "ustte"
+  /**
+   * ÖĞRET — önce SÖYLER, sonra sorar.
+   *
+   * ⚠️ Kullanıcının teşhisi: "oyun düzgün öğretmiyor". Haklı — klasik modda
+   * oyun harfi hiç TANITMAZ, yalnız yoklar. Çocuk bilmediği harfte tahmin
+   * eder, yanlış yapar, bir daha tahmin eder; hiçbir noktada "bu harf Be"
+   * denmez. Bu modda her sorudan önce harf BÜYÜK gösterilir, adı yazılır ve
+   * sesi çalınır; hemen ardından aynı harf sorulur. Yani her karşılaşma bir
+   * öğretme + bir yoklama. (Yarış/parti oyunlarında bu bir "öğretme kapısı":
+   * tek büyük harf, yanlış şık yok, içinden geçerken adını söyler.)
+   */
+  | "ogret";
 
 const KEY = "elifba-ask-mode-v1";
 export const ASK_MODE_EVENT = "elifba-ask-mode-updated";
@@ -27,8 +39,11 @@ export const ASK_MODE_EVENT = "elifba-ask-mode-updated";
 export const ASK_MODES: Array<{ id: AskMode; ad: string; aciklama: string }> = [
   { id: "klasik", ad: "Klasik", aciklama: "Sesi duy → harfi seç (mevcut)" },
   { id: "flash", ad: "Şimşek", aciklama: "Harf 1 sn parlar → adını seç" },
-  { id: "ustte", ad: "Tabela", aciklama: "Harf kapıda asılı → adını seç" },
+  { id: "ustte", ad: "Tabela", aciklama: "Harf ekranda asılı → adını seç" },
+  { id: "ogret", ad: "Öğret", aciklama: "Önce harfi gösterip söyler, sonra sorar" },
 ];
+
+const GECERLI = new Set<string>(ASK_MODES.map((m) => m.id));
 
 /** Şimşek modunda şık sayısı. */
 export const FLASH_SIK = 2;
@@ -46,12 +61,32 @@ export const USTTE_SIK = 3;
  * ÇEVİRMEK için.
  */
 export const FLASH_MS = 1300;
+/**
+ * "Öğret" modunda tanıtım kartının ekranda kaldığı süre (ms).
+ *
+ * Şimşek'ten uzun, çünkü burada amaç TERSİ: harf kaybolmadan önce çocuğun
+ * onu adıyla birlikte kodlaması isteniyor. Ses (~0.8 sn) bittikten sonra
+ * harfe bakacak zaman kalmalı.
+ */
+export const OGRET_MS = 1900;
+
+/** Şıklar YAZILI ad mı gösterecek (glif yerine)? */
+export function yaziliSik(m: AskMode): boolean {
+  return m === "flash" || m === "ustte";
+}
+
+/** Bu modda kaç şık olmalı? `klasikVarsayilan` oyunun kendi sayısıdır. */
+export function sikSayisi(m: AskMode, klasikVarsayilan: number): number {
+  if (m === "flash") return FLASH_SIK;
+  if (m === "ustte") return USTTE_SIK;
+  return klasikVarsayilan;
+}
 
 export function getAskMode(): AskMode {
   if (typeof window === "undefined") return "klasik";
   try {
     const v = localStorage.getItem(KEY);
-    return v === "flash" || v === "ustte" ? v : "klasik";
+    return v && GECERLI.has(v) ? (v as AskMode) : "klasik";
   } catch { return "klasik"; }
 }
 
@@ -111,8 +146,20 @@ function mesafe(a: string, b: string): number {
  * mantık aynı, ama harf adlarında sahte bir ad göstermek çocuğa YANLIŞ AD
  * öğretme riski taşır. Gerçek harf adları arasında zaten yeterince benzer
  * çiftler var — uydurmaya gerek yok.
+ *
+ * ⚠️ KADEMELİ ZORLUK (`zorluk` 0..1) — kullanıcının "bear/giraffe → bear/beal"
+ * fikri. Harfi yeni gören çocuğa en benzer adı vermek onu boğar; zaten
+ * bileni UZAK adla sınamak da hiçbir şey ölçmez. `zorluk` sıralamada hangi
+ * pencereden seçileceğini belirler: 0 = en UZAK adlar (yeni harf),
+ * 1 = en YAKIN adlar (öğrenilmiş harf). Böylece aynı harf tekrar geldikçe
+ * ayrım kendiliğinden incelir.
  */
-export function pickNameWrongs(pool: ContentItem[], target: ContentItem, n: number): ContentItem[] {
+export function pickNameWrongs(
+  pool: ContentItem[],
+  target: ContentItem,
+  n: number,
+  opts?: { zorluk?: number },
+): ContentItem[] {
   const hedefAd = okunurAd(target);
   if (!hedefAd) return [];
   const adaylar = pool
@@ -128,11 +175,27 @@ export function pickNameWrongs(pool: ContentItem[], target: ContentItem, n: numb
     return true;
   });
   benzersiz.sort((a, b) => mesafe(a.ad, hedefAd) - mesafe(b.ad, hedefAd));
-  // En benzer 6 aday arasından rastgele n tane — hep aynı çift çıkmasın.
-  const havuz = benzersiz.slice(0, Math.max(n, 6));
+  // Pencere: zorluk 1 → başa (en benzer), 0 → sona (en farklı) kayar.
+  const z = Math.min(1, Math.max(0, opts?.zorluk ?? 1));
+  const pencere = Math.max(n, 6);
+  const enGeri = Math.max(0, benzersiz.length - pencere);
+  const bas = Math.round((1 - z) * enGeri);
+  // Pencere içinden rastgele n tane — hep aynı çift çıkmasın.
+  const havuz = benzersiz.slice(bas, bas + pencere);
   for (let i = havuz.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [havuz[i], havuz[j]] = [havuz[j], havuz[i]];
   }
   return havuz.slice(0, n).map((x) => x.it);
+}
+
+/**
+ * SRS seviyesinden çeldirici zorluğu. Yeni harfte uzak ad (çocuk önce
+ * "hangisi olabilir"i öğrensin), öğrenilmiş harfte en yakın ad (artık
+ * gerçekten ayırt etsin).
+ */
+export function adZorlugu(level: number): number {
+  if (level <= 2) return 0.15;
+  if (level === 3) return 0.55;
+  return 1;
 }

@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { EmojiView } from "@/components/EmojiView";
 
 const ShipSvg = memo(() => (
   <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -27,14 +26,15 @@ const ShipSvg = memo(() => (
 ));
 ShipSvg.displayName = "ShipSvg";
 import { PageHeader } from "@/components/PageHeader";
-import { playFeedback, playItem } from "@/lib/audio";
-import { gamePool, pickWrongs, shuffle } from "./_shared";
+import { playFeedback } from "@/lib/audio";
+import { gamePool } from "./_shared";
+import { useAskLayer } from "./_askUI";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
-import { Heart, Volume2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, Volume2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 
 /**
  * 🚀 Uzay Savaşı — eğitici nişancı.
@@ -59,14 +59,9 @@ interface Pop { id: number; x: number; y: number; text: string; good: boolean }
 let UID = 1;
 let POP_UID = 1;
 
-function askTarget(item: ContentItem): Promise<void> {
-  // item.audio varsa doğrudan onu çalar; yoksa TTS'e düşer. Doğrudan
-  // playSpeech çağırmak item.audio'yu atlayıp her zaman robotik sese
-  // (TTS) düşmesine sebep oluyordu.
-  return playItem(item);
-}
-
 const RunnerGame = () => {
+  const ask = useAskLayer();
+  const askRef = useRef(ask); askRef.current = ask;
   const [mode] = useGameMode();
   const isSuper = mode === "super";
   const [shipX, setShipX] = useState(50);
@@ -99,9 +94,9 @@ const RunnerGame = () => {
     if (pool.length === 0) return;
     // Hedefi SRS ile seç
     const tgt = pickNextGameItem(pool) || pool[0];
-    // El nesneleri: hedef + 3 rastgele yanlış (toplam 4)
-    const others = pickWrongs(pool, tgt, Math.max(0, ROUND_SIZE - 1));
-    const items = shuffle([tgt, ...others]);
+    // El nesneleri: hedef + çeldiriciler. Şimşek/tabela modunda şık sayısı
+    // düşer (yazı okumak glif taramaktan yavaş, nesneler aşağı akıyor).
+    const items = askRef.current.secenekler(pool, tgt, ROUND_SIZE);
     setTarget(tgt);
     setRoundItems(items);
     targetRef.current = tgt;
@@ -112,7 +107,7 @@ const RunnerGame = () => {
     setEnemies((arr) => arr.map((e) => ({ ...e, isTarget: e.item.id === tgt.id })));
     roundLockRef.current = false;
     if (!silent) {
-      await askTarget(tgt);
+      await askRef.current.sor(tgt);
     }
   }, []);
 
@@ -317,9 +312,7 @@ const RunnerGame = () => {
     roundLockRef.current = false;
   };
 
-  const replayQuestion = () => {
-    if (target) void askTarget(target);
-  };
+  const replayQuestion = () => { ask.tekrar(target); };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-950 to-background">
@@ -345,11 +338,11 @@ const RunnerGame = () => {
           </div>
           <button
             onClick={replayQuestion}
-            disabled={!target}
+            disabled={!target || ask.mode === "ustte"}
             className="rounded-xl bg-primary text-primary-foreground p-2 shadow-soft border-2 border-primary font-bold flex items-center justify-center disabled:opacity-40"
-            aria-label="Soruyu tekrar dinle"
+            aria-label={ask.tekrarEtiketi}
           >
-            <Volume2 className="h-4 w-4" />
+            {ask.mode === "flash" ? <Eye className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
         </div>
 
@@ -364,13 +357,19 @@ const RunnerGame = () => {
               backgroundSize: `40px 40px, 60px 60px`, backgroundPosition: `0 0, 20px 30px` }} />
 
           {enemies.map((e) => (
-            <div key={e.uid} className="absolute leading-none flex items-center justify-center rounded-full bg-white/95 border-2 border-white shadow-[0_0_14px_rgba(255,255,255,0.5)]"
+            <div key={e.uid} className={cn(
+                "absolute leading-none flex items-center justify-center bg-white/95 border-2 border-white shadow-[0_0_14px_rgba(255,255,255,0.5)]",
+                // Yazılı modda 56px'lik daireye ad sığmıyor → geniş hap.
+                ask.yazili ? "rounded-2xl px-2" : "rounded-full",
+              )}
               style={{ left: `${e.x}%`, top: `${e.y}%`, transform: "translate3d(-50%, -50%, 0)",
-                width: "56px", height: "56px",
-                fontSize: "34px", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
+                width: ask.yazili ? "112px" : "56px", height: ask.yazili ? "44px" : "56px",
+                fontSize: ask.yazili ? "15px" : "34px", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
                 willChange: "top", zIndex: e.isTarget ? 20 : 5 }}>
-              {e.isTarget && showHintFor(e.item) && (<div className="absolute -inset-1 rounded-full border-4 border-warning animate-pulse" />)}
-              <span className="animate-float"><EmojiView value={e.item.emoji} /></span>
+              {e.isTarget && showHintFor(e.item) && (<div className={cn("absolute -inset-1 border-4 border-warning animate-pulse", ask.yazili ? "rounded-2xl" : "rounded-full")} />)}
+              <span className={cn(!ask.yazili && "animate-float", ask.yazili && "text-indigo-950")}>
+                {ask.sik(e.item)}
+              </span>
             </div>
           ))}
 
@@ -450,6 +449,7 @@ const RunnerGame = () => {
           </button>
         </div>
       </main>
+      {ask.katman}
     </div>
   );
 };

@@ -234,11 +234,20 @@ const Settings = () => {
             </div>
             <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
               Şu an oyunlar <b>sesi duyup harfi seçtiriyor</b>. Asıl hedef ise tersi:
-              harfi <b>görüp adını söylemek</b> (Elifbâ kitabının sorduğu yön). Yeni
-              yöntemler soruyu bu yöne çeviriyor — şıklar harfin <b>yazılı adı</b> olur.
-              Şimdilik yalnız <b>Elifbâ Yarışı</b>'nda çalışır.
+              harfi <b>görüp adını söylemek</b> (Elifbâ kitabının sorduğu yön).
+              <b> Şimşek</b> ve <b>Tabela</b> soruyu bu yöne çevirir — şıklar harfin
+              <b> yazılı adı</b> olur. <b>Öğret</b> ise farklı bir eksik içindir:
+              oyun harfi hiç <i>tanıtmıyor</i>, yalnız yokluyordu; bu modda her
+              sorudan önce harf büyük gösterilip <b>adı söylenir</b>, sonra sorulur.
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
+              <b>Yılan</b> ve <b>Uçan Kuş</b>'ta yazılı şık gösterilemiyor (harf ya
+              ızgara karesine sığmıyor ya da çarpışma alanının kendisi) — orada
+              Şimşek/Tabela klasik gibi davranır, <b>Öğret</b> çalışır.
+              Eşleştirme/Hafıza/Yapboz'da soru zaten görsel olduğu için bu
+              yöntemler geçerli değil.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
               {ASK_MODES.map((m) => (
                 <button
                   key={m.id}

@@ -33,16 +33,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
-import { Volume2, Maximize2, Lock } from "lucide-react";
+import { Volume2, Eye, Maximize2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { createAdaptiveResolution } from "./_perf";
-import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
+import { pickNextGameItem, recordGameAnswer, getGameItemLevel } from "@/lib/gameProgress";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
-import { letterTexture, nameTexture } from "./_letterTexture";
+import { letterTexture, nameTexture, wordTexture } from "./_letterTexture";
+import {
+  getAskMode, okunurAd, pickNameWrongs, adZorlugu, yaziliSik, FLASH_MS, type AskMode,
+} from "@/lib/askMode";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import type { ContentItem } from "@/data/types";
 
@@ -230,6 +233,12 @@ interface Gate {
   tries: number;            // soruyu sesli sorma denemesi (en fazla 2)
   botDone: Set<number>;
   panels: THREE.Mesh[];     // şık panoları (doğru/yanlış renklendirmesi için)
+  /** "Tabela" modunda kapının ÜSTÜNDE asılı duran glif panosu. */
+  topPanel: THREE.Mesh | null;
+  /** Bu kapı hangi modda kuruldu (bölüm ortasında ayar değişse bile sabit). */
+  mode: AskMode;
+  /** "Öğret" modu: üç şerit de aynı harf, yanlış yok — geçerken adı söylenir. */
+  ogretKapisi: boolean;
   group: THREE.Group;       // geçildikten sonra gizlenir (kamerayı kapatmasın)
 }
 
@@ -274,6 +283,10 @@ const PartyGame = () => {
   const [power, setPower] = useState<PowerKind | null>(null);      // taşınan tek güç
   const [activePower, setActivePower] = useState<PowerKind | null>(null); // şu an etkin
   const [prompt, setPrompt] = useState<ContentItem | null>(null);
+  // "Şimşek" modunda ekranda parlayıp sönen glif + sıradaki kapı öğretme mi?
+  const [glifFlash, setGlifFlash] = useState<ContentItem | null>(null);
+  const [ogretKapi, setOgretKapi] = useState(false);
+  const askModeRef = useRef<AskMode>(getAskMode());
   const [flash, setFlash] = useState<{ k: number; text: string; good: boolean } | null>(null);
   const [result, setResult] = useState<{ place: number; correct: number; wrong: number } | null>(null);
   const teaseRef = useRef(gardenTease());
@@ -487,6 +500,10 @@ const PartyGame = () => {
     };
 
     // ---------- soru kapıları ----------
+    // Mod bölüm başında bir kez okunur; ortasında Ayarlar değişse bile
+    // kapıların anlamı değişmesin.
+    const askMode = getAskMode();
+    askModeRef.current = askMode;
     const pool = gamePool();
     const gates: Gate[] = [];
     const panelGeo = track(new THREE.PlaneGeometry(5, 5));
@@ -520,28 +537,97 @@ const PartyGame = () => {
         g.add(p);
         panels.push(p);
       }
+      // "Tabela" modunda glif kapının ÜSTÜNDE asılı durur; şıklar aşağıda
+      // yazılı adlardır. Diğer modlarda hiç oluşturulmaz.
+      let topPanel: THREE.Mesh | null = null;
+      if (askMode === "ustte") {
+        const tm = track(new THREE.MeshBasicMaterial({ map: null, transparent: true, side: THREE.DoubleSide }));
+        topPanel = new THREE.Mesh(track(new THREE.PlaneGeometry(4.4, 4.4)), tm);
+        topPanel.position.set(0, 9.6, 0);
+        g.add(topPanel);
+      }
       g.visible = false;   // sorusu dağıtılana kadar boş pano gösterme
       scene.add(g);
-      gates.push({ z, target: null, options: [], tries: 0, done: false, said: 0, botDone: new Set(), panels, group: g });
+      gates.push({
+        z, target: null, options: [], tries: 0, done: false, said: 0,
+        botDone: new Set(), panels, group: g, topPanel,
+        // "Öğret" modunda SINAMA kapıları klasik davranır.
+        mode: askMode === "ogret" ? "klasik" : askMode,
+        ogretKapisi: false,
+      });
     };
 
     // Kapıya SIRASI GELİNCE soru dağıt. Bir önceki kapı cevaplanıp
     // recordGameAnswer çalıştıktan sonra çağrıldığı için SRS durumu güncel:
     // seviye/aciliyet/karışıklık ısısı hesaba katılır ve harf gerçekten değişir.
+    // "Öğret" modu kapıları İKİŞERLİ kullanır: önce ÖĞRETME kapısı (üç şerit
+    // de aynı harf, geçerken adını söyler), hemen ardından AYNI harfin klasik
+    // SINAMA kapısı.
+    // ⚠️ HER KAPI TANITIMA HARCANMAZ. Kapılar KIT: bir pistte 2-3 tane var
+    // (Bahçe Turu'nda 2). Sırayla "bir öğret / bir sına" dersek yarış başına
+    // yalnız 1 soru kalıyor. Tanıtım YALNIZ HENÜZ ÖĞRENİLMEMİŞ harfe (L3
+    // altı) yapılır — çocuğun zaten bildiği harfi tanıtmak soru bütçesini yer.
+    const ogretModu = askMode === "ogret";
+    const OGRET_ESIGI = 3;
+    let ogretBekleyen: ContentItem | null = null;
+
     const armGate = (g: Gate) => {
-      const target = pickNextGameItem(pool) || pool[0];
-      const wrongs = pickWrongs(pool, target, 2);
-      if (wrongs.length < 2) { g.done = true; return; }
+      const target = ogretBekleyen ?? (pickNextGameItem(pool) || pool[0]);
+      if (ogretModu) {
+        if (ogretBekleyen) {
+          ogretBekleyen = null;          // bu kapı, az önce tanıtılanın SINAMASI
+        } else if (getGameItemLevel(target) < OGRET_ESIGI) {
+          g.ogretKapisi = true;
+          ogretBekleyen = target;
+        }
+      }
+      if (g.ogretKapisi) {
+        g.target = target;
+        g.tries = 0;
+        g.options = [target, target, target];   // üç şerit de doğru
+        preloadItems([target]);
+        g.panels.forEach((p) => {
+          const m = p.material as THREE.MeshBasicMaterial;
+          m.map = track(letterTexture(target.emoji ?? "؟"));
+          m.color.set(0xffffff);
+          m.needsUpdate = true;
+        });
+        return;
+      }
+      // ⚠️ PARTİ'DE ŞIK SAYISI HEP 3. Yarışı'nda şimşek modu 2 şıkka iniyor
+      // (orta şerit çapraz taralı plakayla kapanıyor), ama burada şeritler
+      // parkurun kendisi — kapatılan şerit engel gibi görünüp çocuğu
+      // yanıltıyor. Burada şimşek de 3 yazılı şıkla sorulur.
+      const yeniMod = yaziliSik(g.mode) && okunurAd(target) !== null;
+      const wrongs = yeniMod
+        ? pickNameWrongs(pool, target, 2, { zorluk: adZorlugu(getGameItemLevel(target)) })
+        : pickWrongs(pool, target, 2);
+      if (wrongs.length < 2) {
+        // Yeni modda yeterli ad bulunamadı → klasiğe düş, kapı boşa gitmesin.
+        const kw = pickWrongs(pool, target, 2);
+        if (kw.length < 2) { g.done = true; return; }
+        g.mode = "klasik";
+        g.options = shuffle([target, ...kw]);
+      } else {
+        g.options = shuffle([target, ...wrongs]);
+      }
       g.target = target;
-      g.options = shuffle([target, ...wrongs]);
       g.tries = 0;
       preloadItems([target]);   // soru çalana kadar dosya inmiş olsun
       g.panels.forEach((p, i) => {
         const m = p.material as THREE.MeshBasicMaterial;
-        m.map = track(letterTexture(g.options[i].emoji ?? "؟"));
+        m.map = yaziliSik(g.mode)
+          ? track(wordTexture(okunurAd(g.options[i]) ?? "?"))
+          : track(letterTexture(g.options[i].emoji ?? "؟"));
         m.color.set(0xffffff);
         m.needsUpdate = true;
       });
+      if (g.topPanel) {
+        const tm = g.topPanel.material as THREE.MeshBasicMaterial;
+        tm.map = track(letterTexture(target.emoji ?? "؟"));
+        tm.needsUpdate = true;
+        g.topPanel.visible = g.mode === "ustte";
+      }
     };
 
     // ---------- parkur dizilimi (bölüm reçetesinden prosedürel) ----------
@@ -1124,6 +1210,14 @@ const PartyGame = () => {
         if (!g.done && g.target && player.finished === null && player.z >= g.z) {
           const target = g.target;
           g.done = true;
+          if (g.ogretKapisi) {
+            // ÖĞRETME KAPISI — yanlış yok, puan yok, ceza yok. Kapıdan
+            // geçerken harfin ADI söylenir. Cevap SRS'e YAZILMAZ: burada
+            // ölçüm değil ÖĞRETME var; ölçüm sıradaki sınama kapısında.
+            showFlash(`👀 ${okunurAd(target) ?? target.label}`, true);
+            window.setTimeout(() => playItem(target), 140);
+            continue;
+          }
           const idx = laneOf(player.x);
           const chosen = g.options[idx];
           const correct = chosen.id === target.id;
@@ -1175,8 +1269,19 @@ const PartyGame = () => {
           g0.said = 1;
           g0.tries += 1;
           setPrompt(gt);
-          // Kayıt gerçekten çalmadıysa soru sorulmuş sayılmaz (bkz. KartGame).
-          playItem(gt, { onFail: () => { if (!g0.done && g0.tries < 2) g0.said = 0; } });
+          setOgretKapi(g0.ogretKapisi);
+          if (g0.ogretKapisi) {
+            // Ses kapıdan GEÇERKEN çalar — burada tetiklenmez.
+          } else if (g0.mode === "flash") {
+            // ⚠️ YENİ MODLARDA SORU SESLİ SORULMAZ: sesi çalmak harfin ADINI
+            // söylemek = cevabı vermek olurdu. Soru GÖRSELdir.
+            setGlifFlash(gt);
+            window.setTimeout(() => setGlifFlash((x) => (x?.id === gt.id ? null : x)), FLASH_MS);
+          } else if (g0.mode === "klasik") {
+            // Kayıt gerçekten çalmadıysa soru sorulmuş sayılmaz (bkz. KartGame).
+            playItem(gt, { onFail: () => { if (!g0.done && g0.tries < 2) g0.said = 0; } });
+          }
+          // "ustte" modunda hiçbir şey tetiklenmez — glif zaten kapıda asılı.
         }
         if (promptIdRef.current !== gt.id) {
           promptIdRef.current = gt.id;
@@ -1347,14 +1452,51 @@ const PartyGame = () => {
             </div>
           </div>
 
-          {prompt && (
+          {/* ⚠️ Yeni modlarda "dinle" bandı YOK: sesi çalmak adı söylemek =
+              cevabı vermek. Şimşekte yerine glifi tekrar gösteren düğme var. */}
+          {prompt && (askModeRef.current === "klasik" || askModeRef.current === "ogret") && (
             <button
               onClick={() => playItem(prompt)}
-              className="absolute inset-x-3 top-[74px] z-20 flex items-center justify-center gap-2 rounded-2xl border-2 border-primary/40 bg-white/90 px-3 py-2 font-extrabold text-primary shadow-card backdrop-blur active:scale-95"
+              className={cn(
+                "absolute inset-x-3 top-[74px] z-20 flex items-center justify-center gap-2 rounded-2xl border-2 px-3 py-2 font-extrabold shadow-card backdrop-blur active:scale-95",
+                ogretKapi
+                  ? "border-success/50 bg-success/90 text-success-foreground"
+                  : "border-primary/40 bg-white/90 text-primary",
+              )}
             >
               <Volume2 className="h-5 w-5" />
-              Hangi kapı? — dinle
+              {ogretKapi ? "Bu kapıdan geç — harfi söyleyeceğim" : "Hangi kapı? — dinle"}
             </button>
+          )}
+          {prompt && askModeRef.current === "flash" && (
+            <button
+              onClick={() => {
+                const p0 = prompt;
+                setGlifFlash(p0);
+                window.setTimeout(() => setGlifFlash((x) => (x?.id === p0.id ? null : x)), FLASH_MS);
+              }}
+              className="absolute inset-x-3 top-[74px] z-20 flex items-center justify-center gap-2 rounded-2xl border-2 border-primary/40 bg-white/90 px-3 py-2 font-extrabold text-primary shadow-card active:scale-95"
+            >
+              <Eye className="h-5 w-5" />
+              Harfi tekrar göster
+            </button>
+          )}
+
+          {/* ŞİMŞEK — glif SAYDAM DEĞİL, altlık saydam (harf tanıma parlaklık
+              karşıtlığına bağlı). Konum üst bölge: üste bindirilmiş sabit
+              sembol dikkati tünelliyor, sürüş alanının üstü kapatılmıyor. */}
+          {glifFlash && (
+            <div className="pointer-events-none absolute inset-x-0 top-[18%] z-30 flex justify-center">
+              <div className="rounded-[2rem] bg-white/70 px-9 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.22)]">
+                <div
+                  className="font-arabic text-[8rem] leading-[1.35] text-emerald-950"
+                  style={{ textShadow: "0 0 10px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)" }}
+                  dir="rtl"
+                >
+                  {glifFlash.emoji}
+                </div>
+              </div>
+            </div>
           )}
 
           {flash && (
