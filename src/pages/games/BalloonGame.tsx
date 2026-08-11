@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
-import { playItem, playFeedback } from "@/lib/audio";
+import { playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
-import { Volume2 } from "lucide-react";
-import { gamePool, shuffle, pickWrongs } from "./_shared";
+import { Volume2, Eye } from "lucide-react";
+import { gamePool } from "./_shared";
+import { useAskLayer } from "./_askUI";
 import { recordLetterMastery } from "@/data/srs";
 import { pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
@@ -22,6 +22,7 @@ interface Balloon {
 const COLORS = ["bg-topic-pink", "bg-topic-blue", "bg-topic-orange", "bg-topic-purple", "bg-success", "bg-warning"];
 
 const BalloonGame = () => {
+  const ask = useAskLayer();
   const [mode] = useGameMode();
   const isSuper = mode === "super";
   const [target, setTarget] = useState<ContentItem | null>(null);
@@ -36,17 +37,20 @@ const BalloonGame = () => {
     const pool = gamePool();
     const tgt = pickNextGameItem(pool) || pool[0];
     setTarget(tgt);
-    const distractors = pickWrongs(pool, tgt, 4);
-    const all = shuffle([tgt, ...distractors]);
+    // Klasikte 5 balon; şimşek/tabela modunda şık sayısı azalır (yazı okumak
+    // glif taramaktan yavaştır, balonlar da yukarı kaçıyor).
+    const all = ask.secenekler(pool, tgt, 5);
+    // Yatay yerleşim şık SAYISINA göre — 2 balonu sola yığmasın.
+    const aralik = 100 / (all.length + 1);
     setBalloons(all.map((it, i) => ({
       uid: `${it.id}-${Date.now()}-${i}`,
       item: it,
-      x: 10 + (i * 18) + (Math.random() * 6 - 3),
+      x: aralik * (i + 1) + (Math.random() * 6 - 3),
       y: 100 + i * 15,
       speed: 0.18 + Math.random() * 0.12,
       popped: false,
     })));
-    playItem(tgt);
+    void ask.sor(tgt);
   };
 
   // Animasyon
@@ -116,14 +120,27 @@ const BalloonGame = () => {
             <div className="text-[10px] font-bold text-muted-foreground">Yanlış</div>
             <div className="text-xl font-extrabold text-destructive">{misses}</div>
           </div>
-          <button onClick={() => target && playItem(target)} className="rounded-xl bg-primary text-primary-foreground p-2 shadow-soft border-2 border-primary font-bold flex items-center justify-center gap-1">
-            <Volume2 className="h-4 w-4" /> Dinle
+          <button
+            onClick={() => ask.tekrar(target)}
+            disabled={ask.mode === "ustte"}
+            className="rounded-xl bg-primary text-primary-foreground p-2 shadow-soft border-2 border-primary font-bold flex items-center justify-center gap-1 disabled:opacity-40"
+          >
+            {ask.mode === "flash" ? <Eye className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            {ask.mode === "flash" ? "Göster" : "Dinle"}
           </button>
         </div>
 
         <div className="bg-card rounded-2xl p-3 mb-3 shadow-card border-2 border-primary/20 text-center">
-          <p className="text-xs font-bold text-muted-foreground">Sesi dinle, doğru balonu patlat:</p>
-          <button onClick={() => target && playItem(target)} className="text-5xl mt-1" aria-label="Tekrar dinle">🔊</button>
+          <p className="text-xs font-bold text-muted-foreground">
+            {ask.yazili ? "Gördüğün harfin adını patlat:" : "Sesi dinle, doğru balonu patlat:"}
+          </p>
+          {ask.mode === "ustte" ? (
+            <div className="mt-1 font-arabic text-5xl leading-[1.4] text-primary" dir="rtl">{target?.emoji}</div>
+          ) : (
+            <button onClick={() => ask.tekrar(target)} className="text-5xl mt-1" aria-label="Tekrar">
+              {ask.mode === "flash" ? "👁️" : "🔊"}
+            </button>
+          )}
         </div>
 
         <div className="relative bg-gradient-to-b from-info/10 to-info/30 rounded-3xl shadow-card border-4 border-info/30 overflow-hidden" style={{ height: "60vh" }}>
@@ -148,11 +165,16 @@ const BalloonGame = () => {
                 style={{ left: `${b.x}%`, bottom: `${b.y}%` }}
               >
                 <div className={cn(
-                  "w-16 h-20 rounded-[50%] flex items-center justify-center shadow-card",
+                  "flex items-center justify-center shadow-card",
+                  // Yazılı modda balon yerine GENİŞ TABELA: "Be (başta)" gibi bir ad
+                  // 64 piksellik baloncuğa sığmıyor, taşıp okunmaz oluyordu.
+                  ask.yazili ? "w-28 h-16 rounded-2xl px-1" : "w-16 h-20 rounded-[50%]",
                   COLORS[i % COLORS.length],
                   hint && "ring-4 ring-warning ring-offset-2 ring-offset-transparent animate-pulse",
                 )}>
-                  <span className="text-3xl"><EmojiView value={b.item.emoji} /></span>
+                  <span className={cn(ask.yazili ? "text-base text-white" : "text-3xl")}>
+                    {ask.sik(b.item)}
+                  </span>
                 </div>
                 <div className="w-px h-4 bg-foreground/40 mx-auto" />
               </button>
@@ -160,6 +182,7 @@ const BalloonGame = () => {
           })}
         </div>
       </main>
+      {ask.katman}
     </div>
   );
 };

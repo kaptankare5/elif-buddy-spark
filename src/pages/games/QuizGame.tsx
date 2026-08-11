@@ -1,27 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
-import { playItem, playFeedback } from "@/lib/audio";
+import { playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
-import { Volume2, Sprout } from "lucide-react";
+import { Volume2, Eye, Sprout } from "lucide-react";
 import { Link } from "react-router-dom";
 import { gardenTease } from "@/lib/sessionEnd";
-import { gamePool, shuffle, pickWrongs } from "./_shared";
+import { gamePool } from "./_shared";
+import { useAskLayer } from "./_askUI";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 
 interface Q { target: ContentItem; options: ContentItem[]; }
 
-function makeQ(): Q {
+type Secici = (pool: ContentItem[], target: ContentItem, k: number) => ContentItem[];
+
+function makeQ(secenekler: Secici): Q {
   const pool = gamePool();
   const target = pool[Math.floor(Math.random() * pool.length)];
-  const wrongs = pickWrongs(pool, target, 3);
-  return { target, options: shuffle([target, ...wrongs]) };
+  return { target, options: secenekler(pool, target, 4) };
 }
 
 const QuizGame = () => {
-  const [q, setQ] = useState<Q>(() => makeQ());
+  const ask = useAskLayer();
+  const [q, setQ] = useState<Q>(() => makeQ(ask.secenekler));
   const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [time, setTime] = useState(60);
@@ -34,15 +36,16 @@ const QuizGame = () => {
   }, []);
 
   useEffect(() => {
-    playItem(q.target);
+    void ask.sor(q.target);
     questionStartRef.current = Date.now();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q.target.id]);
 
   useEffect(() => {
-    const h = () => { setScore(0); setTime(60); setQ(makeQ()); setPicked(null); };
+    const h = () => { setScore(0); setTime(60); setQ(makeQ(ask.secenekler)); setPicked(null); };
     window.addEventListener("games-lang-change", h);
     return () => window.removeEventListener("games-lang-change", h);
-  }, []);
+  }, [ask.secenekler]);
 
   const choose = async (item: ContentItem) => {
     if (picked || time <= 0) return;
@@ -55,13 +58,13 @@ const QuizGame = () => {
       chosenId: item.id, shownIds: q.options.map((o) => o.id),
     });
     await playFeedback(correct);
-    setTimeout(() => { setQ(makeQ()); setPicked(null); }, correct ? 700 : 1800);
+    setTimeout(() => { setQ(makeQ(ask.secenekler)); setPicked(null); }, correct ? 700 : 1800);
   };
 
   const ended = time <= 0;
   // Süre dolunca bekleyen telafi açılır
   useRemedyOnGameOver(ended);
-  const reset = () => { setScore(0); setTime(60); setQ(makeQ()); setPicked(null); };
+  const reset = () => { setScore(0); setTime(60); setQ(makeQ(ask.secenekler)); setPicked(null); };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary/40 to-background">
@@ -98,12 +101,20 @@ const QuizGame = () => {
         ) : (
           <>
             <div className="bg-card rounded-3xl p-6 shadow-card border-4 border-primary/20 mb-4 text-center animate-bounce-in" key={q.target.id}>
-              <p className="text-sm font-bold text-muted-foreground mb-2">Hangisi?</p>
-              <button onClick={() => playItem(q.target)} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-primary-foreground font-extrabold shadow-soft transition-bouncy hover:scale-105">
-                <Volume2 className="h-5 w-5" /> Tekrar Dinle
-              </button>
+              <p className="text-sm font-bold text-muted-foreground mb-2">
+                {ask.yazili ? "Gördüğün harfin adı hangisi?" : "Hangisi?"}
+              </p>
+              {/* "Tabela" modunda glif zaten ekranda asılı — tekrar düğmesi anlamsız
+                  (ses çalmak adı söylemek = cevabı vermek olurdu). */}
+              {ask.mode !== "ustte" && (
+                <button onClick={() => ask.tekrar(q.target)} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-primary-foreground font-extrabold shadow-soft transition-bouncy hover:scale-105">
+                  {ask.mode === "flash" ? <Eye className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                  {ask.tekrarEtiketi}
+                </button>
+              )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {ask.tabela(q.target)}
+            <div className={cn("grid gap-3", q.options.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
               {q.options.map((opt) => {
                 const isCorrect = !!picked && opt.id === q.target.id;
                 const isWrong = picked === opt.id && opt.id !== q.target.id;
@@ -114,7 +125,9 @@ const QuizGame = () => {
                       isCorrect && "bg-success border-success animate-pop",
                       isWrong && "bg-destructive border-destructive animate-shake",
                     )}>
-                    <span className="text-7xl"><EmojiView value={opt.emoji} /></span>
+                    <span className={cn(ask.yazili ? "text-2xl" : "text-7xl")}>
+                      {ask.sik(opt)}
+                    </span>
                   </button>
                 );
               })}
@@ -122,6 +135,7 @@ const QuizGame = () => {
           </>
         )}
       </main>
+      {ask.katman}
     </div>
   );
 };

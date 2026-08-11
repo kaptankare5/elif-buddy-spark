@@ -267,6 +267,42 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
 - UI: `StudentSwitcher` (PageHeader + Index sağ üst), yönetim Ayarlar →
   Hoca Modu. Öğrenci yoksa düğme görünmez.
 
+### Soru sorma yöntemi (`src/lib/askMode.ts` + `games/_askUI.tsx`)
+Ayarlar → "Oyunda soru yöntemi". Varsayılan **klasik**; ESKİ MOD SİLİNMEDİ.
+Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar).
+- **klasik**: sesi duy → glif seç. (Mevcut/varsayılan.)
+- **flash** "Şimşek": glif `FLASH_MS` (1300) parlar söner → şıklar YAZILI AD.
+  ⚠️ Glifin KENDİSİ saydam değil, ALTLIK saydam — harf tanıma parlaklık
+  karşıtlığına bağlı (Legge); saydam harf = düşük karşıtlık. Konum üst
+  bölge: üste bindirilmiş sabit sembol dikkati tünelliyor (HUD araştırması).
+  Süre darboğaz DEĞİL (Sperling: 50 ms'de 9-12 harf); fazladan süre okumak
+  için değil BAKIŞI ÇEVİRMEK için.
+- **ustte** "Tabela": glif ekranda/kapıda ASILI → şıklar yazılı ad. Bu modda
+  SES ÇALINMAZ (adı söylemek = cevabı vermek); "dinle" düğmesi gizlenir.
+- **ogret** "Öğret": ⚠️ kullanıcının teşhisi "oyun düzgün öğretmiyor" —
+  klasik mod harfi hiç TANITMIYOR, yalnız yokluyor. DOM oyunlarında her
+  sorudan önce tanıtım kartı (büyük glif + yazılı ad + ses, `OGRET_MS`),
+  sonra klasik soru. 3B oyunlarda (Yarışı/Partisi/Koşusu) bu bir ÖĞRETME
+  KAPISI: üç şeritte de aynı harf, yanlış yok, ceza yok, SRS'e YAZILMAZ —
+  içinden geçerken adı söylenir; sıradaki kapı aynı harfi sınar.
+  ⚠️ Tanıtım YALNIZ L3 ALTI harfe yapılır: kapılar kıt (Bahçe Turu'nda 2),
+  her kapıyı tanıtıma vermek yarış başına 1 soru bırakıyordu.
+  ⚠️ Tanıtım kartında SES BEKLENMEZ (`void playItem`): kaydı yüklenemeyen
+  öğede `await` çözülmeyip kart ekranda kalıyor, oyun kilitleniyordu.
+- **Yazılı şık çeldiricisi** `pickNameWrongs`: ad hedefe EN BENZEYENDEN
+  seçilir ("Sin↔Şin", "Sad↔Dad") — yoksa çocuk kelimeyi OKUMADAN ilk harfe
+  bakıp seçer. `adZorlugu(level)` KADEMELİ: L1-2 uzak ad (0.15), L3 orta,
+  L4+ en yakın ad. Kullanıcının "bear/giraffe → bear/beal" fikri; ama
+  UYDURMA AD YOK — sahte harf adı çocuğa yanlış ad öğretme riski taşır.
+- **Hangi oyunda ne çalışıyor**: tam destek → Hızlı Quiz, Balon, Uzay
+  Koşusu, Yarışı, Partisi (Partisi'nde şimşek de 3 şık — şerit kapatmak
+  parkurda engel gibi görünüyor). Yalnız "Öğret" → Yılan (harf ızgara
+  karesinde), Uçan Kuş (harf ÇARPIŞMA ALANI'nın kendisi), Koşusu.
+  `useAskLayer({ yaziliDestek: false })` bu oyunlarda şimşek/tabelayı
+  klasiğe düşürür. Uygulanamaz → Hafıza/Eşleştirme/Üçlü/Ayıklama/Yapboz
+  (soru zaten görsel, "hedef + şık" yapısı yok).
+- ⚠️ `LaneRunnerGame.tsx` HİÇBİR ROTAYA BAĞLI DEĞİL (öksüz dosya).
+
 ### Oyunlar
 - 13 oyun `src/pages/games/`; kayıt: Game.tsx (route) + Games.tsx (liste,
   Kolay/Zor gruplu) + `SUPER_MODE_GAMES` (gameMode.ts) + Settings metni.

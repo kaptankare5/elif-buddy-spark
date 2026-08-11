@@ -61,7 +61,7 @@ describe("rapor: öğrenilen / öğrenilemeyen ayrımı", () => {
     const b = wordsOfArm(st, "B");
     for (const w of a) st.train[w] = Array.from({ length: 5 }, () => ({ score: 1, ms: 900, at: 1 }));
     for (const w of b) st.train[w] = Array.from({ length: 5 }, () => ({ score: 0, ms: 900, at: 1 }));
-    st.immediate = { prod: {}, rec: {} };
+    st.immediate = { startedAt: 1, endedAt: 2, prod: {}, rec: {} };
     for (const w of a) st.immediate.prod[w] = { score: 1, ms: 800 };
     for (const w of b) st.immediate.prod[w] = { score: 0, ms: 800 };
 

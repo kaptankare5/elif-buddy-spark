@@ -3,6 +3,7 @@ import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle, pickWrongs } from "./_shared";
+import { useAskLayer } from "./_askUI";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
@@ -44,6 +45,10 @@ function randCell(taken: Cell[], avoid: Cell[] = [], minDist = 0): Cell {
 }
 
 const SnakeGame = () => {
+  // ⚠️ YAZILI ŞIK YOK: harfler ızgara karesinin içinde (ekranın ~1/12'si);
+  // "Be (başta)" oraya sığmaz. Şimşek/Tabela burada klasiğe düşer, "Öğret"
+  // modu çalışır (o bir ekran katmanı, ızgaraya dokunmaz).
+  const ask = useAskLayer({ yaziliDestek: false });
   const [mode] = useGameMode();
   const isSuper = mode === "super";
 
@@ -71,6 +76,8 @@ const SnakeGame = () => {
     const avoid = head ? [head] : [];
     setFood({ pos: randCell(occupied, avoid, 2), item });
   }, []);
+
+  const askRef = useRef(ask); askRef.current = ask;
 
   const startQuiz = useCallback((occupied: Cell[]) => {
     const pool = gamePool();
@@ -106,7 +113,7 @@ const SnakeGame = () => {
       ],
     });
     setFood(null);
-    playItem(target);
+    void askRef.current.sor(target);
   }, []);
 
   // Init — süper modda direkt quiz başlasın
@@ -269,7 +276,7 @@ const SnakeGame = () => {
             <div className="text-xl font-black text-info leading-tight">{isSuper ? "⚡" : eaten}</div>
           </div>
           <button
-            onClick={() => quiz && playItem(quiz.target)}
+            onClick={() => ask.tekrar(quiz?.target)}
             disabled={!quiz}
             className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-2 shadow-card border-2 border-primary-foreground/40 font-extrabold flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-95 transition-bouncy"
           >
@@ -417,6 +424,7 @@ const SnakeGame = () => {
           </button>
         </div>
       </main>
+      {ask.katman}
     </div>
   );
 };
