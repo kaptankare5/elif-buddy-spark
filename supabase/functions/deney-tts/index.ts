@@ -34,8 +34,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { word } = await req.json();
-    if (typeof word !== "string" || !word.trim() || word.length > 40) {
+    const { word } = await req.json().catch(() => ({ word: null }));
+    if (typeof word !== "string" || !ALLOWED_WORDS.has(word.trim().toLocaleLowerCase("es"))) {
       return json({ error: "invalid word" }, 400);
     }
 
