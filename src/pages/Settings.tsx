@@ -171,7 +171,7 @@ const Settings = () => {
                 <p className="text-xs text-muted-foreground">Öğrenme zorluğunu seç</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => freeReady && setMode("normal")}
                 disabled={!freeReady}
@@ -236,20 +236,17 @@ const Settings = () => {
               Şu an oyunlar <b>sesi duyup harfi seçtiriyor</b>. Asıl hedef ise tersi:
               harfi <b>görüp adını söylemek</b> (Elifbâ kitabının sorduğu yön).
               <b> Şimşek</b> ve <b>Tabela</b> soruyu bu yöne çevirir — şıklar harfin
-              <b> yazılı adı</b> olur. <b>Öğret</b> ise farklı bir eksik içindir:
-              oyun harfi hiç <i>tanıtmıyor</i>, yalnız yokluyordu; bu modda her
-              sorudan önce harf büyük gösterilip <b>adı söylenir</b>, sonra sorulur.
+              <b> yazılı adı</b> olur.
             </p>
             <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
-              Şimşek/Tabela şu oyunlarda çalışır: <b>Yarışı, Partisi, Hızlı Quiz,
-              Balon, Uzay Savaşı, Uçan Kuş, Kutu Boşalt, Elifbâ Macerası</b>.
-              Tabelada doğru bilince harfin <b>gerçek okunuşu</b> da çalar —
-              yazı Latin harfle olduğu için sesi duymadan yarım kalıyordu.
-              <b> Yılan</b>'da yazılı şık gösterilemiyor (harf ızgara karesine
-              sığmıyor); orada yalnız <b>Öğret</b> çalışır. Hafıza/Eşleştirme/
-              Üçlü/Yapboz'da soru zaten görsel olduğu için geçerli değil.
+              Şu oyunlarda çalışır: <b>Yarışı, Partisi, Hızlı Quiz, Balon,
+              Uzay Savaşı, Uçan Kuş, Kutu Boşalt, Elifbâ Macerası, Yılan</b>.
+              Doğru bilince harfin <b>gerçek okunuşu</b> da çalar — yazı Latin
+              harfle olduğu için sesi duymadan yarım kalıyordu.
+              Hafıza/Eşleştirme/Üçlü/Yapboz'da soru zaten görsel olduğu için
+              bu yöntemler geçerli değil.
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {ASK_MODES.map((m) => (
                 <button
                   key={m.id}

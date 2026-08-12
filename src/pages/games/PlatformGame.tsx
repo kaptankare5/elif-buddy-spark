@@ -1498,7 +1498,8 @@ const PlatformGame = () => {
   const [question, setQuestion] = useState<string | null>(null);
   // Soru sorma yöntemi: yazılı modda bloklarda harfin ADI yazar, glif üstte
   // asılı durur (kullanıcı şartı).
-  const ask = useAskLayer();
+  // Oyun alanı 16/10 dar bir şerit — şimşek glifi küçük olmalı.
+  const ask = useAskLayer({ flashBoy: "min(3.6rem, 15vw)" });
   const askRef = useRef(ask); askRef.current = ask;
   const yaziliRef = useRef(ask.yazili); yaziliRef.current = ask.yazili;
   const [hedefGlif, setHedefGlif] = useState<ContentItem | null>(null);
@@ -2073,6 +2074,11 @@ const PlatformGame = () => {
       const correct = b.isTarget;
       t.resolved = { correct };
       t.doneT = 0;
+      // ⚠️ Tabela SORU BOYUNCA durur, cevaptan sonra KALKAR (kullanıcı şartı):
+      // "soru hep ekranda görünmesine gerek yok, soru öncesi görünsün".
+      // Sürekli asılı kalması hem ekranı meşgul ediyor hem de bir sonraki
+      // soruya kadar çözülmüş bir soruyu gösteriyordu.
+      setHedefGlif(null);
       askRef.current.cevapSesi(target, correct);
       recordGameAnswer(target, correct, {
         gameId: "platform",

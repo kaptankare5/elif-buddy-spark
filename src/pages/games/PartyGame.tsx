@@ -44,7 +44,7 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { letterTexture, nameTexture, wordTexture } from "./_letterTexture";
 import {
-  getAskMode, okunurAd, pickNameWrongs, adZorlugu, yaziliSik, markOgretildi, FLASH_MS, type AskMode,
+  getAskMode, okunurAd, pickNameWrongs, adZorlugu, yaziliSik, FLASH_MS, type AskMode,
 } from "@/lib/askMode";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import type { ContentItem } from "@/data/types";
@@ -72,6 +72,8 @@ const BOOST_TIME = 3.5;
 const MUD_TIME = 1.8;
 const NET_TIME = 2.2;
 const HIT_TIME = 1.0;          // takla süresi
+/** Takladan sonra hiçbir engelin çarpmadığı süre (sn) — bkz. Racer.graceT. */
+const GRACE_TIME = 1.2;
 const RACERS = 6;
 const DT_MAX = 0.05;
 
@@ -237,8 +239,6 @@ interface Gate {
   topPanel: THREE.Mesh | null;
   /** Bu kapı hangi modda kuruldu (bölüm ortasında ayar değişse bile sabit). */
   mode: AskMode;
-  /** "Öğret" modu: üç şerit de aynı harf, yanlış yok — geçerken adı söylenir. */
-  ogretKapisi: boolean;
   group: THREE.Group;       // geçildikten sonra gizlenir (kamerayı kapatmasın)
 }
 
@@ -254,6 +254,19 @@ interface Racer {
   mudT: number;
   netT: number;
   hitT: number;           // takla süresi
+  /**
+   * ⚠️ TAKLA SONRASI DOKUNULMAZLIK — kısır döngü kırıcı.
+   *
+   * Alçak dönen çubuk (spinner) sürekli döndüğü için çocuk bir kez
+   * takıldığında ÇIKAMIYORDU: takla 1 sn sürüyor, o sırada ne yön
+   * değiştirebiliyor ne ZIPLAYABİLİYOR (zıplama `hitT > 0` iken kapalı),
+   * geri itilme (2.4 birim) ise çubuğun 8.5 birimlik erişiminden
+   * çıkarmıyor. Takla biter bitmez çubuk geri geliyor ve çocuk üst üste
+   * 4-5 kez yere düşüyordu (kullanıcı bildirdi: "çok sinir bozucu").
+   * Artık takladan sonra `GRACE_TIME` kadar hiçbir engel çarpmaz —
+   * bu süre içinde çocuk zıplayıp geçebilir.
+   */
+  graceT: number;
   shieldT: number;        // 🛡️ aktifken hiçbir engel çarpmaz
   glowT: number;          // güç kazanma parlaması (kısa)
   dodge: number;          // 0..1 — botun ENGELDEN kaçma becerisi
@@ -283,9 +296,8 @@ const PartyGame = () => {
   const [power, setPower] = useState<PowerKind | null>(null);      // taşınan tek güç
   const [activePower, setActivePower] = useState<PowerKind | null>(null); // şu an etkin
   const [prompt, setPrompt] = useState<ContentItem | null>(null);
-  // "Şimşek" modunda ekranda parlayıp sönen glif + sıradaki kapı öğretme mi?
+  // "Şimşek" modunda ekranda parlayıp sönen glif.
   const [glifFlash, setGlifFlash] = useState<ContentItem | null>(null);
-  const [ogretKapi, setOgretKapi] = useState(false);
   const askModeRef = useRef<AskMode>(getAskMode());
   const [flash, setFlash] = useState<{ k: number; text: string; good: boolean } | null>(null);
   const [result, setResult] = useState<{ place: number; correct: number; wrong: number } | null>(null);
@@ -550,10 +562,7 @@ const PartyGame = () => {
       scene.add(g);
       gates.push({
         z, target: null, options: [], tries: 0, done: false, said: 0,
-        botDone: new Set(), panels, group: g, topPanel,
-        // "Öğret" modunda SINAMA kapıları klasik davranır.
-        mode: askMode === "ogret" ? "klasik" : askMode,
-        ogretKapisi: false,
+        botDone: new Set(), panels, group: g, topPanel, mode: askMode,
       });
     };
 
@@ -563,37 +572,8 @@ const PartyGame = () => {
     // "Öğret" modu kapıları İKİŞERLİ kullanır: önce ÖĞRETME kapısı (üç şerit
     // de aynı harf, geçerken adını söyler), hemen ardından AYNI harfin klasik
     // SINAMA kapısı.
-    // ⚠️ HER KAPI TANITIMA HARCANMAZ. Kapılar KIT: bir pistte 2-3 tane var
-    // (Bahçe Turu'nda 2). Sırayla "bir öğret / bir sına" dersek yarış başına
-    // yalnız 1 soru kalıyor. Tanıtım YALNIZ HENÜZ ÖĞRENİLMEMİŞ harfe (L3
-    // altı) yapılır — çocuğun zaten bildiği harfi tanıtmak soru bütçesini yer.
-    const ogretModu = askMode === "ogret";
-    const OGRET_ESIGI = 3;
-    let ogretBekleyen: ContentItem | null = null;
-
     const armGate = (g: Gate) => {
-      const target = ogretBekleyen ?? (pickNextGameItem(pool) || pool[0]);
-      if (ogretModu) {
-        if (ogretBekleyen) {
-          ogretBekleyen = null;          // bu kapı, az önce tanıtılanın SINAMASI
-        } else if (getGameItemLevel(target) < OGRET_ESIGI) {
-          g.ogretKapisi = true;
-          ogretBekleyen = target;
-        }
-      }
-      if (g.ogretKapisi) {
-        g.target = target;
-        g.tries = 0;
-        g.options = [target, target, target];   // üç şerit de doğru
-        preloadItems([target]);
-        g.panels.forEach((p) => {
-          const m = p.material as THREE.MeshBasicMaterial;
-          m.map = track(letterTexture(target.emoji ?? "؟"));
-          m.color.set(0xffffff);
-          m.needsUpdate = true;
-        });
-        return;
-      }
+      const target = pickNextGameItem(pool) || pool[0];
       // ⚠️ PARTİ'DE ŞIK SAYISI HEP 3. Yarışı'nda şimşek modu 2 şıkka iniyor
       // (orta şerit çapraz taralı plakayla kapanıyor), ama burada şeritler
       // parkurun kendisi — kapatılan şerit engel gibi görünüp çocuğu
@@ -828,7 +808,7 @@ const PartyGame = () => {
       scene.add(group);
       return {
         id, name, isPlayer, z: 0, x: homeX, y: 0, vy: 0,
-        boostT: 0, mudT: 0, netT: 0, hitT: 0, shieldT: 0, glowT: 0,
+        boostT: 0, mudT: 0, netT: 0, hitT: 0, graceT: 0, shieldT: 0, glowT: 0,
         dodge: isPlayer ? 1 : def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0]),
         targetX: homeX, homeX, gateChoice: null, finished: null,
         hop: Math.random() * 6, group, body,
@@ -911,12 +891,15 @@ const PartyGame = () => {
 
     /** Çekiç/sarkaç/çubuk vurdu mu? Vurulan takla atar, geri kayar. */
     const knock = (r: Racer, push: number) => {
-      if (r.hitT > 0) return;
+      // Takla sırasında VE hemen sonrasındaki dokunulmazlıkta çarpma yok
+      // (yoksa dönen çubuk çocuğu döngüye sokuyor — bkz. Racer.graceT).
+      if (r.hitT > 0 || r.graceT > 0) return;
       if (r.shieldT > 0) {           // 🛡️ kalkan: engel çarpmaz, sadece ışık
         if (r.isPlayer) { playSfx("coin"); r.glowT = Math.max(r.glowT, 0.3); }
         return;
       }
       r.hitT = HIT_TIME;
+      r.graceT = HIT_TIME + GRACE_TIME;
       r.z = Math.max(0, r.z - push);
       r.vy = 5.5;
       r.y = Math.max(r.y, 0.1);
@@ -1071,6 +1054,7 @@ const PartyGame = () => {
         if (r.mudT > 0) r.mudT = Math.max(0, r.mudT - dt);
         if (r.netT > 0) r.netT = Math.max(0, r.netT - dt);
         if (r.hitT > 0) r.hitT = Math.max(0, r.hitT - dt);
+        if (r.graceT > 0) r.graceT = Math.max(0, r.graceT - dt);
         if (r.shieldT > 0) r.shieldT = Math.max(0, r.shieldT - dt);
         if (r.glowT > 0) r.glowT = Math.max(0, r.glowT - dt);
 
@@ -1210,17 +1194,6 @@ const PartyGame = () => {
         if (!g.done && g.target && player.finished === null && player.z >= g.z) {
           const target = g.target;
           g.done = true;
-          if (g.ogretKapisi) {
-            // ÖĞRETME KAPISI — yanlış yok, puan yok, ceza yok. Kapıdan
-            // geçerken harfin ADI söylenir. Cevap SRS'e YAZILMAZ: burada
-            // ölçüm değil ÖĞRETME var; ölçüm sıradaki sınama kapısında.
-            // Sıradaki kapı bu harfi sınayacak; cevabı "kopya" say
-            // (hızlı geçiş devreye girmesin — bkz. askMode.markOgretildi).
-            markOgretildi(target.id);
-            showFlash(`👀 ${okunurAd(target) ?? target.label}`, true);
-            window.setTimeout(() => playItem(target), 140);
-            continue;
-          }
           const idx = laneOf(player.x);
           const chosen = g.options[idx];
           const correct = chosen.id === target.id;
@@ -1275,10 +1248,7 @@ const PartyGame = () => {
           g0.said = 1;
           g0.tries += 1;
           setPrompt(gt);
-          setOgretKapi(g0.ogretKapisi);
-          if (g0.ogretKapisi) {
-            // Ses kapıdan GEÇERKEN çalar — burada tetiklenmez.
-          } else if (g0.mode === "flash") {
+          if (g0.mode === "flash") {
             // ⚠️ YENİ MODLARDA SORU SESLİ SORULMAZ: sesi çalmak harfin ADINI
             // söylemek = cevabı vermek olurdu. Soru GÖRSELdir.
             setGlifFlash(gt);
@@ -1317,9 +1287,18 @@ const PartyGame = () => {
         marker.position.y = 3.35 + Math.abs(Math.sin(tNow * 4)) * 0.32;
         marker.rotation.y = tNow * 1.6;
       }
-      // Geride kalan yarışmacı kameranın önüne girip ekranı kapatıyordu:
-      // kameraya çok yakın olanı gizle (yarışta hâlâ koşmaya devam eder).
-      for (const r of racers) r.group.visible = wz(r.z) < camera.position.z - 5.5;
+      // ⚠️ GÖRÜNÜRLÜĞÜN TEK SAHİBİ BURASI. İki kural birleştirilir, yoksa
+      // sonra çalışan biri ötekini eziyor:
+      //  (1) Geride kalan yarışmacı kameranın önüne girip ekranı kapatıyordu
+      //      → kameraya çok yakın olanı gizle (yarışta koşmaya devam eder).
+      //  (2) Takla sonrası DOKUNULMAZLIK görünür olsun: karakter yanıp söner,
+      //      çocuk "şimdi çarpmıyorum, kaç" bilgisini alsın. Görünmez bir
+      //      kural çocuğa hiçbir şey anlatmaz.
+      for (const r of racers) {
+        const kameradaGorunur = wz(r.z) < camera.position.z - 5.5;
+        const sondu = r.hitT <= 0 && r.graceT > 0 && Math.floor(r.graceT * 12) % 2 === 0;
+        r.group.visible = kameradaGorunur && !sondu;
+      }
 
       // --- GÜÇ IŞIĞI: karakter parlar, aura açılır ---
       // Üç durum, üç renk: kalkan (camgöbeği), roket/hız (turuncu),
@@ -1460,18 +1439,13 @@ const PartyGame = () => {
 
           {/* ⚠️ Yeni modlarda "dinle" bandı YOK: sesi çalmak adı söylemek =
               cevabı vermek. Şimşekte yerine glifi tekrar gösteren düğme var. */}
-          {prompt && (askModeRef.current === "klasik" || askModeRef.current === "ogret") && (
+          {prompt && askModeRef.current === "klasik" && (
             <button
               onClick={() => playItem(prompt)}
-              className={cn(
-                "absolute inset-x-3 top-[74px] z-20 flex items-center justify-center gap-2 rounded-2xl border-2 px-3 py-2 font-extrabold shadow-card backdrop-blur active:scale-95",
-                ogretKapi
-                  ? "border-success/50 bg-success/90 text-success-foreground"
-                  : "border-primary/40 bg-white/90 text-primary",
-              )}
+              className="absolute inset-x-3 top-[74px] z-20 flex items-center justify-center gap-2 rounded-2xl border-2 border-primary/40 bg-white/90 px-3 py-2 font-extrabold text-primary shadow-card backdrop-blur active:scale-95"
             >
               <Volume2 className="h-5 w-5" />
-              {ogretKapi ? "Bu kapıdan geç — harfi söyleyeceğim" : "Hangi kapı? — dinle"}
+              Hangi kapı? — dinle
             </button>
           )}
           {prompt && askModeRef.current === "flash" && (
@@ -1493,10 +1467,15 @@ const PartyGame = () => {
               sembol dikkati tünelliyor, sürüş alanının üstü kapatılmıyor. */}
           {glifFlash && (
             <div className="pointer-events-none absolute inset-x-0 top-[18%] z-30 flex justify-center">
-              <div className="rounded-[2rem] bg-white/70 px-9 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.22)]">
+              {/* ⚠️ leading 1.35 gliflerin nokta/kesresini yuvarlağın dışına
+                  taşırıyordu; 1.7 şart. Boyut da ekrana göre sınırlı. */}
+              <div className="rounded-[2rem] border-2 border-foreground/75 bg-white/75 px-7 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.28)]">
                 <div
-                  className="font-arabic text-[8rem] leading-[1.35] text-emerald-950"
-                  style={{ textShadow: "0 0 10px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)" }}
+                  className="block font-arabic text-emerald-950"
+                  style={{
+                    fontSize: "min(6.5rem, 26vw)", lineHeight: 1.7,
+                    textShadow: "0 0 10px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)",
+                  }}
                   dir="rtl"
                 >
                   {glifFlash.emoji}

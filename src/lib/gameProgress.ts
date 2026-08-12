@@ -19,7 +19,6 @@ import { recordConfusionPick, recordDiscrimination, recordMiss } from "@/lib/con
 import { considerRemedy, queueRemedy } from "@/lib/remedial";
 import type { ContentItem } from "@/data/types";
 import { blameTarget, pickItemForSkill, skillOf } from "@/lib/skills";
-import { ogretildiMi } from "@/lib/askMode";
 
 const NS = "quiz" as const;
 
@@ -49,13 +48,7 @@ export function recordGameAnswer(
     const hedef = correct
       ? { topicId: t.topicId, skillId: skillOf(item) }
       : blameTarget(item, t.topicId);
-    // ⚠️ "Öğret" modunda soru sorulmadan hemen önce cevap çocuğa gösterildi.
-    // Bunu SRS'e bildirmezsek hızlı geçiş devreye girip harfi tek doğruda
-    // L3 yapıyor — oysa çocuk hatırlamadı, kopyaladı. Bayrak tek kullanımlık
-    // (bkz. askMode.ogretildiMi), oyunların hiçbir şey yapmasına gerek yok.
-    const ogretildi = ogretildiMi(item.id);
-    recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct,
-      ogretildi ? { ...meta, ogretildi: true } : meta);
+    recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct, meta);
   } catch { /* ignore */ }
 }
 

@@ -10,10 +10,12 @@ import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer,
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
-import { Volume2 } from "lucide-react";
+import { Volume2, Eye } from "lucide-react";
 
 const COLS = 14;
 const ROWS = 18;
+/** Yazılı modda bir kelime şeridinin kaç ızgara karesi kapladığı. */
+const AD_GENISLIK = 5;
 const TICK_MS = 260;
 const SWIPE_MIN = 24; // px — bu kadar kaydırınca yön değişir
 
@@ -45,10 +47,11 @@ function randCell(taken: Cell[], avoid: Cell[] = [], minDist = 0): Cell {
 }
 
 const SnakeGame = () => {
-  // ⚠️ YAZILI ŞIK YOK: harfler ızgara karesinin içinde (ekranın ~1/12'si);
-  // "Be (başta)" oraya sığmaz. Şimşek/Tabela burada klasiğe düşer, "Öğret"
-  // modu çalışır (o bir ekran katmanı, ızgaraya dokunmaz).
-  const ask = useAskLayer({ yaziliDestek: false });
+  // ⚠️ YAZILI MOD: kullanıcı şartı "yılan kelimeleri yesin". Bir harf adı
+  // tek ızgara karesine (ekranın ~1/14'ü) sığmadığı için yazılı şık, anchor
+  // karesinden başlayarak `AD_GENISLIK` kare boyunca uzanan bir ŞERİT olur;
+  // yılan şeridin HERHANGİ bir karesinden girerek yiyebilir (bkz. `vurdu`).
+  const ask = useAskLayer({ flashBoy: "min(4.2rem, 17vw)" });
   const [mode] = useGameMode();
   const isSuper = mode === "super";
 
@@ -102,8 +105,13 @@ const SnakeGame = () => {
       }
     }
     // Seçenekler kafadan en az 4 kare uzakta olsun ki tepki süresi yeterli olsun
-    const a = randCell(taken, avoid, 4); taken.push(a);
-    const b = randCell(taken, [...avoid, a], 4);
+    // Yazılı modda şerit sağa doğru uzuyor; anchor'u tahtanın sağ kenarına
+    // fazla yaklaştırma, yoksa kelime dışarı taşar.
+    const yazili = askRef.current.yazili;
+    const sigdir = (c: Cell): Cell =>
+      yazili ? { x: Math.min(c.x, COLS - AD_GENISLIK), y: c.y } : c;
+    const a = sigdir(randCell(taken, avoid, 4)); taken.push(a);
+    const b = sigdir(randCell(taken, [...avoid, a], 4));
     const items = shuffle([target, wrong]);
     setQuiz({
       target,
@@ -158,7 +166,11 @@ const SnakeGame = () => {
         let grew = false;
 
         if (quiz) {
-          const hitIdx = quiz.options.findIndex((o) => o.pos.x === next.x && o.pos.y === next.y);
+          // Yazılı modda kelime şeridi AD_GENISLIK kare uzunluğunda: yılan
+          // şeridin herhangi bir karesinden girerse o şıkkı yemiş sayılır.
+          const genislik = askRef.current.yazili ? AD_GENISLIK : 1;
+          const hitIdx = quiz.options.findIndex((o) =>
+            o.pos.y === next.y && next.x >= o.pos.x && next.x < o.pos.x + genislik);
           if (hitIdx >= 0) {
             const opt = quiz.options[hitIdx];
             const correct = opt.item.id === quiz.target.id;
@@ -170,6 +182,7 @@ const SnakeGame = () => {
               grew = true;
               setScore((s) => s + 5);
               playFeedback(true);
+              askRef.current.cevapSesi(quiz.target, true);
               setQuiz(null);
               setEaten(0);
               // Süper modda her zaman quiz; normalde yiyeceğe dön
@@ -277,10 +290,10 @@ const SnakeGame = () => {
           </div>
           <button
             onClick={() => ask.tekrar(quiz?.target)}
-            disabled={!quiz}
+            disabled={!quiz || ask.mode === "ustte"}
             className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-2 shadow-card border-2 border-primary-foreground/40 font-extrabold flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-95 transition-bouncy"
           >
-            <Volume2 className="h-5 w-5" /> Dinle
+            {ask.mode === "flash" ? <><Eye className="h-5 w-5" /> Göster</> : <><Volume2 className="h-5 w-5" /> Dinle</>}
           </button>
         </div>
 
@@ -291,7 +304,13 @@ const SnakeGame = () => {
             : "bg-white/80 backdrop-blur border-success/40",
         )}>
           {quiz ? (
-            <p className="text-xs font-extrabold text-foreground">🎯 Sesi dinle, doğru harfi ye!</p>
+            <>
+              <p className="text-xs font-extrabold text-foreground">
+                {ask.yazili ? "🎯 Gördüğün harfin ADINI ye!" : "🎯 Sesi dinle, doğru harfi ye!"}
+              </p>
+              {/* Tabela modunda glif burada ASILI durur; şeritlerde adı yazar. */}
+              {ask.tabela(quiz.target, { className: "mb-0 mt-1", boy: "text-4xl" })}
+            </>
           ) : (
             <p className="text-xs font-extrabold text-foreground">🐍 Harfleri ye — 4 harfte bir sınav</p>
           )}
@@ -367,22 +386,30 @@ const SnakeGame = () => {
           )}
           {quiz && quiz.options.map((opt, i) => {
             const isCorrect = opt.item.id === quiz.target.id;
+            const kare = ask.yazili ? AD_GENISLIK : 1;
             return (
               <div
                 key={i}
                 className="absolute flex items-center justify-center animate-bounce-in"
                 style={{
                   left: `${(opt.pos.x / COLS) * 100}%`, top: `${(opt.pos.y / ROWS) * 100}%`,
-                  width: cellSize("w"), height: cellSize("h"),
+                  width: `${(kare / COLS) * 100}%`, height: cellSize("h"),
                 }}
               >
                 <div className={cn(
-                  "h-[92%] w-[92%] rounded-full flex items-center justify-center shadow-lg ring-2",
+                  "flex h-[92%] items-center justify-center shadow-lg ring-2",
+                  // Yazılı modda daire değil ŞERİT: kelime içine sığsın.
+                  ask.yazili ? "w-[96%] rounded-xl px-1" : "w-[92%] rounded-full",
                   isCorrect && showHint
                     ? "bg-gradient-to-br from-yellow-300 to-warning ring-yellow-200 animate-pulse"
                     : "bg-gradient-to-br from-sky-300 to-info ring-white/60"
                 )}>
-                  <span className="text-base font-black text-white drop-shadow"><EmojiView value={opt.item.emoji} /></span>
+                  <span className={cn(
+                    "font-black text-white drop-shadow",
+                    ask.yazili ? "truncate text-[11px] leading-none" : "text-base",
+                  )}>
+                    {ask.sik(opt.item)}
+                  </span>
                 </div>
               </div>
             );
