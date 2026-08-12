@@ -50,8 +50,6 @@ interface AskLayer {
   yazili: boolean;
   /** Bir şıkkın içeriği: yazılı modda ad, klasikte glif. */
   sik: (item: ContentItem, className?: string) => ReactNode;
-  /** Bu modda kaç şık olmalı? */
-  sikAdedi: (klasikVarsayilan: number) => number;
   /** Hedef + çeldiriciler, karıştırılmış. Mod ve seviyeye göre seçilir. */
   secenekler: (pool: ContentItem[], target: ContentItem, klasikVarsayilan: number) => ContentItem[];
   /** Yalnız çeldiriciler (hedefi kendi ekleyen oyunlar için). */
@@ -92,8 +90,7 @@ export function useAskLayer(opts?: {
    * ⚠️ Bazı oyunlarda şıklar geometriye gömülü: Yılan'da harf bir ızgara
    * karesinin içinde, Kuş'ta harfin kendisi ÇARPIŞMA ALANI. Oraya "Be
    * (başta)" yazmak ya taşar ya oyunun zorluğunu değiştirir. Bu oyunlarda
-   * şimşek/tabela modu KLASİĞE düşer — ama "Öğret" modu çalışmaya devam
-   * eder, çünkü o bir ekran katmanıdır, şıkların biçimine dokunmaz.
+   * şimşek/tabela modu KLASİĞE düşer.
    */
   yaziliDestek?: boolean;
   /**
@@ -105,15 +102,6 @@ export function useAskLayer(opts?: {
    * kullanır.
    */
   flashBoy?: string;
-  /**
-   * Şimşek plakasının dikey konumu (Tailwind `top-` sınıfı).
-   *
-   * ⚠️ Varsayılan `top-[20%]` bazı oyunlarda OYUN ALANININ TAM ORTASINA
-   * denk geliyor: Yılan'da harf doğrudan yılanın üstünde beliriyordu
-   * (kullanıcı: "oyun için iyi değil"). Oyun alanı ekranın üst yarısındaysa
-   * plakayı başlığın hizasına çek.
-   */
-  flashYer?: string;
 }): AskLayer {
   // Mount anında dondur (yukarıdaki not).
   const [mode] = useState<AskMode>(() => {
@@ -125,8 +113,13 @@ export function useAskLayer(opts?: {
   const [flashCue, setFlashCue] = useState(false);
   // Süre oyuna girerken dondurulur (mod gibi).
   const [flashMs] = useState(() => getFlashMs());
+  // Şimşek zamanlayıcıları AYRI tutulur: yeni şimşek eskisini iptal eder.
+  const flashTimers = useRef<number[]>([]);
   const timers = useRef<number[]>([]);
-  useEffect(() => () => { timers.current.forEach((t) => window.clearTimeout(t)); }, []);
+  useEffect(() => () => {
+    flashTimers.current.forEach((t) => window.clearTimeout(t));
+    timers.current.forEach((t) => window.clearTimeout(t));
+  }, []);
 
   /**
    * ŞİMŞEK: önce BAKIŞ İŞARETİ, sonra glif.
@@ -138,14 +131,19 @@ export function useAskLayer(opts?: {
    * bakışı ÖNCEDEN yerine çeker; glif geldiğinde göz zaten oradadır.
    */
   const parlat = useCallback((item: ContentItem) => {
+    // ⚠️ BEKLEYEN ŞİMŞEĞİ İPTAL ET. İki soru arka arkaya gelirse (hızlı
+    // cevap, "tekrar göster"e üst üste basma) eski zamanlayıcı yenisinin
+    // halkasını erken söndürüyor ya da glifini siliyordu.
+    flashTimers.current.forEach((t) => window.clearTimeout(t));
+    flashTimers.current = [];
     setFlashCue(true);
-    timers.current.push(window.setTimeout(() => {
+    const t1 = window.setTimeout(() => {
       setFlashCue(false);
       setFlashGlif(item);
-      timers.current.push(window.setTimeout(
-        () => setFlashGlif((x) => (x?.id === item.id ? null : x)), flashMs,
-      ));
-    }, FLASH_CUE_MS));
+      const t2 = window.setTimeout(() => setFlashGlif(null), flashMs);
+      flashTimers.current = [t2];
+    }, FLASH_CUE_MS);
+    flashTimers.current = [t1];
   }, [flashMs]);
 
   const sor = useCallback(async (item: ContentItem | null | undefined) => {
@@ -173,9 +171,19 @@ export function useAskLayer(opts?: {
     if (!yaziliSik(mode)) return pickWrongs(pool, target, n);
     const z = adZorlugu(getGameItemLevel(target));
     const adlar = pickNameWrongs(pool, target, n, { zorluk: z });
-    // Ad bulunamazsa (translit'i olmayan öğe) klasik çeldiriciye düş —
-    // soru şıksız kalmasın.
-    return adlar.length >= n ? adlar : pickWrongs(pool, target, n);
+    if (adlar.length >= n) return adlar;
+    // ⚠️ YEDEK DE AD-TEKİL OLMALI. Eskiden doğrudan `pickWrongs`e düşüyordu;
+    // o ada bakmadığı için sorunun İKİ doğru cevabı olabiliyordu (ثَ ile سَ
+    // ikisi de "se"). Havuz yetmiyorsa ŞIK AZ OLSUN — bozuk soru sorma.
+    // (Aynı ilke `distractorKey` için de geçerli, bkz. CLAUDE.md.)
+    const out = [...adlar];
+    for (const c of pickWrongs(pool, target, n * 3)) {
+      if (out.length >= n) break;
+      if (c.id === target.id || sameName(c, target)) continue;
+      if (out.some((o) => o.id === c.id || sameName(o, c))) continue;
+      out.push(c);
+    }
+    return out;
   }, [mode]);
 
   const ayriAdlar = useCallback((adaylar: ContentItem[], n: number) => {
@@ -188,10 +196,6 @@ export function useAskLayer(opts?: {
     }
     return out;
   }, [mode]);
-
-  const sikAdedi = useCallback(
-    (klasikVarsayilan: number) => sikSayisi(mode, klasikVarsayilan), [mode],
-  );
 
   const secenekler = useCallback((pool: ContentItem[], target: ContentItem, k: number) => {
     const n = sikSayisi(mode, k);
@@ -206,12 +210,12 @@ export function useAskLayer(opts?: {
           çevresinde görünmeye devam eder. */}
       {/* BAKIŞ İŞARETİ — glif gelmeden önce yanar, gözü yerine çeker. */}
       {flashCue && (
-        <div className={cn("pointer-events-none fixed inset-x-0 z-50 flex justify-center", opts?.flashYer ?? "top-1/2 -translate-y-1/2")}>
+        <div className={cn("pointer-events-none fixed inset-x-0 z-50 flex justify-center", "top-1/2 -translate-y-1/2")}>
           <div className="h-10 w-10 animate-ping rounded-full border-4 border-primary/80" />
         </div>
       )}
       {flashGlif && (
-        <div className={cn("pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4", opts?.flashYer ?? "top-1/2 -translate-y-1/2")}>
+        <div className={cn("pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4", "top-1/2 -translate-y-1/2")}>
           {/* ⚠️ GLİF KIRPILMAMALI: `leading-[1.35]` ile ج ح خ tabanın altına,
               kesreli harfler yuvarlağın dışına taşıyordu (kullanıcı gördü).
               Arapça glif taban çizgisinin altına ve üstüne taşar → 1.7.
@@ -291,7 +295,13 @@ export function useAskLayer(opts?: {
     // zamanlayıcısıyla sıradaki soruya geçtiği için kayıt devam ederken yeni
     // soru ekrana geliyordu (kullanıcı: "ses devam ederken yeni soru
     // gözüküyor"). Çağıran oyun bunu `await` ederek geçişi geciktirir.
-    await new Promise<void>((r) => { timers.current.push(window.setTimeout(r, 220)); });
+    await new Promise<void>((r) => {
+      const t = window.setTimeout(() => {
+        timers.current = timers.current.filter((x) => x !== t);
+        r();
+      }, 220);
+      timers.current.push(t);
+    });
     await playItem(item);
   }, [mode]);
 
@@ -299,7 +309,6 @@ export function useAskLayer(opts?: {
     mode,
     yazili: yaziliSik(mode),
     sik: (item: ContentItem, className?: string) => sikIcerik(item, mode, className),
-    sikAdedi,
     secenekler,
     celdiriciler,
     ayriAdlar,

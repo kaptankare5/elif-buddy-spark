@@ -348,6 +348,12 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   ⚠️ **Koşusu'nda tabela YOLUN ÜSTÜNDE, oyun alanının DIŞINDA** (kullanıcı
   şartı "yolu kapatmasın, görsün"); kapı panolarında yazılı ad, `boardTexture`
   yazılı/glif için AYRI önbelleklenir (aynı metin iki farklı fontla çizilir).
+  ⚠️ **AYNI YAZILI AD İKİ ŞIKTA OLAMAZ — tahtayı KENDİ kuran her oyunda.**
+  `pickNameWrongs` bunu içeride eliyor ama `pickWrongs`/`pickCluster`
+  kullanan oyunlar `ask.ayriAdlar` ile ayrıca elemeli: Uçan Kuş, Kutu
+  Boşalt, Koşusu, **Yılan** (yazılı moda sonradan açıldığında atlanmıştı).
+  `celdiriciler`in YEDEK yolu da ad-tekil olmalı — aday yetmiyorsa
+  ŞIK AZ OLSUN, bozuk soru sorma.
   ⚠️ **Yılan'da ad tek ızgara karesine sığmaz**: yazılı şık, anchor
   karesinden başlayan `AD_GENISLIK` (5) karelik bir ŞERİTtir; yılan şeridin
   herhangi bir karesinden yiyebilir ve anchor sağ kenara sıkışmaz.
