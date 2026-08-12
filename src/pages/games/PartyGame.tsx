@@ -44,7 +44,7 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { letterTexture, nameTexture, wordTexture } from "./_letterTexture";
 import {
-  getAskMode, okunurAd, pickNameWrongs, adZorlugu, yaziliSik, FLASH_MS, type AskMode,
+  getAskMode, okunurAd, pickNameWrongs, adZorlugu, yaziliSik, markOgretildi, FLASH_MS, type AskMode,
 } from "@/lib/askMode";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import type { ContentItem } from "@/data/types";
@@ -1214,6 +1214,9 @@ const PartyGame = () => {
             // ÖĞRETME KAPISI — yanlış yok, puan yok, ceza yok. Kapıdan
             // geçerken harfin ADI söylenir. Cevap SRS'e YAZILMAZ: burada
             // ölçüm değil ÖĞRETME var; ölçüm sıradaki sınama kapısında.
+            // Sıradaki kapı bu harfi sınayacak; cevabı "kopya" say
+            // (hızlı geçiş devreye girmesin — bkz. askMode.markOgretildi).
+            markOgretildi(target.id);
             showFlash(`👀 ${okunurAd(target) ?? target.label}`, true);
             window.setTimeout(() => playItem(target), 140);
             continue;

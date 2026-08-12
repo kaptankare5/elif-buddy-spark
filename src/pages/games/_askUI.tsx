@@ -13,10 +13,13 @@ import { EmojiView } from "@/components/EmojiView";
 import { playItem } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import {
-  getAskMode, okunurAd, pickNameWrongs, adZorlugu, sikSayisi, yaziliSik,
-  FLASH_MS, OGRET_MS, type AskMode,
+  getAskMode, okunurAd, pickNameWrongs, adZorlugu, sikSayisi, yaziliSik, sameName,
+  markOgretildi, FLASH_MS, OGRET_MS, type AskMode,
 } from "@/lib/askMode";
 import { getGameItemLevel } from "@/lib/gameProgress";
+
+/** Bu seviyeden İTİBAREN harf "biliniyor" sayılır; tanıtım yapılmaz. */
+const OGRET_ESIGI = 3;
 import { pickWrongs, shuffle } from "./_shared";
 import type { ContentItem } from "@/data/types";
 
@@ -55,6 +58,11 @@ interface AskLayer {
   secenekler: (pool: ContentItem[], target: ContentItem, klasikVarsayilan: number) => ContentItem[];
   /** Yalnız çeldiriciler (hedefi kendi ekleyen oyunlar için). */
   celdiriciler: (pool: ContentItem[], target: ContentItem, n: number) => ContentItem[];
+  /**
+   * Tahtayı kendi kuran oyunlar için: aday listesinden, yazılı modda AYNI
+   * ADI taşıyanları eleyerek en fazla n öğe seçer (bkz. `sameName`).
+   */
+  ayriAdlar: (adaylar: ContentItem[], n: number) => ContentItem[];
   /** Soruyu modun yöntemiyle sorar. Öğret modunda önce tanıtır. */
   sor: (item: ContentItem | null | undefined) => Promise<void>;
   /** "Tekrar" düğmesi: klasikte sesi çalar, şimşekte glifi tekrar gösterir. */
@@ -118,7 +126,13 @@ export function useAskLayer(opts?: {
         // Glif zaten tabelada asılı duruyor. SES ÇALINMAZ — sesi çalmak
         // harfin adını söylemek, yani cevabı vermek olurdu.
         return;
-      case "ogret":
+      case "ogret": {
+        // ⚠️ BİLİNEN HARF TANITILMAZ. Tanıtım cevabı SORUDAN HEMEN ÖNCE
+        // ekrana yazar; L4/L5'teki bir harfte bu, geri getirmeyi tamamen
+        // ortadan kaldırır — çocuk hatırlamadan, sadece kopyalayarak doğru
+        // yapar ve SRS bunu gerçek bir doğru sanıp seviyeyi yükseltir
+        // (sahte ustalık). Kapılı oyunlarda aynı eşik zaten var.
+        if (getGameItemLevel(item) >= OGRET_ESIGI) { await playItem(item); return; }
         // ÖĞRET: önce tanıt (büyük harf + yazılı ad + ses), sonra sor.
         //
         // ⚠️ SES BEKLENMEZ. Önce `await playItem(...)` yazılmıştı; kaydı
@@ -127,12 +141,14 @@ export function useAskLayer(opts?: {
         // ekranda sonsuza kadar kalıp oyunu kilitliyordu (headless testte
         // yakalandı — kart 4 sn sonra hâlâ oradaydı). Kartın süresi artık
         // sesten BAĞIMSIZ; ses ona yetişir, yetişemezse kart yine de kapanır.
+        markOgretildi(item.id);   // sıradaki cevap "kopya" sayılsın
         setOgretGlif(item);
         void playItem(item);
         await bekle(OGRET_MS);
         setOgretGlif(null);
         void playItem(item);   // aynı harf şimdi SORU olarak tekrar çalar
         return;
+      }
       default:
         await playItem(item);
     }
@@ -151,6 +167,17 @@ export function useAskLayer(opts?: {
     // Ad bulunamazsa (translit'i olmayan öğe) klasik çeldiriciye düş —
     // soru şıksız kalmasın.
     return adlar.length >= n ? adlar : pickWrongs(pool, target, n);
+  }, [mode]);
+
+  const ayriAdlar = useCallback((adaylar: ContentItem[], n: number) => {
+    if (!yaziliSik(mode)) return adaylar.slice(0, n);
+    const out: ContentItem[] = [];
+    for (const c of adaylar) {
+      if (out.length >= n) break;
+      if (out.some((o) => o.id === c.id || sameName(o, c))) continue;
+      out.push(c);
+    }
+    return out;
   }, [mode]);
 
   const sikAdedi = useCallback(
@@ -189,12 +216,24 @@ export function useAskLayer(opts?: {
           da zemini de göremiyor. Şimşekle aynı üst bölgeye alındı: dikkat
           çekiyor ama oyun alanını kapatmıyor. */}
       {ogretGlif && (
-        <div className="pointer-events-none fixed inset-x-0 top-[16%] z-50 flex justify-center px-4">
-          <div className="animate-bounce-in rounded-[2rem] border-4 border-primary/40 bg-card px-8 py-2 text-center shadow-[0_12px_40px_rgba(0,0,0,0.3)]">
-            <div className="font-arabic text-[5.5rem] text-primary" style={{ lineHeight: 1.7 }} dir="rtl">
+        <div className="pointer-events-none fixed inset-x-0 top-[13%] z-50 flex justify-center px-4">
+          {/* ⚠️ ALTLIK SAYDAM, GLİF OPAK — şimşekteki kuralın aynısı. Kart
+              koşu/platform oyunlarında oyun alanının üst şeridine biniyor;
+              opak zeminle çocuk 2 saniye boyunca orayı hiç göremiyordu.
+              Harf tanıma parlaklık karşıtlığına bağlı olduğu için harfin
+              KENDİSİ saydam yapılmaz, yalnız arkasındaki plaka. */}
+          <div className="animate-bounce-in rounded-[2rem] border-4 border-primary/40 bg-card/80 px-7 py-1.5 text-center shadow-[0_12px_40px_rgba(0,0,0,0.3)]">
+            <div
+              className="font-arabic text-[4.5rem] text-primary"
+              style={{ lineHeight: 1.7, textShadow: "0 0 10px rgba(255,255,255,0.9)" }}
+              dir="rtl"
+            >
               {ogretGlif.emoji}
             </div>
-            <div className="-mt-1 pb-1 text-2xl font-extrabold text-foreground">
+            <div
+              className="-mt-1 pb-0.5 text-xl font-extrabold text-foreground"
+              style={{ textShadow: "0 0 8px rgba(255,255,255,0.9)" }}
+            >
               {okunurAd(ogretGlif) ?? ogretGlif.label}
             </div>
           </div>
@@ -253,6 +292,7 @@ export function useAskLayer(opts?: {
     sikAdedi,
     secenekler,
     celdiriciler,
+    ayriAdlar,
     sor,
     tekrar,
     tekrarEtiketi: mode === "flash" ? "Harfi tekrar göster" : "Tekrar dinle",

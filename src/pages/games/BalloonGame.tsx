@@ -98,7 +98,9 @@ const BalloonGame = () => {
       setFlash(true); setTimeout(() => setFlash(false), 450); // ışık parlaması
       await playFeedback(true);
       ask.cevapSesi(target, true);   // yazılı modda harfin gerçek okunuşu
-      setTimeout(newRound, 900);
+      // Yazılı modda tur, harfin kaydı bitene kadar beklemeli; klasikte
+      // beklemek gereksiz yavaşlık (soru zaten sesle sorulmuştu).
+      setTimeout(newRound, ask.yazili ? 1100 : 350);
     } else {
       setMisses((m) => m + 1);
       await playFeedback(false);

@@ -40,7 +40,7 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture, blockedTexture } from "./_letterTexture";
-import { getAskMode, okunurAd, pickNameWrongs, FLASH_SIK, USTTE_SIK, FLASH_MS, type AskMode } from "@/lib/askMode";
+import { getAskMode, okunurAd, pickNameWrongs, markOgretildi, FLASH_SIK, USTTE_SIK, FLASH_MS, type AskMode } from "@/lib/askMode";
 import type { ContentItem } from "@/data/types";
 
 // ---- yarış sabitleri ----
@@ -1441,6 +1441,9 @@ const KartGame = () => {
             // "büyük bir resim çıkar, oradan geçerken ses ile ne olduğunu
             // söyler"). Cevap SRS'e YAZILMAZ: burada bir şey ölçülmüyor,
             // öğretiliyor. Ölçüm hemen sonraki sınama kapısında.
+            // Sıradaki kapı bu harfi sınayacak; cevabı "kopya" say
+            // (hızlı geçiş devreye girmesin — bkz. askMode.markOgretildi).
+            markOgretildi(target.id);
             showFlash(`👀 ${okunurAd(target) ?? target.label}`, true);
             window.setTimeout(() => playItem(target), 140);
             continue;

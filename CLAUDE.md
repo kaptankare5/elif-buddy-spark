@@ -285,8 +285,17 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   sonra klasik soru. 3B oyunlarda (Yarışı/Partisi/Koşusu) bu bir ÖĞRETME
   KAPISI: üç şeritte de aynı harf, yanlış yok, ceza yok, SRS'e YAZILMAZ —
   içinden geçerken adı söylenir; sıradaki kapı aynı harfi sınar.
-  ⚠️ Tanıtım YALNIZ L3 ALTI harfe yapılır: kapılar kıt (Bahçe Turu'nda 2),
-  her kapıyı tanıtıma vermek yarış başına 1 soru bırakıyordu.
+  ⚠️ Tanıtım YALNIZ L3 ALTI harfe yapılır — hem kapılarda hem DOM oyunlarında.
+  Kapılarda sebep kıtlık (Bahçe Turu'nda 2 kapı; hepsini tanıtıma vermek
+  yarış başına 1 soru bırakıyordu). DOM'da sebep DAHA CİDDİ: bilinen harfte
+  tanıtım cevabı sorudan hemen önce ekrana yazar, geri getirme tamamen
+  ortadan kalkar ve SRS bunu gerçek doğru sanar (sahte ustalık).
+  ⚠️ **ÖĞRETİLEN HARFTE HIZLI GEÇİŞ KAPANIR** (`markOgretildi`/`ogretildiMi`
+  → `AnswerMeta.ogretildi`). srs.ts'te ilk karşılaşmadaki doğru doğrudan L3
+  yapar ("zaten biliyormuş"); tanıtımdan sonra bu YANLIŞTIR — çocuk
+  hatırlamadı, KOPYALADI. Bayrak tek kullanımlık, `recordGameAnswer` içinde
+  otomatik okunur (oyunlar bir şey yapmaz); 3B öğretme kapıları da işaretler.
+  Aynı gerekçeyle ilk karşılaşmada ipucu halkası da yanmıyor.
   ⚠️ Tanıtım kartında SES BEKLENMEZ (`void playItem`): kaydı yüklenemeyen
   öğede `await` çözülmeyip kart ekranda kalıyor, oyun kilitleniyordu.
 - **Yazılı şık çeldiricisi** `pickNameWrongs`: ad hedefe EN BENZEYENDEN
@@ -316,7 +325,14 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   "hedef + şık" yapısı yok).
 - ⚠️ **ÖĞRET KARTI TAM EKRAN DEĞİL.** İlk sürüm ekranı karartıyordu; koşu/
   platform oyunlarında çocuk 2 sn boyunca canavarı da zemini de göremiyordu.
-  Şimşekle aynı üst bölgede.
+  Şimşekle aynı üst bölgede, altlığı SAYDAM/glifi opak (ölçüm: Macera'da
+  oyun alanını kapatma oranı %45 → %0).
+- ⚠️ **AYNI YAZILI AD İKİ ŞIKTA OLAMAZ** (`sameName`, `sameSound`un yazılı
+  karşılığı): havuzdaki 443 addan 113'ü çakışıyor — ثَ ile سَ ikisi de "se",
+  ذِ ile زِ ikisi de "zi". İkisi birden ekrana gelirse sorunun İKİ doğru
+  cevabı olur ve doğru okuyan çocuk yanlış sayılır. `pickNameWrongs` bunu
+  zaten eliyor; tahtayı KENDİ kuran oyunlar (Uçan Kuş, Kutu Boşalt)
+  `ask.ayriAdlar` ile ayrıca elemek zorunda.
 - ⚠️ `LaneRunnerGame.tsx` HİÇBİR ROTAYA BAĞLI DEĞİL (öksüz dosya).
 
 ### Oyunlar

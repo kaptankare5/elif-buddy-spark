@@ -147,10 +147,17 @@ const FlappyGame = () => {
           }
           if (chosenSlots.length === 0) return prev;
           const pool = gamePool();
-          const wrongs = pickWrongs(pool, targetRef.current, chosenSlots.length - 1);
+          const a = askRef.current;
+          // ⚠️ Yazılı modda çeldirici ADA göre seçilir (yoksa çocuk kelimeyi
+          // okumadan seçer) VE aynı adı taşıyan öğe ELENİR: ثَ ile سَ ikisi de
+          // "se" okunur; ikisi birden uçarsa sorunun iki doğru cevabı olur.
+          const wrongs = a.ayriAdlar(
+            a.celdiriciler(pool, targetRef.current, chosenSlots.length - 1),
+            chosenSlots.length - 1,
+          );
           const items = shuffle([targetRef.current!, ...wrongs]).slice(0, chosenSlots.length);
           if (chosenSlots.length === 1 && Math.random() < 0.5 && wrongs.length === 0) {
-            const w = pickWrongs(pool, targetRef.current, 1);
+            const w = a.ayriAdlar(a.celdiriciler(pool, targetRef.current, 1), 1);
             if (w.length) items[0] = w[0];
           }
           return [

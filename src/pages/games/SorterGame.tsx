@@ -20,10 +20,18 @@ interface Cell { uid: string; item: ContentItem; cleared: boolean; wrong: boolea
 const PER_TYPE = 3;
 const TYPE_COUNT = 4; // 4 farklı harf × 3 = 12 hücre
 
-function buildBox(): { cells: Cell[]; types: ContentItem[] } {
+function buildBox(
+  ayriAdlar: (adaylar: ContentItem[], n: number) => ContentItem[],
+): { cells: Cell[]; types: ContentItem[] } {
   const lang = getGameLang();
   const pool = gamePool(lang);
-  const types = pickCluster(pool, Math.min(TYPE_COUNT, pool.length));
+  // ⚠️ Yazılı modda tahtadaki tipler AYNI ADI taşıyamaz: ثَ ile سَ ikisi de
+  // "se" okunur, ikisi de kutuda olursa çocuk doğru okuyup yanlış hücreye
+  // dokunur ve yanlış sayılır. Klasik modda bu süzgeç boş geçer.
+  const types = ayriAdlar(
+    pickCluster(pool, Math.min(TYPE_COUNT * 2, pool.length)),
+    Math.min(TYPE_COUNT, pool.length),
+  );
   const all: ContentItem[] = [];
   types.forEach((t) => { for (let i = 0; i < PER_TYPE; i++) all.push(t); });
   const shuffled = shuffle(all);
@@ -36,11 +44,12 @@ function buildBox(): { cells: Cell[]; types: ContentItem[] } {
 const SorterGame = () => {
   const [mode] = useGameMode();
   const isSuper = mode === "super";
-  const [board, setBoard] = useState(() => buildBox());
   // ⚠️ Kullanıcı şartı: bu oyunda yön TERS kurulur — üstte GLİF asılı durur,
   // KUTULARDAKİ hücreler yazılı ad olur. (Klasikte tam tersi: üstte
   // "'Be' harfini bul" yazısı, kutularda glif.)
+  // Tahta `ask`e bağlı kurulur (aynı adlı tip eleme), o yüzden hook ÖNCE.
   const ask = useAskLayer();
+  const [board, setBoard] = useState(() => buildBox(ask.ayriAdlar));
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [progress, setProgress] = useState(0);
   const [score, setScore] = useState(0);
@@ -81,21 +90,21 @@ const SorterGame = () => {
     if (!won) return;
     playFeedback(true);
     const t = setTimeout(() => {
-      setBoard(buildBox());
+      setBoard(buildBox(ask.ayriAdlar));
       setTarget(null);
       setProgress(0);
       setLevel((l) => l + 1);
     }, 2200);
     return () => clearTimeout(t);
-  }, [won]);
+  }, [won, ask.ayriAdlar]);
 
   useEffect(() => {
-    const h = () => { setBoard(buildBox()); setScore(0); setTarget(null); setProgress(0); setLevel(1); };
+    const h = () => { setBoard(buildBox(ask.ayriAdlar)); setScore(0); setTarget(null); setProgress(0); setLevel(1); };
     window.addEventListener("games-lang-change", h);
     return () => window.removeEventListener("games-lang-change", h);
-  }, []);
+  }, [ask.ayriAdlar]);
 
-  const reset = () => { setBoard(buildBox()); setScore(0); setBusy(false); setTarget(null); setProgress(0); setLevel(1); };
+  const reset = () => { setBoard(buildBox(ask.ayriAdlar)); setScore(0); setBusy(false); setTarget(null); setProgress(0); setLevel(1); };
 
   const tap = async (c: Cell) => {
     if (busy || c.cleared || !target) return;
