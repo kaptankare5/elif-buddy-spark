@@ -241,11 +241,13 @@ const Settings = () => {
               sorudan önce harf büyük gösterilip <b>adı söylenir</b>, sonra sorulur.
             </p>
             <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
-              <b>Yılan</b> ve <b>Uçan Kuş</b>'ta yazılı şık gösterilemiyor (harf ya
-              ızgara karesine sığmıyor ya da çarpışma alanının kendisi) — orada
-              Şimşek/Tabela klasik gibi davranır, <b>Öğret</b> çalışır.
-              Eşleştirme/Hafıza/Yapboz'da soru zaten görsel olduğu için bu
-              yöntemler geçerli değil.
+              Şimşek/Tabela şu oyunlarda çalışır: <b>Yarışı, Partisi, Hızlı Quiz,
+              Balon, Uzay Savaşı, Uçan Kuş, Kutu Boşalt, Elifbâ Macerası</b>.
+              Tabelada doğru bilince harfin <b>gerçek okunuşu</b> da çalar —
+              yazı Latin harfle olduğu için sesi duymadan yarım kalıyordu.
+              <b> Yılan</b>'da yazılı şık gösterilemiyor (harf ızgara karesine
+              sığmıyor); orada yalnız <b>Öğret</b> çalışır. Hafıza/Eşleştirme/
+              Üçlü/Yapboz'da soru zaten görsel olduğu için geçerli değil.
             </p>
             <div className="grid grid-cols-2 gap-2">
               {ASK_MODES.map((m) => (

@@ -1229,6 +1229,9 @@ const PartyGame = () => {
             const m = p.material as THREE.MeshBasicMaterial;
             m.color.set(g.options[i].id === target.id ? 0x86efac : 0xfca5a5);
           });
+          // YENİ MODLARDA doğru cevabın SESİ kapıdan geçerken çalar: soru
+          // görseldi, geri bildirim işitsel — çocuk adı hem okur hem duyar.
+          if (g.mode !== "klasik") window.setTimeout(() => playItem(target), 260);
           if (correct) {
             statsRef.current.correct += 1;
             player.boostT = BOOST_TIME;

@@ -64,7 +64,9 @@ interface AskLayer {
   /** Ekran üstü katmanlar (şimşek parlaması + öğretme kartı). Oyun render eder. */
   katman: ReactNode;
   /** "Tabela" modunda sahnenin üstüne asılan glif. Diğer modlarda null. */
-  tabela: (item: ContentItem | null | undefined) => ReactNode;
+  tabela: (item: ContentItem | null | undefined, opts?: { className?: string; boy?: string }) => ReactNode;
+  /** Yazılı modlarda DOĞRU cevaptan sonra harfin gerçek kaydını çalar. */
+  cevapSesi: (item: ContentItem | null | undefined, dogru: boolean) => void;
 }
 
 /**
@@ -181,14 +183,18 @@ export function useAskLayer(opts?: {
       )}
       {/* ÖĞRET — tanıtım kartı. Burada amaç şimşeğin TERSİ: kaybolmadan önce
           çocuk harfi adıyla birlikte kodlasın. O yüzden zemin opak, ad
-          YAZILI ve ses eşlik ediyor. */}
+          YAZILI ve ses eşlik ediyor.
+          ⚠️ TAM EKRAN DEĞİL. İlk sürümde ekranı karartan bir katmandı; koşu/
+          platform oyunlarında bu ölümcül — çocuk 2 saniye boyunca canavarı
+          da zemini de göremiyor. Şimşekle aynı üst bölgeye alındı: dikkat
+          çekiyor ama oyun alanını kapatmıyor. */}
       {ogretGlif && (
-        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 px-6">
-          <div className="animate-bounce-in rounded-[2rem] border-4 border-primary/40 bg-card px-10 py-6 text-center shadow-[0_12px_40px_rgba(0,0,0,0.3)]">
-            <div className="font-arabic text-[7rem] leading-[1.35] text-primary" dir="rtl">
+        <div className="pointer-events-none fixed inset-x-0 top-[16%] z-50 flex justify-center px-4">
+          <div className="animate-bounce-in rounded-[2rem] border-4 border-primary/40 bg-card px-8 py-2 text-center shadow-[0_12px_40px_rgba(0,0,0,0.3)]">
+            <div className="font-arabic text-[5.5rem] text-primary" style={{ lineHeight: 1.7 }} dir="rtl">
               {ogretGlif.emoji}
             </div>
-            <div className="mt-1 text-3xl font-extrabold text-foreground">
+            <div className="-mt-1 pb-1 text-2xl font-extrabold text-foreground">
               {okunurAd(ogretGlif) ?? ogretGlif.label}
             </div>
           </div>
@@ -197,17 +203,47 @@ export function useAskLayer(opts?: {
     </>
   );
 
-  const tabela = useCallback((item: ContentItem | null | undefined) => {
+  /**
+   * "Tabela" modunda ekranda ASILI duran glif.
+   *
+   * ⚠️ GLİF KIRPILMAMALI. İlk sürümde `leading-[1.35]` + dar `py` vardı ve
+   * Be'nin ALTTAKİ NOKTASI kutunun dışında kalıyordu (kullanıcı yakaladı).
+   * Arapça glifler taban çizgisinin altına ve üstüne taşar: hareke yukarı,
+   * nokta aşağı. `leading` 1.35'te satır kutusu glif kutusundan küçük
+   * kalıyor. Bu yüzden `leading-[1.7]` + dikey pay + `overflow-visible`.
+   */
+  const tabela = useCallback((
+    item: ContentItem | null | undefined,
+    opts?: { className?: string; boy?: string },
+  ) => {
     if (mode !== "ustte" || !item) return null;
     return (
-      <div className="mb-3 flex justify-center">
-        <div className="rounded-3xl border-4 border-primary/30 bg-card px-8 py-1 shadow-card">
-          <span className="font-arabic text-[4.5rem] leading-[1.35] text-primary" dir="rtl">
+      <div className={cn("mb-3 flex justify-center", opts?.className)}>
+        <div className="overflow-visible rounded-3xl border-4 border-primary/30 bg-card px-8 py-2 shadow-card">
+          <span
+            className={cn("block font-arabic text-primary", opts?.boy ?? "text-[4.5rem]")}
+            style={{ lineHeight: 1.7 }}
+            dir="rtl"
+          >
             {item.emoji}
           </span>
         </div>
       </div>
     );
+  }, [mode]);
+
+  /**
+   * DOĞRU CEVAPTAN SONRA HARFİN SESİ.
+   *
+   * ⚠️ Kullanıcı şartı: yazılı modlarda şıklar LATİN harfle yazılı. Çocuk
+   * "Dad" yazısını seçip doğru yapsa bile harfin nasıl OKUNDUĞUNU hiç
+   * duymuyorsa yarım öğreniyor. Doğru cevapta gerçek hoca kaydı çalar —
+   * yazı ile ses burada birleşir. (Klasik modda gerek yok: soru zaten
+   * sesle soruldu.)
+   */
+  const cevapSesi = useCallback((item: ContentItem | null | undefined, dogru: boolean) => {
+    if (!item || !dogru || !yaziliSik(mode)) return;
+    window.setTimeout(() => { void playItem(item); }, 260);
   }, [mode]);
 
   return {
@@ -222,5 +258,6 @@ export function useAskLayer(opts?: {
     tekrarEtiketi: mode === "flash" ? "Harfi tekrar göster" : "Tekrar dinle",
     katman,
     tabela,
+    cevapSesi,
   };
 }

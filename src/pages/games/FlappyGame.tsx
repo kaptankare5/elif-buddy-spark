@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle, pickWrongs } from "./_shared";
@@ -10,7 +9,7 @@ import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer,
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
-import { Volume2, Heart } from "lucide-react";
+import { Volume2, Eye, Heart } from "lucide-react";
 
 // Oyun alanı normalize edilmiş 0..100 koordinat sisteminde tutulur,
 // ekrana % cinsinden basılır → her cihazda akıcı kalır.
@@ -23,6 +22,8 @@ const LETTER_SPEED = 0.38;     // daha yavaş
 const SPAWN_EVERY = 130;       // tick (daha seyrek dalga, üst üste binmesin)
 const TICK_MS = 33;
 const HIT_R = 7;               // görsel yarıçap
+/** Yazılı modda kutu bu oranda GENİŞ olur; çarpışma da yatayda o kadar esner. */
+const HIT_X_ESNEK = 2.1;
 const HIT_THRESH = 11;         // çarpışma için cömert eşik
 const MAX_LETTERS = 6;         // ekranda aynı anda en fazla
 const MIN_DY = 22;             // harfler arası minimum dikey mesafe (aynı x'te)
@@ -44,11 +45,13 @@ interface Letter {
 let UID = 1;
 
 const FlappyGame = () => {
-  // ⚠️ YAZILI ŞIK YOK: burada harfin kendisi ÇARPIŞMA ALANI (HIT_R). Kutuyu
-  // yazı sığacak kadar genişletmek oyunun zorluğunu değiştirir — ölçtüğümüz
-  // şey harf bilgisi olmaktan çıkar. Şimşek/Tabela klasiğe düşer,
-  // "Öğret" modu çalışır.
-  const ask = useAskLayer({ yaziliDestek: false });
+  // ⚠️ Burada harfin kendisi ÇARPIŞMA ALANI. Yazılı modda kutu genişlemek
+  // zorunda (bir ada 14% yetmiyor); o yüzden çarpışma testi yatayda
+  // ESNETİLİR (`HIT_X_ESNEK`) — kutu ne kadar genişse çarpışma da o kadar
+  // geniş. Yoksa çocuk yazının ortasına nişan almak zorunda kalır ve
+  // kenarından geçtiğinde "vurmadım" der.
+  // (Kullanıcı şartı: "uçtuğu şeyler yazı olur, harflerden kaçmaz.")
+  const ask = useAskLayer();
   const [mode] = useGameMode();
   const isSuper = mode === "super";
   const [birdY, setBirdY] = useState(40);
@@ -68,6 +71,7 @@ const FlappyGame = () => {
   const yRef = useRef(40); yRef.current = birdY;
   const targetRef = useRef<ContentItem | null>(null); targetRef.current = target;
   const askRef = useRef(ask); askRef.current = ask;
+  const yaziliRef = useRef(ask.yazili); yaziliRef.current = ask.yazili;
 
   const pausedRef = useRef(true); pausedRef.current = paused;
 
@@ -190,7 +194,9 @@ const FlappyGame = () => {
         const by = yRef.current;
         for (const l of moved) {
           if (l.missed) continue;
-          const dx = l.x - BIRD_X;
+          // Yazılı modda kutu yatayda HIT_X_ESNEK kat geniş: dx'i o oranda
+          // küçülterek çarpışma elipsini kutuyla aynı yapıyoruz.
+          const dx = (l.x - BIRD_X) / (yaziliRef.current ? HIT_X_ESNEK : 1);
           const dy = l.y - by;
           const d2 = dx * dx + dy * dy;
           if (l.isTarget) {
@@ -213,6 +219,7 @@ const FlappyGame = () => {
           recordLetterMastery(collidedTarget.item.id, true);
           recordGameAnswer(collidedTarget.item, true);
           playFeedback(true);
+          askRef.current.cevapSesi(collidedTarget.item, true);
           setScore((s) => s + 1);
           next = next.filter((l) => {
             if (l.missed) return true;
@@ -308,16 +315,22 @@ const FlappyGame = () => {
           </div>
           <button
             onClick={() => ask.tekrar(target)}
-            disabled={!target}
+            disabled={!target || ask.mode === "ustte"}
             className="rounded-xl bg-primary text-primary-foreground p-2 shadow-soft border-2 border-primary font-bold flex items-center justify-center gap-1 disabled:opacity-40"
           >
-            <Volume2 className="h-4 w-4" /> Dinle
+            {ask.mode === "flash" ? <><Eye className="h-4 w-4" /> Göster</> : <><Volume2 className="h-4 w-4" /> Dinle</>}
           </button>
         </div>
 
         <div className="rounded-2xl p-3 mb-3 border-2 bg-warning/15 border-warning/50 text-center min-h-[64px]">
-          <p className="text-xs font-bold text-muted-foreground">🎯 Sesi dinle ve doğru harfi yut!</p>
-          <p className="text-2xl font-extrabold text-foreground mt-1">{target?.subLabel ?? "—"}</p>
+          <p className="text-xs font-bold text-muted-foreground">
+            {ask.yazili ? "🎯 Gördüğün harfin ADINI yut!" : "🎯 Sesi dinle ve doğru harfi yut!"}
+          </p>
+          {/* ⚠️ Yazılı modda `subLabel` YAZILMAZ — orada harfin okunuşu var,
+              yani cevabın ta kendisi. Onun yerine GLİF asılır. */}
+          {ask.mode === "ustte"
+            ? ask.tabela(target, { className: "mb-0 mt-1", boy: "text-5xl" })
+            : <p className="text-2xl font-extrabold text-foreground mt-1">{ask.yazili ? "" : (target?.subLabel ?? "—")}</p>}
         </div>
 
         <div
@@ -347,7 +360,8 @@ const FlappyGame = () => {
               <div
                 key={l.uid}
                 className={cn(
-                  "absolute flex items-center justify-center rounded-full font-extrabold border-2 shadow-soft transition-colors",
+                  "absolute flex items-center justify-center font-extrabold border-2 shadow-soft transition-colors",
+                  ask.yazili ? "rounded-2xl px-1 leading-tight" : "rounded-full",
                   l.missed
                     ? "bg-destructive text-white border-white ring-4 ring-destructive/40 animate-pulse scale-110 z-20"
                     : showRing
@@ -357,14 +371,14 @@ const FlappyGame = () => {
                 style={{
                   left: `${l.x}%`,
                   top: `${l.y}%`,
-                  width: `${HIT_R * 2}%`,
-                  height: `${HIT_R * 2}%`,
+                  width: `${HIT_R * 2 * (ask.yazili ? HIT_X_ESNEK : 1)}%`,
+                  height: `${HIT_R * 2 * (ask.yazili ? 0.72 : 1)}%`,
                   transform: "translate3d(-50%, -50%, 0)",
-                  fontSize: "min(6vw, 28px)",
+                  fontSize: ask.yazili ? "min(3.6vw, 15px)" : "min(6vw, 28px)",
                   willChange: "left",
                 }}
               >
-                <EmojiView value={l.item.emoji} />
+                {ask.sik(l.item)}
               </div>
             );
           })}

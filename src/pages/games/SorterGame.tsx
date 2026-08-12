@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { EmojiView } from "@/components/EmojiView";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { gamePool, getGameLang, pickCluster, shuffle } from "./_shared";
+import { useAskLayer } from "./_askUI";
 import { recordLetterMastery } from "@/data/srs";
 import { useGameMode } from "@/lib/gameMode";
 import { getGameItemLevel, recordGameAnswer } from "@/lib/gameProgress";
@@ -37,11 +37,16 @@ const SorterGame = () => {
   const [mode] = useGameMode();
   const isSuper = mode === "super";
   const [board, setBoard] = useState(() => buildBox());
+  // ⚠️ Kullanıcı şartı: bu oyunda yön TERS kurulur — üstte GLİF asılı durur,
+  // KUTULARDAKİ hücreler yazılı ad olur. (Klasikte tam tersi: üstte
+  // "'Be' harfini bul" yazısı, kutularda glif.)
+  const ask = useAskLayer();
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [progress, setProgress] = useState(0);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
   const [busy, setBusy] = useState(false);
+  const askRef = useRef(ask); askRef.current = ask;
   const targetLevel = getGameItemLevel(target);
   const showHint = isSuper && targetLevel === 1; // süper modda L1'de etrafı parlasın
 
@@ -66,7 +71,7 @@ const SorterGame = () => {
       const next = remainingTypes[Math.floor(Math.random() * remainingTypes.length)];
       setTarget(next);
       setProgress(0);
-      setTimeout(() => playItem(next), 300);
+      setTimeout(() => { void askRef.current.sor(next); }, 300);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [won, target, busy, remainingTypes.length]);
@@ -99,6 +104,9 @@ const SorterGame = () => {
       const newProgress = progress + 1;
       setProgress(newProgress);
       playFeedback(true);
+      // Yazılı modda her doğruda harfin gerçek okunuşu (tip tamamlanınca
+      // zaten aşağıda playItem çalıyor — iki kez çalmasın).
+      if (newProgress < PER_TYPE) ask.cevapSesi(target, true);
       if (newProgress >= PER_TYPE) {
         setBusy(true);
         const completed = target;
@@ -117,7 +125,7 @@ const SorterGame = () => {
               const next = left[Math.floor(Math.random() * left.length)];
               setTarget(next);
               setProgress(0);
-              setTimeout(() => playItem(next), 250);
+              setTimeout(() => { void askRef.current.sor(next); }, 250);
             }
             return { ...b, cells: newCells };
           });
@@ -162,7 +170,12 @@ const SorterGame = () => {
           <div className="mb-3 rounded-2xl bg-card border-4 border-warning/50 p-3 shadow-card flex items-center justify-between gap-3">
             <div className="flex-1">
               <div className="text-[11px] font-bold text-muted-foreground">Hedef harf</div>
-              <div className="text-base font-extrabold">"{target.label}" harfini bul</div>
+              {ask.yazili ? (
+                // ⚠️ Yazılı modda ADI YAZMA: cevabı vermek olur. Glif konur.
+                <div className="text-base font-extrabold">Bu harfin adını bul</div>
+              ) : (
+                <div className="text-base font-extrabold">"{target.label}" harfini bul</div>
+              )}
               <div className="mt-1 flex gap-1">
                 {Array.from({ length: PER_TYPE }).map((_, i) => (
                   <span key={i} className={cn(
@@ -172,12 +185,16 @@ const SorterGame = () => {
                 ))}
               </div>
             </div>
-            <button
-              onClick={() => playItem(target)}
-              className="shrink-0 rounded-full bg-primary text-primary-foreground px-4 py-2 font-bold shadow-soft text-sm"
-            >
-              🔊 Dinle
-            </button>
+            {ask.mode === "ustte" ? (
+              ask.tabela(target, { className: "mb-0 shrink-0", boy: "text-5xl" })
+            ) : (
+              <button
+                onClick={() => ask.tekrar(target)}
+                className="shrink-0 rounded-full bg-primary text-primary-foreground px-4 py-2 font-bold shadow-soft text-sm"
+              >
+                {ask.mode === "flash" ? "👁️ Göster" : "🔊 Dinle"}
+              </button>
+            )}
           </div>
         )}
 
@@ -198,14 +215,15 @@ const SorterGame = () => {
                     onClick={() => tap(c)}
                     disabled={c.cleared}
                     className={cn(
-                      "aspect-square rounded-2xl flex items-center justify-center text-4xl shadow-soft border-4 transition-bouncy",
+                      "aspect-square rounded-2xl flex items-center justify-center shadow-soft border-4 transition-bouncy",
+                      ask.yazili ? "text-base px-1" : "text-4xl",
                       c.cleared ? "opacity-0 pointer-events-none" :
                         c.wrong ? "bg-destructive/30 border-destructive animate-pop" :
                           highlight ? "bg-warning/30 border-warning ring-4 ring-warning/60 animate-pulse" :
                             "bg-card border-primary/20 hover:-translate-y-1 active:scale-95",
                     )}
                   >
-                    {!c.cleared && <span><EmojiView value={c.item.emoji} /></span>}
+                    {!c.cleared && <span>{ask.sik(c.item)}</span>}
                   </button>
                 );
               })}
