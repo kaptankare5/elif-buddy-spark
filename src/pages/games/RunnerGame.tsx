@@ -274,6 +274,7 @@ const RunnerGame = () => {
           roundLockRef.current = true;
           const t = targetRef.current;
           recordGameAnswer(t, true);
+          askRef.current.cevapSesi(t, true);   // yazılı modda harfin okunuşu
           setScore((s) => s + 3);
           setCombo((c) => c + 1);
           flashFx("good");
@@ -345,6 +346,12 @@ const RunnerGame = () => {
             {ask.mode === "flash" ? <Eye className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
         </div>
+
+        {/* ⚠️ "Tabela" modunda bu oyunda HİÇBİR ŞEY SORULMUYORDU: ses çalmıyor
+            (adı söylemek = cevabı vermek) ama glif de hiçbir yerde
+            görünmüyordu — çocuk sadece yazılı adların uçtuğunu görüyor,
+            hangisini vuracağını bilmiyordu (kullanıcı yakaladı). */}
+        {ask.tabela(target, { boy: "text-6xl" })}
 
         <div
           className="relative w-full overflow-hidden rounded-2xl shadow-card border-4 border-indigo-500/60 select-none touch-none"

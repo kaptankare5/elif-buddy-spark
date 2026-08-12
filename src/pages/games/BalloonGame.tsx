@@ -97,7 +97,8 @@ const BalloonGame = () => {
       setScore((s) => s + 1);
       setFlash(true); setTimeout(() => setFlash(false), 450); // ışık parlaması
       await playFeedback(true);
-      setTimeout(newRound, 350);
+      ask.cevapSesi(target, true);   // yazılı modda harfin gerçek okunuşu
+      setTimeout(newRound, 900);
     } else {
       setMisses((m) => m + 1);
       await playFeedback(false);
@@ -135,7 +136,8 @@ const BalloonGame = () => {
             {ask.yazili ? "Gördüğün harfin adını patlat:" : "Sesi dinle, doğru balonu patlat:"}
           </p>
           {ask.mode === "ustte" ? (
-            <div className="mt-1 font-arabic text-5xl leading-[1.4] text-primary" dir="rtl">{target?.emoji}</div>
+            // Ortak tabela: glif kırpılmasın diye leading/pay orada ayarlı.
+            ask.tabela(target, { className: "mb-0 mt-1", boy: "text-5xl" })
           ) : (
             <button onClick={() => ask.tekrar(target)} className="text-5xl mt-1" aria-label="Tekrar">
               {ask.mode === "flash" ? "👁️" : "🔊"}

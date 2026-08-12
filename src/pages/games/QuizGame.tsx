@@ -58,6 +58,8 @@ const QuizGame = () => {
       chosenId: item.id, shownIds: q.options.map((o) => o.id),
     });
     await playFeedback(correct);
+    // Yazılı modda doğru cevaptan sonra harfin GERÇEK OKUNUŞU çalar.
+    ask.cevapSesi(q.target, correct);
     setTimeout(() => { setQ(makeQ(ask.secenekler)); setPicked(null); }, correct ? 700 : 1800);
   };
 

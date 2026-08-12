@@ -26,6 +26,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback, playItem, playSfx } from "@/lib/audio";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
+import { useAskLayer } from "./_askUI";
+import { okunurAd } from "@/lib/askMode";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
 import { gameMusic } from "@/lib/gameMusic";
@@ -299,6 +301,47 @@ function glyphSprite(glyph: string, kind: "block" | "coin" | "mystery"): HTMLCan
   const d2 = m2.actualBoundingBoxDescent || size * 0.25;
   g.fillStyle = kind === "block" ? "#065f46" : "#7c2d12";
   g.fillText(glyph, px / 2, (px - (a2 + d2)) / 2 + a2);
+  spriteCache.set(key, c);
+  return c;
+}
+
+/**
+ * "Tabela"/"Şimşek" modunda blokların üstünde harfin YAZILI ADI durur
+ * (kullanıcı şartı: "bir yere elif resmi koy, şıklar yazı olsun").
+ * Blok kare olduğu için punto ada göre KÜÇÜLTÜLÜR — "Be (başta)" gibi uzun
+ * adlar taşmasın; gerekirse iki satıra bölünür.
+ */
+function wordSprite(text: string): HTMLCanvasElement {
+  const key = "word:" + text;
+  const hit = spriteCache.get(key);
+  if (hit) return hit;
+  const px = BLOCK * 2;
+  const c = document.createElement("canvas");
+  c.width = px; c.height = px;
+  const g = c.getContext("2d")!;
+  rr(g, 3, 3, px - 6, px - 6, 18);
+  g.fillStyle = "#ffffff";
+  g.fill();
+  g.lineWidth = 7;
+  g.strokeStyle = "#0f766e";
+  g.stroke();
+  // Uzun adı boşluktan iki satıra böl (tek kelimeyse tek satır).
+  const bos = text.indexOf(" ");
+  const satirlar = bos > 0 && text.length > 7
+    ? [text.slice(0, bos), text.slice(bos + 1)]
+    : [text];
+  const enUzun = satirlar.reduce((a, b) => (a.length >= b.length ? a : b), "");
+  let size = Math.floor(px * 0.34);
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  for (; size > 8; size--) {
+    g.font = `bold ${size}px system-ui, sans-serif`;
+    if (g.measureText(enUzun).width <= px * 0.84) break;
+  }
+  g.fillStyle = "#065f46";
+  const yAdim = size * 1.12;
+  const y0 = px / 2 - ((satirlar.length - 1) * yAdim) / 2;
+  satirlar.forEach((sat, i) => g.fillText(sat, px / 2, y0 + i * yAdim));
   spriteCache.set(key, c);
   return c;
 }
@@ -1453,6 +1496,12 @@ const PlatformGame = () => {
   const [won, setWon] = useState(false);
   const [progress, setProgress] = useState(0);
   const [question, setQuestion] = useState<string | null>(null);
+  // Soru sorma yöntemi: yazılı modda bloklarda harfin ADI yazar, glif üstte
+  // asılı durur (kullanıcı şartı).
+  const ask = useAskLayer();
+  const askRef = useRef(ask); askRef.current = ask;
+  const yaziliRef = useRef(ask.yazili); yaziliRef.current = ask.yazili;
+  const [hedefGlif, setHedefGlif] = useState<ContentItem | null>(null);
   const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad" | "power" } | null>(null);
   const [pu, setPu] = useState<{ nur: number; mag: number; x2: number }>({ nur: 0, mag: 0, x2: 0 });
   // 🌑 Karanlık Bulut canı (0 = yok/dağıldı) — HUD'da kalan ışık sayısı
@@ -1954,7 +2003,9 @@ const PlatformGame = () => {
       t.announced = true;
       const pool = gamePool();
       const target = pool.length >= 3 ? (pickNextGameItem(pool) || pool[0]) : null;
-      const wrongs = pickWrongs(pool, target, 2, { distinctEmoji: true });
+      const wrongs = askRef.current.yazili
+        ? askRef.current.celdiriciler(pool, target, 2)
+        : pickWrongs(pool, target, 2, { distinctEmoji: true });
       if (!target || wrongs.length < 2) {
         t.resolved = { correct: false, missed: true };
         for (const b of t.blocks) b.state = "fade";
@@ -1970,7 +2021,8 @@ const PlatformGame = () => {
       t.hint = showHintFor(target);
       trioRef.current = t;
       setQuestion(target.translit || target.label);
-      playItem(target);
+      setHedefGlif(target);
+      void askRef.current.sor(target);
     };
 
     const hurt = () => {
@@ -2021,6 +2073,7 @@ const PlatformGame = () => {
       const correct = b.isTarget;
       t.resolved = { correct };
       t.doneT = 0;
+      askRef.current.cevapSesi(target, correct);
       recordGameAnswer(target, correct, {
         gameId: "platform",
         chosenId: b.item?.id,
@@ -2643,7 +2696,9 @@ const PlatformGame = () => {
             g.fill();
           }
           const sprite = t.announced && b.item
-            ? glyphSprite(b.item.emoji || "?", "block")
+            ? (yaziliRef.current
+                ? wordSprite(okunurAd(b.item) ?? b.item.label)
+                : glyphSprite(b.item.emoji || "?", "block"))
             : glyphSprite("?", "mystery");
           g.drawImage(sprite, bx, by, BLOCK, BLOCK);
           // TEST MODU: bloğun köşesinde SRS seviyesi (elle doğrulama)
@@ -2847,17 +2902,32 @@ const PlatformGame = () => {
           </div>
         )}
 
-        {/* SORU — yazılı + sesli */}
+        {/* SORU — yazılı + sesli.
+            ⚠️ YAZILI MODDA BU ŞERİT CEVABI VERİR: `question` harfin Türkçe
+            okunuşudur ("Fe"), bloklarda da aynı ad yazıyor. O yüzden yazılı
+            modda ad gizlenir; yerine ne yapılacağını söyleyen bir yönerge
+            (ve şimşekte glifi tekrar gösteren düğme) konur. */}
         <div className="mb-2 flex items-center justify-center">
           <button
-            onClick={replay}
-            className="flex items-center gap-3 rounded-2xl bg-card border-2 border-primary/40 px-5 py-2 shadow-card active:scale-95"
+            onClick={() => (ask.yazili ? ask.tekrar(hedefGlif) : replay())}
+            disabled={ask.mode === "ustte"}
+            className="flex items-center gap-3 rounded-2xl bg-card border-2 border-primary/40 px-5 py-2 shadow-card active:scale-95 disabled:opacity-60"
           >
-            <span className="text-xs font-bold text-muted-foreground">🎯 Hangisi:</span>
-            <span className="text-3xl font-extrabold text-primary">{question ?? "—"}</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Volume2 className="h-4 w-4" />
+            <span className="text-xs font-bold text-muted-foreground">
+              {ask.yazili ? "🎯 Harfin adını kır:" : "🎯 Hangisi:"}
             </span>
+            {ask.yazili ? (
+              <span className="text-sm font-extrabold text-primary">
+                {ask.mode === "flash" ? "harfi tekrar göster" : "harf yukarıda"}
+              </span>
+            ) : (
+              <span className="text-3xl font-extrabold text-primary">{question ?? "—"}</span>
+            )}
+            {!ask.yazili && (
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Volume2 className="h-4 w-4" />
+              </span>
+            )}
           </button>
         </div>
 
@@ -2869,6 +2939,14 @@ const PlatformGame = () => {
           style={{ aspectRatio: "16 / 10", maxHeight: "60vh", margin: "0 auto", contain: "layout paint size" }}
         >
           <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
+
+          {/* "Tabela" modu: glif oyun alanının üstünde ASILI durur; bloklarda
+              harfin yazılı adı yazar. Soru çözülünce (resolved) kaldırılır. */}
+          {ask.mode === "ustte" && hedefGlif && (
+            <div className="pointer-events-none absolute inset-x-0 top-1 z-20 flex justify-center">
+              {ask.tabela(hedefGlif, { className: "mb-0", boy: "text-4xl" })}
+            </div>
+          )}
 
           {/* normal modda doğru cevap ışığı */}
           {flash && (
@@ -3086,6 +3164,7 @@ const PlatformGame = () => {
           </div>
         )}
       </main>
+      {ask.katman}
     </div>
   );
 };

@@ -294,13 +294,29 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   bakıp seçer. `adZorlugu(level)` KADEMELİ: L1-2 uzak ad (0.15), L3 orta,
   L4+ en yakın ad. Kullanıcının "bear/giraffe → bear/beal" fikri; ama
   UYDURMA AD YOK — sahte harf adı çocuğa yanlış ad öğretme riski taşır.
-- **Hangi oyunda ne çalışıyor**: tam destek → Hızlı Quiz, Balon, Uzay
-  Koşusu, Yarışı, Partisi (Partisi'nde şimşek de 3 şık — şerit kapatmak
-  parkurda engel gibi görünüyor). Yalnız "Öğret" → Yılan (harf ızgara
-  karesinde), Uçan Kuş (harf ÇARPIŞMA ALANI'nın kendisi), Koşusu.
-  `useAskLayer({ yaziliDestek: false })` bu oyunlarda şimşek/tabelayı
-  klasiğe düşürür. Uygulanamaz → Hafıza/Eşleştirme/Üçlü/Ayıklama/Yapboz
-  (soru zaten görsel, "hedef + şık" yapısı yok).
+- ⚠️ **TABELADA DOĞRU CEVAPTA HARFİN SESİ ÇALAR** (`cevapSesi`): şıklar
+  LATİN harfle yazılı; çocuk "Dad" yazısını seçip doğru yapsa bile harfin
+  nasıl OKUNDUĞUNU duymuyorsa yarım öğreniyor (kullanıcı şartı).
+- ⚠️ **TABELA GLİFİ KIRPILMAMALI.** `leading-[1.35]` + dar `py` ile 33
+  glifin 11'i kutunun dışına taşıyordu (ölçüldü): ج ح خ tabanın 12px altına,
+  kesreli بِ 9px. Arapça glif taban çizgisinin altına (nokta/kesre) ve
+  üstüne (hareke) taşar. Doğrusu `lineHeight: 1.7` + `py-2` → taşma 0.
+- **Hangi oyunda ne çalışıyor**: tam destek → Yarışı, Partisi, Hızlı Quiz,
+  Balon, Uzay Savaşı, Uçan Kuş, Kutu Boşalt, Elifbâ Macerası.
+  Partisi'nde şimşek de 3 şık (şerit kapatmak parkurda engel gibi görünüyor).
+  ⚠️ **Kutu Boşalt TERS kurulur**: üstte GLİF asılı, KUTULARDA yazılı ad
+  (klasikte tam tersi). ⚠️ **Uçan Kuş'ta harf ÇARPIŞMA ALANI'dır**: yazılı
+  kutu genişleyince çarpışma testi de yatayda esner (`HIT_X_ESNEK`), yoksa
+  çocuk yazının tam ortasına nişan almak zorunda kalır.
+  ⚠️ **Macera ve Koşusu'nda `🎯 Hangisi: {question}` şeridi harfin TÜRKÇE
+  ADINI yazar** — yazılı modda bu cevabın ta kendisidir; Macera'da gizlendi.
+  Yalnız "Öğret" → Yılan (harf ızgara karesinde, ad sığmaz), Koşusu.
+  `useAskLayer({ yaziliDestek: false })` şimşek/tabelayı klasiğe düşürür.
+  Uygulanamaz → Hafıza/Eşleştirme/Üçlü/Yapboz (soru zaten görsel,
+  "hedef + şık" yapısı yok).
+- ⚠️ **ÖĞRET KARTI TAM EKRAN DEĞİL.** İlk sürüm ekranı karartıyordu; koşu/
+  platform oyunlarında çocuk 2 sn boyunca canavarı da zemini de göremiyordu.
+  Şimşekle aynı üst bölgede.
 - ⚠️ `LaneRunnerGame.tsx` HİÇBİR ROTAYA BAĞLI DEĞİL (öksüz dosya).
 
 ### Oyunlar
