@@ -13,6 +13,14 @@ const BUCKET = "deney-ses";
 const VOICE_ID = "XrExE9yKIg1WjnnlVkGX"; // Matilda — sıcak, net kadın sesi
 const SIGN_SECONDS = 60 * 60 * 24 * 7; // 7 gün
 
+// SABİT KELİME LİSTESİ — deney modülünün 18 kelimesi. Bu listede olmayan
+// hiçbir metin ElevenLabs'e gönderilmez (maliyet/depo suistimalini engeller).
+const ALLOWED_WORDS = new Set([
+  "mariposa", "llave", "cuchara", "zanahoria", "ventana", "caballo",
+  "fresa", "pájaro", "silla", "queso", "huevo", "zapato",
+  "abeja", "rana", "hoja", "reloj", "calcetín", "cuchillo",
+]);
+
 const slug = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
@@ -26,8 +34,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { word } = await req.json();
-    if (typeof word !== "string" || !word.trim() || word.length > 40) {
+    const { word } = await req.json().catch(() => ({ word: null }));
+    if (typeof word !== "string" || !ALLOWED_WORDS.has(word.trim().toLocaleLowerCase("es"))) {
       return json({ error: "invalid word" }, 400);
     }
 
