@@ -56,6 +56,64 @@ export const USTTE_SIK = 3;
  */
 export const FLASH_MS = 1300;
 
+/**
+ * ŞİMŞEK SÜRESİ — ayarlanabilir (kullanıcı isteği: "çok kısa, anlık olsun").
+ *
+ * ⚠️ LİTERATÜR ÖZETİ — iki ayrı darboğaz var, karıştırılmamalı:
+ *
+ *  1) KODLAMA (harfi tanımak). Darboğaz DEĞİL. Sperling: 50 ms'lik bir
+ *     gösterim 9-12 harfi erişilebilir kılıyor; ikonik bellek 250-500 ms
+ *     tutuyor. Tek bir glif için yetişkinde ~50 ms yeter. Çocuk 2-3 kat
+ *     yavaş (Kail) → ~150 ms. Yani 300 ms KODLAMA için fazlasıyla yeterli.
+ *     (Bloch yasası: kritik sürenin altında süre × karşıtlık çarpımı
+ *     belirleyici olur — bu yüzden plaka opak ve yüksek karşıtlıklı.)
+ *
+ *  2) DİKKAT/BAKIŞ. ASIL darboğaz. Bakışı başka yere çevirmek 8 yaşında
+ *     ~411 ms sürüyor (yetişkin 270 ms), 6 yaşında daha uzun. Üstelik
+ *     6 yaşındaki çocuk TEK ODAKLI dikkat kullanıyor (8 yaş ve yetişkin
+ *     çok odaklı) — yani direksiyondayken başka bir yeri aynı anda
+ *     izleyemiyor.
+ *
+ * SONUÇ: 300 ms yalnız glif ÇOCUĞUN ZATEN BAKTIĞI YERDE belirirse çalışır.
+ * Kenarda belirirse çocuğun gözü daha oraya varmadan söner. Bu yüzden
+ * plaka artık oyun görüntüsünün ORTASINDA ve öncesinde bakışı oraya çeken
+ * kısa bir işaret (`FLASH_CUE_MS`) yanıyor.
+ */
+export const FLASH_PRESETS = [
+  { ms: 300, ad: "Çok kısa", not: "0.3 sn — oyunu hiç kapatmaz" },
+  { ms: 500, ad: "Kısa", not: "0.5 sn — çocuklar için önerilen" },
+  { ms: 800, ad: "Orta", not: "0.8 sn — yeni başlayan" },
+  { ms: 1300, ad: "Uzun", not: "1.3 sn — ilk deneme" },
+] as const;
+
+/** Glif belirmeden önce bakışı yerine çeken işaretin süresi (ms). */
+export const FLASH_CUE_MS = 320;
+
+const FLASH_KEY = "elifba-flash-ms-v1";
+
+export function getFlashMs(): number {
+  if (typeof window === "undefined") return 500;
+  try {
+    const v = Number(localStorage.getItem(FLASH_KEY));
+    return FLASH_PRESETS.some((p) => p.ms === v) ? v : 500;
+  } catch { return 500; }
+}
+
+export function setFlashMs(ms: number) {
+  try { localStorage.setItem(FLASH_KEY, String(ms)); } catch { /* ignore */ }
+  try { window.dispatchEvent(new Event(ASK_MODE_EVENT)); } catch { /* ignore */ }
+}
+
+export function useFlashMs(): [number, (ms: number) => void] {
+  const [m, setM] = useState<number>(() => getFlashMs());
+  useEffect(() => {
+    const h = () => setM(getFlashMs());
+    window.addEventListener(ASK_MODE_EVENT, h);
+    return () => window.removeEventListener(ASK_MODE_EVENT, h);
+  }, []);
+  return [m, (v: number) => { setFlashMs(v); setM(v); }];
+}
+
 /** Şıklar YAZILI ad mı gösterecek (glif yerine)? */
 export function yaziliSik(m: AskMode): boolean {
   return m === "flash" || m === "ustte";

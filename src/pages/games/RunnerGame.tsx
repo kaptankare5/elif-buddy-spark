@@ -46,14 +46,19 @@ const SHIP_W = 14;
 const SHIP_H = 12;
 const ENEMY_SIZE = 10;
 /**
- * ⚠️ YAZILI MODDA DÜŞMAN KUTUSU HAP BİÇİMİNDE: yatayda ~2 kat geniş, dikeyde
- * biraz basık (56px daire → 112×44px). Çarpışma testi ENEMY_SIZE'ı KARE
- * varsayıyordu, o yüzden mermi kelimenin YAN kısımlarından geçip gidiyordu
- * (kullanıcı: "ateş harfin içinden geçiyor, yan kısımları için").
- * Görsel oran ile çarpışma oranı AYNI olmalı.
+ * ⚠️ DÜŞMAN KUTUSU PİKSEL, ÇARPIŞMA YÜZDE — ikisi ÖLÇÜLEREK bağlanır.
+ *
+ * Kutu CSS'te piksel (56px daire; yazılı modda 112×44px hap), çarpışma ise
+ * `e.x`/`e.y` yüzdeleriyle test ediliyor. Kap 5:6 olduğu için yatay %1 ile
+ * dikey %1 AYNI piksel değil — sabit bir katsayıyla dönüştürmek tutmuyor.
+ * Ölçüm (412px ekran, kap 380×456): yazılı kutunun görsel yarı-eni %14.74
+ * ama çarpışma yarı-eni %12.00'di; iki yanda %2.74'lük şerit GÖRÜNÜYOR ama
+ * VURULMUYORDU (kullanıcı: "çok az sağdan soldan mermi içinden geçiyor").
+ * Artık kap gerçekten ölçülüyor ve piksel ölçüler yüzdeye çevriliyor.
  */
-const YAZILI_EN = 2.0;    // yatay büyütme (görselde width 112/56)
-const YAZILI_BOY = 0.78;  // dikey daralma (görselde height 44/56)
+const ENEMY_PX = 56;               // klasik dairenin çapı (px)
+const YAZILI_EN_PX = ENEMY_PX * 2.0;    // yazılı hap genişliği
+const YAZILI_BOY_PX = ENEMY_PX * 0.78;  // yazılı hap yüksekliği
 const ENEMY_FALL = 0.35;
 const BULLET_SPEED = 2.2;
 const SHIP_SPEED = 1.8;
@@ -72,6 +77,9 @@ const RunnerGame = () => {
   const ask = useAskLayer({ flashBoy: "min(4.2rem, 17vw)" });
   const askRef = useRef(ask); askRef.current = ask;
   const yaziliRef = useRef(ask.yazili); yaziliRef.current = ask.yazili;
+  // Oyun alanının GERÇEK piksel ölçüsü — çarpışma yüzdeleri bundan türer.
+  const alanRef = useRef<HTMLDivElement | null>(null);
+  const alanOlcu = useRef({ w: 380, h: 456 });
   const [mode] = useGameMode();
   const isSuper = mode === "super";
   const [shipX, setShipX] = useState(50);
@@ -239,8 +247,8 @@ const RunnerGame = () => {
         for (const e of arr) {
           const ny = e.y + ENEMY_FALL;
           const hitsShip =
-            Math.abs(e.x - sx) < (SHIP_W / 2 + (ENEMY_SIZE / 2) * (yaziliRef.current ? YAZILI_EN : 1) - 2) &&
-            Math.abs(ny - SHIP_TOP) < (SHIP_H / 2 + (ENEMY_SIZE / 2) * (yaziliRef.current ? YAZILI_BOY : 1) - 2);
+            Math.abs(e.x - sx) < (SHIP_W / 2 + yariOlcu().en - 2) &&
+            Math.abs(ny - SHIP_TOP) < (SHIP_H / 2 + yariOlcu().boy - 2);
           if (hitsShip) {
             collided = true;
             if (e.isTarget && targetRef.current) { recordGameAnswer(targetRef.current, false); }
@@ -268,9 +276,10 @@ const RunnerGame = () => {
           const ordered = [...cur].sort((a, z) => (z.isTarget ? 1 : 0) - (a.isTarget ? 1 : 0));
           for (const e of ordered) {
             if (removeUids.has(e.uid)) continue;
-            const yariEn = (ENEMY_SIZE / 2) * (yaziliRef.current ? YAZILI_EN : 1) + 2;
-            const yariBoy = (ENEMY_SIZE / 2) * (yaziliRef.current ? YAZILI_BOY : 1) + 2;
-            if (Math.abs(e.x - b.x) < yariEn && Math.abs(e.y - ny) < yariBoy) {
+            // Mermi ince; kutunun GÖRSEL sınırı yeterli (klasikte daire
+            // olduğu için köşelerde küçük bir cömertlik kalır, sorun değil).
+            const yo = yariOlcu();
+            if (Math.abs(e.x - b.x) < yo.en && Math.abs(e.y - ny) < yo.boy) {
               removeUids.add(e.uid);
               if (e.isTarget) hitTarget = true; else hitWrong = true;
               addPop(e.x, e.y, e.isTarget ? "+3" : "✗", e.isTarget);
@@ -328,6 +337,27 @@ const RunnerGame = () => {
     roundLockRef.current = false;
   };
 
+  useEffect(() => {
+    const el = alanRef.current;
+    if (!el) return;
+    const olc = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) alanOlcu.current = { w: r.width, h: r.height };
+    };
+    olc();
+    const ro = new ResizeObserver(olc);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  /** Kutunun yarı ölçüleri, YÜZDE cinsinden (görselle birebir). */
+  const yariOlcu = () => {
+    const { w, h } = alanOlcu.current;
+    const px = yaziliRef.current ? YAZILI_EN_PX : ENEMY_PX;
+    const py = yaziliRef.current ? YAZILI_BOY_PX : ENEMY_PX;
+    return { en: (px / 2) / w * 100, boy: (py / 2) / h * 100 };
+  };
+
   const replayQuestion = () => { ask.tekrar(target); };
 
   return (
@@ -369,6 +399,7 @@ const RunnerGame = () => {
         {ask.tabela(target, { boy: "text-6xl" })}
 
         <div
+          ref={alanRef}
           className="relative w-full overflow-hidden rounded-2xl shadow-card border-4 border-indigo-500/60 select-none touch-none"
           style={{ aspectRatio: "5 / 6", maxHeight: "60vh", margin: "0 auto",
             background: "radial-gradient(ellipse at top, hsl(250 60% 25%), hsl(240 70% 8%) 75%)",
@@ -385,8 +416,8 @@ const RunnerGame = () => {
                 ask.yazili ? "rounded-2xl px-2" : "rounded-full",
               )}
               style={{ left: `${e.x}%`, top: `${e.y}%`, transform: "translate3d(-50%, -50%, 0)",
-                width: ask.yazili ? `${56 * YAZILI_EN}px` : "56px",
-                height: ask.yazili ? `${56 * YAZILI_BOY}px` : "56px",
+                width: `${ask.yazili ? YAZILI_EN_PX : ENEMY_PX}px`,
+                height: `${ask.yazili ? YAZILI_BOY_PX : ENEMY_PX}px`,
                 fontSize: ask.yazili ? "15px" : "34px", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
                 willChange: "top", zIndex: e.isTarget ? 20 : 5 }}>
               {e.isTarget && showHintFor(e.item) && (<div className={cn("absolute -inset-1 border-4 border-warning animate-pulse", ask.yazili ? "rounded-2xl" : "rounded-full")} />)}

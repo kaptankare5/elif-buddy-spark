@@ -917,7 +917,7 @@ const SubwayGame = () => {
   // ⚠️ Şimşek plakası oyun alanının ÜSTÜNE değil, BAŞLIK şeridine konur —
   // kullanıcı şartı: "yolu kapatmasın, görsün". Kapı panolarında yazılı ad,
   // glif ise yol ŞERİDİNİN ÜSTÜNDEKİ tabelada durur.
-  const ask = useAskLayer({ flashBoy: "min(3.8rem, 15vw)", flashYer: "top-[7%]" });
+  const ask = useAskLayer({ flashBoy: "min(3.8rem, 15vw)" });
   const askRef = useRef(ask); askRef.current = ask;
   const entsRef = useRef<Ent[]>([]);
   const laneEnd = useRef<[number, number, number]>([99, 99, 99]); // şerit başına son trenin arka ucu (yerel z)
