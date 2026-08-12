@@ -17,6 +17,7 @@ import {
   getFlashMs, FLASH_CUE_MS, type AskMode,
 } from "@/lib/askMode";
 import { getGameItemLevel } from "@/lib/gameProgress";
+import { glifKaydirmaEm } from "@/lib/glifOlcu";
 import { pickWrongs, shuffle } from "./_shared";
 import type { ContentItem } from "@/data/types";
 
@@ -224,6 +225,10 @@ export function useAskLayer(opts?: {
               style={{
                 fontSize: opts?.flashBoy ?? "min(5.5rem, 22vw)",
                 lineHeight: 1.7,
+                // ⚠️ MÜREKKEBİ ORTALA: line-height satır kutusunu büyütür ama
+                // glifi ortalamaz — ج ح خ çanağı plakanın altından sarkıyordu
+                // (kullanıcı gördü). Kaydırma glif başına ÖLÇÜLÜR.
+                transform: `translateY(${glifKaydirmaEm(flashGlif.emoji ?? "").toFixed(4)}em)`,
                 // Beyaz hâle: harf hem açık hem koyu zeminde okunsun.
                 textShadow: "0 0 10px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)",
               }}
@@ -257,7 +262,11 @@ export function useAskLayer(opts?: {
         <div className="overflow-visible rounded-3xl border-2 border-foreground/75 bg-card px-8 py-2 shadow-card">
           <span
             className={cn("block font-arabic text-primary", opts?.boy ?? "text-[4.5rem]")}
-            style={{ lineHeight: 1.7 }}
+            style={{
+              lineHeight: 1.7,
+              // Mürekkep ortalama — bkz. glifOlcu.ts (ج ح خ sarkıyordu).
+              transform: `translateY(${glifKaydirmaEm(item.emoji ?? "").toFixed(4)}em)`,
+            }}
             dir="rtl"
           >
             {item.emoji}
