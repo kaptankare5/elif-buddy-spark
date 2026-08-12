@@ -174,9 +174,23 @@ const SorterGame = () => {
           </div>
         </div>
 
-        {/* Hedef paneli */}
-        {!won && target && (
-          <div className="mb-3 rounded-2xl bg-card border-4 border-warning/50 p-3 shadow-card flex items-center justify-between gap-3">
+        {/* Hedef paneli.
+            ⚠️ `target` null olduğu ANLARDA (tip tamamlandı → yeni hedef
+            seçiliyor) panel tamamen kayboluyor, altındaki kutu yukarı
+            zıplıyordu — görsel olarak "ekran bozuldu" gibi duruyor
+            (kullanıcı bildirdi). Panel artık HEP DURUYOR; yalnız içeriği
+            solup yerine "Aferin!" geliyor. */}
+        {!won && (
+          <div className={cn(
+            "mb-3 rounded-2xl bg-card border-4 border-warning/50 p-3 shadow-card flex items-center justify-between gap-3 min-h-[92px] transition-opacity",
+            !target && "opacity-70",
+          )}>
+            {!target ? (
+              <div className="flex-1 text-center text-base font-extrabold text-success">
+                ✅ Aferin! Sıradaki harf geliyor…
+              </div>
+            ) : (
+            <>
             <div className="flex-1">
               <div className="text-[11px] font-bold text-muted-foreground">Hedef harf</div>
               {ask.yazili ? (
@@ -203,6 +217,8 @@ const SorterGame = () => {
               >
                 {ask.mode === "flash" ? "👁️ Göster" : "🔊 Dinle"}
               </button>
+            )}
+            </>
             )}
           </div>
         )}

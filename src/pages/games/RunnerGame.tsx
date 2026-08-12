@@ -60,7 +60,7 @@ let UID = 1;
 let POP_UID = 1;
 
 const RunnerGame = () => {
-  const ask = useAskLayer();
+  const ask = useAskLayer({ flashBoy: "min(4.2rem, 17vw)" });
   const askRef = useRef(ask); askRef.current = ask;
   const [mode] = useGameMode();
   const isSuper = mode === "super";

@@ -40,7 +40,7 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture, blockedTexture } from "./_letterTexture";
-import { getAskMode, okunurAd, pickNameWrongs, markOgretildi, FLASH_SIK, USTTE_SIK, FLASH_MS, type AskMode } from "@/lib/askMode";
+import { getAskMode, okunurAd, pickNameWrongs, FLASH_SIK, USTTE_SIK, FLASH_MS, type AskMode } from "@/lib/askMode";
 import type { ContentItem } from "@/data/types";
 
 // ---- yarış sabitleri ----
@@ -190,12 +190,6 @@ interface Gate {
   group: THREE.Group;
   /** Bu kapı hangi modda kuruldu — yarış ortasında mod değişse bile sabit. */
   mode: AskMode;
-  /**
-   * ÖĞRETME KAPISI ("Öğret" modu): üç şeritte de AYNI harf durur, yanlış
-   * cevap yoktur, puan/ceza işlemez. Çocuk içinden geçerken harfin adı
-   * söylenir. Hemen ardından gelen kapı AYNI harfi klasik olarak sınar.
-   */
-  ogretKapisi: boolean;
 }
 
 interface Banana {
@@ -249,8 +243,6 @@ const KartGame = () => {
   // "Şimşek" modu: glif ekranda yarı saydam parlar, FLASH_MS sonra söner.
   // (Ad `flash` DEĞİL — o zaten oyunun bildirim şeridinde kullanılıyor.)
   const [glifFlash, setGlifFlash] = useState<ContentItem | null>(null);
-  // Sıradaki kapı bir ÖĞRETME kapısı mı? (üstteki bandın metni değişir)
-  const [ogretKapi, setOgretKapi] = useState(false);
   // Arayüz katmanının okuduğu mod. Sahne içindeki `askMode` yarış başında
   // dondurulur; bu ref onunla aynı değeri taşır.
   const askModeRef = useRef<AskMode>(getAskMode());
@@ -747,10 +739,7 @@ const KartGame = () => {
       gates.push({
         s: gs, target: null, options: [], tries: 0, done: false, said: 0,
         botDone: new Set(), panels, topPanel, group: g,
-        // "Öğret" modunda SINAMA kapıları klasik davranır (glif şıklar +
-        // sesli soru); öğretme kapıları `ogretKapisi` ile ayrılır.
-        mode: askMode === "ogret" ? "klasik" : askMode,
-        optionLanes: [0, 1, 2], ogretKapisi: false,
+        mode: askMode, optionLanes: [0, 1, 2],
       });
     }
     gatesRef.current = gates;
@@ -765,41 +754,8 @@ const KartGame = () => {
     // harf, geçerken adını söyler), hemen ardından AYNI harfin SINAMA kapısı.
     // Böylece oyun harfi önce tanıtır, sonra yoklar — kullanıcının teşhisi
     // ("oyun düzgün öğretmiyor") tam olarak buydu.
-    // ⚠️ HER KAPI TANITIMA HARCANMAZ. Kapılar KIT: bir pistte 2-3 tane var
-    // (Bahçe Turu'nda 2). Sırayla "bir öğret / bir sına" dersek yarış başına
-    // yalnız 1 soru kalıyor. Tanıtım YALNIZ HENÜZ ÖĞRENİLMEMİŞ harfe (L3
-    // altı) yapılır — çocuğun zaten bildiği harfi tanıtmak soru bütçesini yer.
-    const ogretModu = askMode === "ogret";
-    const OGRET_ESIGI = 3;
-    let ogretBekleyen: ContentItem | null = null;
-
     const armGate = (g: Gate) => {
-      const target = ogretBekleyen ?? (pickNextGameItem(pool) || pool[0]);
-      if (ogretModu) {
-        if (ogretBekleyen) {
-          ogretBekleyen = null;          // bu kapı, az önce tanıtılanın SINAMASI
-        } else if (getGameItemLevel(target) < OGRET_ESIGI) {
-          g.ogretKapisi = true;
-          ogretBekleyen = target;
-        }
-      }
-      if (g.ogretKapisi) {
-        // Üç şerit de aynı harf → hangi şeritten geçerse geçsin doğru.
-        g.target = target;
-        g.tries = 0;
-        g.options = [target];
-        g.optionLanes = [0, 1, 2];
-        preloadItems([target]);
-        g.panels.forEach((p) => {
-          const m = p.material as THREE.MeshBasicMaterial;
-          m.map = keep(letterTexture(target.emoji ?? "؟"));
-          m.color.set(0xffffff);
-          m.needsUpdate = true;
-          p.visible = true;
-        });
-        if (g.topPanel) g.topPanel.visible = false;
-        return;
-      }
+      const target = pickNextGameItem(pool) || pool[0];
       // YENİ MODLAR: şıklar harfin YAZILI ADI, soru glifin kendisi.
       // Adı olmayan öğede (translit boş) ya da yeterli benzer ad bulunamazsa
       // o kapı sessizce KLASİĞE düşer — oyun kilitlenmesin.
@@ -1435,19 +1391,6 @@ const KartGame = () => {
           const target = g.target;
           g.done = true;
           lastGateT = tNow;      // sıradaki soru bu anın üstüne binmesin
-          if (g.ogretKapisi) {
-            // ÖĞRETME KAPISI — yanlış yok, puan yok, ceza yok. Kapıdan
-            // geçerken harfin ADI söylenir (kullanıcının 3. yöntemi:
-            // "büyük bir resim çıkar, oradan geçerken ses ile ne olduğunu
-            // söyler"). Cevap SRS'e YAZILMAZ: burada bir şey ölçülmüyor,
-            // öğretiliyor. Ölçüm hemen sonraki sınama kapısında.
-            // Sıradaki kapı bu harfi sınayacak; cevabı "kopya" say
-            // (hızlı geçiş devreye girmesin — bkz. askMode.markOgretildi).
-            markOgretildi(target.id);
-            showFlash(`👀 ${okunurAd(target) ?? target.label}`, true);
-            window.setTimeout(() => playItem(target), 140);
-            continue;
-          }
           // 2 şıkta orta şerit yok: sola mı sağa mı gittiğine bakılır.
           const idx = g.options.length === 2
             ? (player.u < 0 ? 0 : 1)
@@ -1529,10 +1472,7 @@ const KartGame = () => {
           g0.said = 1;
           g0.tries += 1;
           setPrompt(gt);
-          setOgretKapi(g0.ogretKapisi);
-          if (g0.ogretKapisi) {
-            // Ses kapıdan GEÇERKEN çalar (yukarı bak) — burada tetiklenmez.
-          } else if (g0.mode === "flash") {
+          if (g0.mode === "flash") {
             // ⚠️ YENİ MODLARDA SORU SESLİ SORULMAZ. Sesi çalmak harfin ADINI
             // söylemek demektir — yani doğru cevabı vermek. Soru GÖRSELdir:
             // glif yarı saydam parlar, söner; çocuk adını okuyup kapıya gider.
@@ -1614,7 +1554,7 @@ const KartGame = () => {
       // 40 birimde gizlemek geç kalıyordu — "Zeynep/Yusuf" tabelaları sağdaki
       // şıkkın üstüne biniyor ve çocuk kelimeyi okuyamıyordu (ekran görüntüsünde
       // yakalandı).
-      const glifSik = askMode === "klasik" || askMode === "ogret";
+      const glifSik = askMode === "klasik";
       const okumaMesafesi = glifSik ? 40 : 150;
       const atGate = nextGate !== null && nextD < okumaMesafesi;
       if (marker) marker.visible = !atGate;
@@ -1809,18 +1749,13 @@ const KartGame = () => {
           {/* ⚠️ "dinle" bandı YALNIZ klasik modda. Yeni modlarda sesi çalmak
               harfin ADINI söylemek = cevabı vermek olurdu. Onun yerine
               "şimşek" modunda glifi tekrar gösteren bir düğme var. */}
-          {prompt && (askModeRef.current === "klasik" || askModeRef.current === "ogret") && (
+          {prompt && askModeRef.current === "klasik" && (
             <button
               onClick={() => playItem(prompt)}
-              className={cn(
-                "absolute inset-x-3 top-[70px] z-20 flex items-center justify-center gap-2 rounded-2xl border-2 px-3 py-2 font-extrabold shadow-card backdrop-blur active:scale-95",
-                ogretKapi
-                  ? "border-success/50 bg-success/90 text-success-foreground"
-                  : "border-primary/40 bg-white/90 text-primary",
-              )}
+              className="absolute inset-x-3 top-[70px] z-20 flex items-center justify-center gap-2 rounded-2xl border-2 border-primary/40 bg-white/90 px-3 py-2 font-extrabold text-primary shadow-card backdrop-blur active:scale-95"
             >
               <Volume2 className="h-5 w-5" />
-              {ogretKapi ? "Bu kapıdan geç — harfi söyleyeceğim" : "Hangi kapı? — dinle"}
+              Hangi kapı? — dinle
             </button>
           )}
           {prompt && askModeRef.current === "flash" && (
@@ -1860,10 +1795,15 @@ const KartGame = () => {
                   boyamayabiliyor (burada tam bunu yaşadık — düğüm DOM'da,
                   ölçüsü doğru, ama ekranda yok). Düz yarı saydam zemin
                   aynı işi görüyor ve her yerde çalışıyor. */}
-              <div className="rounded-[2rem] bg-white/70 px-9 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.22)]">
+              {/* ⚠️ leading 1.35 gliflerin noktasını/kesresini yuvarlağın
+                  DIŞINA taşırıyordu (kullanıcı gördü); Arapça glif taban
+                  çizgisinin altına da üstüne de taşar → 1.7 şart.
+                  Siyah ince çerçeve: şıkların etrafındaki gibi. */}
+              <div className="rounded-[2rem] border-2 border-foreground/75 bg-white/75 px-7 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.28)]">
                 <div
-                  className="font-arabic text-[8rem] leading-[1.35] text-emerald-950"
+                  className="block font-arabic text-emerald-950"
                   style={{
+                    fontSize: "min(6.5rem, 26vw)", lineHeight: 1.7,
                     // Beyaz hâle: harf hem gökyüzünde hem asfaltta okunsun diye
                     // (dinamik arka planda karşıtlık polaritesi değişiyor).
                     textShadow: "0 0 10px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)",

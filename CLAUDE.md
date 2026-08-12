@@ -279,25 +279,7 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   için değil BAKIŞI ÇEVİRMEK için.
 - **ustte** "Tabela": glif ekranda/kapıda ASILI → şıklar yazılı ad. Bu modda
   SES ÇALINMAZ (adı söylemek = cevabı vermek); "dinle" düğmesi gizlenir.
-- **ogret** "Öğret": ⚠️ kullanıcının teşhisi "oyun düzgün öğretmiyor" —
-  klasik mod harfi hiç TANITMIYOR, yalnız yokluyor. DOM oyunlarında her
-  sorudan önce tanıtım kartı (büyük glif + yazılı ad + ses, `OGRET_MS`),
-  sonra klasik soru. 3B oyunlarda (Yarışı/Partisi/Koşusu) bu bir ÖĞRETME
-  KAPISI: üç şeritte de aynı harf, yanlış yok, ceza yok, SRS'e YAZILMAZ —
-  içinden geçerken adı söylenir; sıradaki kapı aynı harfi sınar.
-  ⚠️ Tanıtım YALNIZ L3 ALTI harfe yapılır — hem kapılarda hem DOM oyunlarında.
-  Kapılarda sebep kıtlık (Bahçe Turu'nda 2 kapı; hepsini tanıtıma vermek
-  yarış başına 1 soru bırakıyordu). DOM'da sebep DAHA CİDDİ: bilinen harfte
-  tanıtım cevabı sorudan hemen önce ekrana yazar, geri getirme tamamen
-  ortadan kalkar ve SRS bunu gerçek doğru sanar (sahte ustalık).
-  ⚠️ **ÖĞRETİLEN HARFTE HIZLI GEÇİŞ KAPANIR** (`markOgretildi`/`ogretildiMi`
-  → `AnswerMeta.ogretildi`). srs.ts'te ilk karşılaşmadaki doğru doğrudan L3
-  yapar ("zaten biliyormuş"); tanıtımdan sonra bu YANLIŞTIR — çocuk
-  hatırlamadı, KOPYALADI. Bayrak tek kullanımlık, `recordGameAnswer` içinde
-  otomatik okunur (oyunlar bir şey yapmaz); 3B öğretme kapıları da işaretler.
-  Aynı gerekçeyle ilk karşılaşmada ipucu halkası da yanmıyor.
-  ⚠️ Tanıtım kartında SES BEKLENMEZ (`void playItem`): kaydı yüklenemeyen
-  öğede `await` çözülmeyip kart ekranda kalıyor, oyun kilitleniyordu.
+
 - **Yazılı şık çeldiricisi** `pickNameWrongs`: ad hedefe EN BENZEYENDEN
   seçilir ("Sin↔Şin", "Sad↔Dad") — yoksa çocuk kelimeyi OKUMADAN ilk harfe
   bakıp seçer. `adZorlugu(level)` KADEMELİ: L1-2 uzak ad (0.15), L3 orta,
@@ -306,12 +288,24 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
 - ⚠️ **TABELADA DOĞRU CEVAPTA HARFİN SESİ ÇALAR** (`cevapSesi`): şıklar
   LATİN harfle yazılı; çocuk "Dad" yazısını seçip doğru yapsa bile harfin
   nasıl OKUNDUĞUNU duymuyorsa yarım öğreniyor (kullanıcı şartı).
+- ⚠️ **ŞİMŞEK/TABELA PLAKASI**: ince SİYAH çerçeve (`border-foreground/75`,
+  kullanıcı isteği — şıkların etrafındaki gibi), altlık saydam/glif opak,
+  punto `min(...)` ile ekrana göre sınırlı. Sabit `text-[8rem]` Macera gibi
+  dar oyun alanlarında soruyu devasa yapıp oyunu kapatıyordu; küçük alanlı
+  oyunlar `useAskLayer({ flashBoy })` ile daha da küçültür (ölçüm: Macera'da
+  örtme %50 → %31).
+- ⚠️ **MACERA'DA TABELA CEVAPTAN SONRA KALKAR** (`setHedefGlif(null)`):
+  sonraki soruya kadar asılı kalması hem ekranı meşgul ediyor hem çözülmüş
+  soruyu gösteriyordu (kullanıcı şartı).
+- ⚠️ **KUTU BOŞALT'TA HEDEF PANELİ HEP DURUR**: `target` null olduğu anlarda
+  (tip tamamlandı → yeni hedef seçiliyor) panel yok olup altındaki kutu
+  yukarı zıplıyordu. Panel sabit yükseklikte kalır, içeriği "Aferin!" olur.
 - ⚠️ **TABELA GLİFİ KIRPILMAMALI.** `leading-[1.35]` + dar `py` ile 33
   glifin 11'i kutunun dışına taşıyordu (ölçüldü): ج ح خ tabanın 12px altına,
   kesreli بِ 9px. Arapça glif taban çizgisinin altına (nokta/kesre) ve
   üstüne (hareke) taşar. Doğrusu `lineHeight: 1.7` + `py-2` → taşma 0.
-- **Hangi oyunda ne çalışıyor**: tam destek → Yarışı, Partisi, Hızlı Quiz,
-  Balon, Uzay Savaşı, Uçan Kuş, Kutu Boşalt, Elifbâ Macerası.
+- **Hangi oyunda ne çalışıyor**: Yarışı, Partisi, Hızlı Quiz, Balon, Uzay
+  Savaşı, Uçan Kuş, Kutu Boşalt, Elifbâ Macerası, Yılan.
   Partisi'nde şimşek de 3 şık (şerit kapatmak parkurda engel gibi görünüyor).
   ⚠️ **Kutu Boşalt TERS kurulur**: üstte GLİF asılı, KUTULARDA yazılı ad
   (klasikte tam tersi). ⚠️ **Uçan Kuş'ta harf ÇARPIŞMA ALANI'dır**: yazılı
@@ -319,14 +313,13 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   çocuk yazının tam ortasına nişan almak zorunda kalır.
   ⚠️ **Macera ve Koşusu'nda `🎯 Hangisi: {question}` şeridi harfin TÜRKÇE
   ADINI yazar** — yazılı modda bu cevabın ta kendisidir; Macera'da gizlendi.
-  Yalnız "Öğret" → Yılan (harf ızgara karesinde, ad sığmaz), Koşusu.
-  `useAskLayer({ yaziliDestek: false })` şimşek/tabelayı klasiğe düşürür.
+  ⚠️ **Yılan'da ad tek ızgara karesine sığmaz**: yazılı şık, anchor
+  karesinden başlayan `AD_GENISLIK` (5) karelik bir ŞERİTtir; yılan şeridin
+  herhangi bir karesinden yiyebilir ve anchor sağ kenara sıkışmaz.
+  Koşusu'nda yazılı şık YOK (`useAskLayer({ yaziliDestek: false })` klasiğe
+  düşürür) — kapı panoları R3F bileşeni, ayrı bir geçiş ister.
   Uygulanamaz → Hafıza/Eşleştirme/Üçlü/Yapboz (soru zaten görsel,
   "hedef + şık" yapısı yok).
-- ⚠️ **ÖĞRET KARTI TAM EKRAN DEĞİL.** İlk sürüm ekranı karartıyordu; koşu/
-  platform oyunlarında çocuk 2 sn boyunca canavarı da zemini de göremiyordu.
-  Şimşekle aynı üst bölgede, altlığı SAYDAM/glifi opak (ölçüm: Macera'da
-  oyun alanını kapatma oranı %45 → %0).
 - ⚠️ **AYNI YAZILI AD İKİ ŞIKTA OLAMAZ** (`sameName`, `sameSound`un yazılı
   karşılığı): havuzdaki 443 addan 113'ü çakışıyor — ثَ ile سَ ikisi de "se",
   ذِ ile زِ ikisi de "zi". İkisi birden ekrana gelirse sorunun İKİ doğru
@@ -399,6 +392,15 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   - **Zıplama bir kaçış aracıdır**: normal zıplama tepe ≈4.3 birim, ⭐ kozu
     ≈13 birim. Her engelin `clear` eşiği var (çekiç 4.4, sarkaç 4.2, silindir
     2.4, çubuk 1.5) — üstünden geçilebilir.
+  - ⚠️ **TAKLA SONRASI DOKUNULMAZLIK** (`graceT`, `GRACE_TIME` 1.2 sn):
+    alçak dönen çubuk (spinner) sürekli döndüğü için çocuk bir kez
+    takıldığında ÇIKAMIYORDU — takla 1 sn sürüyor, o sırada ne yön
+    değiştirebiliyor ne ZIPLAYABİLİYOR (zıplama `hitT > 0` iken kapalı),
+    2.4 birimlik geri itilme çubuğun 8.5 birimlik erişiminden çıkarmıyor.
+    Üst üste 4-5 kez düşüyordu. Takladan sonra hiçbir engel çarpmaz;
+    karakter yanıp sönerek bunu GÖSTERİR. ⚠️ Görünürlüğün TEK SAHİBİ
+    kamera bloğudur — iki ayrı yerde `group.visible` atarsan biri ötekini
+    ezer (bir kez oldu).
   - Diğer tuzaklar: kamera oyuncunun ~17 birim gerisinde → geçilen kapı
     gizlenmeli, kameraya yakın yarışmacı `visible=false`; çekiç direği pivotun
     çocuğu OLMAYACAK (yoksa çekiçle döner); yüz düzlemi kapsülün DIŞINDA ve

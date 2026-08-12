@@ -19,19 +19,14 @@ export type AskMode =
   /** Glif 1 sn yarı saydam parlar sönür → yazılı ad şıklarından seç. */
   | "flash"
   /** Glif kapının üstünde ASILI durur → yazılı ad şıklarından seç. */
-  | "ustte"
-  /**
-   * ÖĞRET — önce SÖYLER, sonra sorar.
-   *
-   * ⚠️ Kullanıcının teşhisi: "oyun düzgün öğretmiyor". Haklı — klasik modda
-   * oyun harfi hiç TANITMAZ, yalnız yoklar. Çocuk bilmediği harfte tahmin
-   * eder, yanlış yapar, bir daha tahmin eder; hiçbir noktada "bu harf Be"
-   * denmez. Bu modda her sorudan önce harf BÜYÜK gösterilir, adı yazılır ve
-   * sesi çalınır; hemen ardından aynı harf sorulur. Yani her karşılaşma bir
-   * öğretme + bir yoklama. (Yarış/parti oyunlarında bu bir "öğretme kapısı":
-   * tek büyük harf, yanlış şık yok, içinden geçerken adını söyler.)
-   */
-  | "ogret";
+  | "ustte";
+
+// ⚠️ "ogret" (Öğret) MODU KALDIRILDI — kullanıcı kararı. Yeniden eklenecekse
+// bilinmesi gereken tuzak: tanıtım cevabı sorudan hemen önce ekrana yazar,
+// bu yüzden srs.ts'teki HIZLI GEÇİŞ (ilk doğru → doğrudan L3, "zaten
+// biliyormuş") o cevapta KAPATILMALIDIR — yoksa kopyalanan cevap gerçek
+// bilgi sayılıp sahte ustalık üretir. Aynı gerekçeyle ilk karşılaşmada
+// ipucu halkası da yanmıyor (gameProgress.showHintFor).
 
 const KEY = "elifba-ask-mode-v1";
 export const ASK_MODE_EVENT = "elifba-ask-mode-updated";
@@ -40,7 +35,6 @@ export const ASK_MODES: Array<{ id: AskMode; ad: string; aciklama: string }> = [
   { id: "klasik", ad: "Klasik", aciklama: "Sesi duy → harfi seç (mevcut)" },
   { id: "flash", ad: "Şimşek", aciklama: "Harf 1 sn parlar → adını seç" },
   { id: "ustte", ad: "Tabela", aciklama: "Harf ekranda asılı → adını seç" },
-  { id: "ogret", ad: "Öğret", aciklama: "Önce harfi gösterip söyler, sonra sorar" },
 ];
 
 const GECERLI = new Set<string>(ASK_MODES.map((m) => m.id));
@@ -61,14 +55,6 @@ export const USTTE_SIK = 3;
  * ÇEVİRMEK için.
  */
 export const FLASH_MS = 1300;
-/**
- * "Öğret" modunda tanıtım kartının ekranda kaldığı süre (ms).
- *
- * Şimşek'ten uzun, çünkü burada amaç TERSİ: harf kaybolmadan önce çocuğun
- * onu adıyla birlikte kodlaması isteniyor. Ses (~0.8 sn) bittikten sonra
- * harfe bakacak zaman kalmalı.
- */
-export const OGRET_MS = 1900;
 
 /** Şıklar YAZILI ad mı gösterecek (glif yerine)? */
 export function yaziliSik(m: AskMode): boolean {
@@ -107,32 +93,6 @@ export function useAskMode(): [AskMode, (m: AskMode) => void] {
     };
   }, []);
   return [m, (v: AskMode) => { setAskMode(v); setM(v); }];
-}
-
-/**
- * "AZ ÖNCE ÖĞRETİLDİ" İŞARETİ — hızlı geçişi kapatmak için.
- *
- * ⚠️ srs.ts'te HIZLI GEÇİŞ var: harfle İLK KEZ karşılaşıp doğru bilen çocuk
- * doğrudan L3'e çıkar ("öğrenmedi, zaten biliyormuş" sayılır). "Öğret"
- * modunda bu kural YANLIŞ tetikleniyordu: cevabı çocuğa 2 saniye önce biz
- * gösterdik — doğru bilmesi "zaten biliyordu" demek değil, "kopyaladı"
- * demek. Aynı gerekçeyle oyunlarda ilk karşılaşmada ipucu halkası da
- * yanmıyor (`gameProgress.showHintFor`); tanıtım kartı ondan çok daha
- * güçlü bir ipucudur.
- *
- * Tek kullanımlık: tanıtım yapılınca işaretlenir, o harfin cevabı
- * kaydedilirken okunup SİLİNİR.
- */
-let _ogretilen: string | null = null;
-
-/** Tanıtım kartı/kapısı gösterildi — bu harfin sıradaki cevabı "kopya"dır. */
-export function markOgretildi(id: string) { _ogretilen = id; }
-
-/** Bu harf az önce öğretildi mi? Okuyunca işaret silinir. */
-export function ogretildiMi(id: string): boolean {
-  if (_ogretilen !== id) return false;
-  _ogretilen = null;
-  return true;
 }
 
 /** Şıkta yazacak ad. Yoksa null → o öğe yeni modda sorulamaz. */

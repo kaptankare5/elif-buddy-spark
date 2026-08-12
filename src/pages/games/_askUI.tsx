@@ -14,12 +14,9 @@ import { playItem } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import {
   getAskMode, okunurAd, pickNameWrongs, adZorlugu, sikSayisi, yaziliSik, sameName,
-  markOgretildi, FLASH_MS, OGRET_MS, type AskMode,
+  FLASH_MS, type AskMode,
 } from "@/lib/askMode";
 import { getGameItemLevel } from "@/lib/gameProgress";
-
-/** Bu seviyeden İTİBAREN harf "biliniyor" sayılır; tanıtım yapılmaz. */
-const OGRET_ESIGI = 3;
 import { pickWrongs, shuffle } from "./_shared";
 import type { ContentItem } from "@/data/types";
 
@@ -94,6 +91,15 @@ export function useAskLayer(opts?: {
    * eder, çünkü o bir ekran katmanıdır, şıkların biçimine dokunmaz.
    */
   yaziliDestek?: boolean;
+  /**
+   * Şimşek glifinin punto sınırı (CSS boyut ifadesi).
+   *
+   * ⚠️ Oyun alanı KÜÇÜK olan sahnelerde (Macera'nın 16/10 şeridi, Uçan Kuş)
+   * varsayılan boy soruyu devasa yapıp oyunu kapatıyordu — kullanıcı
+   * "sorular çok büyük" dedi. Geniş alanlı oyunlar (Quiz) varsayılanı
+   * kullanır.
+   */
+  flashBoy?: string;
 }): AskLayer {
   // Mount anında dondur (yukarıdaki not).
   const [mode] = useState<AskMode>(() => {
@@ -102,11 +108,7 @@ export function useAskLayer(opts?: {
     return m;
   });
   const [flashGlif, setFlashGlif] = useState<ContentItem | null>(null);
-  const [ogretGlif, setOgretGlif] = useState<ContentItem | null>(null);
   const timers = useRef<number[]>([]);
-  const bekle = useCallback((ms: number) => new Promise<void>((r) => {
-    timers.current.push(window.setTimeout(r, ms));
-  }), []);
   useEffect(() => () => { timers.current.forEach((t) => window.clearTimeout(t)); }, []);
 
   const parlat = useCallback((item: ContentItem) => {
@@ -126,33 +128,10 @@ export function useAskLayer(opts?: {
         // Glif zaten tabelada asılı duruyor. SES ÇALINMAZ — sesi çalmak
         // harfin adını söylemek, yani cevabı vermek olurdu.
         return;
-      case "ogret": {
-        // ⚠️ BİLİNEN HARF TANITILMAZ. Tanıtım cevabı SORUDAN HEMEN ÖNCE
-        // ekrana yazar; L4/L5'teki bir harfte bu, geri getirmeyi tamamen
-        // ortadan kaldırır — çocuk hatırlamadan, sadece kopyalayarak doğru
-        // yapar ve SRS bunu gerçek bir doğru sanıp seviyeyi yükseltir
-        // (sahte ustalık). Kapılı oyunlarda aynı eşik zaten var.
-        if (getGameItemLevel(item) >= OGRET_ESIGI) { await playItem(item); return; }
-        // ÖĞRET: önce tanıt (büyük harf + yazılı ad + ses), sonra sor.
-        //
-        // ⚠️ SES BEKLENMEZ. Önce `await playItem(...)` yazılmıştı; kaydı
-        // yüklenemeyen bir öğede o söz hiç çözülmüyor (ya da reddediyor) ve
-        // ardındaki `setOgretGlif(null)` HİÇ çalışmıyordu: tanıtım kartı
-        // ekranda sonsuza kadar kalıp oyunu kilitliyordu (headless testte
-        // yakalandı — kart 4 sn sonra hâlâ oradaydı). Kartın süresi artık
-        // sesten BAĞIMSIZ; ses ona yetişir, yetişemezse kart yine de kapanır.
-        markOgretildi(item.id);   // sıradaki cevap "kopya" sayılsın
-        setOgretGlif(item);
-        void playItem(item);
-        await bekle(OGRET_MS);
-        setOgretGlif(null);
-        void playItem(item);   // aynı harf şimdi SORU olarak tekrar çalar
-        return;
-      }
       default:
         await playItem(item);
     }
-  }, [mode, parlat, bekle]);
+  }, [mode, parlat]);
 
   const tekrar = useCallback((item: ContentItem | null | undefined) => {
     if (!item) return;
@@ -196,45 +175,27 @@ export function useAskLayer(opts?: {
           saydam harf = düşük karşıtlık = zor okunur). Oyun plakanın
           çevresinde görünmeye devam eder. */}
       {flashGlif && (
-        <div className="pointer-events-none fixed inset-x-0 top-[22%] z-50 flex justify-center px-4">
-          <div className="rounded-[2rem] bg-white/75 px-9 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.22)]">
+        <div className="pointer-events-none fixed inset-x-0 top-[20%] z-50 flex justify-center px-4">
+          {/* ⚠️ GLİF KIRPILMAMALI: `leading-[1.35]` ile ج ح خ tabanın altına,
+              kesreli harfler yuvarlağın dışına taşıyordu (kullanıcı gördü).
+              Arapça glif taban çizgisinin altına ve üstüne taşar → 1.7.
+              ⚠️ BOYUT EKRANA GÖRE SINIRLI: sabit 7rem, Macera gibi küçük
+              oyun alanlı sahnelerde soruyu devasa yapıp oyunu kapatıyordu.
+              `min(...)` ile dar ekranda kendiliğinden küçülür.
+              ⚠️ SİYAH ÇERÇEVE (kullanıcı isteği): şıkların etrafındaki gibi
+              ince koyu bir çizgi — plaka arka planla karışmasın. */}
+          <div className="rounded-[2rem] border-2 border-foreground/75 bg-white/80 px-7 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.28)]">
             <div
-              className="font-arabic text-[7rem] leading-[1.35] text-emerald-950"
-              style={{ textShadow: "0 0 10px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)" }}
+              className="block font-arabic text-emerald-950"
+              style={{
+                fontSize: opts?.flashBoy ?? "min(5.5rem, 22vw)",
+                lineHeight: 1.7,
+                // Beyaz hâle: harf hem açık hem koyu zeminde okunsun.
+                textShadow: "0 0 10px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)",
+              }}
               dir="rtl"
             >
               {flashGlif.emoji}
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ÖĞRET — tanıtım kartı. Burada amaç şimşeğin TERSİ: kaybolmadan önce
-          çocuk harfi adıyla birlikte kodlasın. O yüzden zemin opak, ad
-          YAZILI ve ses eşlik ediyor.
-          ⚠️ TAM EKRAN DEĞİL. İlk sürümde ekranı karartan bir katmandı; koşu/
-          platform oyunlarında bu ölümcül — çocuk 2 saniye boyunca canavarı
-          da zemini de göremiyor. Şimşekle aynı üst bölgeye alındı: dikkat
-          çekiyor ama oyun alanını kapatmıyor. */}
-      {ogretGlif && (
-        <div className="pointer-events-none fixed inset-x-0 top-[13%] z-50 flex justify-center px-4">
-          {/* ⚠️ ALTLIK SAYDAM, GLİF OPAK — şimşekteki kuralın aynısı. Kart
-              koşu/platform oyunlarında oyun alanının üst şeridine biniyor;
-              opak zeminle çocuk 2 saniye boyunca orayı hiç göremiyordu.
-              Harf tanıma parlaklık karşıtlığına bağlı olduğu için harfin
-              KENDİSİ saydam yapılmaz, yalnız arkasındaki plaka. */}
-          <div className="animate-bounce-in rounded-[2rem] border-4 border-primary/40 bg-card/80 px-7 py-1.5 text-center shadow-[0_12px_40px_rgba(0,0,0,0.3)]">
-            <div
-              className="font-arabic text-[4.5rem] text-primary"
-              style={{ lineHeight: 1.7, textShadow: "0 0 10px rgba(255,255,255,0.9)" }}
-              dir="rtl"
-            >
-              {ogretGlif.emoji}
-            </div>
-            <div
-              className="-mt-1 pb-0.5 text-xl font-extrabold text-foreground"
-              style={{ textShadow: "0 0 8px rgba(255,255,255,0.9)" }}
-            >
-              {okunurAd(ogretGlif) ?? ogretGlif.label}
             </div>
           </div>
         </div>
@@ -258,7 +219,8 @@ export function useAskLayer(opts?: {
     if (mode !== "ustte" || !item) return null;
     return (
       <div className={cn("mb-3 flex justify-center", opts?.className)}>
-        <div className="overflow-visible rounded-3xl border-4 border-primary/30 bg-card px-8 py-2 shadow-card">
+        {/* Siyah ince çerçeve (kullanıcı isteği): şıkların etrafındaki gibi. */}
+        <div className="overflow-visible rounded-3xl border-2 border-foreground/75 bg-card px-8 py-2 shadow-card">
           <span
             className={cn("block font-arabic text-primary", opts?.boy ?? "text-[4.5rem]")}
             style={{ lineHeight: 1.7 }}

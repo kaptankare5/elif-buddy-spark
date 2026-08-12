@@ -12,7 +12,6 @@ import * as THREE from "three";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
-import { getAskMode, okunurAd, markOgretildi } from "@/lib/askMode";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
@@ -92,12 +91,6 @@ interface Ent {
   target?: ContentItem;
   items?: ContentItem[];
   targetLane?: number;
-  /**
-   * ÖĞRETME KAPISI ("Öğret" modu): üç panoda da AYNI harf durur, yanlış şık
-   * yoktur; içinden geçerken harfin adı söylenir. Sıradaki kapı aynı harfi
-   * klasik olarak sınar. (Yazılı şık modları burada YOK — bkz. spawnGate.)
-   */
-  ogret?: boolean;
   elevated?: boolean;
   crossed?: boolean;
   resolution?: null | { lane: number; correct: boolean };
@@ -908,8 +901,6 @@ const SubwayGame = () => {
   });
   const worldRef = useRef<THREE.Group | null>(null);
   const gateActive = useRef(false);
-  // "Öğret" modu: tanıtılmış ama henüz sınanmamış harf burada bekler.
-  const ogretHedef = useRef<ContentItem | null>(null);
   const entsRef = useRef<Ent[]>([]);
   const laneEnd = useRef<[number, number, number]>([99, 99, 99]); // şerit başına son trenin arka ucu (yerel z)
   const streakRef = useRef(0);
@@ -987,19 +978,11 @@ const SubwayGame = () => {
     if (pool.length < 3) { gateActive.current = false; return; }
     // "Öğret" modu: kapılar İKİŞERLİ — önce ÖĞRETME kapısı (üç panoda da aynı
     // harf, geçerken adını söyler), hemen ardından AYNI harfin sınama kapısı.
-    // ⚠️ Tanıtım YALNIZ henüz öğrenilmemiş harfe (L3 altı) yapılır; bilinen
-    // harfi tanıtmak kapı bütçesini boşa harcar (bkz. KartGame).
-    const ogretModu = getAskMode() === "ogret";
-    const target = ogretHedef.current ?? (pickNextGameItem(pool) || pool[0]);
-    let ogret = false;
-    if (ogretModu) {
-      if (ogretHedef.current) ogretHedef.current = null;   // bu kapı SINAMA
-      else if (getGameItemLevel(target) < 3) { ogret = true; ogretHedef.current = target; }
-    }
-    const wrongs = ogret ? [] : pickWrongs(pool, target, 2, { distinctEmoji: true });
-    if (!ogret && wrongs.length < 2) { gateActive.current = false; return; }
-    const items = ogret ? [target, target, target] : shuffle([target, ...wrongs]);
-    const targetLane = ogret ? -1 : items.findIndex((i) => i.id === target.id);
+    const target = pickNextGameItem(pool) || pool[0];
+    const wrongs = pickWrongs(pool, target, 2, { distinctEmoji: true });
+    if (wrongs.length < 2) { gateActive.current = false; return; }
+    const items = shuffle([target, ...wrongs]);
+    const targetLane = items.findIndex((i) => i.id === target.id);
     const s = sim.current;
     const localZ = GATE_Z - s.D;
     const noOncoming = !entsRef.current.some((e) => e.kind === "oncoming");
@@ -1023,11 +1006,10 @@ const SubwayGame = () => {
         batch.push({ id: UID++, kind: "coins", lane: l, localZ: localZ - 18, count: 4, y: 0.7, taken: [false, false, false, false] });
       }
     }
-    batch.push({ id: UID++, kind: "gate", localZ, target, items, targetLane, elevated, crossed: false, resolution: null, ogret });
+    batch.push({ id: UID++, kind: "gate", localZ, target, items, targetLane, elevated, crossed: false, resolution: null });
     addEnts(batch);
     setQuestion(target.translit || target.label);
-    // ÖĞRETME kapısında ses kapıdan GEÇERKEN çalar (gateCross), şimdi değil.
-    if (!ogret) playItem(target);
+    playItem(target);
   }, [score, addEnts]);
 
   const spawnRow = useCallback((localZ: number) => {
@@ -1113,16 +1095,6 @@ const SubwayGame = () => {
     const s = sim.current;
     if (s.jetT > 0) { gateActive.current = false; return; } // uçarken pas
     const lane = nearestLane(s.x);
-    if (gate.ogret) {
-      // ÖĞRETME KAPISI — yanlış yok, puan yok, can gitmez. Kapıdan geçerken
-      // harfin ADI söylenir. SRS'e YAZILMAZ: burada ölçüm değil öğretme var.
-      setEnts((prev) => prev.map((e) => (e.id === gateId ? { ...e, resolution: { lane, correct: true } } : e)));
-      gateActive.current = false;
-      markOgretildi(gate.target!.id);   // sıradaki kapının cevabı "kopya"
-      showBanner(`👀 ${okunurAd(gate.target!) ?? gate.target!.label}`, "power", 1500);
-      window.setTimeout(() => playItem(gate.target!), 120);
-      return;
-    }
     const correct = lane === gate.targetLane;
     recordLetterMastery(gate.target!.id, correct);
     recordGameAnswer(gate.target!, correct, {
@@ -1268,7 +1240,6 @@ const SubwayGame = () => {
 
   // ipucu: normal modda her zaman, süper modda yalnız seviye 1
   const hintLaneOf = (e: Ent) => {
-    if (e.ogret) return -1;   // üç pano da doğru; ipucu halkası anlamsız
     const lvl = getGameItemLevel(e.target!);
     return !isSuper || lvl === 1 ? e.targetLane! : -1;
   };

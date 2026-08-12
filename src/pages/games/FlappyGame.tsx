@@ -51,7 +51,7 @@ const FlappyGame = () => {
   // geniş. Yoksa çocuk yazının ortasına nişan almak zorunda kalır ve
   // kenarından geçtiğinde "vurmadım" der.
   // (Kullanıcı şartı: "uçtuğu şeyler yazı olur, harflerden kaçmaz.")
-  const ask = useAskLayer();
+  const ask = useAskLayer({ flashBoy: "min(4.2rem, 17vw)" });
   const [mode] = useGameMode();
   const isSuper = mode === "super";
   const [birdY, setBirdY] = useState(40);
@@ -342,12 +342,57 @@ const FlappyGame = () => {
 
         <div
           onPointerDown={(e) => { e.preventDefault(); flap(); }}
-          className="relative w-full overflow-hidden rounded-2xl shadow-card border-4 border-info/40 bg-gradient-to-b from-info/10 via-background to-success/10 select-none touch-none"
-          style={{ aspectRatio: "5 / 6", maxHeight: "60vh", margin: "0 auto", contain: "layout paint size" }}
+          className="relative w-full overflow-hidden rounded-3xl shadow-elegant border-[6px] border-sky-300/70 select-none touch-none"
+          style={{
+            aspectRatio: "5 / 6", maxHeight: "60vh", margin: "0 auto", contain: "layout paint size",
+            // Gerçek bir gökyüzü: üstte doygun mavi, ufka doğru açılır.
+            background: "linear-gradient(180deg, hsl(203 92% 72%) 0%, hsl(199 95% 84%) 45%, hsl(48 96% 88%) 78%, hsl(96 55% 72%) 100%)",
+          }}
         >
+          {/* ⚠️ DEKOR TAMAMEN CSS — ek dosya/doku yok, oyun döngüsüne
+              dokunmaz (hepsi `pointer-events-none` ve sabit katman).
+              Kullanıcı "çok sade" dedi: gökyüzü, güneş, kayan bulutlar,
+              tepeler ve akan çim şeridi eklendi. */}
+          <div className="pointer-events-none absolute inset-0">
+            {/* güneş + halesi */}
+            <div className="absolute right-[12%] top-[8%] h-14 w-14 rounded-full bg-yellow-300 shadow-[0_0_40px_18px_rgba(253,224,71,0.55)]" />
+            {/* kayan bulutlar (üç katman, farklı hız = derinlik) */}
+            {[
+              { t: "14%", s: 1.0, d: "26s", o: 0.95 },
+              { t: "32%", s: 0.7, d: "38s", o: 0.75 },
+              { t: "52%", s: 1.25, d: "48s", o: 0.6 },
+            ].map((c, i) => (
+              <div key={i} className="absolute left-full" style={{
+                top: c.t, opacity: c.o, transform: `scale(${c.s})`,
+                animation: `kus-bulut ${c.d} linear infinite`, animationDelay: `${-i * 9}s`,
+              }}>
+                <div className="relative h-8 w-24">
+                  <div className="absolute inset-x-0 bottom-0 h-5 rounded-full bg-white" />
+                  <div className="absolute left-3 bottom-2 h-8 w-8 rounded-full bg-white" />
+                  <div className="absolute left-10 bottom-3 h-10 w-10 rounded-full bg-white" />
+                </div>
+              </div>
+            ))}
+            {/* uzak tepeler */}
+            <div className="absolute inset-x-0 bottom-[9%] h-[22%]">
+              <div className="absolute -left-6 bottom-0 h-full w-2/3 rounded-t-[100%] bg-emerald-300/60" />
+              <div className="absolute right-[-10%] bottom-0 h-[80%] w-2/3 rounded-t-[100%] bg-emerald-400/55" />
+            </div>
+            {/* zemin + akan çim */}
+            <div className="absolute inset-x-0 bottom-0 h-[9%] bg-gradient-to-b from-emerald-500 to-emerald-700" />
+            <div className="absolute inset-x-0 bottom-[9%] h-2 bg-emerald-400" style={{
+              backgroundImage: "repeating-linear-gradient(90deg, hsl(140 60% 45%) 0 10px, hsl(140 55% 52%) 10px 20px)",
+              animation: "kus-zemin 1.6s linear infinite",
+            }} />
+          </div>
+          <style>{`
+            @keyframes kus-bulut { from { transform: translateX(0); } to { transform: translateX(calc(-100vw - 140px)); } }
+            @keyframes kus-zemin { from { background-position-x: 0; } to { background-position-x: -20px; } }
+          `}</style>
+
           {/* Bird */}
           <div
-            className="absolute flex items-center justify-center text-3xl"
+            className="absolute flex items-center justify-center text-4xl drop-shadow-[0_4px_6px_rgba(0,0,0,0.35)]"
             style={{
               left: `${BIRD_X}%`,
               top: `${birdY}%`,
