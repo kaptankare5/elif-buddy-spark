@@ -31,6 +31,7 @@ import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import { Volume2, Maximize2, Lock, X, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { glifKaydirmaEm } from "@/lib/glifOlcu";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { createAdaptiveResolution } from "./_perf";
 import { pickNextGameItem, recordGameAnswer, getGameItemLevel } from "@/lib/gameProgress";
@@ -1819,6 +1820,8 @@ const KartGame = () => {
                   className="block font-arabic text-emerald-950"
                   style={{
                     fontSize: "min(6.5rem, 26vw)", lineHeight: 1.7,
+                    // Mürekkebi kutunun ortasına getir (bkz. glifOlcu.ts).
+                    transform: `translateY(${glifKaydirmaEm(glifFlash.emoji ?? "").toFixed(4)}em)`,
                     // Beyaz hâle: harf hem gökyüzünde hem asfaltta okunsun diye
                     // (dinamik arka planda karşıtlık polaritesi değişiyor).
                     textShadow: "0 0 10px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)",

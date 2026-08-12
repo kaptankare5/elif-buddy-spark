@@ -309,6 +309,16 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
 - ⚠️ **KUTU BOŞALT'TA HEDEF PANELİ HEP DURUR**: `target` null olduğu anlarda
   (tip tamamlandı → yeni hedef seçiliyor) panel yok olup altındaki kutu
   yukarı zıplıyordu. Panel sabit yükseklikte kalır, içeriği "Aferin!" olur.
+- ⚠️ **GLİFİN MÜREKKEBİ ÖLÇÜLEREK ORTALANIR** (`src/lib/glifOlcu.ts`).
+  `line-height` SATIR KUTUSUNU büyütür, MÜREKKEBİ ORTALAMAZ: ج ح خ çanağı
+  taban çizgisinin çok altına iner, ا neredeyse tamamen üstünde kalır.
+  Ölçüm (100px punto, 33 glif): 9 glif plakadan taşıyordu (ج ح خ 22.5px),
+  merkeze ortalama sapma 42.7px, ج tam 73.5px aşağıdaydı. Canvas
+  `actualBoundingBox` ile mürekkep kutusu ölçülüp `translateY(...em)`
+  uygulanınca taşma 0, sapma 5px (o 5px KASITLI — kullanıcı "tam ortadan
+  çok az üstte olsun" dedi, `YUKARI_PAY`). Kaydırma `em` cinsinden döner,
+  punto değişse de çalışır; font yüklenince önbellek bir kez atılır (yedek
+  fontla ölçüm yanlış çıkar).
 - ⚠️ **TABELA GLİFİ KIRPILMAMALI.** `leading-[1.35]` + dar `py` ile 33
   glifin 11'i kutunun dışına taşıyordu (ölçüldü): ج ح خ tabanın 12px altına,
   kesreli بِ 9px. Arapça glif taban çizgisinin altına (nokta/kesre) ve
