@@ -109,10 +109,51 @@ export function useAskMode(): [AskMode, (m: AskMode) => void] {
   return [m, (v: AskMode) => { setAskMode(v); setM(v); }];
 }
 
+/**
+ * "AZ ÖNCE ÖĞRETİLDİ" İŞARETİ — hızlı geçişi kapatmak için.
+ *
+ * ⚠️ srs.ts'te HIZLI GEÇİŞ var: harfle İLK KEZ karşılaşıp doğru bilen çocuk
+ * doğrudan L3'e çıkar ("öğrenmedi, zaten biliyormuş" sayılır). "Öğret"
+ * modunda bu kural YANLIŞ tetikleniyordu: cevabı çocuğa 2 saniye önce biz
+ * gösterdik — doğru bilmesi "zaten biliyordu" demek değil, "kopyaladı"
+ * demek. Aynı gerekçeyle oyunlarda ilk karşılaşmada ipucu halkası da
+ * yanmıyor (`gameProgress.showHintFor`); tanıtım kartı ondan çok daha
+ * güçlü bir ipucudur.
+ *
+ * Tek kullanımlık: tanıtım yapılınca işaretlenir, o harfin cevabı
+ * kaydedilirken okunup SİLİNİR.
+ */
+let _ogretilen: string | null = null;
+
+/** Tanıtım kartı/kapısı gösterildi — bu harfin sıradaki cevabı "kopya"dır. */
+export function markOgretildi(id: string) { _ogretilen = id; }
+
+/** Bu harf az önce öğretildi mi? Okuyunca işaret silinir. */
+export function ogretildiMi(id: string): boolean {
+  if (_ogretilen !== id) return false;
+  _ogretilen = null;
+  return true;
+}
+
 /** Şıkta yazacak ad. Yoksa null → o öğe yeni modda sorulamaz. */
 export function okunurAd(it: ContentItem): string | null {
   const s = (it.translit || "").trim();
   return s.length > 0 ? s : null;
+}
+
+/**
+ * AYNI YAZILI ADI TAŞIYAN İKİ ÖĞE BİR ARADA GÖSTERİLEMEZ.
+ *
+ * ⚠️ `sameSound`un yazılı moddaki karşılığı. Havuzda 443 addan 113'ü
+ * ÇAKIŞIYOR: ثَ ile سَ ikisi de "se", ذِ ile زِ ikisi de "zi" okunur.
+ * Şıklar yazılı adken ikisi birden ekrana gelirse sorunun İKİ doğru cevabı
+ * olur; çocuk doğru okuyup yanlış olana dokunur ve yanlış sayılır.
+ * `pickNameWrongs` bunu zaten eliyor, ama tahtayı kendi kuran oyunlar
+ * (Uçan Kuş, Kutu Boşalt) bu kontrolü ayrıca yapmalı.
+ */
+export function sameName(a: ContentItem, b: ContentItem): boolean {
+  const x = okunurAd(a), y = okunurAd(b);
+  return !!x && !!y && x.toLocaleLowerCase("tr") === y.toLocaleLowerCase("tr");
 }
 
 /** Levenshtein — ad benzerliği için. */

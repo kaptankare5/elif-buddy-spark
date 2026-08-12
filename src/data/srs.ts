@@ -727,6 +727,14 @@ export interface AnswerMeta {
   responseMs?: number;
   gameId?: string;
   /**
+   * Bu soru sorulmadan HEMEN ÖNCE harf çocuğa gösterilip adı söylendi mi?
+   * ("Öğret" modu — tanıtım kartı ya da öğretme kapısı.)
+   *
+   * ⚠️ Öyleyse HIZLI GEÇİŞ UYGULANMAZ: cevabı biz verdik, doğru bilmesi
+   * "zaten biliyordu" kanıtı değil. Normal merdivenden çıkar (L1→L2).
+   */
+  ogretildi?: boolean;
+  /**
    * Cevap ÇOKTAN SEÇMELİ değil, çocuğun KENDİ BEYANI mı? (Flashcard'da
    * "Biliyorum / Bilmiyorum" kaydırması.) Şık yok demek şans yok demek:
    * 4 şıkta doğru basmanın %25 şansı varken beyanda 0. Bu yüzden ilk
@@ -825,7 +833,7 @@ function recordLocalSrsAnswer(
     e.consecutiveCorrect = (e.consecutiveCorrect || 0) + 1;
     // Doğru ama yavaşsa kırılgan işaretle (önce geri gelsin); hızlıysa temizle.
     e.fragile = rt !== undefined && !fluent;
-    if (wasFirst) {
+    if (wasFirst && !meta?.ogretildi) {
       // ⚡ HIZLI GEÇİŞ (kullanıcı kararı): harfi İLK KEZ gören çocuk doğru
       // bildiyse bunu ÖĞRENMEK değil ZATEN BİLMEK sayarız → doğrudan L3.
       // İkinci doğruda L4. Konuyu bilerek gelen çocuk 2 cevapta bitirir;

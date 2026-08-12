@@ -5,8 +5,10 @@
 // bakıp seçiyor — kısayol öğreniyor, harfi öğrenmiyor (kullanıcı tespiti).
 import { describe, it, expect } from "vitest";
 import {
-  pickNameWrongs, okunurAd, adZorlugu, sikSayisi, yaziliSik, FLASH_SIK, USTTE_SIK,
+  pickNameWrongs, okunurAd, adZorlugu, sikSayisi, yaziliSik, sameName,
+  markOgretildi, ogretildiMi, FLASH_SIK, USTTE_SIK,
 } from "@/lib/askMode";
+import { recordSrsAnswer, getLetterLevel, resetTopicSrs } from "@/data/srs";
 import { getAllTopics } from "@/data/subjects";
 
 const harfler = getAllTopics()[0];
@@ -152,5 +154,81 @@ describe("mod sözleşmesi", () => {
     expect(yaziliSik("klasik")).toBe(false);
     // ⚠️ "Öğret"te şıklar GLİFtir: orada eksik olan şey yön değil TANITIMdı.
     expect(yaziliSik("ogret")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AYNI YAZILI AD — `sameSound`un yazılı moddaki karşılığı.
+//
+// ⚠️ Bu bir VERİ gerçeği, tercih değil: Türkçe okunuş Arapça harften daha
+// kaba. ثَ (peltek se + üstün) ile سَ (sin + üstün) ikisi de "se" okunur;
+// ذِ ile زِ ikisi de "zi". Şıklar YAZILI adken ikisi birden ekrana gelirse
+// sorunun İKİ doğru cevabı olur ve doğru okuyan çocuk yanlış sayılır.
+describe("aynı yazılı ad koruması", () => {
+  it("⚠️ havuzda gerçekten ad çakışması VAR (koruma bu yüzden gerekli)", () => {
+    const hepsi = getAllTopics().flatMap((t) => t.items).filter((i) => i.emoji && i.audio);
+    const gore = new Map<string, string[]>();
+    for (const it of hepsi) {
+      const ad = okunurAd(it);
+      if (ad) gore.set(ad, [...(gore.get(ad) ?? []), it.id]);
+    }
+    const cakisan = [...gore.values()].filter((ids) => ids.length > 1);
+    expect(cakisan.length, "ad çakışması kalmadıysa koruma gereksizleşmiştir").toBeGreaterThan(0);
+  });
+
+  it("sameName aynı adı yakalar, farklı adı yakalamaz", () => {
+    const hepsi = getAllTopics().flatMap((t) => t.items).filter((i) => i.emoji && i.audio);
+    const gore = new Map<string, typeof hepsi>();
+    for (const it of hepsi) {
+      const ad = okunurAd(it);
+      if (ad) gore.set(ad, [...(gore.get(ad) ?? []), it]);
+    }
+    const cift = [...gore.values()].find((g) => g.length > 1)!;
+    expect(sameName(cift[0], cift[1])).toBe(true);
+    expect(sameName(cift[0], cift[0])).toBe(true);
+    const baska = hepsi.find((i) => okunurAd(i) !== okunurAd(cift[0]))!;
+    expect(sameName(cift[0], baska)).toBe(false);
+  });
+
+  it("⚠️ pickNameWrongs aynı adı ASLA çeldirici yapmaz", () => {
+    for (const hedef of havuz) {
+      for (const w of pickNameWrongs(havuz, hedef, 3)) {
+        expect(sameName(w, hedef), `${hedef.id} ↔ ${w.id}`).toBe(false);
+      }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ⚠️ ÖĞRETİLEN HARF "ZATEN BİLİYORDU" SAYILAMAZ.
+//
+// srs.ts'te HIZLI GEÇİŞ var: harfle İLK KEZ karşılaşıp doğru bilen çocuk
+// doğrudan L3'e çıkar — çünkü ipuçsuz, kendi bilgisiyle bilmiştir. "Öğret"
+// modunda bu kural yanlış tetikleniyordu: tanıtım kartı cevabı sorudan 2
+// saniye önce ekrana yazıyor, çocuk hatırlamıyor KOPYALIYOR. Oyunlarda ilk
+// karşılaşmada ipucu halkasının yanmama sebebi de tam olarak budur.
+describe("öğretilen harfte hızlı geçiş kapanır", () => {
+  it("işaret TEK KULLANIMLIK: ikinci okumada false döner", () => {
+    markOgretildi("l1-01");
+    expect(ogretildiMi("l1-01")).toBe(true);
+    expect(ogretildiMi("l1-01")).toBe(false);
+  });
+
+  it("başka harfin cevabı işareti tüketmez", () => {
+    markOgretildi("l1-05");
+    expect(ogretildiMi("l1-09")).toBe(false);
+    expect(ogretildiMi("l1-05")).toBe(true);
+  });
+
+  it("⚠️ ÖĞRETİLMEMİŞ ilk doğru L3 (hızlı geçiş korunuyor)", () => {
+    resetTopicSrs("quiz", "harfler");
+    recordSrsAnswer("quiz", "harfler", "l1-01", true, { responseMs: 1200 });
+    expect(getLetterLevel("quiz", "harfler", "l1-01")).toBe(3);
+  });
+
+  it("⚠️ ÖĞRETİLEN ilk doğru L3 YAPMAZ — normal merdiven (L1→L2)", () => {
+    resetTopicSrs("quiz", "harfler");
+    recordSrsAnswer("quiz", "harfler", "l1-02", true, { responseMs: 1200, ogretildi: true });
+    expect(getLetterLevel("quiz", "harfler", "l1-02")).toBe(2);
   });
 });

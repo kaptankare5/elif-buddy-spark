@@ -12,7 +12,7 @@ import * as THREE from "three";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
-import { getAskMode, okunurAd } from "@/lib/askMode";
+import { getAskMode, okunurAd, markOgretildi } from "@/lib/askMode";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
@@ -1118,6 +1118,7 @@ const SubwayGame = () => {
       // harfin ADI söylenir. SRS'e YAZILMAZ: burada ölçüm değil öğretme var.
       setEnts((prev) => prev.map((e) => (e.id === gateId ? { ...e, resolution: { lane, correct: true } } : e)));
       gateActive.current = false;
+      markOgretildi(gate.target!.id);   // sıradaki kapının cevabı "kopya"
       showBanner(`👀 ${okunurAd(gate.target!) ?? gate.target!.label}`, "power", 1500);
       window.setTimeout(() => playItem(gate.target!), 120);
       return;
