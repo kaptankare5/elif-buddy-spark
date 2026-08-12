@@ -313,6 +313,20 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   çocuk yazının tam ortasına nişan almak zorunda kalır.
   ⚠️ **Macera ve Koşusu'nda `🎯 Hangisi: {question}` şeridi harfin TÜRKÇE
   ADINI yazar** — yazılı modda bu cevabın ta kendisidir; Macera'da gizlendi.
+  ⚠️ **DOĞRU CEVABIN SESİ BİTMEDEN YENİ SORU GELMEZ**: `cevapSesi` artık
+  ses bitince çözülen bir söz döndürür, oyunlar onu `await` eder. Önce
+  "çal ve unut"tu; oyun kendi zamanlayıcısıyla geçtiği için kayıt yarıda
+  kalıyordu (kullanıcı: "ses devam ederken yeni soru gözüküyor").
+  ⚠️ **ŞİMŞEK PLAKASININ YERİ OYUNA GÖRE** (`flashYer`): varsayılan `top-20%`
+  Yılan'da doğrudan yılanın üstüne düşüyordu. Oyun alanı ekranın üst
+  yarısındaysa plaka başlık hizasına çekilir (ölçüm: ızgarayı örtme %0).
+  ⚠️ **UZAY SAVAŞI'NDA ÇARPIŞMA ORANI GÖRSELLE AYNI OLMALI** (`YAZILI_EN`/
+  `YAZILI_BOY`): yazılı kutu hap biçiminde (2× geniş, 0.78× alçak) ama
+  çarpışma testi ENEMY_SIZE'ı KARE varsayıyordu — mermi kelimenin YAN
+  kısımlarından geçip gidiyordu. Görsel ölçüler artık aynı sabitlerden türer.
+  ⚠️ **Koşusu'nda tabela YOLUN ÜSTÜNDE, oyun alanının DIŞINDA** (kullanıcı
+  şartı "yolu kapatmasın, görsün"); kapı panolarında yazılı ad, `boardTexture`
+  yazılı/glif için AYRI önbelleklenir (aynı metin iki farklı fontla çizilir).
   ⚠️ **Yılan'da ad tek ızgara karesine sığmaz**: yazılı şık, anchor
   karesinden başlayan `AD_GENISLIK` (5) karelik bir ŞERİTtir; yılan şeridin
   herhangi bir karesinden yiyebilir ve anchor sağ kenara sıkışmaz.
@@ -329,6 +343,16 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
 - ⚠️ `LaneRunnerGame.tsx` HİÇBİR ROTAYA BAĞLI DEĞİL (öksüz dosya).
 
 ### Oyunlar
+- ⚠️ **HAFIZA'DA SÜPER MOD = SES↔RESİM** (kullanıcı fikri): çift artık iki
+  aynı glif değil; "a" yüzü GLİF (sessiz açılır), "b" yüzü 🔊 (açılınca
+  gerçek kaydı çalar). Normal modda eski hâli. **İlerleme sayımı kuralı**:
+  seviye YALNIZ çocuk bir harfin SES kartını İLK DEFA açıp doğru resmi
+  bulduğunda artar — o an gerçek geri getirme vardır (sesi duyar, resmin
+  yerini HATIRLAMAK zorundadır). TERSİ SAYILMAZ (önce resim, sonra ses =
+  yalnız konum hafızası) ve ikinci açılışta da sayılmaz. Yanlış eşleşme
+  SRS'e YAZILMAZ: hafıza oyununda ıska konumu unutmaktır, harfi bilmemek
+  değil — ona −2 seviye yazmak ölçtüğümüz şeyi bozar. Bayrak `ilkKartYeniSes`
+  ile kart AÇILMADAN ÖNCE okunur (sonra okursan hep "görülmüş" çıkar).
 - 13 oyun `src/pages/games/`; kayıt: Game.tsx (route) + Games.tsx (liste,
   Kolay/Zor gruplu) + `SUPER_MODE_GAMES` (gameMode.ts) + Settings metni.
 - "Elif Ba Macerası" (`PlatformGame.tsx`, id "platform"): 10 bölüm, cami

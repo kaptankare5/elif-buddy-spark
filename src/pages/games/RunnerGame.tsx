@@ -45,6 +45,15 @@ const TICK_MS = 32;
 const SHIP_W = 14;
 const SHIP_H = 12;
 const ENEMY_SIZE = 10;
+/**
+ * ⚠️ YAZILI MODDA DÜŞMAN KUTUSU HAP BİÇİMİNDE: yatayda ~2 kat geniş, dikeyde
+ * biraz basık (56px daire → 112×44px). Çarpışma testi ENEMY_SIZE'ı KARE
+ * varsayıyordu, o yüzden mermi kelimenin YAN kısımlarından geçip gidiyordu
+ * (kullanıcı: "ateş harfin içinden geçiyor, yan kısımları için").
+ * Görsel oran ile çarpışma oranı AYNI olmalı.
+ */
+const YAZILI_EN = 2.0;    // yatay büyütme (görselde width 112/56)
+const YAZILI_BOY = 0.78;  // dikey daralma (görselde height 44/56)
 const ENEMY_FALL = 0.35;
 const BULLET_SPEED = 2.2;
 const SHIP_SPEED = 1.8;
@@ -62,6 +71,7 @@ let POP_UID = 1;
 const RunnerGame = () => {
   const ask = useAskLayer({ flashBoy: "min(4.2rem, 17vw)" });
   const askRef = useRef(ask); askRef.current = ask;
+  const yaziliRef = useRef(ask.yazili); yaziliRef.current = ask.yazili;
   const [mode] = useGameMode();
   const isSuper = mode === "super";
   const [shipX, setShipX] = useState(50);
@@ -229,8 +239,8 @@ const RunnerGame = () => {
         for (const e of arr) {
           const ny = e.y + ENEMY_FALL;
           const hitsShip =
-            Math.abs(e.x - sx) < (SHIP_W / 2 + ENEMY_SIZE / 2 - 2) &&
-            Math.abs(ny - SHIP_TOP) < (SHIP_H / 2 + ENEMY_SIZE / 2 - 2);
+            Math.abs(e.x - sx) < (SHIP_W / 2 + (ENEMY_SIZE / 2) * (yaziliRef.current ? YAZILI_EN : 1) - 2) &&
+            Math.abs(ny - SHIP_TOP) < (SHIP_H / 2 + (ENEMY_SIZE / 2) * (yaziliRef.current ? YAZILI_BOY : 1) - 2);
           if (hitsShip) {
             collided = true;
             if (e.isTarget && targetRef.current) { recordGameAnswer(targetRef.current, false); }
@@ -258,7 +268,9 @@ const RunnerGame = () => {
           const ordered = [...cur].sort((a, z) => (z.isTarget ? 1 : 0) - (a.isTarget ? 1 : 0));
           for (const e of ordered) {
             if (removeUids.has(e.uid)) continue;
-            if (Math.abs(e.x - b.x) < ENEMY_SIZE / 2 + 2 && Math.abs(e.y - ny) < ENEMY_SIZE / 2 + 2) {
+            const yariEn = (ENEMY_SIZE / 2) * (yaziliRef.current ? YAZILI_EN : 1) + 2;
+            const yariBoy = (ENEMY_SIZE / 2) * (yaziliRef.current ? YAZILI_BOY : 1) + 2;
+            if (Math.abs(e.x - b.x) < yariEn && Math.abs(e.y - ny) < yariBoy) {
               removeUids.add(e.uid);
               if (e.isTarget) hitTarget = true; else hitWrong = true;
               addPop(e.x, e.y, e.isTarget ? "+3" : "✗", e.isTarget);
@@ -274,13 +286,16 @@ const RunnerGame = () => {
           roundLockRef.current = true;
           const t = targetRef.current;
           recordGameAnswer(t, true);
-          askRef.current.cevapSesi(t, true);   // yazılı modda harfin okunuşu
           setScore((s) => s + 3);
           setCombo((c) => c + 1);
           flashFx("good");
           playFeedback(true);
-          // Doğru cevapta soruyu tekrar seslendirme — sadece olumlu geri bildirim sesi
-          setTimeout(() => { void nextRound(); }, 600);
+          // ⚠️ Yazılı modda harfin kaydı BİTMEDEN yeni soru gelmemeli
+          // (kullanıcı: "ses devam ederken yeni soru gözüküyor").
+          // Klasikte cevapSesi hemen çözülür → eski 600 ms akış korunur.
+          void askRef.current.cevapSesi(t, true).then(() => {
+            setTimeout(() => { void nextRound(); }, 600);
+          });
         } else if (hitWrong && !hitTarget) {
           if (targetRef.current) { recordGameAnswer(targetRef.current, false); }
           loseLifeAndRenew();
@@ -370,7 +385,8 @@ const RunnerGame = () => {
                 ask.yazili ? "rounded-2xl px-2" : "rounded-full",
               )}
               style={{ left: `${e.x}%`, top: `${e.y}%`, transform: "translate3d(-50%, -50%, 0)",
-                width: ask.yazili ? "112px" : "56px", height: ask.yazili ? "44px" : "56px",
+                width: ask.yazili ? `${56 * YAZILI_EN}px` : "56px",
+                height: ask.yazili ? `${56 * YAZILI_BOY}px` : "56px",
                 fontSize: ask.yazili ? "15px" : "34px", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
                 willChange: "top", zIndex: e.isTarget ? 20 : 5 }}>
               {e.isTarget && showHintFor(e.item) && (<div className={cn("absolute -inset-1 border-4 border-warning animate-pulse", ask.yazili ? "rounded-2xl" : "rounded-full")} />)}

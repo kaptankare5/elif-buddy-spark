@@ -51,7 +51,10 @@ const SnakeGame = () => {
   // tek ızgara karesine (ekranın ~1/14'ü) sığmadığı için yazılı şık, anchor
   // karesinden başlayarak `AD_GENISLIK` kare boyunca uzanan bir ŞERİT olur;
   // yılan şeridin HERHANGİ bir karesinden girerek yiyebilir (bkz. `vurdu`).
-  const ask = useAskLayer({ flashBoy: "min(4.2rem, 17vw)" });
+  // ⚠️ Şimşek plakası VARSAYILAN yerinde (top-20%) doğrudan yılanın üstüne
+  // düşüyordu — oyun alanı burada ekranın neredeyse tamamı. Başlık şeridinin
+  // hizasına çekildi (kullanıcı bildirdi).
+  const ask = useAskLayer({ flashBoy: "min(3.8rem, 15vw)", flashYer: "top-[6%]" });
   const [mode] = useGameMode();
   const isSuper = mode === "super";
 
@@ -182,12 +185,15 @@ const SnakeGame = () => {
               grew = true;
               setScore((s) => s + 5);
               playFeedback(true);
-              askRef.current.cevapSesi(quiz.target, true);
+              // Kayıt bitmeden yeni soru sorulmasın (yazılı modda).
+              const bitince = askRef.current.cevapSesi(quiz.target, true);
               setQuiz(null);
               setEaten(0);
               // Süper modda her zaman quiz; normalde yiyeceğe dön
-              if (isSuper) setTimeout(() => startQuiz(newSnake), 0);
-              else setTimeout(() => newFood(newSnake), 0);
+              void bitince.then(() => {
+                if (isSuper) startQuiz(newSnake);
+                else newFood(newSnake);
+              });
             } else {
               playFeedback(false);
               // Süper modda: aynı soruyu tekrar sor, oyunu bitirme

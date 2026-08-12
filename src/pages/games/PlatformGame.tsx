@@ -2079,7 +2079,7 @@ const PlatformGame = () => {
       // Sürekli asılı kalması hem ekranı meşgul ediyor hem de bir sonraki
       // soruya kadar çözülmüş bir soruyu gösteriyordu.
       setHedefGlif(null);
-      askRef.current.cevapSesi(target, correct);
+      void askRef.current.cevapSesi(target, correct);
       recordGameAnswer(target, correct, {
         gameId: "platform",
         chosenId: b.item?.id,

@@ -115,7 +115,9 @@ const SorterGame = () => {
       playFeedback(true);
       // Yazılı modda her doğruda harfin gerçek okunuşu (tip tamamlanınca
       // zaten aşağıda playItem çalıyor — iki kez çalmasın).
-      if (newProgress < PER_TYPE) ask.cevapSesi(target, true);
+      // Kayıt bitmeden bir sonraki dokunuş beklenmez (tahta zaten duruyor),
+      // ama tip tamamlanınca yeni hedefin sesi bunun üstüne binmesin.
+      if (newProgress < PER_TYPE) void ask.cevapSesi(target, true);
       if (newProgress >= PER_TYPE) {
         setBusy(true);
         const completed = target;

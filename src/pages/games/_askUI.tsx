@@ -70,8 +70,12 @@ interface AskLayer {
   katman: ReactNode;
   /** "Tabela" modunda sahnenin üstüne asılan glif. Diğer modlarda null. */
   tabela: (item: ContentItem | null | undefined, opts?: { className?: string; boy?: string }) => ReactNode;
-  /** Yazılı modlarda DOĞRU cevaptan sonra harfin gerçek kaydını çalar. */
-  cevapSesi: (item: ContentItem | null | undefined, dogru: boolean) => void;
+  /**
+   * Yazılı modlarda DOĞRU cevaptan sonra harfin gerçek kaydını çalar.
+   * Dönen söz SES BİTİNCE çözülür — oyun sıradaki soruyu ondan sonra
+   * göstermeli, yoksa kayıt yarıda kalıp çocuk harfi duymuyor.
+   */
+  cevapSesi: (item: ContentItem | null | undefined, dogru: boolean) => Promise<void>;
 }
 
 /**
@@ -100,6 +104,15 @@ export function useAskLayer(opts?: {
    * kullanır.
    */
   flashBoy?: string;
+  /**
+   * Şimşek plakasının dikey konumu (Tailwind `top-` sınıfı).
+   *
+   * ⚠️ Varsayılan `top-[20%]` bazı oyunlarda OYUN ALANININ TAM ORTASINA
+   * denk geliyor: Yılan'da harf doğrudan yılanın üstünde beliriyordu
+   * (kullanıcı: "oyun için iyi değil"). Oyun alanı ekranın üst yarısındaysa
+   * plakayı başlığın hizasına çek.
+   */
+  flashYer?: string;
 }): AskLayer {
   // Mount anında dondur (yukarıdaki not).
   const [mode] = useState<AskMode>(() => {
@@ -175,7 +188,7 @@ export function useAskLayer(opts?: {
           saydam harf = düşük karşıtlık = zor okunur). Oyun plakanın
           çevresinde görünmeye devam eder. */}
       {flashGlif && (
-        <div className="pointer-events-none fixed inset-x-0 top-[20%] z-50 flex justify-center px-4">
+        <div className={cn("pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4", opts?.flashYer ?? "top-[20%]")}>
           {/* ⚠️ GLİF KIRPILMAMALI: `leading-[1.35]` ile ج ح خ tabanın altına,
               kesreli harfler yuvarlağın dışına taşıyordu (kullanıcı gördü).
               Arapça glif taban çizgisinin altına ve üstüne taşar → 1.7.
@@ -242,9 +255,14 @@ export function useAskLayer(opts?: {
    * yazı ile ses burada birleşir. (Klasik modda gerek yok: soru zaten
    * sesle soruldu.)
    */
-  const cevapSesi = useCallback((item: ContentItem | null | undefined, dogru: boolean) => {
+  const cevapSesi = useCallback(async (item: ContentItem | null | undefined, dogru: boolean) => {
     if (!item || !dogru || !yaziliSik(mode)) return;
-    window.setTimeout(() => { void playItem(item); }, 260);
+    // ⚠️ SÖZ, SES BİTİNCE ÇÖZÜLÜR. Önce "çal ve unut" idi; oyun kendi
+    // zamanlayıcısıyla sıradaki soruya geçtiği için kayıt devam ederken yeni
+    // soru ekrana geliyordu (kullanıcı: "ses devam ederken yeni soru
+    // gözüküyor"). Çağıran oyun bunu `await` ederek geçişi geciktirir.
+    await new Promise<void>((r) => { timers.current.push(window.setTimeout(r, 220)); });
+    await playItem(item);
   }, [mode]);
 
   return {
