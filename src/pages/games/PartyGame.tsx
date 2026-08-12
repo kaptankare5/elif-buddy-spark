@@ -44,7 +44,7 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { letterTexture, nameTexture, wordTexture } from "./_letterTexture";
 import {
-  getAskMode, okunurAd, pickNameWrongs, adZorlugu, yaziliSik, FLASH_MS, type AskMode,
+  getAskMode, okunurAd, pickNameWrongs, adZorlugu, yaziliSik, getFlashMs, FLASH_CUE_MS, type AskMode,
 } from "@/lib/askMode";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import type { ContentItem } from "@/data/types";
@@ -298,6 +298,19 @@ const PartyGame = () => {
   const [prompt, setPrompt] = useState<ContentItem | null>(null);
   // "Şimşek" modunda ekranda parlayıp sönen glif.
   const [glifFlash, setGlifFlash] = useState<ContentItem | null>(null);
+  const [glifCue, setGlifCue] = useState(false);
+  const flashMsRef = useRef(getFlashMs());
+  /** Önce bakış işareti, sonra glif (bkz. askMode.FLASH_PRESETS notu). */
+  const parlatRef = useRef<(it: ContentItem) => void>(() => {});
+  const parlat = useCallback((it: ContentItem) => {
+    setGlifCue(true);
+    window.setTimeout(() => {
+      setGlifCue(false);
+      setGlifFlash(it);
+      window.setTimeout(() => setGlifFlash((x) => (x?.id === it.id ? null : x)), flashMsRef.current);
+    }, FLASH_CUE_MS);
+  }, []);
+  parlatRef.current = parlat;
   const askModeRef = useRef<AskMode>(getAskMode());
   const [flash, setFlash] = useState<{ k: number; text: string; good: boolean } | null>(null);
   const [result, setResult] = useState<{ place: number; correct: number; wrong: number } | null>(null);
@@ -1251,8 +1264,7 @@ const PartyGame = () => {
           if (g0.mode === "flash") {
             // ⚠️ YENİ MODLARDA SORU SESLİ SORULMAZ: sesi çalmak harfin ADINI
             // söylemek = cevabı vermek olurdu. Soru GÖRSELdir.
-            setGlifFlash(gt);
-            window.setTimeout(() => setGlifFlash((x) => (x?.id === gt.id ? null : x)), FLASH_MS);
+            parlatRef.current(gt);
           } else if (g0.mode === "klasik") {
             // Kayıt gerçekten çalmadıysa soru sorulmuş sayılmaz (bkz. KartGame).
             playItem(gt, { onFail: () => { if (!g0.done && g0.tries < 2) g0.said = 0; } });
@@ -1451,9 +1463,7 @@ const PartyGame = () => {
           {prompt && askModeRef.current === "flash" && (
             <button
               onClick={() => {
-                const p0 = prompt;
-                setGlifFlash(p0);
-                window.setTimeout(() => setGlifFlash((x) => (x?.id === p0.id ? null : x)), FLASH_MS);
+                parlat(prompt);
               }}
               className="absolute inset-x-3 top-[74px] z-20 flex items-center justify-center gap-2 rounded-2xl border-2 border-primary/40 bg-white/90 px-3 py-2 font-extrabold text-primary shadow-card active:scale-95"
             >
@@ -1465,8 +1475,13 @@ const PartyGame = () => {
           {/* ŞİMŞEK — glif SAYDAM DEĞİL, altlık saydam (harf tanıma parlaklık
               karşıtlığına bağlı). Konum üst bölge: üste bindirilmiş sabit
               sembol dikkati tünelliyor, sürüş alanının üstü kapatılmıyor. */}
+          {glifCue && (
+            <div className="pointer-events-none absolute inset-x-0 top-1/2 z-30 flex -translate-y-1/2 justify-center">
+              <div className="h-10 w-10 animate-ping rounded-full border-4 border-white/90" />
+            </div>
+          )}
           {glifFlash && (
-            <div className="pointer-events-none absolute inset-x-0 top-[18%] z-30 flex justify-center">
+            <div className="pointer-events-none absolute inset-x-0 top-1/2 z-30 flex -translate-y-1/2 justify-center">
               {/* ⚠️ leading 1.35 gliflerin nokta/kesresini yuvarlağın dışına
                   taşırıyordu; 1.7 şart. Boyut da ekrana göre sınırlı. */}
               <div className="rounded-[2rem] border-2 border-foreground/75 bg-white/75 px-7 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.28)]">

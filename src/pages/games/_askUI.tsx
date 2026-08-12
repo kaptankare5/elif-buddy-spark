@@ -14,7 +14,7 @@ import { playItem } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import {
   getAskMode, okunurAd, pickNameWrongs, adZorlugu, sikSayisi, yaziliSik, sameName,
-  FLASH_MS, type AskMode,
+  getFlashMs, FLASH_CUE_MS, type AskMode,
 } from "@/lib/askMode";
 import { getGameItemLevel } from "@/lib/gameProgress";
 import { pickWrongs, shuffle } from "./_shared";
@@ -121,15 +121,31 @@ export function useAskLayer(opts?: {
     return m;
   });
   const [flashGlif, setFlashGlif] = useState<ContentItem | null>(null);
+  const [flashCue, setFlashCue] = useState(false);
+  // Süre oyuna girerken dondurulur (mod gibi).
+  const [flashMs] = useState(() => getFlashMs());
   const timers = useRef<number[]>([]);
   useEffect(() => () => { timers.current.forEach((t) => window.clearTimeout(t)); }, []);
 
+  /**
+   * ŞİMŞEK: önce BAKIŞ İŞARETİ, sonra glif.
+   *
+   * ⚠️ İşaret şart. Glif oyun görüntüsünün ortasında ve çok kısa parlıyor;
+   * çocuğun gözü o an başka yerdeyse (yolu izliyorsa) 300 ms'lik bir
+   * gösterimi hiç göremez — 8 yaşında bakışı kaydırmak ~411 ms sürüyor,
+   * üstelik 6 yaşındaki çocuk tek odaklı dikkat kullanıyor. Küçük halka
+   * bakışı ÖNCEDEN yerine çeker; glif geldiğinde göz zaten oradadır.
+   */
   const parlat = useCallback((item: ContentItem) => {
-    setFlashGlif(item);
-    timers.current.push(window.setTimeout(
-      () => setFlashGlif((x) => (x?.id === item.id ? null : x)), FLASH_MS,
-    ));
-  }, []);
+    setFlashCue(true);
+    timers.current.push(window.setTimeout(() => {
+      setFlashCue(false);
+      setFlashGlif(item);
+      timers.current.push(window.setTimeout(
+        () => setFlashGlif((x) => (x?.id === item.id ? null : x)), flashMs,
+      ));
+    }, FLASH_CUE_MS));
+  }, [flashMs]);
 
   const sor = useCallback(async (item: ContentItem | null | undefined) => {
     if (!item) return;
@@ -187,17 +203,22 @@ export function useAskLayer(opts?: {
           altındaki plaka saydam (harf tanıma parlaklık karşıtlığına bağlı;
           saydam harf = düşük karşıtlık = zor okunur). Oyun plakanın
           çevresinde görünmeye devam eder. */}
+      {/* BAKIŞ İŞARETİ — glif gelmeden önce yanar, gözü yerine çeker. */}
+      {flashCue && (
+        <div className={cn("pointer-events-none fixed inset-x-0 z-50 flex justify-center", opts?.flashYer ?? "top-1/2 -translate-y-1/2")}>
+          <div className="h-10 w-10 animate-ping rounded-full border-4 border-primary/80" />
+        </div>
+      )}
       {flashGlif && (
-        <div className={cn("pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4", opts?.flashYer ?? "top-[20%]")}>
+        <div className={cn("pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4", opts?.flashYer ?? "top-1/2 -translate-y-1/2")}>
           {/* ⚠️ GLİF KIRPILMAMALI: `leading-[1.35]` ile ج ح خ tabanın altına,
               kesreli harfler yuvarlağın dışına taşıyordu (kullanıcı gördü).
               Arapça glif taban çizgisinin altına ve üstüne taşar → 1.7.
-              ⚠️ BOYUT EKRANA GÖRE SINIRLI: sabit 7rem, Macera gibi küçük
-              oyun alanlı sahnelerde soruyu devasa yapıp oyunu kapatıyordu.
-              `min(...)` ile dar ekranda kendiliğinden küçülür.
-              ⚠️ SİYAH ÇERÇEVE (kullanıcı isteği): şıkların etrafındaki gibi
-              ince koyu bir çizgi — plaka arka planla karışmasın. */}
-          <div className="rounded-[2rem] border-2 border-foreground/75 bg-white/80 px-7 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.28)]">
+              ⚠️ KONUM: oyun görüntüsünün ORTASI (kullanıcı isteği). Kenarda
+              belirirse çocuk 300 ms'lik gösterimi göremiyor — bakışı
+              kaydırmak 8 yaşında ~411 ms.
+              ⚠️ SİYAH ÇERÇEVE: şıkların etrafındaki gibi ince koyu çizgi. */}
+          <div className="animate-pop rounded-[2rem] border-2 border-foreground/75 bg-white/85 px-7 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.28)]">
             <div
               className="block font-arabic text-emerald-950"
               style={{

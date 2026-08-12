@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { useGameMode, FREE_PLAY_MIN_SEEN } from "@/lib/gameMode";
 import { freePlaySeenCount } from "@/pages/games/_shared";
 import { cn } from "@/lib/utils";
-import { ASK_MODES, useAskMode } from "@/lib/askMode";
+import { ASK_MODES, useAskMode, FLASH_PRESETS, useFlashMs } from "@/lib/askMode";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 // import { AccountCard } from "@/components/AccountCard"; // UI gizlendi
@@ -25,6 +25,7 @@ const Settings = () => {
   const [s, set] = useSettings();
   const [mode, setMode] = useGameMode();
   const [ask, setAsk] = useAskMode();
+  const [flashMs, setFlashMs] = useFlashMs();
   const { session } = useAuth();
   const [consent, setConsentState] = useState(consentGiven());
   const [confirmCloudDel, setConfirmCloudDel] = useState(false);
@@ -270,6 +271,35 @@ const Settings = () => {
               henüz Türkçe okuyamıyorsa &quot;Klasik&quot;te kalın. Değişiklik
               <b> bir sonraki yarışta</b> geçerli olur.
             </p>
+
+            {ask === "flash" && (
+              <div className="mt-3 rounded-2xl border-2 border-border/60 bg-muted/30 p-2.5">
+                <h4 className="text-xs font-extrabold text-foreground mb-1">⚡ Şimşek süresi</h4>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {FLASH_PRESETS.map((f) => (
+                    <button
+                      key={f.ms}
+                      onClick={() => setFlashMs(f.ms)}
+                      className={cn(
+                        "rounded-xl px-1 py-1.5 border-2 transition-bouncy",
+                        flashMs === f.ms ? "bg-gold/20 border-gold shadow-soft" : "bg-card border-border",
+                      )}
+                    >
+                      <div className="text-[11px] font-extrabold text-foreground">{f.ad}</div>
+                      <div className="text-[9px] font-bold text-muted-foreground">{(f.ms / 1000).toFixed(1)} sn</div>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2 leading-snug">
+                  Harf oyunun <b>tam ortasında</b> parlar; öncesinde küçük bir halka
+                  bakışı oraya çeker. Harfi <b>tanımak</b> için 0.3 sn zaten yeter
+                  (yetişkinde ~0.05 sn, çocukta 2-3 katı). Asıl sınır <b>bakış</b>:
+                  gözü başka yere çevirmek 8 yaşında ~0.4 sn sürüyor — bu yüzden
+                  harf ortada beliriyor. <b>Çocuk için 0.5 sn öneriliyor</b>;
+                  0.3 sn'yi deneyip <i>kaçırıyor mu</i> diye bakın.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Test kilidi */}

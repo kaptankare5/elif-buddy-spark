@@ -271,7 +271,16 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
 Ayarlar → "Oyunda soru yöntemi". Varsayılan **klasik**; ESKİ MOD SİLİNMEDİ.
 Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar).
 - **klasik**: sesi duy → glif seç. (Mevcut/varsayılan.)
-- **flash** "Şimşek": glif `FLASH_MS` (1300) parlar söner → şıklar YAZILI AD.
+- **flash** "Şimşek": glif kısa süre parlar söner → şıklar YAZILI AD.
+  ⚠️ **SÜRE AYARLANABİLİR** (`FLASH_PRESETS`, Ayarlar: 0.3/0.5/0.8/1.3 sn,
+  varsayılan 0.5). Literatür iki AYRI darboğaz diyor: (1) KODLAMA darboğaz
+  DEĞİL — yetişkinde tek glif ~50 ms, çocuk 2-3 kat yavaş → ~150 ms, yani
+  0.3 sn fazlasıyla yeter; (2) DİKKAT/BAKIŞ asıl sınır — bakışı kaydırmak
+  8 yaşında ~411 ms (yetişkin 270), üstelik 6 yaşındaki çocuk TEK ODAKLI
+  dikkat kullanıyor, oynarken başka yeri izleyemiyor. Bu yüzden glif
+  **oyun görüntüsünün ORTASINDA** belirir ve öncesinde `FLASH_CUE_MS`
+  (320) boyunca küçük bir halka bakışı oraya çeker — kenarda beliren
+  0.3 sn'lik bir glif çocuğun gözü varmadan sönüyordu.
   ⚠️ Glifin KENDİSİ saydam değil, ALTLIK saydam — harf tanıma parlaklık
   karşıtlığına bağlı (Legge); saydam harf = düşük karşıtlık. Konum üst
   bölge: üste bindirilmiş sabit sembol dikkati tünelliyor (HUD araştırması).
@@ -320,10 +329,12 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   ⚠️ **ŞİMŞEK PLAKASININ YERİ OYUNA GÖRE** (`flashYer`): varsayılan `top-20%`
   Yılan'da doğrudan yılanın üstüne düşüyordu. Oyun alanı ekranın üst
   yarısındaysa plaka başlık hizasına çekilir (ölçüm: ızgarayı örtme %0).
-  ⚠️ **UZAY SAVAŞI'NDA ÇARPIŞMA ORANI GÖRSELLE AYNI OLMALI** (`YAZILI_EN`/
-  `YAZILI_BOY`): yazılı kutu hap biçiminde (2× geniş, 0.78× alçak) ama
-  çarpışma testi ENEMY_SIZE'ı KARE varsayıyordu — mermi kelimenin YAN
-  kısımlarından geçip gidiyordu. Görsel ölçüler artık aynı sabitlerden türer.
+  ⚠️ **UZAY SAVAŞI'NDA KUTU PİKSEL, ÇARPIŞMA YÜZDE** — ikisi ÖLÇÜLEREK
+  bağlanır (`alanOlcu` + ResizeObserver). Kap 5:6 olduğu için yatay %1 ile
+  dikey %1 aynı piksel değil; sabit katsayıyla dönüştürmek tutmuyordu.
+  Ölçüm (412px ekran, kap 380×456): yazılı kutunun görsel yarı-eni %14.74,
+  çarpışma yarı-eni %12.00 — iki yanda %2.74'lük şerit GÖRÜNÜYOR ama
+  VURULMUYORDU. Yeni kutu/boyut eklerken px→% çevrimini ölçümden al.
   ⚠️ **Koşusu'nda tabela YOLUN ÜSTÜNDE, oyun alanının DIŞINDA** (kullanıcı
   şartı "yolu kapatmasın, görsün"); kapı panolarında yazılı ad, `boardTexture`
   yazılı/glif için AYRI önbelleklenir (aynı metin iki farklı fontla çizilir).
