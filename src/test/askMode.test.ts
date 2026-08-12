@@ -194,3 +194,44 @@ describe("aynı yazılı ad koruması", () => {
   });
 });
 
+
+// ---------------------------------------------------------------------------
+// HAFIZA — SES ↔ RESİM eşleştirmesi (süper öğrenme sürümü).
+//
+// ⚠️ Kullanıcı kuralı: seviye YALNIZ çocuk bir harfin SES kartını İLK DEFA
+// açıp doğru resmi bulduğunda artar. O an gerçek bir geri getirme yaşanır:
+// sesi duyar, o harfin hangi karede olduğunu HATIRLAMAK zorundadır (resmi
+// daha önce açıp yerini öğrenmiştir). Tersi — önce resmi açıp sonra sesi
+// bulmak — yalnızca konum hafızasıdır, harf bilgisi gerektirmez.
+//
+// Aşağıdaki test oyunun kendisini değil KURALIN kendisini kilitler; kural
+// MemoryGame.flip içinde `ilkKartYeniSes` ile uygulanır.
+describe("hafıza: ses↔resim sayım kuralı", () => {
+  type K = { uid: string; ses: boolean };
+  const sayilirMi = (ilk: K, eslesti: boolean, gorulen: Set<string>) => {
+    const yeni = ilk.ses && !gorulen.has(ilk.uid);
+    if (ilk.ses) gorulen.add(ilk.uid);
+    return yeni && eslesti;
+  };
+
+  it("ilk kart SES ve ilk defa açılıyor + eşleşti → SAYILIR", () => {
+    expect(sayilirMi({ uid: "s1", ses: true }, true, new Set())).toBe(true);
+  });
+
+  it("⚠️ TERSİ SAYILMAZ: ilk kart RESİM olursa eşleşse bile sayılmaz", () => {
+    expect(sayilirMi({ uid: "r1", ses: false }, true, new Set())).toBe(false);
+  });
+
+  it("⚠️ İKİNCİ açılışta sayılmaz (kartın yeri artık biliniyor)", () => {
+    const g = new Set<string>();
+    expect(sayilirMi({ uid: "s1", ses: true }, true, g)).toBe(true);
+    expect(sayilirMi({ uid: "s1", ses: true }, true, g)).toBe(false);
+  });
+
+  it("eşleşme tutmazsa sayılmaz — ama kart 'görüldü' sayılır", () => {
+    const g = new Set<string>();
+    expect(sayilirMi({ uid: "s2", ses: true }, false, g)).toBe(false);
+    expect(g.has("s2")).toBe(true);
+    expect(sayilirMi({ uid: "s2", ses: true }, true, g)).toBe(false);
+  });
+});

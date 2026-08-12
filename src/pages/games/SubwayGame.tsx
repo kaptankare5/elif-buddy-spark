@@ -12,6 +12,8 @@ import * as THREE from "three";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
+import { useAskLayer } from "./_askUI";
+import { okunurAd } from "@/lib/askMode";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
@@ -115,8 +117,11 @@ function nearestLane(x: number): number {
 let MAX_ANISO = 4; // Canvas onCreated'da gerçek donanım değeriyle güncellenir
 const FONT_STACK = '"Amiri Quran", "Scheherazade New", "Traditional Arabic", serif';
 const texCache = new Map<string, THREE.CanvasTexture>();
-function boardTexture(text: string): THREE.CanvasTexture {
-  const hit = texCache.get(text);
+function boardTexture(text: string, yazili = false): THREE.CanvasTexture {
+  // ⚠️ Yazılı ve glif sürümleri AYRI önbelleklenir: aynı metin iki farklı
+  // fontla çizilebiliyor.
+  const key = (yazili ? "w:" : "g:") + text;
+  const hit = texCache.get(key);
   if (hit) return hit;
   // Kanvas oranı pano oranıyla (BOARD_W:BOARD_H) eşleşir — aksi halde harf
   // dikeyde gerilip bozulurdu.
@@ -146,9 +151,11 @@ function boardTexture(text: string): THREE.CanvasTexture {
   g.stroke();
   // 1) ölçüm turu
   const base = 300;
+  const fontOf = (px: number) =>
+    yazili ? `bold ${px}px system-ui, sans-serif` : `${px}px ${FONT_STACK}`;
   g.textAlign = "center";
   g.textBaseline = "alphabetic";
-  g.font = `${base}px ${FONT_STACK}`;
+  g.font = fontOf(base);
   const m = g.measureText(text);
   const asc = m.actualBoundingBoxAscent || base * 0.75;
   const desc = m.actualBoundingBoxDescent || base * 0.25;
@@ -160,7 +167,7 @@ function boardTexture(text: string): THREE.CanvasTexture {
   const availH = cH - pad * 2;
   const scale = Math.min(availH / (asc + desc), availW / w, 1.55);
   const size = Math.floor(base * scale);
-  g.font = `${size}px ${FONT_STACK}`;
+  g.font = fontOf(size);
   const m2 = g.measureText(text);
   const asc2 = m2.actualBoundingBoxAscent || size * 0.75;
   const desc2 = m2.actualBoundingBoxDescent || size * 0.25;
@@ -170,7 +177,7 @@ function boardTexture(text: string): THREE.CanvasTexture {
   g.fillText(text, cW / 2, y);
   const t = new THREE.CanvasTexture(c);
   t.anisotropy = Math.min(16, MAX_ANISO);
-  texCache.set(text, t);
+  texCache.set(key, t);
   return t;
 }
 
@@ -615,7 +622,7 @@ function CoinsEnt({ e }: { e: Ent }) {
 }
 
 // Harf panosu dalgası — 3 şeritte büyük tabelalar.
-function GateEnt({ e, hintLane, fontTick }: { e: Ent; hintLane: number; fontTick: number }) {
+function GateEnt({ e, hintLane, fontTick, yazili }: { e: Ent; hintLane: number; fontTick: number; yazili: boolean }) {
   // Panonun alt kenarı zemine/tren üstüne yakın durur — bir kapı gibi
   // içinden geçilir. Yükseklik oyuncu boyunu rahatça aşar.
   const boardY = (e.elevated ? TRAIN_TOP : 0) + BOARD_GAP + BOARD_H / 2;
@@ -631,13 +638,14 @@ function GateEnt({ e, hintLane, fontTick }: { e: Ent; hintLane: number; fontTick
           showHint={hintLane === lane && !e.resolution}
           resolution={e.resolution ?? null}
           fontTick={fontTick}
+          yazili={yazili}
         />
       ))}
     </group>
   );
 }
 
-function GateBoard({ item, lane, y, elevated, showHint, resolution, fontTick }: {
+function GateBoard({ item, lane, y, elevated, showHint, resolution, fontTick, yazili }: {
   item: ContentItem;
   lane: number;
   y: number;
@@ -645,9 +653,14 @@ function GateBoard({ item, lane, y, elevated, showHint, resolution, fontTick }: 
   showHint: boolean;
   resolution: null | { lane: number; correct: boolean };
   fontTick: number;
+  yazili: boolean;
 }) {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const tex = useMemo(() => boardTexture(item.emoji || "?"), [item.emoji, fontTick]);
+  // Yazılı modda panoda harfin ADI yazar; glif üstteki tabelada asılı durur.
+  const tex = useMemo(
+    () => (yazili ? boardTexture(okunurAd(item) ?? "?", true) : boardTexture(item.emoji || "?")),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [item.emoji, item.translit, yazili, fontTick],
+  );
   const glow = useRef<THREE.Mesh>(null!);
   const board = useRef<THREE.Mesh>(null!);
   const anim = useRef(0);
@@ -901,6 +914,11 @@ const SubwayGame = () => {
   });
   const worldRef = useRef<THREE.Group | null>(null);
   const gateActive = useRef(false);
+  // ⚠️ Şimşek plakası oyun alanının ÜSTÜNE değil, BAŞLIK şeridine konur —
+  // kullanıcı şartı: "yolu kapatmasın, görsün". Kapı panolarında yazılı ad,
+  // glif ise yol ŞERİDİNİN ÜSTÜNDEKİ tabelada durur.
+  const ask = useAskLayer({ flashBoy: "min(3.8rem, 15vw)", flashYer: "top-[7%]" });
+  const askRef = useRef(ask); askRef.current = ask;
   const entsRef = useRef<Ent[]>([]);
   const laneEnd = useRef<[number, number, number]>([99, 99, 99]); // şerit başına son trenin arka ucu (yerel z)
   const streakRef = useRef(0);
@@ -979,7 +997,12 @@ const SubwayGame = () => {
     // "Öğret" modu: kapılar İKİŞERLİ — önce ÖĞRETME kapısı (üç panoda da aynı
     // harf, geçerken adını söyler), hemen ardından AYNI harfin sınama kapısı.
     const target = pickNextGameItem(pool) || pool[0];
-    const wrongs = pickWrongs(pool, target, 2, { distinctEmoji: true });
+    const a = askRef.current;
+    // Yazılı modda çeldirici ADA göre seçilir ve aynı adı taşıyan elenir
+    // (ثَ ile سَ ikisi de "se" — ikisi birden panoda olursa iki doğru cevap).
+    const wrongs = a.yazili
+      ? a.ayriAdlar(a.celdiriciler(pool, target, 2), 2)
+      : pickWrongs(pool, target, 2, { distinctEmoji: true });
     if (wrongs.length < 2) { gateActive.current = false; return; }
     const items = shuffle([target, ...wrongs]);
     const targetLane = items.findIndex((i) => i.id === target.id);
@@ -1009,7 +1032,7 @@ const SubwayGame = () => {
     batch.push({ id: UID++, kind: "gate", localZ, target, items, targetLane, elevated, crossed: false, resolution: null });
     addEnts(batch);
     setQuestion(target.translit || target.label);
-    playItem(target);
+    void askRef.current.sor(target);
   }, [score, addEnts]);
 
   const spawnRow = useCallback((localZ: number) => {
@@ -1106,6 +1129,7 @@ const SubwayGame = () => {
 
     if (correct) {
       playFeedback(true);
+      void askRef.current.cevapSesi(gate.target!, true);
       if (!isSuper) { setFlash(true); setTimeout(() => setFlash(false), 450); } // normal modda ışık
       setStreak((st) => st + 1);
       setCorrectCount((c) => c + 1);
@@ -1175,8 +1199,7 @@ const SubwayGame = () => {
   }, []);
   const replay = useCallback(() => {
     const gate = entsRef.current.find((e) => e.kind === "gate" && !e.resolution);
-    const t = (gate?.target) ?? null;
-    if (t) playItem(t);
+    askRef.current.tekrar(gate?.target ?? null);
   }, []);
   const start = useCallback(() => {
     if (gameOver) return;
@@ -1268,18 +1291,33 @@ const SubwayGame = () => {
           </div>
         </div>
 
-        {/* SORU — yazılı + sesli */}
-        <div className="mb-2 flex items-center justify-center">
-          <button
-            onClick={replay}
-            className="flex items-center gap-3 rounded-2xl bg-card border-2 border-primary/40 px-5 py-2 shadow-card active:scale-95"
-          >
-            <span className="text-xs font-bold text-muted-foreground">🎯 Hangisi:</span>
-            <span className="text-3xl font-extrabold text-primary">{question ?? "—"}</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Volume2 className="h-4 w-4" />
-            </span>
-          </button>
+        {/* SORU — yazılı + sesli.
+            ⚠️ YAZILI MODDA `question` CEVABIN TA KENDİSİ ("Fe") ve panolarda
+            da aynı ad yazıyor; gizlenir. Tabela modunda yerine GLİF asılır —
+            YOLUN ÜSTÜNDE, oyun alanının DIŞINDA (kullanıcı şartı: "yolu
+            kapatmasın, görsün"). */}
+        <div className="mb-2 flex flex-col items-center justify-center">
+          {ask.mode === "ustte" ? (
+            ask.tabela(
+              entsRef.current.find((e) => e.kind === "gate" && !e.resolution)?.target ?? null,
+              { className: "mb-0", boy: "text-5xl" },
+            )
+          ) : (
+            <button
+              onClick={replay}
+              className="flex items-center gap-3 rounded-2xl bg-card border-2 border-primary/40 px-5 py-2 shadow-card active:scale-95"
+            >
+              <span className="text-xs font-bold text-muted-foreground">
+                {ask.yazili ? "👁️ Harfin adını seç:" : "🎯 Hangisi:"}
+              </span>
+              {!ask.yazili && (
+                <span className="text-3xl font-extrabold text-primary">{question ?? "—"}</span>
+              )}
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Volume2 className="h-4 w-4" />
+              </span>
+            </button>
+          )}
         </div>
 
         <div
@@ -1312,7 +1350,7 @@ const SubwayGame = () => {
                   case "low": return <LowBarrierEnt key={e.id} e={e} />;
                   case "overhead": return <OverheadEnt key={e.id} e={e} />;
                   case "coins": return <CoinsEnt key={e.id} e={e} />;
-                  case "gate": return <GateEnt key={e.id} e={e} hintLane={hintLaneOf(e)} fontTick={fontTick} />;
+                  case "gate": return <GateEnt key={e.id} e={e} hintLane={hintLaneOf(e)} fontTick={fontTick} yazili={ask.yazili} />;
                   default: return null;
                 }
               })}
@@ -1463,6 +1501,7 @@ const SubwayGame = () => {
           </div>
         )}
       </main>
+      {ask.katman}
     </div>
   );
 };

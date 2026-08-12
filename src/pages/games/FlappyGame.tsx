@@ -226,7 +226,6 @@ const FlappyGame = () => {
           recordLetterMastery(collidedTarget.item.id, true);
           recordGameAnswer(collidedTarget.item, true);
           playFeedback(true);
-          askRef.current.cevapSesi(collidedTarget.item, true);
           setScore((s) => s + 1);
           next = next.filter((l) => {
             if (l.missed) return true;
@@ -234,7 +233,9 @@ const FlappyGame = () => {
             return dx * dx + dy * dy > NEAR_PLUS_SQ;
           });
           setEaten((e) => e + 1);
-          setTimeout(pickTarget, 250);
+          // ⚠️ Kayıt bitmeden yeni hedef seçilmemeli (yazılı modda).
+          void askRef.current.cevapSesi(collidedTarget.item, true)
+            .then(() => setTimeout(pickTarget, 250));
           return next;
         }
         if (collidedWrong) {
