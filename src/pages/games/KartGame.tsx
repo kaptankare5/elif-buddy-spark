@@ -241,7 +241,7 @@ const KartGame = () => {
   const [power, setPower] = useState<PowerKind | null>(null);
   const [activePower, setActivePower] = useState<PowerKind | null>(null);
   const [prompt, setPrompt] = useState<ContentItem | null>(null);
-  // "Şimşek" modu: glif ekranda yarı saydam parlar, FLASH_MS sonra söner.
+  // "Şimşek" modu: glif ekranın ortasında parlar, seçilen süre sonra söner.
   // (Ad `flash` DEĞİL — o zaten oyunun bildirim şeridinde kullanılıyor.)
   const [glifFlash, setGlifFlash] = useState<ContentItem | null>(null);
   const [glifCue, setGlifCue] = useState(false);

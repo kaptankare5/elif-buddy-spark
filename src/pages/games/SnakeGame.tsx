@@ -88,7 +88,14 @@ const SnakeGame = () => {
   const startQuiz = useCallback((occupied: Cell[]) => {
     const pool = gamePool();
     const target = pickNextGameItem(pool) || pool[0];
-    const wrong = pickWrongs(pool, target, 1)[0];
+    // ⚠️ Yazılı modda çeldirici ADA göre seçilmeli VE aynı adı taşıyamaz:
+    // ثَ ile سَ ikisi de "se" okunur; iki şerit de "se" yazarsa sorunun İKİ
+    // doğru cevabı olur ve doğru okuyan çocuk yanlış sayılır. Yılan yazılı
+    // moda sonradan açıldığında bu süzgeç atlanmıştı.
+    const a0 = askRef.current;
+    const wrong = a0.yazili
+      ? a0.ayriAdlar(a0.celdiriciler(pool, target, 1), 1)[0]
+      : pickWrongs(pool, target, 1)[0];
     const taken = [...occupied];
     // Yılan kafasının etrafında geniş bir alanı boş tut — istemeden cevap üstüne gitmesin
     const head = occupied[0];

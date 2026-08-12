@@ -72,6 +72,19 @@ const MemoryGame = () => {
   /** Bu kart harfin SESİNİ mi taşıyor? (süper modda "b" yüzü) */
   const sesKarti = (c: Card) => sesliEslestirme && c.variant === "b";
 
+  /**
+   * ⚠️ SES BEKLENİR AMA TAHTAYI KİLİTLEYEMEZ.
+   *
+   * `await playItem(...)` kaydı yüklenemeyen bir öğede reddedebiliyor ya da
+   * hiç çözülmeyebiliyor. Burada bu ölümcüldü: `flip` içinde await'in
+   * ardından `setFirst(c)` ve `setBusy(false)` var — ses takılırsa ilk kart
+   * hiç kaydedilmiyor, `busy` açık kalıyor ve TAHTA DONUYOR. Aynı tuzağa
+   * tanıtım kartında da düşmüştük. Hata yutulur, akış devam eder.
+   */
+  const sesCal = async (it: ContentItem) => {
+    try { await playItem(it); } catch { /* kayıt çalmasa da oyun aksamaz */ }
+  };
+
   const flip = async (c: Card) => {
     if (busy || c.flipped || c.matched) return;
     const updated = cards.map((x) => x.uid === c.uid ? { ...x, flipped: true } : x);
@@ -81,7 +94,7 @@ const MemoryGame = () => {
       setBusy(true);
       // Ses↔resim modunda GLİF kartı SESSİZ açılır — sesi çalmak cevabı
       // vermek olurdu. Yalnız 🔊 kartı harfin kaydını çalar.
-      if (!sesliEslestirme || sesKarti(c)) await playItem(c.item);
+      if (!sesliEslestirme || sesKarti(c)) await sesCal(c.item);
       // Sayım bayrağını EKLEMEDEN ÖNCE oku (yukarıdaki nota bak).
       ilkKartYeniSes.current = sesKarti(c) && !acilanSesler.current.has(c.uid);
       if (sesKarti(c)) acilanSesler.current.add(c.uid);
@@ -106,7 +119,7 @@ const MemoryGame = () => {
     }
     if (isMatch) {
       setCards((cs) => cs.map((x) => x.item.id === c.item.id ? { ...x, matched: true, flipped: true } : x));
-      await playItem(c.item);
+      await sesCal(c.item);
       setFirst(null); setBusy(false);
       if (!isSuper) {
         matchCountRef.current += 1;
@@ -115,7 +128,7 @@ const MemoryGame = () => {
     } else {
       // Yanlış eşleşmede doğru harfin sesi yine de duyulsun (öğretici an);
       // ses↔resim modunda ikinci kart glifse onun kaydını çalıyoruz.
-      await playItem(c.item);
+      await sesCal(c.item);
       setCards((cs) => cs.map((x) => (x.uid === first.uid || x.uid === c.uid) ? { ...x, flipped: false } : x));
       setFirst(null); setBusy(false);
     }
