@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { InGameQuiz } from "@/components/InGameQuiz";
@@ -171,6 +172,24 @@ const MemoryGame = () => {
             <div className="text-5xl mb-2">🏆</div>
             <p className="text-lg font-extrabold">Hepsini buldun! {moves} hamle</p>
             <button onClick={reset} className="mt-3 rounded-full bg-primary px-5 py-2 font-bold text-primary-foreground">Tekrar Oyna</button>
+          </div>
+        )}
+
+        {/* ⚠️ SERBEST OYUN'da havuz yalnız GÖRÜLMÜŞ harflerden kurulur; hiç
+            ilerleme yoksa `pickCluster` boş dönüyor ve tahta 0 kartla
+            açılıyordu — çocuk bomboş bir ekran görüyor, oyun bozuk sanıyor.
+            Sebebi söyleyip çıkış yolu gösteriyoruz. */}
+        {cards.length < 4 && (
+          <div className="rounded-3xl border-4 border-warning/40 bg-card p-6 text-center shadow-card">
+            <div className="mb-2 text-5xl">🌱</div>
+            <p className="text-base font-extrabold text-foreground">Henüz yeterli harf yok</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Serbest Oyun yalnız <b>daha önce gördüğün</b> harfleri kullanır.
+              Önce birkaç harf öğren, sonra buraya dön.
+            </p>
+            <Link to="/" className="mt-3 inline-block rounded-full bg-primary px-5 py-2 font-bold text-primary-foreground shadow-card">
+              Derslere git
+            </Link>
           </div>
         )}
 

@@ -367,7 +367,20 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   cevabı olur ve doğru okuyan çocuk yanlış sayılır. `pickNameWrongs` bunu
   zaten eliyor; tahtayı KENDİ kuran oyunlar (Uçan Kuş, Kutu Boşalt)
   `ask.ayriAdlar` ile ayrıca elemek zorunda.
-- ⚠️ `LaneRunnerGame.tsx` HİÇBİR ROTAYA BAĞLI DEĞİL (öksüz dosya).
+- ⚠️ **KÖR CEVAP SAYILMAZ** (`korCevapMi`, askMode.ts): şimşekte glif
+  belirmeden ya da `MIN_ALGI_MS` (150) geçmeden gelen dokunuş harfe
+  BAKILMADAN verilmiştir; SRS'e yazılmaz. "Göremedim" ile "bilmiyorum"
+  aynı şey değil — kör basışı yanlış saymak harfi −2 seviye düşürüp ölçümü
+  bozuyordu. Kural muhafazakâr: glif hiç işaretlenmemişse (klasik/tabela,
+  3B kapı oyunları) ASLA devreye girmez.
+- **ŞİMŞEK EŞİĞİ KALİBRASYONU** (`components/FlashKalibre.tsx`, Ayarlar →
+  şimşek bloğu): 3 süre × 4 soru, karışık sırayla; eşiği (%75) geçen EN KISA
+  süreyi önerir. ⚠️ Sorular yalnız çocuğun ZATEN BİLDİĞİ harflerden (L3+)
+  seçilir — bilinmeyen harfle ölçüm "kısa sürede bilemedi" der, oysa uzun
+  sürede de bilemezdi. SRS'e HİÇBİR ŞEY YAZMAZ.
+- **OKUMA ONAYI**: yazılı mod ilk kez seçilirken veliye bir kez sorulur.
+  Çocuk Latin harfi okuyamıyorsa mod ölçüm bile yapamaz (her soru rastgele
+  işaretlenir, SRS bunu "bilmiyor" sanar).
 
 ### Oyunlar
 - ⚠️ **HAFIZA'DA SÜPER MOD = SES↔RESİM** (kullanıcı fikri): çift artık iki

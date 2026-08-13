@@ -56,4 +56,4 @@ export function useGameMode(): [GameMode, (m: GameMode) => void] {
 }
 
 // Süper öğrenme modunda gösterilen oyun listesi
-export const SUPER_MODE_GAMES = new Set(["snake", "runner", "balloon", "sorter", "quiz", "flappy", "subway", "platform", "party", "kart"]);
+export const SUPER_MODE_GAMES = new Set(["snake", "runner", "balloon", "sorter", "quiz", "flappy", "subway", "platform", "party", "kart", "lane"]);

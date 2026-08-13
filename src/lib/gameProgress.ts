@@ -19,6 +19,7 @@ import { recordConfusionPick, recordDiscrimination, recordMiss } from "@/lib/con
 import { considerRemedy, queueRemedy } from "@/lib/remedial";
 import type { ContentItem } from "@/data/types";
 import { blameTarget, pickItemForSkill, skillOf } from "@/lib/skills";
+import { korCevapMi } from "@/lib/askMode";
 
 const NS = "quiz" as const;
 
@@ -30,6 +31,13 @@ export function recordGameAnswer(
   if (!item) return;
   const t = findTopicOfItem(item.id);
   if (!t) return;
+
+  // ⚠️ KÖR CEVAP SAYILMAZ: şimşek modunda glif belirmeden (ya da algılanacak
+  // kadar durmadan) gelen dokunuş, harfe BAKILMADAN verilmiştir. Onu
+  // "bilmiyor" diye kaydetmek harfi −2 seviye düşürür ve ölçümü bozar —
+  // olan şey dikkat kazası, bilgi eksikliği değil. Karışıklık ısısına da
+  // yazılmaz: kör basış neyin neyle karıştırıldığını göstermez.
+  if (korCevapMi(item.id)) return;
 
   // KARIŞIKLIK ÖLÇÜMÜ moddan BAĞIMSIZ çalışır: normal modda cevapların 2/3'ü
   // SRS'e sayılmaz ama çocuk yine de karıştırmıştır — o bilgi kaybolmamalı.
@@ -62,6 +70,13 @@ export function recordInGameTest(
   if (!item) return;
   const t = findTopicOfItem(item.id);
   if (!t) return;
+
+  // ⚠️ KÖR CEVAP SAYILMAZ: şimşek modunda glif belirmeden (ya da algılanacak
+  // kadar durmadan) gelen dokunuş, harfe BAKILMADAN verilmiştir. Onu
+  // "bilmiyor" diye kaydetmek harfi −2 seviye düşürür ve ölçümü bozar —
+  // olan şey dikkat kazası, bilgi eksikliği değil. Karışıklık ısısına da
+  // yazılmaz: kör basış neyin neyle karıştırıldığını göstermez.
+  if (korCevapMi(item.id)) return;
   recordConfusionSignal(skillOf(item), correct, meta?.chosenId, meta?.shownIds);
   const hedef = correct
     ? { topicId: t.topicId, skillId: skillOf(item) }

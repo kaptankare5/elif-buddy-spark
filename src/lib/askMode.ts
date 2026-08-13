@@ -101,6 +101,48 @@ export function useFlashMs(): [number, (ms: number) => void] {
   return [m, (v: number) => { setFlashMs(v); setM(v); }];
 }
 
+/**
+ * KÖR CEVAP AYIRICI — "göremedim" ile "bilmiyorum" aynı şey değil.
+ *
+ * ⚠️ Şimşek modunda glif çok kısa parlıyor. Çocuk o anda başka yere
+ * bakıyorsa harfi HİÇ görmeden bir şıkka basabiliyor. Bu cevabı SRS'e
+ * "bilmiyor" diye yazmak ölçtüğümüz şeyi bozar: harfi −2 seviye düşürür,
+ * oysa olan şey bir DİKKAT kazasıdır, bilgi eksikliği değil.
+ *
+ * Kural muhafazakâr: yalnız ELDE POZİTİF KANIT varken cevap düşürülür —
+ * glif henüz belirmemişken ya da belirmesinin üstünden `MIN_ALGI_MS`
+ * geçmeden cevap geldiyse. Çocuk yetişkinden 2-3 kat yavaş; tek bir glifi
+ * kodlaması ~150 ms sürüyor, üstüne motor tepki biniyor. Bu süreden önce
+ * gelen bir dokunuş harfe BAKILARAK verilmiş olamaz.
+ *
+ * Glif hiç işaretlenmemişse (klasik/tabela modu, 3B kapı oyunları) kural
+ * ASLA devreye girmez — bilgi yoksa cevap düşürülmez.
+ */
+const MIN_ALGI_MS = 150;
+
+let _sonGlif: { id: string; cueAt: number; glifAt: number | null } | null = null;
+
+/** Bakış işareti yandı — glif henüz YOK. */
+export function markGlifBekleniyor(id: string) {
+  _sonGlif = { id, cueAt: Date.now(), glifAt: null };
+}
+
+/** Glif ekrana geldi. */
+export function markGlifGosterildi(id: string) {
+  if (_sonGlif?.id === id) _sonGlif.glifAt = Date.now();
+  else _sonGlif = { id, cueAt: Date.now(), glifAt: Date.now() };
+}
+
+/** Şimşek oturumu kapandı (oyundan çıkıldı) — kalıntı bilgi taşınmasın. */
+export function clearGlifIzi() { _sonGlif = null; }
+
+/** Bu cevap harfe BAKILMADAN mı verildi? */
+export function korCevapMi(id: string): boolean {
+  if (!_sonGlif || _sonGlif.id !== id) return false;   // kanıt yok → düşürme
+  if (_sonGlif.glifAt === null) return true;           // glif daha belirmedi
+  return Date.now() - _sonGlif.glifAt < MIN_ALGI_MS;
+}
+
 /** Şıklar YAZILI ad mı gösterecek (glif yerine)? */
 export function yaziliSik(m: AskMode): boolean {
   return m === "flash" || m === "ustte";

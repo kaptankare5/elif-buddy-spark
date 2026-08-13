@@ -9,7 +9,8 @@ import { Link } from "react-router-dom";
 import { useGameMode, FREE_PLAY_MIN_SEEN } from "@/lib/gameMode";
 import { freePlaySeenCount } from "@/pages/games/_shared";
 import { cn } from "@/lib/utils";
-import { ASK_MODES, useAskMode, FLASH_PRESETS, useFlashMs } from "@/lib/askMode";
+import { ASK_MODES, useAskMode, FLASH_PRESETS, useFlashMs, yaziliSik } from "@/lib/askMode";
+import { FlashKalibre } from "@/components/FlashKalibre";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 // import { AccountCard } from "@/components/AccountCard"; // UI gizlendi
@@ -26,6 +27,16 @@ const Settings = () => {
   const [mode, setMode] = useGameMode();
   const [ask, setAsk] = useAskMode();
   const [flashMs, setFlashMs] = useFlashMs();
+  const [kalibre, setKalibre] = useState(false);
+  // ⚠️ OKUMA ONAYI: Şimşek/Tabela şıkları LATİN harfle yazılı. Çocuk Türkçe
+  // okuyamıyorsa bu modlar onun için ölçüm bile yapamaz — her soruyu
+  // rastgele işaretler ve SRS bunu "bilmiyor" sanır. Mod ilk kez seçilirken
+  // veliye BİR KEZ soruluyor.
+  const [okumaSor, setOkumaSor] = useState<null | (typeof ASK_MODES)[number]["id"]>(null);
+  const modSec = (id: (typeof ASK_MODES)[number]["id"]) => {
+    if (yaziliSik(id) && !yaziliSik(ask)) setOkumaSor(id);
+    else setAsk(id);
+  };
   const { session } = useAuth();
   const [consent, setConsentState] = useState(consentGiven());
   const [confirmCloudDel, setConfirmCloudDel] = useState(false);
@@ -251,7 +262,7 @@ const Settings = () => {
               {ASK_MODES.map((m) => (
                 <button
                   key={m.id}
-                  onClick={() => setAsk(m.id)}
+                  onClick={() => modSec(m.id)}
                   className={cn(
                     "rounded-2xl p-2 border-2 text-left transition-bouncy",
                     ask === m.id
@@ -290,6 +301,12 @@ const Settings = () => {
                     </button>
                   ))}
                 </div>
+                <button
+                  onClick={() => setKalibre(true)}
+                  className="mt-2 w-full rounded-xl border-2 border-primary/40 bg-primary/10 px-3 py-2 text-xs font-extrabold text-primary"
+                >
+                  📏 Bu çocuk için ölç — doğru süreyi bul
+                </button>
                 <p className="text-[10px] text-muted-foreground mt-2 leading-snug">
                   Harf oyunun <b>tam ortasında</b> parlar; öncesinde küçük bir halka
                   bakışı oraya çeker. Harfi <b>tanımak</b> için 0.3 sn zaten yeter
@@ -519,6 +536,45 @@ const Settings = () => {
           onConfirm={doDeviceDelete}
         />
       </main>
+
+      {/* Şimşek süresi ölçümü — çocuğa özel eşik (bkz. FlashKalibre). */}
+      {kalibre && <FlashKalibre onClose={() => setKalibre(false)} />}
+
+      {/* ⚠️ OKUMA ONAYI: yazılı modlar Latin harf okumayı gerektirir. Çocuk
+          okuyamıyorsa mod ÖLÇÜM BİLE YAPAMAZ — her soru rastgele işaretlenir
+          ve SRS bunu "harfi bilmiyor" sanıp seviyeyi düşürür. Mod ilk kez
+          seçilirken veliye bir kez sorulur. */}
+      {okumaSor && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/60 p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-card p-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+            <h3 className="mb-2 text-base font-extrabold text-foreground">📖 Bir kontrol</h3>
+            <p className="text-sm leading-snug text-muted-foreground">
+              Bu modda şıklar <b>Latin harfleriyle yazılı</b> olacak. Çocuk
+              aşağıdaki gibi kelimeleri <b>okuyabiliyor mu?</b>
+            </p>
+            <div className="my-3 flex justify-center gap-2">
+              {["Elif", "Cim", "Sin"].map((k) => (
+                <span key={k} className="rounded-xl border-2 border-primary/30 bg-muted/40 px-3 py-2 text-lg font-extrabold">{k}</span>
+              ))}
+            </div>
+            <p className="mb-3 text-[11px] leading-snug text-muted-foreground">
+              Okuyamıyorsa bu mod ölçüm bile yapamaz: çocuk her soruyu rastgele
+              işaretler, uygulama da bunu &quot;harfi bilmiyor&quot; sanar.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setAsk(okumaSor); setOkumaSor(null); }}
+                className="flex-1 rounded-full bg-primary px-4 py-2.5 font-extrabold text-primary-foreground shadow-card"
+              >
+                Evet, okuyabiliyor
+              </button>
+              <button onClick={() => setOkumaSor(null)} className="rounded-full bg-muted px-4 py-2.5 font-bold">
+                Hayır
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
 
   );
