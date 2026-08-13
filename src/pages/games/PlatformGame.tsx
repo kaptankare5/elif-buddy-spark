@@ -2920,14 +2920,15 @@ const PlatformGame = () => {
             className="flex items-center gap-3 rounded-2xl bg-card border-2 border-primary/40 px-5 py-2 shadow-card active:scale-95 disabled:opacity-60"
           >
             <span className="text-xs font-bold text-muted-foreground">
-              {ask.yazili ? "🎯 Harfin adını kır:" : "🎯 Hangisi:"}
+              {ask.yazili ? "🎯 Harfin adını kır:" : "🎯 Sesi dinle, doğru bloğa vur:"}
             </span>
-            {ask.yazili ? (
+            {/* ⚠️ KLASİKTE DE HARFİN ADI YAZILMAZ. `question` harfin Türkçe
+                okunuşu ("Fe") — okuyabilen çocuk için sorunun CEVABI, üstelik
+                soru zaten SESLE soruluyordu (kullanıcı kararı). */}
+            {ask.yazili && (
               <span className="text-sm font-extrabold text-primary">
                 {ask.mode === "flash" ? "harfi tekrar göster" : "harf yukarıda"}
               </span>
-            ) : (
-              <span className="text-3xl font-extrabold text-primary">{question ?? "—"}</span>
             )}
             {!ask.yazili && (
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">

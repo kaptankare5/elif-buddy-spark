@@ -14,7 +14,8 @@ import { playItem } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import {
   getAskMode, okunurAd, pickNameWrongs, adZorlugu, sikSayisi, yaziliSik, sameName,
-  getFlashMs, FLASH_CUE_MS, type AskMode,
+  getFlashMs, FLASH_CUE_MS, markGlifBekleniyor, markGlifGosterildi, clearGlifIzi,
+  type AskMode,
 } from "@/lib/askMode";
 import { getGameItemLevel } from "@/lib/gameProgress";
 import { glifKaydirmaEm } from "@/lib/glifOlcu";
@@ -119,6 +120,7 @@ export function useAskLayer(opts?: {
   useEffect(() => () => {
     flashTimers.current.forEach((t) => window.clearTimeout(t));
     timers.current.forEach((t) => window.clearTimeout(t));
+    clearGlifIzi();   // oyundan çıkınca kalıntı iz taşınmasın
   }, []);
 
   /**
@@ -136,9 +138,11 @@ export function useAskLayer(opts?: {
     // halkasını erken söndürüyor ya da glifini siliyordu.
     flashTimers.current.forEach((t) => window.clearTimeout(t));
     flashTimers.current = [];
+    markGlifBekleniyor(item.id);   // kör cevap ayırıcı (bkz. askMode)
     setFlashCue(true);
     const t1 = window.setTimeout(() => {
       setFlashCue(false);
+      markGlifGosterildi(item.id);
       setFlashGlif(item);
       const t2 = window.setTimeout(() => setFlashGlif(null), flashMs);
       flashTimers.current = [t2];

@@ -18,8 +18,9 @@ import SubwayGame from "./games/SubwayGame";
 import PlatformGame from "./games/PlatformGame";
 import PartyGame from "./games/PartyGame";
 import KartGame from "./games/KartGame";
+import LaneRunnerGame from "./games/LaneRunnerGame";
 
-const GAMES = ["memory", "balloon", "sorter", "match3", "triple", "quiz", "snake", "flappy", "puzzle", "runner", "subway", "platform", "party", "kart"] as const;
+const GAMES = ["memory", "balloon", "sorter", "match3", "triple", "quiz", "snake", "flappy", "puzzle", "runner", "subway", "platform", "party", "kart", "lane"] as const;
 
 const GAME_META: Record<string, { title: string; desc: string }> = {
   memory: { title: "Hafıza Kartları", desc: "Eşleşen Elifbâ harflerini bul." },
@@ -80,6 +81,7 @@ const TrackedGame = ({ gameId }: { gameId: string }) => {
       case "platform": return <PlatformGame />;
       case "party": return <PartyGame />;
       case "kart": return <KartGame />;
+      case "lane": return <LaneRunnerGame />;
       default: return <Navigate to="/oyunlar" replace />;
     }
   })();

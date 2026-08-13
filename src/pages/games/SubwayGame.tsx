@@ -1308,11 +1308,12 @@ const SubwayGame = () => {
               className="flex items-center gap-3 rounded-2xl bg-card border-2 border-primary/40 px-5 py-2 shadow-card active:scale-95"
             >
               <span className="text-xs font-bold text-muted-foreground">
-                {ask.yazili ? "👁️ Harfin adını seç:" : "🎯 Hangisi:"}
+                {ask.yazili ? "👁️ Harfin adını seç:" : "🎯 Sesi dinle, doğru raya geç:"}
               </span>
-              {!ask.yazili && (
-                <span className="text-3xl font-extrabold text-primary">{question ?? "—"}</span>
-              )}
+              {/* ⚠️ HARFİN ADI YAZILMAZ. `question` = harfin Türkçe okunuşu
+                  ("Fe"); okuyabilen çocuk için sorunun CEVABI. Klasik modda
+                  soru zaten SESLE soruluyor, yazı yalnız cevabı sızdırıyordu
+                  (kullanıcı kararı). Düğme "dinle" işlevini koruyor. */}
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <Volume2 className="h-4 w-4" />
               </span>
