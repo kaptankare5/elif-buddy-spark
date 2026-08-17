@@ -53,8 +53,11 @@ cd tools/ses && python3 kes.py && python3 uret.py     # → yeni_sesler/ (471 do
 
 `hareke` `med` `tenvin` `cezm` `sedde` → **yeni çekim** (411 dosya).
 `basic` (harf adları) → **eski çekim korundu** (kullanıcı kararı).
-`basic-uzun` (28 uzatmalı harf adı) ve `ha-hiriltili` → uygulamada yeri yok,
-eklenmedi.
+⚠️ `basic-uzun` (28 uzatmalı harf adı) **eklenmeyecek — bir daha da eklenmesin**
+(kullanıcı kararı): uzatmayı zaten **7. konu (Med Harfleri)** öğretiyor, orada
+84 kayıt var. Harf adını bir de uzatmalı okutmak aynı şeyi ikinci kez, üstelik
+konu dışında öğretmek olurdu. `ha-hiriltili` de aynı sebeple dışarıda: karşılık
+gelen bir kart yok.
 
 Ölçüm: yeni set −20.9…−25.5 dBFS aralığında (4.6 dB), korunan `basic` −23.2.
 Eski `sedde` −31.9 idi, yani **11 dB kısıktı** — oyunda o kartlara gelince ses
