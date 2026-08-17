@@ -26,8 +26,15 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   (cezm 14, şedde 14, tenvin 8), `zamir-lafzatullah` (8) ve `elif-lam-ra` (8)
   konularının HEPSİ, bir de `asar-med-kasr` konusu tamamen boş (0 öğe).
   Çekirdek kartların kaydı TAM: basic 28, hareke 84, med 84, tenvin 84,
-  sedde 81, cezm 81 (Kef'in üçü hocanın tek parça kaydından kesilip
-  eklendi — `tools/ses/`).
+  sedde 81, cezm 81.
+- ⚠️ **hareke / med / tenvin / cezm / şedde = YENİ ÇEKİM** (kullanıcı kararı,
+  411 dosya): hocanın tek parça kayıtlarından (`kaptankare5/sound` →
+  "Dünya 1. ses kuran") `tools/ses/` betikleriyle kesildi. **basic (harf
+  adları) DEĞİŞMEDİ** — eski çekim kalsın denildi. Eşleme tahminle değil
+  MFCC parmak iziyle doğrulandı (kayma denetimi: ofset 0 → ortalama sıra
+  10.7, ±1 → 30-31). Kazanç: eski şedde kayıtları **11 dB kısıktı**
+  (−31.9 dBFS), yeni set −20.9 ve bütün aileler 4.6 dB içinde — oyunlarda
+  arka arkaya çalarken ses seviyesi artık zıplamıyor.
 - **Daima `playItem(item)` kullan** (item.audio'yu çalar). `playSpeech(text)`
   metni `public/audio/manifest.json`'da arar; bulamazsa ROBOTİK tarayıcı
   TTS'ine düşer. Harf sesi için playSpeech KULLANMA. "Tebrikler!" gibi TTS

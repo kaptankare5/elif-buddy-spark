@@ -12,6 +12,7 @@ kes.py         sessizlikten böler; her dosya için BEKLENEN parça sayısını
 uret.py        kesim.json'a göre keser, uygulamanın dosya adlarını verir
                (mp3 · 44100 Hz · stereo · 192 kbps — mevcut dosyalarla aynı)
 parmakizi.py   "bu parça hangi harfin sesi?" — MFCC parmak iziyle ÖLÇER
+denetle.py     üzerine yazmadan önce sağlık denetimi (süre/sessizlik/kırpık)
 ```
 
 Çalıştırma (ffmpeg + numpy gerekir):
@@ -47,3 +48,14 @@ cd tools/ses && python3 kes.py && python3 uret.py     # → yeni_sesler/ (471 do
 - **Parmak izinde kanal ortalaması çıkarılmalı** (cepstral mean normalization);
   ham log-mel'de aynı kişinin bütün heceleri birbirine benziyor (farklı harfler
   0.95'e kadar çıkıyordu), ayrım yok oluyordu.
+
+## Hangi aileler yenilendi
+
+`hareke` `med` `tenvin` `cezm` `sedde` → **yeni çekim** (411 dosya).
+`basic` (harf adları) → **eski çekim korundu** (kullanıcı kararı).
+`basic-uzun` (28 uzatmalı harf adı) ve `ha-hiriltili` → uygulamada yeri yok,
+eklenmedi.
+
+Ölçüm: yeni set −20.9…−25.5 dBFS aralığında (4.6 dB), korunan `basic` −23.2.
+Eski `sedde` −31.9 idi, yani **11 dB kısıktı** — oyunda o kartlara gelince ses
+düşüyordu; yeni sette bu kalktı.
