@@ -22,8 +22,12 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   ("soru sormadı, sadece cevaplar vardı"). Test kilidi 1234 bütün konuları
   açınca kayıtsız öğeler havuza giriyordu. Kayıtsız öğeler konu sayfasında
   ve Flashcard'da durur (orada soru görseldir). Bekçi: `audioFiles.test.ts`.
-  Hâlâ kaydı OLMAYANLAR: cezm 21 ve 28 (Kaf/Ye), sedde 28 (Ye), bütün
-  "Ekstralar" kelime kartları, `zamir-lafzatullah` ve `elif-lam-ra` konuları.
+  Hâlâ kaydı OLMAYANLAR (ölçüldü, 56 öğe): bütün "Ekstralar" kartları
+  (cezm 14, şedde 14, tenvin 8), `zamir-lafzatullah` (8) ve `elif-lam-ra` (8)
+  konularının HEPSİ, bir de `asar-med-kasr` konusu tamamen boş (0 öğe).
+  Çekirdek kartların kaydı TAM: basic 28, hareke 84, med 84, tenvin 84,
+  sedde 81, cezm 81 (Kef'in üçü hocanın tek parça kaydından kesilip
+  eklendi — `tools/ses/`).
 - **Daima `playItem(item)` kullan** (item.audio'yu çalar). `playSpeech(text)`
   metni `public/audio/manifest.json`'da arar; bulamazsa ROBOTİK tarayıcı
   TTS'ine düşer. Harf sesi için playSpeech KULLANMA. "Tebrikler!" gibi TTS
