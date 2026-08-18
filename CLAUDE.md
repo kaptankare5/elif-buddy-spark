@@ -27,8 +27,8 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   `audioFiles.test.ts`). Çekirdek: basic 28, hareke 84, med 84, tenvin 84,
   sedde 81, cezm 81. Ekstralar (`tools/ses/ekstra.py`, 66 dosya): cezm 14,
   şedde 14, med 14, tenvin 8, `zamir-*` 8, `eliflam-*` 8.
-  Tek boşluk: `asar-med-kasr` konusunun İÇİ boş (0 öğe) — kaydı var
-  ("asar med kasr.m4a", 11 parça) ama karşılık gelen kart yok.
+  8. konu (`asar-med-kasr`) bir dönem BOŞTU (0 öğe); "asar med kasr" kaydı
+  gelince 8 kartla dolduruldu (`asar-01..08`).
 - ⚠️ **EKSTRA KAYITLARINDA PARÇA SAYISI TEK BAŞINA KANIT DEĞİL**: şeddede
   -28 dB/d=0.8 de 14 parça veriyordu ama YANLIŞ 14 — şeddeli kelimeyi
   ortadan bölüp SON kelimeyi tamamen kaçırıyordu (kayıt 31.6 sn, kesim
@@ -38,6 +38,12 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   Çekirdek karşılığı olmayan Zamir/Elif-Lâm'da HECE↔SÜRE korelasyonu
   kullanıldı (0.953 ve 0.890). Ekstra çekimi çekirdekten 7-19 dB KISIKTI;
   her aile kendi çekirdeğinin seviyesine getirildi, pay 0.10 sn.
+- ⚠️ **ÂSAR KONUSUNDA SÜRE MED TÜRÜNÜ ELE VERİR** — kartlar oradan
+  doğrulandı: bedel 1.2 · tabiî 1.4 · muttasıl 3.1-3.5 · **lâzım 5.3** ·
+  lâzım+şedde 4.1 sn. Kesimde 9 parça çıkıyordu; şeddeli `حَآجُّوكَ`
+  duraklamadan ikiye bölünüyordu (8. ile 9. arası 0.4 sn, ötekiler 1.2-2.3).
+  d=0.8 ile 8'e iniyor. Kullanıcı kaydı dinleyip kelimeleri yazdı, ölçüm
+  sırayı doğruladı — kelimeler UYDURULMADI.
 - ⚠️ **BÜTÜN ÇEKİRDEK KAYITLAR YENİ ÇEKİM** (kullanıcı kararı, 439 dosya):
   hocanın tek parça kayıtlarından (`kaptankare5/sound` → "Dünya 1. ses kuran")
   `tools/ses/` betikleriyle kesildi. Önce hareke/med/tenvin/cezm/şedde (411),

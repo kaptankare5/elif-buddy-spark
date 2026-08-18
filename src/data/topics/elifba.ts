@@ -670,6 +670,26 @@ const t6_med: ContentTopic = {
 };
 
 // 7. KONU — ÂSAR / MED / KASR: Diyanet'in konu videosu (kitaptaki karekod)
+//
+// ⚠️ SIRA UYDURULMADI. Konu bir dönem BOŞTU (items: []); hocanın "asar med
+// kasr" kaydı gelince dolduruldu. Kaydı yazıya kullanıcı döktü, ben süre
+// profiliyle doğruladım: med TÜRÜ süreyi belirliyor ve ölçülen süreler
+// beklenen sırayla birebir örtüşüyor —
+//   bedel 1.2 · tabiî 1.4 · muttasıl 3.3 · muttasıl 3.1 · uzatmasız 1.4 ·
+//   muttasıl 3.5 · LÂZIM 5.3 · LÂZIM+şedde 4.1 sn
+// ⚠️ Kesimde 9 parça çıkıyordu: şeddeli حَآجُّوكَ duraklamadan ikiye
+// bölünüyordu (şedde kayıtlarındaki tuzağın aynısı). d=0.8 ile 8'e iniyor.
+const ASAR: Array<[string, string]> = [
+  ["آمَنَ", "âmene"],            // 2:285 — medd-i bedel
+  ["مَالِكِ", "mâliki"],          // 1:4  — medd-i tabiî
+  ["يُرَآءُونَ", "yürâûne"],       // 4:142 — medd-i muttasıl
+  ["أُولٰٓئِكَ", "ulâike"],        // yaygın — medd-i muttasıl
+  ["الْمَلَأُ", "el-mele'ü"],      // 7:60 — hemze var ama MED YOK (kasr)
+  ["آبَآؤُنَا", "âbâunâ"],         // 2:170 — medd-i muttasıl
+  ["الضَّآلِّينَ", "dâllîn"],      // 1:7  — medd-i lâzım (6 hareke)
+  ["حَآجُّوكَ", "hâccûke"],        // 3:20 — medd-i lâzım + şedde
+];
+
 const t7_asar: ContentTopic = {
   id: "asar-med-kasr",
   parent: P,
@@ -680,7 +700,15 @@ const t7_asar: ContentTopic = {
   gridCols: 2,
   noPractice: true,
   video: "https://www.youtube.com/watch?v=s6oYG1Bl77E",
-  items: [],
+  items: ASAR.map(([ar, sp], i) => ({
+    id: `l7-${pad2(i + 1)}`,
+    label: sp,
+    speech: sp,
+    lang: "tr" as const,
+    emoji: ar,
+    translit: sp,
+    audio: `/audio/elifba/asar-${pad2(i + 1)}.mp3`,
+  })),
 };
 
 // 8. KONU — TENVİN: her harf × iki üstün / iki esre / iki ötre (sayfa 19)

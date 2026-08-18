@@ -46,6 +46,10 @@ ISLER = [
     ("tenvin ekstralar alıştırmalar.m4a", "tenvin-ekstra-{n:02d}.mp3",  8, -30, 0.2, "tenvin"),
     ("zamir ve lafzatullah.m4a",          "zamir-{n:02d}.mp3",          8, -40, 0.2, None),
     ("eliflam rakısı ve ra.m4a",          "eliflam-{n:02d}.mp3",        8, -38, 0.5, None),
+    # ⚠️ âsar'da d=0.8 ŞART: şeddeli حَآجُّوكَ duraklamadan ikiye bölünüyor
+    # (d=0.4'te 9 parça çıkıyor, 8. ile 9. arasında yalnız 0.4 sn var —
+    # ötekilerin arası 1.2-2.3 sn). Şedde kaydındaki tuzağın aynısı.
+    ("asar med kasr.m4a",                 "asar-{n:02d}.mp3",           8, -35, 0.8, "med"),
 ]
 
 # ⚠️ PAY GENİŞ (0.10 sn her iki uçta). Bu çekim çekirdek kayıtlardan kısık;
