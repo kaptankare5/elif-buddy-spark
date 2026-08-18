@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 198 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 226 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -438,9 +438,26 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   ettirmeyip sonra duvara çarpıyordu; karekök erken hissettirir, geç
   boğar. Ölçüt SKOR DEĞİL **doğru sayısı** (skor seri bonusu/2X ile şişer;
   Koşusu'nda bu yüzden `SPEED_FULL` doğruya bağlanmıştı).
-- **Üç kademe** `ZORLUKLAR` (kolay/orta/zor): her biri `baslangic`, `tavan`,
-  `tavanDogru` (tavana kaç doğruda varılır), `can`, `sik`. **Varsayılan
-  KOLAY** (kullanıcı şartı — çocuklar hep kolayla başlasın).
+- **Üç kademe** `ZORLUKLAR` (kolay/orta/zor): `baslangic`, `tavan`,
+  `tavanDogru` (tavana kaç doğruda varılır), `can`, `sik`, `sure`, `tahta`.
+  **Varsayılan KOLAY** (kullanıcı şartı — çocuklar hep kolayla başlasın).
+- ⚠️ **ZORLUK HER OYUNDA AYNI ŞEY DEĞİL — ÜÇ EKSEN.** 15 oyunun hepsi bağlı
+  (bekçi: `zorlukKapsam.test.ts`; bir dönem yalnız 6'sı bağlıydı ve Ayarlar'daki
+  düğme çalışıyormuş gibi duruyordu).
+  · **HIZ** (Koşusu, Macera, Parti, Yarışı, İki Yol, Balon, Kuş, Yılan, Uzay):
+    hız bandı + `can`. Koşusu'nda **Orta kademe eski ayarı BİREBİR korur**
+    (13.0 → 24.0, 40 doğruda; 10 doğruda 14.8) — zorluk yalnız bandın uçlarını
+    kaydırır, kullanıcının onayladığı t² eğrisine DOKUNMAZ.
+  · **SÜRE** (`sureIcin`, Hızlı Quiz): Kolay 90 sn · Orta 60 · Zor 45. Kolayda
+    süre UZAR — hız çarpanının TERSİ yönde, ikisini aynı alandan türetme.
+  · **TAHTA** (`tahtaBoyu`; Hafıza, Üçlü Eşleştir, Üçlü Eşle, Kutu Boşalt,
+    Yapboz): zorluk hız değil HAFIZA YÜKÜ. Hafıza 4/6/8 çift, Üçlü Eşleştir
+    3/4/5 çeşit, Kutu Boşalt 3/4/5 tip. Yapbozda **yaş TABAN, zorluk ±1
+    basamak** (yaşı silip yalnız zorluğa bakmak 4 yaşındakini 16 parçaya atıyordu).
+  ⚠️ **ALT SINIR ŞART**: 2 çeşitli eşleştirme tahtası kendi kendini patlatır.
+  ⚠️ **HAFIZA'DA YUVARLAMA AŞAĞI**: en yakına yuvarlayınca Kolay ile Orta AYNI
+  tahtayı alıyordu (6·6·8) ve zorluk hiçbir şey değiştirmiyordu. Çift sayı da
+  şart — 3 sütunlu ızgarada 10 kart son satırda tek kart bırakıyor.
 - ⚠️ `sikSayisiIcin(seviye, tavan)` şık sayısını **yalnız L1-L2'de** düşürür:
   yeni harfte az şık yardımdır, bilinen harfte ölçümü sulandırmak olur
   (yukarıdaki `sansPayi` bunu zaten cezalandırıyor, ikisi birlikte çalışır).
@@ -656,6 +673,48 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
 - Arapça glif + `leading-none` = taşma; `leading-[1.5+]` kullan ve cn()
   içinde leading'i text-* SONRASINA koy (tailwind-merge yutar).
 - Grid'ler `dir="rtl"` (Arapça sağdan sola).
+
+## Performans (Capacitor / Play Store hedefli)
+
+Uygulama **Capacitor ile Play Store'a** çıkacak. Capacitor'da paketler YEREL
+diskten okunur — ağ beklemesi yok, darboğaz JS'in AYRIŞTIRILMASI ve pikselin
+DOLDURULMASI. Ölçüm araçları `tools/perf/` (README'de tuzaklar yazılı).
+⚠️ Capacitor paketi HENÜZ KURULU DEĞİL (`android/` yok, `@capacitor/core` yok);
+koddaki Capacitor parçaları (`CapacitorBackHandler`, `purchases.ts`) yoksa
+sessizce devre dışı kalıyor. Yükleme boyutu 20 MB (16'sı ses) — 150 MB
+sınırının çok altında, ses dosyalarını KÜÇÜLTME.
+
+- ⚠️ **BÜTÜN ROTALAR VE OYUNLAR `React.lazy` İLE BÖLÜNMÜŞ** (Index hariç —
+  açılış sayfası beklemesin). Eskiden tek 2.4 MB'lık paket vardı: alfabe
+  sayfasını açan çocuk 3B yarış motorunu da indirip ayrıştırıyordu.
+  Ölçüm (CPU 4x yavaşlatılmış): açılış JS 2345 → 667 kB, ilk boyanma
+  916 → 512 ms, DOMContentLoaded 573 → 153 ms. `manualChunks` three/react/
+  supabase'i ayırıyor. **Yeni sayfa eklerken statik import YAZMA.**
+- ⚠️ **UYARLANIR ÇÖZÜNÜRLÜK'ÜN İKİ TUZAĞI** (`_perf.ts`) — ikisi de aynı yöne
+  bakıyordu: yardıma EN ÇOK muhtaç cihaz yardımı ya çok geç alıyordu ya hiç.
+  (1) Pencere KARE sayarsa 10 fps'lik cihaz ilk düzeltmeyi 15 sn sonra alır
+  (60 fps'lik 2.5 sn sonra) — pencere SANİYE ile ölçülür.
+  (2) "Sekme arkaplanda" koruması `dt > 0.2` iken 5 fps altındaki HER kareyi
+  eliyordu, uyarlama hiç devreye girmiyordu. Eşik 1 sn + `document.hidden`.
+  Ölçüm: Partisi 10 → 15 fps, Yarışı 4 → 9 fps (canvas 824×1760'ta ÇAKILI
+  kalıyorken 412×880'e iniyor). Bekçi: `perfUyarlanir.test.ts`.
+- ⚠️ **R3F'te `dpr={[1, 1.75]}` TEK BAŞINA uyarlanır YAPMAZ** — R3F üst ucu
+  kullanır, biri `setDpr` çağırana kadar orada kalır. Koşusu'nda tam olarak bu
+  vardı. Çözüm `<UyarlanirDpr>` bileşeni; R3F'te `setPixelRatio`/`setSize`
+  ÇAĞIRMA (R3F kendi boyutlandırmasını yapıyor, çakışıyor).
+- **Dekor InstancedMesh olmalı**: Yarışı'nda ~240 ağaç/kaya tek tek Mesh idi,
+  üç yığına indi (çizim çağrısı 206 → 185, üçgen artmadı — dekor düşük
+  poligonlu). `frustumCulled = false` şart (örnekler pistin her yerinde).
+- ⚠️ **BU SANDBOXTA GPU YOK** (swiftshader = yazılım rasterleştirici): 3B
+  fps'i gerçek telefonu TEMSİL ETMEZ (CPU profilinde %83 `(program)`).
+  Cihazdan bağımsız ölçüye bak — `tools/perf/3b.mjs`: çizim çağrısı/üçgen
+  (Koşusu 121/9.0k · Partisi 207/32k · Yarışı 185/48k). 2B oyunların hepsi
+  4x yavaşlatılmış CPU'da 60 fps.
+- ⚠️ **OYUNU GERÇEKTEN BAŞLATMADAN ÖLÇME**: Partisi/Yarışı bölüm seçme
+  ekranıyla açılıyor, orada rAF boşta dönüyor ve ölçüm "60 fps, min 60"
+  diyor — oyun hiç çalışmamış olur.
+- HUD'lar 200-250 ms'lik `setInterval` ile güncelleniyor (Koşusu, Macera):
+  kasıtlı, her karede React render etmemek için. Bunları rAF'a çevirme.
 
 ## Git / dağıtım
 - Repo: kaptankare5/elif-buddy-spark; `main` = Lovable'ın da yazdığı canlı
