@@ -27,10 +27,14 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   konularının HEPSİ, bir de `asar-med-kasr` konusu tamamen boş (0 öğe).
   Çekirdek kartların kaydı TAM: basic 28, hareke 84, med 84, tenvin 84,
   sedde 81, cezm 81.
-- ⚠️ **hareke / med / tenvin / cezm / şedde = YENİ ÇEKİM** (kullanıcı kararı,
-  411 dosya): hocanın tek parça kayıtlarından (`kaptankare5/sound` →
-  "Dünya 1. ses kuran") `tools/ses/` betikleriyle kesildi. **basic (harf
-  adları) DEĞİŞMEDİ** — eski çekim kalsın denildi. Eşleme tahminle değil
+- ⚠️ **BÜTÜN ÇEKİRDEK KAYITLAR YENİ ÇEKİM** (kullanıcı kararı, 439 dosya):
+  hocanın tek parça kayıtlarından (`kaptankare5/sound` → "Dünya 1. ses kuran")
+  `tools/ses/` betikleriyle kesildi. Önce hareke/med/tenvin/cezm/şedde (411),
+  sonra basic'in 28 harf adı da eklendi ("kaç aydır kullanılan eski sesleri
+  sil"). ⚠️ Harf ADLARI için kesim eşiği **-40 dB** (ötekilerde -25):
+  yumuşak başlangıçlı adlarda (-25 dB'de) sözün ilk hecesi kesiliyordu.
+  Ayrıca **+3.8 dB kazanç** uygulandı — ham kesim -26.8 dBFS ile bütün
+  ailelerin altında kalıyordu. Eşleme tahminle değil
   MFCC parmak iziyle doğrulandı (kayma denetimi: ofset 0 → ortalama sıra
   10.7, ±1 → 30-31). Kazanç: eski şedde kayıtları **11 dB kısıktı**
   (−31.9 dBFS), yeni set −20.9 ve bütün aileler 4.6 dB içinde — oyunlarda
