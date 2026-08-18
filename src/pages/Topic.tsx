@@ -498,7 +498,7 @@ const Topic = () => {
       // Bakım/ara-kontrol: cevabı O konuya işle (dürüst seviye). Atlanmış konuysa
       // ayrıca konu-düzeyi yoklama durumunu güncelle (deneme/zayıflık). Yabancı
       // harf hemen tekrar sorulmaz.
-      await recordSrsAnswer(NS, bcTopic, skillOf(q.target), correct, { responseMs });
+      await recordSrsAnswer(NS, bcTopic, skillOf(q.target), correct, { responseMs, optionCount: q.options.length });
       if (isTopicSkipped(bcTopic)) recordBackCheck(bcTopic, correct);
       retryIdRef.current = null;
       retryUsedRef.current = false;
@@ -511,7 +511,7 @@ const Topic = () => {
       const hedef = correct
         ? { topicId: topic.id, skillId: skillOf(q.target), prereqBlamed: false }
         : blameTarget(q.target, topic.id);
-      await recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct, { responseMs });
+      await recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct, { responseMs, optionCount: q.options.length });
       // Yanlışsa aynı harf bir sonraki soruda tekrar sorulsun — ama yalnız
       // BİR kez. Tekrar da yanlışsa harf bırakılır; SRS zaten onu yakında
       // geri getirir, bu arada çocuk kolay/eski sorularla toparlanır.

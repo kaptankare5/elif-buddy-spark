@@ -26,7 +26,7 @@ const NS = "quiz" as const;
 export function recordGameAnswer(
   item: ContentItem | undefined | null,
   correct: boolean,
-  meta?: { responseMs?: number; gameId?: string; chosenId?: string; shownIds?: string[] },
+  meta?: { responseMs?: number; gameId?: string; chosenId?: string; shownIds?: string[]; optionCount?: number },
 ) {
   if (!item) return;
   const t = findTopicOfItem(item.id);
@@ -56,7 +56,19 @@ export function recordGameAnswer(
     const hedef = correct
       ? { topicId: t.topicId, skillId: skillOf(item) }
       : blameTarget(item, t.topicId);
-    recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct, meta);
+    // ⚠️ ŞIK SAYISI OTOMATİK TÜRETİLİR. Merdivenin gerekçeleri 4 şıka göre
+    // yazılmıştı ama şimşek modu 2, tabela 3 şık gösteriyor ve Kolay
+    // zorlukta da şık azalıyor. Oyunların çoğu `shownIds` zaten yolluyor
+    // (karışıklık ölçümü için) — oradan sayılınca hiçbir çağrı yerini
+    // değiştirmeden bütün oyunlar korumaya giriyor. Bilinmiyorsa alan boş
+    // kalır ve srs.ts eski davranışı (4 şık varsayımı) sürdürür.
+    // ⚠️ TEK ELEMANLI shownIds "1 şık" DEMEK DEĞİL. Bazı çağrı yerleri oraya
+    // yalnız hedefi koyuyor; onu "şık sayısı 1" saymak hızlı geçişi her yerde
+    // sessizce kapatırdı. Güvenilir sayım ancak 2+ eleman varsa vardır;
+    // yoksa alan boş bırakılır ve srs.ts eski davranışını (4 şık) sürdürür.
+    const gorulen = meta?.shownIds?.length ?? 0;
+    const sik = meta?.optionCount ?? (gorulen >= 2 ? gorulen : undefined);
+    recordSrsAnswer(NS, hedef.topicId, hedef.skillId, correct, { ...meta, optionCount: sik });
   } catch { /* ignore */ }
 }
 
