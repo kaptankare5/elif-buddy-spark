@@ -1,24 +1,25 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { useParams, Navigate } from "react-router-dom";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { useGameSession } from "@/hooks/useGameSession";
 import { releaseRemedy } from "@/lib/remedial";
 import { RouteHead } from "@/components/RouteHead";
-import QuizGame from "./games/QuizGame";
-import MemoryGame from "./games/MemoryGame";
-import BalloonGame from "./games/BalloonGame";
-import SorterGame from "./games/SorterGame";
-import Match3Game from "./games/Match3Game";
-import TripleMatchGame from "./games/TripleMatchGame";
-import SnakeGame from "./games/SnakeGame";
-import FlappyGame from "./games/FlappyGame";
-import PuzzleGame from "./games/PuzzleGame";
-import RunnerGame from "./games/RunnerGame";
-import SubwayGame from "./games/SubwayGame";
-import PlatformGame from "./games/PlatformGame";
-import PartyGame from "./games/PartyGame";
-import KartGame from "./games/KartGame";
-import LaneRunnerGame from "./games/LaneRunnerGame";
+import { SayfaYukleniyor } from "@/components/SayfaYukleniyor";
+const QuizGame = lazy(() => import("./games/QuizGame"));
+const MemoryGame = lazy(() => import("./games/MemoryGame"));
+const BalloonGame = lazy(() => import("./games/BalloonGame"));
+const SorterGame = lazy(() => import("./games/SorterGame"));
+const Match3Game = lazy(() => import("./games/Match3Game"));
+const TripleMatchGame = lazy(() => import("./games/TripleMatchGame"));
+const SnakeGame = lazy(() => import("./games/SnakeGame"));
+const FlappyGame = lazy(() => import("./games/FlappyGame"));
+const PuzzleGame = lazy(() => import("./games/PuzzleGame"));
+const RunnerGame = lazy(() => import("./games/RunnerGame"));
+const SubwayGame = lazy(() => import("./games/SubwayGame"));
+const PlatformGame = lazy(() => import("./games/PlatformGame"));
+const PartyGame = lazy(() => import("./games/PartyGame"));
+const KartGame = lazy(() => import("./games/KartGame"));
+const LaneRunnerGame = lazy(() => import("./games/LaneRunnerGame"));
 
 const GAMES = ["memory", "balloon", "sorter", "match3", "triple", "quiz", "snake", "flappy", "puzzle", "runner", "subway", "platform", "party", "kart", "lane"] as const;
 
@@ -86,7 +87,7 @@ const TrackedGame = ({ gameId }: { gameId: string }) => {
     }
   })();
 
-  return <>{head}{inner}</>;
+  return <>{head}<Suspense fallback={<SayfaYukleniyor />}>{inner}</Suspense></>;
 };
 
 export default Game;

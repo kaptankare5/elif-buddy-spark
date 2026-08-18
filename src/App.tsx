@@ -1,31 +1,31 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
-import Topic from "./pages/Topic.tsx";
-import Flashcard from "./pages/Flashcard.tsx";
-import Games from "./pages/Games.tsx";
-import Game from "./pages/Game.tsx";
-import Progress from "./pages/Progress.tsx";
-import Settings from "./pages/Settings.tsx";
-import Olcum from "./pages/Olcum.tsx";
-import Deney from "./pages/Deney.tsx";
-import Ezber from "./pages/Ezber.tsx";
-import EzberCalis from "./pages/EzberCalis.tsx";
-import Bahce from "./pages/Bahce.tsx";
-import Koleksiyon from "./pages/Koleksiyon.tsx";
-import YazilisHafiza from "./pages/YazilisHafiza.tsx";
-import Prova from "./pages/Prova.tsx";
-import Veli from "./pages/Veli.tsx";
-import Auth from "./pages/Auth.tsx";
-import ResetPassword from "./pages/ResetPassword.tsx";
-import Paywall from "./pages/Paywall.tsx";
-import Admin from "./pages/Admin.tsx";
-import PrivacyPolicy from "./pages/PrivacyPolicy.tsx";
-import NotFound from "./pages/NotFound.tsx";
+const Topic = lazy(() => import("./pages/Topic.tsx"));
+const Flashcard = lazy(() => import("./pages/Flashcard.tsx"));
+const Games = lazy(() => import("./pages/Games.tsx"));
+const Game = lazy(() => import("./pages/Game.tsx"));
+const Progress = lazy(() => import("./pages/Progress.tsx"));
+const Settings = lazy(() => import("./pages/Settings.tsx"));
+const Olcum = lazy(() => import("./pages/Olcum.tsx"));
+const Deney = lazy(() => import("./pages/Deney.tsx"));
+const Ezber = lazy(() => import("./pages/Ezber.tsx"));
+const EzberCalis = lazy(() => import("./pages/EzberCalis.tsx"));
+const Bahce = lazy(() => import("./pages/Bahce.tsx"));
+const Koleksiyon = lazy(() => import("./pages/Koleksiyon.tsx"));
+const YazilisHafiza = lazy(() => import("./pages/YazilisHafiza.tsx"));
+const Prova = lazy(() => import("./pages/Prova.tsx"));
+const Veli = lazy(() => import("./pages/Veli.tsx"));
+const Auth = lazy(() => import("./pages/Auth.tsx"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword.tsx"));
+const Paywall = lazy(() => import("./pages/Paywall.tsx"));
+const Admin = lazy(() => import("./pages/Admin.tsx"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 import { AuthProvider } from "@/hooks/useAuth";
 import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { BottomNav } from "@/components/BottomNav";
@@ -34,6 +34,8 @@ import { RemedyOverlay } from "@/components/mnemonics/RemedyOverlay";
 import { SkipOffer } from "@/components/SkipOffer";
 import { ConsentModal } from "@/components/ConsentModal";
 import { CapacitorBackHandler } from "@/components/CapacitorBackHandler";
+
+import { SayfaYukleniyor } from "@/components/SayfaYukleniyor";
 
 import { installAudioUnlock } from "@/lib/audio";
 
@@ -52,6 +54,7 @@ const AppShell = () => {
         <AuthProvider>
           <CapacitorBackHandler />
           <SubscriptionProvider>
+            <Suspense fallback={<SayfaYukleniyor />}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/giris" element={<Auth />} />
@@ -79,6 +82,7 @@ const AppShell = () => {
 
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
             <BottomNav />
             <DebugHud />
             <RemedyOverlay />
