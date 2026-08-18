@@ -116,6 +116,20 @@ export default {
         sm: "calc(var(--radius) - 8px)",
       },
       keyframes: {
+        // ⚠️ SARSINTI TRANSFORM İLE: top/left oynatmak her karede yeniden
+        // yerleşim tetikliyor ve zaten kasan cihazda kareyi düşürüyor.
+        "juice-shake": {
+          "0%,100%": { transform: "translate3d(0,0,0)" },
+          "20%": { transform: "translate3d(-3px,2px,0)" },
+          "40%": { transform: "translate3d(3px,-2px,0)" },
+          "60%": { transform: "translate3d(-2px,-2px,0)" },
+          "80%": { transform: "translate3d(2px,2px,0)" },
+        },
+        "juice-pop": {
+          "0%": { transform: "scale(0.6)", opacity: "0" },
+          "45%": { transform: "scale(1.15)", opacity: "1" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -138,6 +152,8 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s ease-out both",
         "scale-in": "scale-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        "juice-shake": "juice-shake 0.28s ease-in-out",
+        "juice-pop": "juice-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both",
       },
     },
   },

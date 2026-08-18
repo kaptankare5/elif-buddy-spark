@@ -8,6 +8,7 @@ import { tahtaBoyu } from "@/lib/zorluk";
 import { recordLetterMastery } from "@/data/srs";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
+import { sfx, titre } from "@/lib/juice";
 
 // =============================================================
 // Üçlü Eşleştir — Candy-Crush tarzı, 5x6 grid, 3-4 farklı nesne türü.
@@ -199,6 +200,11 @@ const Match3Game = () => {
         }
         firstInCascade = false;
 
+        // ⚠️ ZİNCİR DERİNLEŞTİKÇE TİZLEŞİR: art arda patlayan gruplarda aynı
+        // sesi duymak zinciri görünmez kılıyor; yükselen perde "devam ediyor"
+        // diyor. Match-3'lerin klasik kuralı.
+        sfx("patlat", { seri: cascadeIndex * 2 });
+        titre(cascadeIndex > 0 ? "orta" : "hafif");
         setScore((s) => s + group.length);
         // bu grubu null'a çevir
         cur = cur.map((row, r) => row.map((cell, c) => (
@@ -235,6 +241,7 @@ const Match3Game = () => {
     await new Promise((res) => setTimeout(res, 200));
     const matches = findMatches(swapped);
     if (!matches.length) {
+      titre("hata");
       await playFeedback(false);
       const back = swapped.map((row) => row.slice());
       const tmp = back[sel.r][sel.c];
@@ -341,6 +348,7 @@ const Match3Game = () => {
                       recordGameAnswer(quiz.target, correct, {
                         chosenId: opt.id, shownIds: quiz.options.map((o) => o.id),
                       });
+                      if (correct) { sfx("topla"); titre("basari"); } else { sfx("carp"); titre("hata"); }
                       playFeedback(correct);
                       setQuiz(null);
                     }}

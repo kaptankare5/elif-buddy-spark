@@ -10,6 +10,7 @@ import { tahtaBoyu } from "@/lib/zorluk";
 import { gamePool, pickCluster, shuffle } from "./_shared";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
+import { sfx, titre } from "@/lib/juice";
 
 /**
  * `variant` bir çiftin İKİ YÜZÜdür.
@@ -55,6 +56,7 @@ const MemoryGame = () => {
   const [first, setFirst] = useState<Card | null>(null);
   const [busy, setBusy] = useState(false);
   const [moves, setMoves] = useState(0);
+  const eslesmeSeri = useRef(0);
   const [showQuiz, setShowQuiz] = useState(false);
   const matchCountRef = useRef(0); // normal modda 3 eşleşmede 1 gerçek test
   /** Süper modda kartlar ses↔resim çifti olur (yukarıdaki nota bak). */
@@ -103,6 +105,7 @@ const MemoryGame = () => {
 
   const flip = async (c: Card) => {
     if (busy || c.flipped || c.matched) return;
+    sfx("kaydir");   // kart çevirme — dokunuşun karşılığı olsun
     const updated = cards.map((x) => x.uid === c.uid ? { ...x, flipped: true } : x);
     setCards(updated);
 
@@ -134,6 +137,9 @@ const MemoryGame = () => {
       ilkKartYeniSes.current = false;
     }
     if (isMatch) {
+      // Eşleşme serisi: arka arkaya tutturunca ses tizleşir.
+      sfx("topla", { seri: eslesmeSeri.current++ });
+      titre("basari");
       setCards((cs) => cs.map((x) => x.item.id === c.item.id ? { ...x, matched: true, flipped: true } : x));
       await sesCal(c.item);
       setFirst(null); setBusy(false);
@@ -142,6 +148,9 @@ const MemoryGame = () => {
         if (matchCountRef.current % 3 === 0) setShowQuiz(true);
       }
     } else {
+      eslesmeSeri.current = 0;
+      titre("hafif");   // ⚠️ "hata" DEĞİL: hafıza oyununda ıska konumu unutmaktır,
+                        // harfi bilmemek değil — sert geri bildirim yanlış ders verir.
       // Yanlış eşleşmede doğru harfin sesi yine de duyulsun (öğretici an);
       // ses↔resim modunda ikinci kart glifse onun kaydını çalıyoruz.
       await sesCal(c.item);
@@ -151,7 +160,7 @@ const MemoryGame = () => {
   };
 
   useEffect(() => {
-    if (won) playFeedback(true);
+    if (won) { sfx("bitis"); titre("basari"); playFeedback(true); }
   }, [won]);
 
   useEffect(() => {

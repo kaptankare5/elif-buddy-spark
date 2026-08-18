@@ -37,6 +37,7 @@ import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Heart, Volume2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { sfx, titre } from "@/lib/juice";
 
 /**
  * 🚀 Uzay Savaşı — eğitici nişancı.
@@ -88,6 +89,8 @@ const RunnerGame = () => {
   const alanOlcu = useRef({ w: 380, h: 456 });
   const [mode] = useGameMode();
   const isSuper = mode === "super";
+  // Arka arkaya doğru — juice sesi her seferinde tizleşir (Mario para kuralı).
+  const vurusSeri = useRef(0);
   const [shipX, setShipX] = useState(50);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [bullets, setBullets] = useState<Bullet[]>([]);
@@ -150,6 +153,7 @@ const RunnerGame = () => {
   const loseLifeAndRenew = useCallback(() => {
     if (roundLockRef.current) return;
     roundLockRef.current = true;
+    sfx("carp");
     playFeedback(false);
     setCombo(0);
     flashFx("bad");
@@ -177,6 +181,7 @@ const RunnerGame = () => {
     const now = Date.now();
     if (now - lastShotRef.current < 220) return;
     lastShotRef.current = now;
+    sfx("ates");
     setBullets((b) => [...b, { uid: UID++, x: shipXRef.current, y: SHIP_TOP - SHIP_H / 2 }]);
   }, [gameOver, startGame]);
 
@@ -323,6 +328,8 @@ const RunnerGame = () => {
           setScore((s) => s + 3);
           setCombo((c) => c + 1);
           flashFx("good");
+          sfx("topla", { seri: vurusSeri.current++ });
+          titre("basari");
           playFeedback(true);
           // ⚠️ Yazılı modda harfin kaydı BİTMEDEN yeni soru gelmemeli
           // (kullanıcı: "ses devam ederken yeni soru gözüküyor").

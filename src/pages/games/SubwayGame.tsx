@@ -20,6 +20,7 @@ import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
 import { zorlukAyari } from "@/lib/zorluk";
+import { sfx, titre } from "@/lib/juice";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Volume2, Heart, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Pause, Play } from "lucide-react";
@@ -1141,17 +1142,23 @@ const SubwayGame = () => {
       playFeedback(true);
       void askRef.current.cevapSesi(gate.target!, true);
       if (!isSuper) { setFlash(true); setTimeout(() => setFlash(false), 450); } // normal modda ışık
-      setStreak((st) => st + 1);
+      setStreak((st) => {
+        const n = st + 1;
+        // Her 5 doğruda ayrı bir "seri" sesi — ilerleme duyulur olsun.
+        if (n % 5 === 0) { sfx("seri"); titre("basari"); }
+        return n;
+      });
       setCorrectCount((c) => c + 1);
       setScore((sc) => sc + (10 + Math.min(streakRef.current, 5) * 2) * (s.x2T > 0 ? 2 : 1));
       if (s.jetT <= 0 && s.x2T <= 0 && s.magT <= 0) {
         const r = Math.random();
-        if (r < 0.15) { s.jetT = JET_TIME; showBanner("🚀 JETPACK! Altınları topla!", "power", 1800); }
-        else if (r < 0.28) { s.x2T = X2_TIME; showBanner("⭐ 2X PUAN!", "power"); }
-        else if (r < 0.42) { s.magT = MAG_TIME; showBanner("🧲 MIKNATIS!", "power"); }
+        if (r < 0.15) { s.jetT = JET_TIME; sfx("guc"); titre("basari"); showBanner("🚀 JETPACK! Altınları topla!", "power", 1800); }
+        else if (r < 0.28) { s.x2T = X2_TIME; sfx("guc"); titre("basari"); showBanner("⭐ 2X PUAN!", "power"); }
+        else if (r < 0.42) { s.magT = MAG_TIME; sfx("guc"); titre("basari"); showBanner("🧲 MIKNATIS!", "power"); }
       }
     } else {
       playFeedback(false);
+      titre("hata");
       setStreak(0);
       setScore((sc) => Math.max(0, sc - 5));
       s.shake = 0.5;
@@ -1167,7 +1174,9 @@ const SubwayGame = () => {
   }, [showBanner, isSuper]);
 
   const stumble = useCallback(() => {
+    sfx("carp");
     playFeedback(false);
+    coinSeri.current = 0;      // çarpınca para serisi de sıfırlanır
     setStreak(0);
     setLives((l) => {
       const nl = l - 1;
@@ -1176,7 +1185,17 @@ const SubwayGame = () => {
     });
   }, []);
 
+  // ⚠️ PARA TOPLARKEN SES ÇIKMIYORDU (kullanıcı tespiti). Üstelik seri
+  // arttıkça TİZLEŞİR: aynı "çıt"ı 40 kez duymak tekdüze, yükselen perde
+  // "biriktiriyorum" hissi verir. Sayaç 1.2 sn dokunulmazsa sıfırlanır —
+  // ayrı ayrı toplanan paralar tek bir seri sayılmasın.
+  const coinSeri = useRef(0);
+  const coinSonZaman = useRef(0);
   const onCoin = useCallback(() => {
+    const t = performance.now();
+    coinSeri.current = t - coinSonZaman.current < 1200 ? coinSeri.current + 1 : 0;
+    coinSonZaman.current = t;
+    sfx("topla", { seri: coinSeri.current });
     setScore((sc) => sc + 2 * (sim.current.x2T > 0 ? 2 : 1));
   }, []);
 

@@ -10,6 +10,7 @@ import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { rampa, zorlukAyari } from "@/lib/zorluk";
 import { Heart, Volume2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { sfx, titre } from "@/lib/juice";
 
 /**
  * 🛤️ İki Yol Koşusu — pseudo-3D perspektifli koşu oyunu.
@@ -54,6 +55,8 @@ const LaneRunnerGame = () => {
   const pausedRef = useRef(true); pausedRef.current = paused;
   const scoreRef = useRef(0); scoreRef.current = score;
   const tickRef = useRef(0);
+  // Arka arkaya doğru — juice sesi her seferinde tizleşir (Mario para kuralı).
+  const comboRef = useRef(0);
 
   // ⚠️ HIZ REF'TEN OKUNUR, render değişkeninden DEĞİL. Eskiden `speed` render
   // sırasında hesaplanıp effect'in bağımlılığına konuyordu: her doğru cevapta
@@ -88,6 +91,7 @@ const LaneRunnerGame = () => {
     setLane((l) => {
       const n = l + dir;
       if (n < 0 || n > 1) return l;
+      sfx("kaydir");   // en sık yapılan hareket — dokunuşun karşılığı olsun
       setLastSwitchDir(dir);
       setTimeout(() => setLastSwitchDir(0), 220);
       return n as 0 | 1;
@@ -163,6 +167,7 @@ const LaneRunnerGame = () => {
 
         if (hitTarget) {
           recordGameAnswer(hitTarget.item, true);
+          sfx("topla", { seri: comboRef.current++ });
           playFeedback(true);
           setScore((s) => s + 1); setCombo((c) => c + 1);
           addPop(hitTarget.lane, "+1", true);
@@ -171,6 +176,8 @@ const LaneRunnerGame = () => {
         }
         if (hitWrong) {
           recordGameAnswer(targetRef.current!, false, { chosenId: hitWrong.item.id });
+          comboRef.current = 0;
+          sfx("carp"); titre("hata");
           playFeedback(false); setCombo(0);
           addPop(hitWrong.lane, "✗", false);
           flashFx("bad");

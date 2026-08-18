@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 226 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 250 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -448,6 +448,34 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   Çocuk Latin harfi okuyamıyorsa mod ölçüm bile yapamaz (her soru rastgele
   işaretlenir, SRS bunu "bilmiyor" sanar).
 
+### Oyun hissi — juice (`src/lib/juice.ts` + `src/lib/titresim.ts`)
+- ⚠️ **KULLANICI TESPİTİ: "koşu oyununda para toplarken ses çıkmıyor".**
+  Ölçüldü: 15 oyunun 12'sinde HİÇ sfx yoktu, titreşim HİÇBİRİNDE yoktu.
+  Şimdi hepsinde var (bekçi `juiceKapsam.test.ts`; gerçekten ÇALDIĞINI ölçen
+  araç `tools/perf/juice.mjs` — WebAudio'nun `createOscillator`'ını sayıyor).
+- `sfx(kind, { seri, titresim })`: topla · guc · zipla · carp · patlat ·
+  kaydir · ates · seri · bitis. **Müzik YOK** (audio.ts'teki kuralla aynı),
+  hepsi tek atımlık bildirim tonu.
+- ⚠️ **SERİ ARTTIKÇA TİZLEŞİR** (Mario'nun para kuralı): aynı "çıt"ı 40 kez
+  duymak tekdüze; yükselen perde "biriktiriyorum" hissi verir. 12 adımda
+  tavan (yoksa duyulamaz frekansa çıkıyor). Koşusu'nda seri 1.2 sn
+  dokunulmazsa sıfırlanır — ayrı toplanan paralar tek seri sayılmasın.
+- ⚠️ **TİTREŞİM `sfx`'İN İÇİNDE, çağrı yerlerinde DEĞİL**: 15 oyunda tek tek
+  `titre()` yazmak unutulmaya açıktı (ölçtük — 4 oyunda ses vardı, titreşim
+  yoktu). `playSfx` de aynı sebeple kendi titriyor.
+- ⚠️ **SIK YAPILAN HAREKET TİTREMEZ** (`zipla`/`kaydir`/`ates`): Uçan Kuş'ta
+  26 saniyede 62 kanat çırpışı ölçüldü — her birinde titremek rahatsız edici
+  ve pil yakıcı. Titreşim önemli anlara ayrılır. Süreler 8-34 ms.
+- ⚠️ **HAFIZA'DA ISKA "hata" DEĞİL "hafif"**: orada ıska konumu unutmaktır,
+  harfi bilmemek değil — sert geri bildirim yanlış ders verir (SRS kuralıyla
+  aynı gerekçe).
+- `titresim.ts` AYRI modül: hem `audio.ts` (playSfx) hem `juice.ts`
+  kullanıyor, juice zaten audio'dan `tone` alıyor — aynı dosyaya koymak
+  döngüsel import üretiyordu. Ayarlar'dan kapatılabilir.
+- Sarsıntı/pop animasyonları `tailwind.config.ts`'te (`juice-shake`,
+  `juice-pop`) — **transform ile**, `top/left` ile değil (yeniden yerleşim
+  tetikleyip zaten kasan cihazda kareyi düşürüyor).
+
 ### Zorluk ve klavye (`src/lib/zorluk.ts` + `src/lib/klavye.ts`)
 - ⚠️ **OYUNLAR SABİT HIZDA GİTMEZ** (kullanıcı tespiti: "hep aynı hızda
   geliyorlar, tek düze"). `rampa(dogruSayisi)` başlangıç hızından tavana
@@ -758,6 +786,14 @@ sınırının çok altında, ses dosyalarını KÜÇÜLTME.
   histories" der; gerekirse `git fetch --unshallow origin`.
 - gh CLI yok; PR gerekirse GitHub REST API + `git credential fill` token'ı.
 - `.claude/` commit'lenmez. Commit mesajları Türkçe özet + madde.
+
+## Gelecek özellikler
+`docs/gelecek-ozellikler.md` — yapılmamış ama kararı verilmiş işler.
+En önemlisi **sesli okuma denetimi** ("harfi gör, SÖYLE"): uygulamadaki
+bütün ölçüm alımlama yönünde (sesi duy → harfi seç), Elifbâ kitabı ise
+tersini istiyor. Üretim kanıtı şu an yalnız Flashcard'ın kendi beyanına
+dayanıyor. Tuzaklar orada yazılı (tarayıcı konuşma tanıma hece tanımıyor,
+çocuk sesi ≠ yetişkin sesi, eşik kalibre edilmeli, ses cihazdan çıkmamalı).
 
 ## Kullanıcı tercihleri
 - Türkçe iletişim; çocuk odaklı UI (büyük dokunma alanları, ses öncelikli);

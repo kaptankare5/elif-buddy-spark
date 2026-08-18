@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSecenekTuslari, usePcMi } from "@/lib/klavye";
 import { rampa } from "@/lib/zorluk";
+import { sfx, titre } from "@/lib/juice";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
@@ -110,6 +111,8 @@ const BalloonGame = () => {
       setScore((s) => s + 1);
       dogruRef.current += 1;
       setFlash(true); setTimeout(() => setFlash(false), 450); // ışık parlaması
+      sfx("patlat");
+      titre("basari");
       await playFeedback(true);
       // ⚠️ Yeni tur, harfin kaydı BİTİNCE başlar (klasikte söz hemen çözülür,
       // eski 350 ms akış korunur).
@@ -117,6 +120,8 @@ const BalloonGame = () => {
       setTimeout(newRound, 350);
     } else {
       setMisses((m) => m + 1);
+      sfx("carp");
+      titre("hata");
       await playFeedback(false);
     }
   };

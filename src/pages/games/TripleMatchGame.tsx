@@ -6,6 +6,7 @@ import { gamePool, getGameLang, pickCluster } from "./_shared";
 import { tahtaBoyu } from "@/lib/zorluk";
 import { playItem, playFeedback } from "@/lib/audio";
 import type { ContentItem, Lang } from "@/data/types";
+import { sfx, titre } from "@/lib/juice";
 
 // =============================================================
 // Triple Match — İçerik havuzundan (Türkçe/İngilizce) gelen kelimeler
@@ -116,6 +117,7 @@ const TripleMatchGame = () => {
   };
 
   const tap = (entry: BoxItem) => {
+    sfx("kaydir");   // dokunuşun karşılığı — en sık yapılan hareket
     if (status !== "playing") return;
     lastTapRef.current = Date.now();
     setHintId(null);
@@ -148,7 +150,7 @@ const TripleMatchGame = () => {
       setTimeout(() => setFloatText(null), 1400);
 
       if (newBox.length === 0 && compact.every((s) => s === null)) {
-        setTimeout(() => { setStatus("won"); playFeedback(true); }, 600);
+        setTimeout(() => { setStatus("won"); sfx("bitis"); titre("basari"); playFeedback(true); }, 600);
       }
       return;
     }
@@ -157,7 +159,7 @@ const TripleMatchGame = () => {
     setBox(newBox);
 
     if (newTray.every((s) => s !== null)) {
-      setTimeout(() => { setStatus("lost"); playFeedback(false); }, 300);
+      setTimeout(() => { setStatus("lost"); sfx("carp"); titre("hata"); playFeedback(false); }, 300);
     }
   };
 

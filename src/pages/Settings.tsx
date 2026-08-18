@@ -11,6 +11,7 @@ import { freePlaySeenCount } from "@/pages/games/_shared";
 import { cn } from "@/lib/utils";
 import { ASK_MODES, useAskMode, FLASH_PRESETS, useFlashMs, yaziliSik } from "@/lib/askMode";
 import { ZORLUKLAR, useZorluk, type Zorluk } from "@/lib/zorluk";
+import { titresimAcik, setTitresimAcik } from "@/lib/titresim";
 import { FlashKalibre } from "@/components/FlashKalibre";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +29,7 @@ const Settings = () => {
   const [mode, setMode] = useGameMode();
   const [ask, setAsk] = useAskMode();
   const [zorluk, setZorluk] = useZorluk();
+  const [titresim, setTitresimState] = useState(titresimAcik);
   const [flashMs, setFlashMs] = useFlashMs();
   const [kalibre, setKalibre] = useState(false);
   // ⚠️ OKUMA ONAYI: Şimşek/Tabela şıkları LATİN harfle yazılı. Çocuk Türkçe
@@ -279,6 +281,41 @@ const Settings = () => {
               geçerlidir; çocuğun bildiği harflerde şık sayısı düşmez ve az şıklı
               doğru cevap <b>daha az kanıt</b> sayılır — seviye şansla şişmez.
             </p>
+          </div>
+
+          {/* Titreşim — oyun hissi (juice) */}
+          <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-primary/30">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📳</span>
+                  <h3 className="font-extrabold text-foreground text-sm">Titreşim</h3>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                  Oyunlarda para toplarken, çarparken ve doğru cevapta telefon
+                  hafifçe titrer. Bilgisayarda ve çoğu iPhone'da etkisizdir.
+                </p>
+              </div>
+              <button
+                onClick={() => { setTitresimAcik(!titresim); setTitresimState(!titresim); }}
+                role="switch"
+                aria-checked={titresim}
+                aria-label="Titreşim"
+                className={cn(
+                  "relative h-11 w-[76px] shrink-0 rounded-full border-2 transition-bouncy",
+                  titresim ? "bg-primary/20 border-primary" : "bg-muted border-border",
+                )}
+              >
+                <span className={cn(
+                  "absolute top-1 h-7 w-7 rounded-full bg-card shadow-card transition-bouncy",
+                  titresim ? "left-[42px]" : "left-1",
+                )} />
+                <span className={cn(
+                  "absolute inset-y-0 flex items-center text-[10px] font-extrabold",
+                  titresim ? "left-3 text-primary" : "right-3 text-muted-foreground",
+                )}>{titresim ? "AÇIK" : "KAPALI"}</span>
+              </button>
+            </div>
           </div>
 
           {/* DENEYSEL: oyunda soru sorma yöntemi */}
