@@ -473,6 +473,7 @@ const t4_cezm: ContentTopic = {
     }),
     ...CEZM_EKSTRA.map(([ar, sp, w], i) => ({
       id: `l4e-${pad2(i + 1)}`,
+      audio: `/audio/elifba/cezm-ekstra-${pad2(i + 1)}.mp3`,
       label: sp,
       speech: sp.replace(/'/g, ""),
       lang: "tr" as const,
@@ -555,6 +556,7 @@ const t5_sedde: ContentTopic = {
     }),
     ...SEDDE_EKSTRA.map(([ar, sp, w], i) => ({
       id: `l5e-${pad2(i + 1)}`,
+      audio: `/audio/elifba/sedde-ekstra-${pad2(i + 1)}.mp3`,
       label: sp,
       speech: sp,
       lang: "tr" as const,
@@ -660,7 +662,7 @@ const t6_med: ContentTopic = {
       lang: "tr" as const,
       emoji: ar,
       translit: sp,
-      audio: medAudio(ar),
+      audio: `/audio/elifba/med-ekstra-${pad2(i + 1)}.mp3`,
       section: "Ekstralar",
       weight: ekstraAgirlik(w),
     })),
@@ -723,6 +725,7 @@ const t8_tenvin: ContentTopic = {
     }),
     ...TENVIN_EKSTRA.map(([ar, sp], i) => ({
       id: `l8x-${pad2(i + 1)}`,
+      audio: `/audio/elifba/tenvin-ekstra-${pad2(i + 1)}.mp3`,
       label: sp,
       speech: sp,
       lang: "tr" as const,
@@ -757,6 +760,7 @@ const t9_zamir: ContentTopic = {
     { ar: "بِهِ", sp: "bihî" },
   ].map((it, i) => ({
     id: `l9-${pad2(i + 1)}`,
+    audio: `/audio/elifba/zamir-${pad2(i + 1)}.mp3`,
     label: it.sp,
     speech: it.sp,
     lang: "tr" as const,
@@ -787,6 +791,7 @@ const t10_elif_lam: ContentTopic = {
     { ar: "رَبِّ", sp: "Rabbi" },
   ].map((it, i) => ({
     id: `l10-${pad2(i + 1)}`,
+    audio: `/audio/elifba/eliflam-${pad2(i + 1)}.mp3`,
     label: it.sp,
     speech: it.sp,
     lang: "tr" as const,
