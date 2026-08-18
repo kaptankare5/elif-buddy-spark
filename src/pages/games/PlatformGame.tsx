@@ -33,6 +33,7 @@ import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer,
 import { gameMusic } from "@/lib/gameMusic";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { useGameMode } from "@/lib/gameMode";
+import { zorlukAyari } from "@/lib/zorluk";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Heart, Volume2, ArrowLeft, ArrowRight, ArrowUp, Pause, Play } from "lucide-react";
@@ -48,6 +49,8 @@ const MAX_FALL = 950;
 const RUN_SPEED = 200;
 const WALKER_SPEED = 55;
 const FLYER_SPEED = 70;
+// ⚠️ Canavar hızı zorlukla ölçeklenir ama KOŞU hızı (RUN_SPEED) ölçeklenmez:
+// çocuğun kendi hareketi her kademede aynı hissetmeli, değişen tehdit olmalı.
 const DT_MAX = 0.05;          // sekme arkaplandan dönünce ışınlanmayı önler
 const PW = 26, PH = 36;       // oyuncu çarpışma kutusu
 const COYOTE = 0.1, JUMP_BUFFER = 0.12;
@@ -1487,7 +1490,8 @@ const PlatformGame = () => {
   const [unlocked, setUnlocked] = useState(() => getUnlockedLevel());
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [lives, setLives] = useState(3);
+  const zorluk = useRef(zorlukAyari());
+  const [lives, setLives] = useState(zorluk.current.can);
   const [paused, setPaused] = useState(true);
   const [started, setStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -1562,7 +1566,8 @@ const PlatformGame = () => {
   const startLevel = useCallback((lv: number) => {
     levelRef.current = lv;
     setLevel(lv);
-    setScore(0); setStreak(0); setLives(3);
+    zorluk.current = zorlukAyari();   // bölüm başında ayarı tazele
+    setScore(0); setStreak(0); setLives(zorluk.current.can);
     setGameOver(false); setWon(false); setBossHp(0);
     setQuestion(null); setBanner(null); setFlash(false); setProgress(0);
     setPu({ nur: 0, mag: 0, x2: 0 });
@@ -1604,7 +1609,10 @@ const PlatformGame = () => {
       monsters: [], springs: [], trios: [], coins: [], pops: [], shots: [], boss: null, cliffs: [],
       genX: 800,
     };
-    let score = 0, streak = 0, lives = 3, over = false;
+    // ⚠️ CAN İKİ YERDE: React state (kalp göstergesi) ve döngü içindeki
+    // yerel değişken. İkisi de zorluktan gelmeli, yoksa Kolay'da 5 kalp
+    // görünüp oyun 3'te bitiyor.
+    let score = 0, streak = 0, lives = zorluk.current.can, over = false;
     let winning = false, winT = 0, winBurst = 0;
     let standSolid: SolidEnt | null = null;
     let cleanT = 1;
@@ -2416,7 +2424,7 @@ const PlatformGame = () => {
         if (m.calmT <= 0) {
           switch (m.kind) {
             case "walker":
-              m.x += m.dir * WALKER_SPEED * dt;
+              m.x += m.dir * WALKER_SPEED * zorluk.current.baslangic * dt;
               if (m.x < m.minX) { m.x = m.minX; m.dir = 1; }
               if (m.x + mw > m.maxX) { m.x = m.maxX - mw; m.dir = -1; }
               break;
@@ -2451,7 +2459,7 @@ const PlatformGame = () => {
               m.x = m.homeX + Math.sin(m.t * 0.7) * 16;
               break;
             case "flyer":
-              m.x += m.dir * FLYER_SPEED * dt;
+              m.x += m.dir * FLYER_SPEED * zorluk.current.baslangic * dt;
               if (m.x < m.minX) { m.x = m.minX; m.dir = 1; }
               if (m.x + mw > m.maxX) { m.x = m.maxX - mw; m.dir = -1; }
               m.y = m.baseY + Math.sin(m.t * 2.2) * m.amp;

@@ -18,6 +18,7 @@ import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
+import { zorlukAyari } from "@/lib/zorluk";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Volume2, Heart, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Pause, Play } from "lucide-react";
@@ -929,7 +930,8 @@ const SubwayGame = () => {
   // şişiyor, aynı beceriye sahip iki çocuk farklı hızlara çıkıyordu.
   const [correctCount, setCorrectCount] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [lives, setLives] = useState(3);
+  const zorluk = useRef(zorlukAyari());
+  const [lives, setLives] = useState(zorluk.current.can);
   const [paused, setPaused] = useState(true);
   const [started, setStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -951,9 +953,16 @@ const SubwayGame = () => {
   // kontrol edilemez hâle geliyordu. Artık ölçüt DOĞRU SAYISI ve rampa
   // SPEED_FULL doğruya yayılıyor; ilk cevaplarda artış çok yumuşak
   // (hızlanma hissi t² ile geliyor), tavan ancak uzun bir seansta görülüyor.
+  //
+  // ⚠️ ZORLUK BANDI RAMPANIN ÜSTÜNE BİNER, onun YERİNE geçmez: buradaki t²
+  // eğrisi kullanıcı şartıydı ("hemen çok hızlanmasın"), zorluk yalnız bandın
+  // iki ucunu (başlangıç ve tavan) ve tavana varış mesafesini kaydırır.
   useEffect(() => {
-    const t = Math.min(1, correctCount / SPEED_FULL);
-    sim.current.speed = BASE_SPEED + (MAX_SPEED - BASE_SPEED) * (t * t * 0.45 + t * 0.55);
+    const z = zorluk.current;
+    const t = Math.min(1, correctCount / (SPEED_FULL * (z.tavanDogru / 25)));
+    const tabanHiz = BASE_SPEED * z.baslangic;
+    const tavanHiz = MAX_SPEED * (z.tavan / 1.8);
+    sim.current.speed = tabanHiz + (tavanHiz - tabanHiz) * (t * t * 0.45 + t * 0.55);
   }, [correctCount]);
 
   // Arapça font geç yüklendiyse pano dokularını tazele
@@ -1208,7 +1217,8 @@ const SubwayGame = () => {
   }, [gameOver]);
 
   const reset = useCallback(() => {
-    setEnts([]); setScore(0); setStreak(0); setLives(3); setCorrectCount(0);
+    zorluk.current = zorlukAyari();
+    setEnts([]); setScore(0); setStreak(0); setLives(zorluk.current.can); setCorrectCount(0);
     setGameOver(false); setPaused(true); setStarted(false);
     setQuestion(null); setBanner(null); setPu({ jet: 0, x2: 0, mag: 0 });
     gateActive.current = false;

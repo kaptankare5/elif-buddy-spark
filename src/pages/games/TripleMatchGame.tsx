@@ -3,6 +3,7 @@ import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { cn } from "@/lib/utils";
 import { gamePool, getGameLang, pickCluster } from "./_shared";
+import { tahtaBoyu } from "@/lib/zorluk";
 import { playItem, playFeedback } from "@/lib/audio";
 import type { ContentItem, Lang } from "@/data/types";
 
@@ -13,6 +14,13 @@ import type { ContentItem, Lang } from "@/data/types";
 
 const TRAY_SIZE = 7;
 const DISTINCT_KINDS = 5;
+
+/**
+ * Zorluğa göre çeşit: Kolay 4, Orta 5, Zor 7.
+ * ⚠️ TRAY_SIZE (7) SABİT kalır — tepsi küçülürse oyun "kaybedildi" eşiği
+ * değişir ve zorluk oyunu bitirir; zorluk aramayı zorlaştırmalı, cezalandırmayı değil.
+ */
+function cesitSayisi(): number { return tahtaBoyu(DISTINCT_KINDS, 3, 7); }
 
 type BoxItem = {
   id: number;
@@ -28,7 +36,7 @@ const nid = () => ++_uid;
 function buildBoard(lang: Lang): BoxItem[] {
   const pool = gamePool(lang);
   if (pool.length === 0) return [];
-  const kinds = pickCluster(pool, Math.min(DISTINCT_KINDS, pool.length));
+  const kinds = pickCluster(pool, Math.min(cesitSayisi(), pool.length));
   const items: BoxItem[] = [];
   kinds.forEach((it) => {
     const triples = 1 + Math.floor(Math.random() * 3); // 3,6,9

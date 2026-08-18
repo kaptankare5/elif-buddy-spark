@@ -8,6 +8,7 @@ import { useRemedyOnGameOver } from "@/lib/remedial";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
+import { rampa, zorlukAyari } from "@/lib/zorluk";
 import { Heart, Volume2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 
 /**
@@ -38,7 +39,8 @@ const LaneRunnerGame = () => {
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
-  const [lives, setLives] = useState(3);
+  const zorluk = useRef(zorlukAyari());
+  const [lives, setLives] = useState(zorluk.current.can);
   const [gameOver, setGameOver] = useState(false);
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
@@ -53,7 +55,13 @@ const LaneRunnerGame = () => {
   const scoreRef = useRef(0); scoreRef.current = score;
   const tickRef = useRef(0);
 
-  const speed = BASE_SPEED + Math.min(1.1, scoreRef.current * 0.04);
+  // ⚠️ HIZ REF'TEN OKUNUR, render değişkeninden DEĞİL. Eskiden `speed` render
+  // sırasında hesaplanıp effect'in bağımlılığına konuyordu: her doğru cevapta
+  // setInterval SÖKÜLÜP yeniden kuruluyordu (ölçüm: 40 doğruluk bir oyunda 40
+  // kez) ve o anda uçuşan nesnelerin adımı kayıyordu. Artık döngü bir kez
+  // kurulur, hızı her karede ref'ten okur.
+  const speedRef = useRef(BASE_SPEED);
+  speedRef.current = BASE_SPEED * rampa(scoreRef.current);
 
   const pickTarget = useCallback((silent = false) => {
     const pool = gamePool();
@@ -109,7 +117,9 @@ const LaneRunnerGame = () => {
     const id = setInterval(() => {
       tickRef.current += 1;
 
-      const spawnEvery = Math.max(18, SPAWN_EVERY - Math.floor(scoreRef.current / 2));
+      // Nesne sıklığı da zorlukla birlikte artar (hız tek başına yetmiyor:
+      // hızlı ama seyrek gelen harf hâlâ tek düze).
+      const spawnEvery = Math.max(14, Math.round(SPAWN_EVERY / speedRef.current * BASE_SPEED) - Math.floor(scoreRef.current / 3));
       if (tickRef.current % spawnEvery === 0 && targetRef.current) {
         setObjs((prev) => {
           const pool = gamePool();
@@ -138,7 +148,7 @@ const LaneRunnerGame = () => {
         let hitWrong: Obj | null = null;
         let missedTarget = false;
         for (const o of prev) {
-          const nz = o.z + speed;
+          const nz = o.z + speedRef.current;
           if (nz >= 100) {
             if (o.lane === laneRef.current) {
               if (o.item.id === curTarget) hitTarget = o;
@@ -176,11 +186,12 @@ const LaneRunnerGame = () => {
       });
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [gameOver, paused, pickTarget, speed]);
+  }, [gameOver, paused, pickTarget]);
 
   const reset = () => {
     setLane(0); setObjs([]); setScore(0); setCombo(0);
-    setLives(3); setGameOver(false); setPaused(true); setPops([]);
+    zorluk.current = zorlukAyari();
+    setLives(zorluk.current.can); setGameOver(false); setPaused(true); setPops([]);
     UID = 1; POP_UID = 1; tickRef.current = 0;
     setTimeout(() => pickTarget(true), 0);
   };

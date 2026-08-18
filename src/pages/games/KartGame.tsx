@@ -40,6 +40,7 @@ import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
+import { zorlukAyari } from "@/lib/zorluk";
 import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture, blockedTexture } from "./_letterTexture";
 import { getAskMode, okunurAd, pickNameWrongs, getFlashMs, FLASH_CUE_MS, FLASH_SIK, USTTE_SIK, yaziliSik, type AskMode } from "@/lib/askMode";
 import type { ContentItem } from "@/data/types";
@@ -1093,7 +1094,9 @@ const KartGame = () => {
       return {
         id, name, isPlayer, s: 0, u: homeU, y: 0, vy: 0, v: 0, lap: 1,
         turboT: 0, starT: 0, mudT: 0, spinT: 0, glowT: 0, drift: 0,
-        skill: isPlayer ? 1 : def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0]),
+        // ⚠️ Bot becerisi = İDEAL ÇİZGİDE KALMA (viraj alma), kapı seçimi
+        // değil. Zorlukta botlar virajı daha iyi alır, yarış sıkışır.
+        skill: isPlayer ? 1 : Math.min(1, (def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0])) * zorlukAyari().baslangic),
         targetU: homeU, homeU, gateChoice: null, finished: null,
         group, body, wheels, bodyMat, aura,
       };

@@ -9,6 +9,7 @@ import { recordLetterMastery } from "@/data/srs";
 import { useGameMode } from "@/lib/gameMode";
 import { getGameItemLevel, recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
+import { tahtaBoyu } from "@/lib/zorluk";
 
 // =============================================================
 // Kutu Boşalt — Sistem rastgele bir harfi söyler ("ha"). Kutudan
@@ -21,6 +22,13 @@ interface Cell { uid: string; item: ContentItem; cleared: boolean; wrong: boolea
 const PER_TYPE = 3;
 const TYPE_COUNT = 4; // 4 farklı harf × 3 = 12 hücre
 
+/**
+ * Zorluğa göre tip: Kolay 3 (9 hücre), Orta 4 (12), Zor 5 (15).
+ * ⚠️ PER_TYPE (3) sabit — bir tipten 3 taneden az olursa "tip tamamlandı"
+ * anı hemen geliyor ve hedef paneli sürekli yanıp sönüyor.
+ */
+function tipSayisi(): number { return tahtaBoyu(TYPE_COUNT, 3, 5); }
+
 function buildBox(
   ayriAdlar: (adaylar: ContentItem[], n: number) => ContentItem[],
 ): { cells: Cell[]; types: ContentItem[] } {
@@ -29,9 +37,10 @@ function buildBox(
   // ⚠️ Yazılı modda tahtadaki tipler AYNI ADI taşıyamaz: ثَ ile سَ ikisi de
   // "se" okunur, ikisi de kutuda olursa çocuk doğru okuyup yanlış hücreye
   // dokunur ve yanlış sayılır. Klasik modda bu süzgeç boş geçer.
+  const n = tipSayisi();
   const types = ayriAdlar(
-    pickCluster(pool, Math.min(TYPE_COUNT * 2, pool.length)),
-    Math.min(TYPE_COUNT, pool.length),
+    pickCluster(pool, Math.min(n * 2, pool.length)),
+    Math.min(n, pool.length),
   );
   const all: ContentItem[] = [];
   types.forEach((t) => { for (let i = 0; i < PER_TYPE; i++) all.push(t); });

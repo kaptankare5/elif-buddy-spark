@@ -48,6 +48,7 @@ import {
   getAskMode, okunurAd, pickNameWrongs, adZorlugu, yaziliSik, getFlashMs, FLASH_CUE_MS, type AskMode,
 } from "@/lib/askMode";
 import { isTestUnlockActive } from "@/lib/testUnlock";
+import { zorlukAyari } from "@/lib/zorluk";
 import type { ContentItem } from "@/data/types";
 
 /** Mantıksal ilerleme (artan) → sahne koordinatı (-Z). Yukarıdaki eksen notu. */
@@ -660,7 +661,9 @@ const PartyGame = () => {
       const side = ki % 2 ? -1 : 1;
       const dir = ki % 3 ? 1 : -1;
       const t0 = (ki * 0.7) % 3;
-      const sp = def.speed;
+      // ⚠️ ZORLUK BÖLÜMÜN ÜSTÜNE BİNER: 10 bölümün kendi hız merdiveni
+      // (0.8 → 1.6) korunur, zorluk o merdiveni topluca kaydırır.
+      const sp = def.speed * zorlukAyari().baslangic;
       if (kind === "hammer") addHammer(z, side * 4.0, dir * 1.9 * sp, t0);
       else if (kind === "pendulum") addPendulum(z, side * 4.0, dir * 1.9 * sp, 5.8, t0);
       else if (kind === "spinner") addSpinner(z, dir * 2.2 * sp, t0);
@@ -835,7 +838,9 @@ const PartyGame = () => {
       return {
         id, name, isPlayer, z: 0, x: homeX, y: 0, vy: 0,
         boostT: 0, mudT: 0, netT: 0, hitT: 0, graceT: 0, shieldT: 0, glowT: 0,
-        dodge: isPlayer ? 1 : def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0]),
+        // Bot becerisi YALNIZ engelden kaçmadır (kapı seçimi rastgele —
+        // kullanıcı şartı). Zorlukta botlar daha az takılır.
+        dodge: isPlayer ? 1 : Math.min(1, (def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0])) * zorlukAyari().baslangic),
         targetX: homeX, homeX, gateChoice: null, finished: null,
         hop: Math.random() * 6, group, body,
         legs: legs as [THREE.Object3D, THREE.Object3D],
