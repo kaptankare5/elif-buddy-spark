@@ -131,9 +131,23 @@ const STATUS_COLOR: Record<string, string> = {
   zayıf: "#ef4444", // kırmızı — geri çekiliyor
 };
 
+// ⚠️ AÇIK/KAPALI DURUMU KALICI OLMALI. Eskiden düz `useState(true)` idi:
+// paneli kapatıyorsun, sayfayı yenileyince ya da uygulamayı tekrar açınca
+// tam boyutta geri geliyordu — kullanıcı "küçültemiyorum" dedi. Artık
+// localStorage'da; bir kez küçülttüysen küçük kalır.
+const ACIK_KEY = "elifba-debug-hud-open-v1";
+function hudAcikMi(): boolean {
+  if (typeof window === "undefined") return true;
+  try { return localStorage.getItem(ACIK_KEY) !== "0"; } catch { return true; }
+}
+function hudAcikYaz(v: boolean) {
+  try { localStorage.setItem(ACIK_KEY, v ? "1" : "0"); } catch { /* ignore */ }
+}
+
 export function DebugHud() {
   const [active] = useTestUnlock();
-  const [open, setOpen] = useState(true);
+  const [open, setOpenRaw] = useState(hudAcikMi);
+  const setOpen = (v: boolean) => { hudAcikYaz(v); setOpenRaw(v); };
   const [adaptive, setAdaptive] = useState<AdaptiveDebug>(() => getAdaptiveDebug());
   const [pick, setPick] = useState<LastPickInfo | null>(() => getLastPickInfo());
   const [gate, setGate] = useState<IntroGateInfo | null>(() => getIntroGateInfo());
@@ -193,18 +207,28 @@ export function DebugHud() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed left-2 bottom-20 z-[60] rounded-full bg-black/80 text-white text-[11px] font-extrabold px-3 py-1.5 shadow-lg"
+        aria-label="Test panelini aç"
+        className="fixed left-2 bottom-20 z-[60] flex h-11 items-center rounded-full bg-black/80 text-white text-[11px] font-extrabold px-4 shadow-lg active:scale-95"
       >🐞 Debug</button>
     );
   }
 
   return (
-    <div className="fixed left-2 bottom-20 z-[60] w-[214px] rounded-xl bg-black/85 text-white shadow-2xl backdrop-blur border border-white/10 text-[11px] leading-tight font-mono">
-      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-white/10">
+    // ⚠️ YÜKSEKLİK SINIRI ŞART: panelin içeriği (zorluk, merdiven, karışıklık,
+    // yoklama…) büyüdükçe ekranın üçte ikisini kaplıyor ve altındaki kartlar
+    // görünmez oluyordu. Gövde kaydırılır, başlık sabit kalır.
+    <div className="fixed left-2 bottom-20 z-[60] flex max-h-[45vh] w-[214px] flex-col rounded-xl bg-black/85 text-white shadow-2xl backdrop-blur border border-white/10 text-[11px] leading-tight font-mono">
+      <div className="flex items-center justify-between border-b border-white/10 pl-2.5">
         <span className="font-extrabold text-[10px] tracking-wide">🐞 TEST DEBUG</span>
-        <button onClick={() => setOpen(false)} className="text-white/60 hover:text-white text-sm leading-none">×</button>
+        {/* ⚠️ 44×44 DOKUNMA ALANI: eski `×` yalnız 14px'lik bir metindi,
+            telefonda ıskalanıyordu (kullanıcı "küçültemiyorum" dedi). */}
+        <button
+          onClick={() => setOpen(false)}
+          aria-label="Test panelini küçült"
+          className="flex h-11 w-11 items-center justify-center text-white/70 hover:text-white active:scale-95 text-lg leading-none"
+        >×</button>
       </div>
-      <div className="p-2.5 space-y-2">
+      <div className="flex-1 overflow-y-auto overscroll-contain p-2.5 space-y-2">
         {/* Uyarlanır zorluk */}
         <div>
           <div className="text-white/50 text-[9px] uppercase mb-0.5">Uyarlanır Zorluk</div>
