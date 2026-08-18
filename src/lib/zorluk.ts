@@ -54,19 +54,19 @@ export interface ZorlukAyari {
 export const ZORLUKLAR: Record<Zorluk, ZorlukAyari> = {
   kolay: {
     ad: "Kolay", emoji: "🐢",
-    aciklama: "Yavaş başlar, yavaş hızlanır. Yeni öğrenen için.",
+    aciklama: "Yavaş, bol can, uzun süre, küçük tahta. Yeni öğrenen için.",
     baslangic: 0.75, tavan: 1.3, tavanDogru: 40, can: 5, sik: 2,
     sure: 1.5, tahta: 0.75,
   },
   orta: {
     ad: "Orta", emoji: "🐇",
-    aciklama: "Normal hız, oyun ilerledikçe belirgin zorlaşır.",
+    aciklama: "Normal hız ve süre; oyun ilerledikçe belirgin zorlaşır.",
     baslangic: 1.0, tavan: 1.8, tavanDogru: 25, can: 3, sik: 3,
     sure: 1.0, tahta: 1.0,
   },
   zor: {
     ad: "Zor", emoji: "🐆",
-    aciklama: "Hızlı başlar, çabuk zorlaşır. Harfleri bilen için.",
+    aciklama: "Hızlı, kısa süre, kalabalık tahta. Harfleri bilen için.",
     baslangic: 1.25, tavan: 2.4, tavanDogru: 15, can: 3, sik: 4,
     sure: 0.75, tahta: 1.3,
   },
