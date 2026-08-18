@@ -19,7 +19,25 @@ export type AskMode =
   /** Glif 1 sn yarı saydam parlar sönür → yazılı ad şıklarından seç. */
   | "flash"
   /** Glif kapının üstünde ASILI durur → yazılı ad şıklarından seç. */
-  | "ustte";
+  | "ustte"
+  /**
+   * Glif asılı durur → şıklar 🔊 DÜĞMESİ. Çocuk dinler, eşleşeni seçer.
+   *
+   * ⚠️ OKUMA GEREKTİRMEYEN tek "gör → cevapla" yöntemi. Şimşek ve Tabela
+   * doğru yönde ölçüyor ama şıkları LATİN harfle yazıyor; 5-6 yaşındaki
+   * çocuk okuyamadığı için o modlar ona kapalıydı. Burada hem yön doğru
+   * (gör → sesini bul) hem okuma gerekmiyor.
+   */
+  | "sesli"
+  /**
+   * Harfin BAŞKA BİR YAZILIŞ HÂLİ asılı durur → glif şıklarından harfi seç.
+   *
+   * ⚠️ BUNU SES SORAMAZ. Bir harfin başta/ortada/sonda hâlleri AYNI mp3'ü
+   * çalıyor (`sameSound` bu yüzden onları aynı soruya koymuyor), yani
+   * 2. konudaki 84 şekil oyunlarda hiç ölçülemiyordu. Soru GÖRSEL olunca
+   * ölçülebiliyor: "ـبـ hangi harfin ortadaki hâli?"
+   */
+  | "sekil";
 
 // ⚠️ "ogret" (Öğret) MODU KALDIRILDI — kullanıcı kararı. Yeniden eklenecekse
 // bilinmesi gereken tuzak: tanıtım cevabı sorudan hemen önce ekrana yazar,
@@ -35,6 +53,8 @@ export const ASK_MODES: Array<{ id: AskMode; ad: string; aciklama: string }> = [
   { id: "klasik", ad: "Klasik", aciklama: "Sesi duy → harfi seç (mevcut)" },
   { id: "flash", ad: "Şimşek", aciklama: "Harf 1 sn parlar → adını seç" },
   { id: "ustte", ad: "Tabela", aciklama: "Harf ekranda asılı → adını seç" },
+  { id: "sesli", ad: "Ses Şıkları", aciklama: "Harfi gör → sesini bul (okuma gerekmez)" },
+  { id: "sekil", ad: "Şekil Eşleme", aciklama: "Ortadaki hâlini gör → harfi seç" },
 ];
 
 const GECERLI = new Set<string>(ASK_MODES.map((m) => m.id));
@@ -43,6 +63,13 @@ const GECERLI = new Set<string>(ASK_MODES.map((m) => m.id));
 export const FLASH_SIK = 2;
 /** Tabela modunda şık sayısı (glif ekranda durduğu için okumaya vakit var). */
 export const USTTE_SIK = 3;
+/**
+ * Ses Şıkları modunda şık sayısı.
+ *
+ * ⚠️ 3'ten fazla olamaz: her şıkkı DİNLEMEK gerekiyor, 4 şık ~6 saniye
+ * dinleme demek — çocuk ilk şıkkı unutuyor (işitsel kısa süreli bellek).
+ */
+export const SESLI_SIK = 3;
 /**
  * ŞİMŞEK SÜRESİ — ayarlanabilir (kullanıcı isteği: "çok kısa, anlık olsun").
  *
@@ -152,7 +179,18 @@ export function yaziliSik(m: AskMode): boolean {
 export function sikSayisi(m: AskMode, klasikVarsayilan: number): number {
   if (m === "flash") return FLASH_SIK;
   if (m === "ustte") return USTTE_SIK;
+  if (m === "sesli") return SESLI_SIK;
   return klasikVarsayilan;
+}
+
+/** Soru ekranda ASILI bir glif mi? (ses çalınmaz, glif durur) */
+export function asiliGlif(m: AskMode): boolean {
+  return m === "ustte" || m === "sesli" || m === "sekil";
+}
+
+/** Şıklar 🔊 düğmesi mi? (okuma gerektirmeyen mod) */
+export function sesliSik(m: AskMode): boolean {
+  return m === "sesli";
 }
 
 export function getAskMode(): AskMode {

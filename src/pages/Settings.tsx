@@ -287,9 +287,19 @@ const Settings = () => {
             <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
               Şu an oyunlar <b>sesi duyup harfi seçtiriyor</b>. Asıl hedef ise tersi:
               harfi <b>görüp adını söylemek</b> (Elifbâ kitabının sorduğu yön).
-              <b> Şimşek</b> ve <b>Tabela</b> soruyu bu yöne çevirir — şıklar harfin
-              <b> yazılı adı</b> olur.
+              Dört yeni yöntem soruyu bu yöne çevirir:
             </p>
+            <ul className="text-[11px] text-muted-foreground mb-3 leading-snug list-disc pl-4 space-y-0.5">
+              <li><b>Şimşek / Tabela</b> — şıklar harfin <b>yazılı adı</b>
+                (Latin harfi okumayı gerektirir).</li>
+              <li><b>Ses Şıkları</b> — harf ekranda durur, şıklar 🔊 düğmesidir.
+                Çocuk dinleyip eşleştirir; <b>okuma gerekmez</b>. İlk dokunuş
+                dinletir, ikinci dokunuş seçer.</li>
+              <li><b>Şekil Eşleme</b> — harfin <b>başka bir hâli</b> asılır
+                (ـبـ gibi), şıklar harflerin yalın hâlidir. Bunu ses hiç
+                soramaz: bir harfin başta/ortada/sonda hâlleri aynı kaydı
+                çalıyor, o yüzden 84 şekil oyunlarda hiç ölçülemiyordu.</li>
+            </ul>
             <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
               Şu oyunlarda çalışır: <b>Yarışı, Partisi, Hızlı Quiz, Balon,
               Uzay Savaşı, Uçan Kuş, Kutu Boşalt, Elifbâ Macerası, Yılan</b>.
@@ -298,7 +308,7 @@ const Settings = () => {
               Hafıza/Eşleştirme/Üçlü/Yapboz'da soru zaten görsel olduğu için
               bu yöntemler geçerli değil.
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {ASK_MODES.map((m) => (
                 <button
                   key={m.id}
@@ -318,9 +328,12 @@ const Settings = () => {
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
-              ⚠️ Yeni yöntemler <b>Latin harflerini okuyabilmeyi</b> gerektirir — çocuk
-              henüz Türkçe okuyamıyorsa &quot;Klasik&quot;te kalın. Değişiklik
-              <b> bir sonraki yarışta</b> geçerli olur.
+              ⚠️ <b>Şimşek</b> ve <b>Tabela</b> Latin harflerini okuyabilmeyi
+              gerektirir; çocuk henüz Türkçe okuyamıyorsa <b>Ses Şıkları</b>
+              ya da <b>Şekil Eşleme</b> uygun. Ses Şıkları ve Şekil Eşleme
+              yalnız sıra tabanlı oyunlarda çalışır (Balon, Hızlı Quiz, Kutu
+              Boşalt); kaçma/vurma oyunlarında şıkkın kendisi engel olduğu için
+              Klasiğe düşer. Değişiklik <b>bir sonraki oyunda</b> geçerli olur.
             </p>
 
             {ask === "flash" && (

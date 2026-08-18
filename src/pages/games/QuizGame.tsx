@@ -52,6 +52,10 @@ const QuizGame = () => {
   const pc = usePcMi();
   useSecenekTuslari(q?.options.length ?? 0, (i) => { const o = q?.options[i]; if (o) void choose(o); }, !!q);
   const choose = async (item: ContentItem) => {
+    // ⚠️ SES ŞIKLARI: ilk dokunuş yalnız DİNLETİR, ikincisi seçer. Şık
+    // görünmez (hoparlör) olduğu için dinlemeden seçmek kör atış olurdu.
+    // Öteki modlarda `onayla` hep true döner.
+    if (!ask.onayla(item)) return;
     if (picked || time <= 0) return;
     setPicked(item.id);
     const correct = item.id === q.target.id;
@@ -111,9 +115,11 @@ const QuizGame = () => {
               <p className="text-sm font-bold text-muted-foreground mb-2">
                 {ask.yazili ? "Gördüğün harfin adı hangisi?" : "Hangisi?"}
               </p>
-              {/* "Tabela" modunda glif zaten ekranda asılı — tekrar düğmesi anlamsız
-                  (ses çalmak adı söylemek = cevabı vermek olurdu). */}
-              {ask.mode !== "ustte" && (
+              {/* Glifin ASILI durduğu modlarda (Tabela / Ses Şıkları / Şekil
+                  Eşleme) tekrar düğmesi anlamsız: ses çalmak adı söylemek =
+                  cevabı vermek olurdu. Mod adı yerine `tekrarVar` okunur ki
+                  yeni mod eklendiğinde burası unutulmasın. */}
+              {ask.tekrarVar && (
                 <button onClick={() => ask.tekrar(q.target)} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-primary-foreground font-extrabold shadow-soft transition-bouncy hover:scale-105">
                   {ask.mode === "flash" ? <Eye className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                   {ask.tekrarEtiketi}

@@ -285,6 +285,24 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
 ### Soru sorma yöntemi (`src/lib/askMode.ts` + `games/_askUI.tsx`)
 Ayarlar → "Oyunda soru yöntemi". Varsayılan **klasik**; ESKİ MOD SİLİNMEDİ.
 Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar).
+- ⚠️ **OKUMA BİLMEYEN ÇOCUK İÇİN İKİ MOD** (kullanıcı tespiti: "çocuklar
+  okuma bilmiyor, o yüzden harfi gösterip şıkları yazılı veremiyoruz"):
+  **sesli** "Ses Şıkları" — glif asılı, şıklar 🔊; ilk dokunuş DİNLETİR,
+  ikincisi seçer (`ask.onayla`, oyunun seçim işleyicisinin ilk satırı).
+  Şık en fazla 3 (`SESLI_SIK`): 4 şık ~6 sn dinleme, çocuk ilkini unutuyor.
+  **sekil** "Şekil Eşleme" — harfin BAŞKA hâli asılı (`ـبـ`), şıklar harfler.
+  ⚠️ Bunu SES SORAMAZ: bir harfin dört hâli aynı mp3'ü çalıyor (`sameSound`
+  onları eliyor), yani 2. konudaki 84 şekil oyunlarda hiç ölçülemiyordu.
+  ⚠️ Şekil Eşlemede ÇELDİRİCİLER BAŞKA HARF olmalı — aynı harfin başka
+  harekesi gelirse sorunun İKİ doğru cevabı olur (ölçüldü: Quiz'de hedef
+  3. konudan gelince çeldiriciler hep aynı harfin harekeleriydi).
+  Destek bayrakları: `sesliDestek` / `sekilDestek` — aksiyon oyunlarında şık
+  engelin kendisi olduğu için ikisi de klasiğe düşer; Kutu Boşalt'ta tahtayı
+  oyun kendi kurduğu için (12 kutu) yine klasik. Kart/Parti `getAskMode()`
+  yerine `oyunAskModu()` kullanır: `mode !== "klasik"` diye bakan kod yolları
+  yeni modları YAZILI sanıp panolara Latin ad basardı.
+- `ask.tekrarVar`: glifin ASILI durduğu modlarda tekrar düğmesi ÖLÜDÜR (ses
+  çalmak cevabı vermek olur). Oyunlar mod adına değil buna bakar.
 - **klasik**: sesi duy → glif seç. (Mevcut/varsayılan.)
 - **flash** "Şimşek": glif kısa süre parlar söner → şıklar YAZILI AD.
   ⚠️ **SÜRE AYARLANABİLİR** (`FLASH_PRESETS`, Ayarlar: 0.3/0.5/0.8/1.3 sn,

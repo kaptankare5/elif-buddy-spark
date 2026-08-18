@@ -9,12 +9,16 @@
 // şıkların anlamı değişmesin diye mount anında bir kez okunur; çocuk oyundan
 // çıkıp girince yeni mod geçerli olur.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Volume2 } from "lucide-react";
 import { EmojiView } from "@/components/EmojiView";
 import { playItem } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { sikSayisiIcin } from "@/lib/zorluk";
+import { baskaSekil } from "@/lib/sekilSoru";
+import { letterNumOf } from "@/lib/confusables";
 import {
   getAskMode, okunurAd, pickNameWrongs, adZorlugu, sikSayisi, yaziliSik, sameName,
+  asiliGlif, sesliSik,
   getFlashMs, FLASH_CUE_MS, markGlifBekleniyor, markGlifGosterildi, clearGlifIzi,
   type AskMode,
 } from "@/lib/askMode";
@@ -32,6 +36,15 @@ import type { ContentItem } from "@/data/types";
  * zaten JSX döndürdüğü için ayrı bir bileşene gerek yok.
  */
 function sikIcerik(item: ContentItem, mode: AskMode, className?: string): ReactNode {
+  // SES ŞIKLARI: şıkta harf DE yazı DA yok — yalnız hoparlör. Çocuk dinleyip
+  // ekrandaki glifle eşleştirir. Glif göstermek soruyu ele verirdi.
+  if (sesliSik(mode)) {
+    return (
+      <span className={cn("flex items-center justify-center", className)} aria-label="Sesi dinle">
+        <Volume2 className="h-2/3 w-2/3 min-h-6 min-w-6 max-h-14 max-w-14 text-primary" />
+      </span>
+    );
+  }
   if (yaziliSik(mode)) {
     const ad = okunurAd(item);
     // Ad yoksa glife düş — sorunun cevapsız kalmasındansa glif göstermek iyi.
@@ -54,6 +67,20 @@ interface AskLayer {
   sik: (item: ContentItem, className?: string) => ReactNode;
   /** Hedef + çeldiriciler, karıştırılmış. Mod ve seviyeye göre seçilir. */
   secenekler: (pool: ContentItem[], target: ContentItem, klasikVarsayilan: number) => ContentItem[];
+  /**
+   * Şık seçimi ONAYLANDI mı? Ses Şıkları modunda ilk dokunuş yalnız
+   * DİNLETİR (false döner), ikinci dokunuş seçer. Öteki modlarda hep true.
+   * Oyunlar seçim işleyicisinin ilk satırına koyar: `if (!ask.onayla(o)) return;`
+   */
+  onayla: (item: ContentItem | null | undefined) => boolean;
+  /**
+   * "Tekrar dinle/göster" düğmesi anlamlı mı?
+   *
+   * ⚠️ Tabela / Ses Şıkları / Şekil Eşlemede tekrar çalınacak bir SES YOK —
+   * sesi çalmak cevabı vermek olurdu. Düğmeyi yine de göstermek çocuğa
+   * ÖLÜ bir düğme sunar; oyunlar bunu okuyup gizler.
+   */
+  tekrarVar: boolean;
   /** Yalnız çeldiriciler (hedefi kendi ekleyen oyunlar için). */
   celdiriciler: (pool: ContentItem[], target: ContentItem, n: number) => ContentItem[];
   /**
@@ -104,11 +131,34 @@ export function useAskLayer(opts?: {
    * kullanır.
    */
   flashBoy?: string;
+  /**
+   * Oyun SES ŞIKLARI gösterebiliyor mu?
+   *
+   * ⚠️ Aksiyon oyunlarında şıkkın kendisi engel/hedef (Kuş'ta harf çarpışma
+   * alanı, Uzay'da vurulacak düşman). Oraya hoparlör koymak hem dinlemeye
+   * vakit bırakmaz hem "iki dokunuş" kuralı işlemez. O oyunlarda Ses
+   * Şıkları KLASİĞE düşer.
+   */
+  sesliDestek?: boolean;
+  /**
+   * Oyun ŞEKİL EŞLEME gösterebiliyor mu?
+   *
+   * ⚠️ Şekil Eşleme "ekrandaki şekil hangi HARF?" diye sorar; bu yüzden
+   * tahtadaki şıkların hepsi FARKLI harf olmalı. Kutu Boşalt'ın tahtası
+   * birkaç TÜRDEN çok sayıda kopya ile kuruluyor (aynı harfin değişik
+   * harekeleri yan yana), yani soru orada tek cevaplı olmuyor → klasiğe düşer.
+   */
+  sekilDestek?: boolean;
 }): AskLayer {
   // Mount anında dondur (yukarıdaki not).
   const [mode] = useState<AskMode>(() => {
     const m = getAskMode();
     if (opts?.yaziliDestek === false && yaziliSik(m)) return "klasik";
+    // Ses Şıkları ve Şekil Eşleme ASILI GLİF ister; onu gösteremeyen oyun
+    // (tabelayı desteklemeyen oyun) klasiğe düşer.
+    if (opts?.yaziliDestek === false && (m === "sekil")) return "klasik";
+    if (opts?.sesliDestek === false && m === "sesli") return "klasik";
+    if (opts?.sekilDestek === false && m === "sekil") return "klasik";
     return m;
   });
   const [flashGlif, setFlashGlif] = useState<ContentItem | null>(null);
@@ -116,6 +166,14 @@ export function useAskLayer(opts?: {
   // Süre oyuna girerken dondurulur (mod gibi).
   const [flashMs] = useState(() => getFlashMs());
   // Şimşek zamanlayıcıları AYRI tutulur: yeni şimşek eskisini iptal eder.
+  /** Şekil Eşleme: bu soru için asılan alternatif şekil. */
+  const sekilRef = useRef<{ glif: string; etiket: string } | null>(null);
+  /**
+   * Ses Şıkları: son DİNLENEN şık. İlk dokunuş dinletir, ikincisi seçer.
+   * ⚠️ Tek dokunuşla seçtirmek çocuğa şıkları dinleme fırsatı bırakmıyordu;
+   * ses şıkkı görünmez olduğu için "önce dinle, sonra seç" şart.
+   */
+  const sesOnayRef = useRef<{ id: string; at: number } | null>(null);
   const flashTimers = useRef<number[]>([]);
   const timers = useRef<number[]>([]);
   useEffect(() => () => {
@@ -158,9 +216,20 @@ export function useAskLayer(opts?: {
         parlat(item);
         return;
       case "ustte":
+      case "sesli":
         // Glif zaten tabelada asılı duruyor. SES ÇALINMAZ — sesi çalmak
         // harfin adını söylemek, yani cevabı vermek olurdu.
         return;
+      case "sekil": {
+        // Harfin BAŞKA bir hâli asılır; ses yine çalınmaz.
+        const s2 = baskaSekil(item);
+        sekilRef.current = s2;
+        // ⚠️ Şekli olmayan öğe (harekeli hece, Ekstra kart) için soru
+        // sorulamaz — sessiz kalmak yerine KLASİĞE düşülür, yoksa çocuk
+        // boş bir tabelaya bakar.
+        if (!s2) await playItem(item);
+        return;
+      }
       default:
         await playItem(item);
     }
@@ -169,10 +238,31 @@ export function useAskLayer(opts?: {
   const tekrar = useCallback((item: ContentItem | null | undefined) => {
     if (!item) return;
     if (mode === "flash") parlat(item);
-    else if (mode !== "ustte") void playItem(item);
+    // Asılı glifli modlarda "tekrar dinle" harfin adını söylemek olurdu;
+    // Şekil Eşlemede şekli olmayan öğe klasiğe düştüyse ses tekrar çalar.
+    else if (mode === "sekil" && !sekilRef.current) void playItem(item);
+    else if (!asiliGlif(mode)) void playItem(item);
   }, [mode, parlat]);
 
   const celdiriciler = useCallback((pool: ContentItem[], target: ContentItem, n: number) => {
+    // ⚠️ ŞEKİL EŞLEMEDE ÇELDİRİCİLER BAŞKA HARF OLMALI. Soru "ﺘ hangi harf?"
+    // — şıklar aynı harfin farklı harekeleri olursa (تِ / تُ) sorunun İKİ
+    // doğru cevabı olur. Ölçüldü: Hızlı Quiz'de hedef 3. konudan (harekeler)
+    // gelince çeldiriciler hep aynı harfin öbür harekeleriydi.
+    if (mode === "sekil") {
+      const hedefHarf = letterNumOf(target.id);
+      const farkli = pickWrongs(pool, target, n * 4).filter(
+        (c) => hedefHarf == null || letterNumOf(c.id) !== hedefHarf,
+      );
+      const out: ContentItem[] = [];
+      for (const c of farkli) {
+        if (out.length >= n) break;
+        if (out.some((o) => letterNumOf(o.id) != null && letterNumOf(o.id) === letterNumOf(c.id))) continue;
+        out.push(c);
+      }
+      // Aday yetmezse ŞIK AZ OLSUN — bozuk soru sorma (aynı ilke ad-tekillikte).
+      return out;
+    }
     if (!yaziliSik(mode)) return pickWrongs(pool, target, n);
     const z = adZorlugu(getGameItemLevel(target));
     const adlar = pickNameWrongs(pool, target, n, { zorluk: z });
@@ -270,9 +360,16 @@ export function useAskLayer(opts?: {
     item: ContentItem | null | undefined,
     opts?: { className?: string; boy?: string },
   ) => {
-    if (mode !== "ustte" || !item) return null;
+    if (!asiliGlif(mode) || !item) return null;
+    // ⚠️ ŞEKİL EŞLEMEDE ASILAN GLİF HEDEFİN KENDİSİ DEĞİL: harfin başka bir
+    // yazılış hâli asılır ("ـبـ hangi harf?"). Şekli olmayan öğede
+    // (harekeli hece, Ekstra) `baskaSekil` null döner ve soru klasiğe düşer
+    // — o zaman asılacak bir şey de yoktur.
+    const asilan = mode === "sekil" ? sekilRef.current?.glif : item.emoji;
+    if (!asilan) return null;
+    const etiket = mode === "sekil" ? sekilRef.current?.etiket : undefined;
     return (
-      <div className={cn("mb-3 flex justify-center", opts?.className)}>
+      <div className={cn("mb-3 flex flex-col items-center justify-center gap-1", opts?.className)}>
         {/* Siyah ince çerçeve (kullanıcı isteği): şıkların etrafındaki gibi. */}
         <div className="overflow-visible rounded-3xl border-2 border-foreground/75 bg-card px-8 py-2 shadow-card">
           <span
@@ -284,9 +381,14 @@ export function useAskLayer(opts?: {
             }}
             dir="rtl"
           >
-            {item.emoji}
+            {asilan}
           </span>
         </div>
+        {etiket && (
+          <span className="text-[11px] font-extrabold text-muted-foreground">
+            ({etiket} hâli)
+          </span>
+        )}
       </div>
     );
   }, [mode]);
@@ -300,8 +402,31 @@ export function useAskLayer(opts?: {
    * yazı ile ses burada birleşir. (Klasik modda gerek yok: soru zaten
    * sesle soruldu.)
    */
+  /**
+   * SES ŞIKLARINDA İKİ DOKUNUŞ: birincisi DİNLETİR, ikincisi SEÇER.
+   *
+   * ⚠️ Tek dokunuşla seçtirmek şıkları dinleme fırsatı bırakmıyordu — şık
+   * görünmez (yalnız hoparlör), dinlemeden seçmek kör atıştır. Öteki
+   * modlarda hep true döner, oyunlar tek satırla korunur.
+   * `hedefTekrar` süresi geçince onay sıfırlanır (çocuk başka şıkka geçti).
+   */
+  const onayla = useCallback((item: ContentItem | null | undefined) => {
+    if (!item) return false;
+    if (!sesliSik(mode)) return true;
+    const s = sesOnayRef.current;
+    if (s && s.id === item.id && Date.now() - s.at < 10_000) {
+      sesOnayRef.current = null;
+      return true;
+    }
+    sesOnayRef.current = { id: item.id, at: Date.now() };
+    void playItem(item);
+    return false;
+  }, [mode]);
+
   const cevapSesi = useCallback(async (item: ContentItem | null | undefined, dogru: boolean) => {
-    if (!item || !dogru || !yaziliSik(mode)) return;
+    // ⚠️ Şekil Eşlemede de çalar: soru görsel sorulduğu için çocuk harfin
+    // sesini hiç duymadan doğru yapabiliyor. Ses Şıklarında zaten dinledi.
+    if (!item || !dogru || (!yaziliSik(mode) && mode !== "sekil")) return;
     // ⚠️ SÖZ, SES BİTİNCE ÇÖZÜLÜR. Önce "çal ve unut" idi; oyun kendi
     // zamanlayıcısıyla sıradaki soruya geçtiği için kayıt devam ederken yeni
     // soru ekrana geliyordu (kullanıcı: "ses devam ederken yeni soru
@@ -326,6 +451,8 @@ export function useAskLayer(opts?: {
     sor,
     tekrar,
     tekrarEtiketi: mode === "flash" ? "Harfi tekrar göster" : "Tekrar dinle",
+    tekrarVar: !asiliGlif(mode) || mode === "flash",
+    onayla,
     katman,
     tabela,
     cevapSesi,

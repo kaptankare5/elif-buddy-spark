@@ -49,7 +49,11 @@ const SorterGame = () => {
   // KUTULARDAKİ hücreler yazılı ad olur. (Klasikte tam tersi: üstte
   // "'Be' harfini bul" yazısı, kutularda glif.)
   // Tahta `ask`e bağlı kurulur (aynı adlı tip eleme), o yüzden hook ÖNCE.
-  const ask = useAskLayer();
+  // ⚠️ Kutu Boşalt'ın tahtası 12 kutu: Ses Şıklarında 12 hoparlör demek,
+// çocuk hepsini tek tek dinlemek zorunda kalır (şık sayısı sınırı burada
+// işlemiyor, tahtayı oyun kendisi kuruyor). Şekil Eşleme de tek cevaplı
+// olmuyor — aynı harfin değişik harekeleri yan yana duruyor. İkisi de klasiğe düşer.
+  const ask = useAskLayer({ sekilDestek: false, sesliDestek: false });
   const [board, setBoard] = useState(() => buildBox(ask.ayriAdlar));
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [progress, setProgress] = useState(0);
@@ -112,6 +116,8 @@ const SorterGame = () => {
   useSecenekTuslari(board.cells.length, (i) => { const c = board.cells[i]; if (c && !c.cleared) tap(c); });
   const tap = async (c: Cell) => {
     if (busy || c.cleared || !target) return;
+    // ⚠️ SES ŞIKLARI: ilk dokunuş DİNLETİR, ikincisi seçer (bkz. _askUI).
+    if (!ask.onayla(c.item)) return;
     if (c.item.id === target.id) {
       setBoard((b) => ({ ...b, cells: b.cells.map((x) => x.uid === c.uid ? { ...x, cleared: true } : x) }));
       const newProgress = progress + 1;

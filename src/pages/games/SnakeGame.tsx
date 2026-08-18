@@ -60,7 +60,7 @@ const SnakeGame = () => {
   // ⚠️ Şimşek plakası VARSAYILAN yerinde (top-20%) doğrudan yılanın üstüne
   // düşüyordu — oyun alanı burada ekranın neredeyse tamamı. Başlık şeridinin
   // hizasına çekildi (kullanıcı bildirdi).
-  const ask = useAskLayer({ flashBoy: "min(3.8rem, 15vw)" });
+  const ask = useAskLayer({ flashBoy: "min(3.8rem, 15vw)", sesliDestek: false });
   const [mode] = useGameMode();
   const isSuper = mode === "super";
 

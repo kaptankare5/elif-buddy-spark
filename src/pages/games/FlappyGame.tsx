@@ -56,7 +56,7 @@ const FlappyGame = () => {
   // geniş. Yoksa çocuk yazının ortasına nişan almak zorunda kalır ve
   // kenarından geçtiğinde "vurmadım" der.
   // (Kullanıcı şartı: "uçtuğu şeyler yazı olur, harflerden kaçmaz.")
-  const ask = useAskLayer({ flashBoy: "min(4.2rem, 17vw)" });
+  const ask = useAskLayer({ flashBoy: "min(4.2rem, 17vw)", sesliDestek: false });
   const [mode] = useGameMode();
   const isSuper = mode === "super";
   const [birdY, setBirdY] = useState(40);

@@ -80,7 +80,7 @@ let UID = 1;
 let POP_UID = 1;
 
 const RunnerGame = () => {
-  const ask = useAskLayer({ flashBoy: "min(4.2rem, 17vw)" });
+  const ask = useAskLayer({ flashBoy: "min(4.2rem, 17vw)", sesliDestek: false });
   const askRef = useRef(ask); askRef.current = ask;
   const yaziliRef = useRef(ask.yazili); yaziliRef.current = ask.yazili;
   // Oyun alanının GERÇEK piksel ölçüsü — çarpışma yüzdeleri bundan türer.

@@ -132,6 +132,18 @@ const LEVEL_COUNT = LEVELS.length;
 // Bölüm ilerlemesi — cihazda saklanır. Ayarlar'daki test kilidi (kod 1234)
 // uygulamada her şeyi açar; bölüm seçici de ona uyar.
 const PROGRESS_KEY = "elifba-party-progress-v1";
+/**
+ * ⚠️ BU OYUN YALNIZ YAZILI MODLARI DESTEKLER. "Ses Şıkları" ve "Şekil Eşleme"
+ * asılı glif + dinleme/iki-dokunuş akışı istiyor; 3B kapı panosunda ikisi de
+ * kurulamıyor. Onlar seçiliyken oyun KLASİĞE düşer.
+ * ⚠️ Doğrudan `getAskMode()` çağırma: `mode !== "klasik"` diye bakan kod
+ * yolları yeni modları YAZILI sanıp panolara Latin ad basardı.
+ */
+function oyunAskModu(): AskMode {
+  const m = getAskMode();
+  return yaziliSik(m) ? m : "klasik";
+}
+
 function getUnlockedLevel(): number {
   if (isTestUnlockActive()) return LEVEL_COUNT;
   try {
@@ -312,7 +324,7 @@ const PartyGame = () => {
     }, FLASH_CUE_MS);
   }, []);
   parlatRef.current = parlat;
-  const askModeRef = useRef<AskMode>(getAskMode());
+  const askModeRef = useRef<AskMode>(oyunAskModu());
   const [flash, setFlash] = useState<{ k: number; text: string; good: boolean } | null>(null);
   const [result, setResult] = useState<{ place: number; correct: number; wrong: number } | null>(null);
   const teaseRef = useRef(gardenTease());
@@ -528,7 +540,7 @@ const PartyGame = () => {
     // ---------- soru kapıları ----------
     // Mod bölüm başında bir kez okunur; ortasında Ayarlar değişse bile
     // kapıların anlamı değişmesin.
-    const askMode = getAskMode();
+    const askMode = oyunAskModu();
     askModeRef.current = askMode;
     const pool = gamePool();
     const gates: Gate[] = [];

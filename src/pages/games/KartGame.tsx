@@ -41,7 +41,7 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture, blockedTexture } from "./_letterTexture";
-import { getAskMode, okunurAd, pickNameWrongs, getFlashMs, FLASH_CUE_MS, FLASH_SIK, USTTE_SIK, type AskMode } from "@/lib/askMode";
+import { getAskMode, okunurAd, pickNameWrongs, getFlashMs, FLASH_CUE_MS, FLASH_SIK, USTTE_SIK, yaziliSik, type AskMode } from "@/lib/askMode";
 import type { ContentItem } from "@/data/types";
 
 // ---- yarış sabitleri ----
@@ -157,6 +157,18 @@ const TRACKS: TrackDef[] = [
 const TRACK_COUNT = TRACKS.length;
 
 const PROGRESS_KEY = "elifba-kart-progress-v1";
+/**
+ * ⚠️ BU OYUN YALNIZ YAZILI MODLARI DESTEKLER. "Ses Şıkları" ve "Şekil Eşleme"
+ * asılı glif + dinleme/iki-dokunuş akışı istiyor; 3B kapı panosunda ikisi de
+ * kurulamıyor. Onlar seçiliyken oyun KLASİĞE düşer.
+ * ⚠️ Doğrudan `getAskMode()` çağırma: `mode !== "klasik"` diye bakan kod
+ * yolları yeni modları YAZILI sanıp panolara Latin ad basardı.
+ */
+function oyunAskModu(): AskMode {
+  const m = getAskMode();
+  return yaziliSik(m) ? m : "klasik";
+}
+
 function getUnlockedTrack(): number {
   if (isTestUnlockActive()) return TRACK_COUNT;
   try {
@@ -259,7 +271,7 @@ const KartGame = () => {
   parlatRef.current = parlat;
   // Arayüz katmanının okuduğu mod. Sahne içindeki `askMode` yarış başında
   // dondurulur; bu ref onunla aynı değeri taşır.
-  const askModeRef = useRef<AskMode>(getAskMode());
+  const askModeRef = useRef<AskMode>(oyunAskModu());
   const [flash, setFlash] = useState<{ k: number; text: string; good: boolean } | null>(null);
   const [result, setResult] = useState<{ place: number; correct: number; wrong: number } | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -692,7 +704,7 @@ const KartGame = () => {
     // ---------- soru kapıları ----------
     // ⚠️ Mod YARIŞ BAŞINDA bir kez okunur. Ortada değişirse kurulmuş kapıların
     // geometrisi (üst tabela var/yok) uymaz — bir sonraki yarışta geçerli olur.
-    const askMode = getAskMode();
+    const askMode = oyunAskModu();
     askModeRef.current = askMode;
     const pool = gamePool();
     const gates: Gate[] = [];

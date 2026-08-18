@@ -94,6 +94,10 @@ const BalloonGame = () => {
   const pc = usePcMi();
   useSecenekTuslari(balloons.length, (i) => { const b = balloons[i]; if (b && !b.popped) void pop(b); });
   const pop = async (b: Balloon) => {
+    // ⚠️ SES ŞIKLARI: ilk dokunuş yalnız DİNLETİR, ikincisi seçer. Şık
+    // görünmez (hoparlör) olduğu için dinlemeden seçmek kör atış olurdu.
+    // Öteki modlarda `onayla` hep true döner.
+    if (!ask.onayla(b.item)) return;
     if (b.popped || !target) return;
     setBalloons((bs) => bs.map((x) => x.uid === b.uid ? { ...x, popped: true } : x));
     const correct = b.item.id === target.id;
@@ -147,8 +151,11 @@ const BalloonGame = () => {
           <p className="text-xs font-bold text-muted-foreground">
             {ask.yazili ? "Gördüğün harfin adını patlat:" : "Sesi dinle, doğru balonu patlat:"}
           </p>
-          {ask.mode === "ustte" ? (
-            // Ortak tabela: glif kırpılmasın diye leading/pay orada ayarlı.
+          {!ask.tekrarVar ? (
+            // Glifin ASILI durduğu modlar (Tabela / Ses Şıkları / Şekil Eşleme):
+            // ortak tabela çizilir, ses düğmesi YOK — çalmak cevabı vermek olur.
+            // Mod adı yerine `tekrarVar` okunur ki yeni mod eklendiğinde
+            // burası unutulmasın.
             ask.tabela(target, { className: "mb-0 mt-1", boy: "text-5xl" })
           ) : (
             <button onClick={() => ask.tekrar(target)} className="text-5xl mt-1" aria-label="Tekrar">
