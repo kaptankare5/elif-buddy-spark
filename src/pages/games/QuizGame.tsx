@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSecenekTuslari, usePcMi } from "@/lib/klavye";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,14 @@ const QuizGame = () => {
     return () => window.removeEventListener("games-lang-change", h);
   }, [ask.secenekler]);
 
+  // PC: 1-2-3-4 tuşlarıyla şık seçilebilsin (fare zorunlu olmasın).
+  const pc = usePcMi();
+  useSecenekTuslari(q?.options.length ?? 0, (i) => { const o = q?.options[i]; if (o) void choose(o); }, !!q);
   const choose = async (item: ContentItem) => {
+    // ⚠️ SES ŞIKLARI: ilk dokunuş yalnız DİNLETİR, ikincisi seçer. Şık
+    // görünmez (hoparlör) olduğu için dinlemeden seçmek kör atış olurdu.
+    // Öteki modlarda `onayla` hep true döner.
+    if (!ask.onayla(item)) return;
     if (picked || time <= 0) return;
     setPicked(item.id);
     const correct = item.id === q.target.id;
@@ -107,9 +115,11 @@ const QuizGame = () => {
               <p className="text-sm font-bold text-muted-foreground mb-2">
                 {ask.yazili ? "Gördüğün harfin adı hangisi?" : "Hangisi?"}
               </p>
-              {/* "Tabela" modunda glif zaten ekranda asılı — tekrar düğmesi anlamsız
-                  (ses çalmak adı söylemek = cevabı vermek olurdu). */}
-              {ask.mode !== "ustte" && (
+              {/* Glifin ASILI durduğu modlarda (Tabela / Ses Şıkları / Şekil
+                  Eşleme) tekrar düğmesi anlamsız: ses çalmak adı söylemek =
+                  cevabı vermek olurdu. Mod adı yerine `tekrarVar` okunur ki
+                  yeni mod eklendiğinde burası unutulmasın. */}
+              {ask.tekrarVar && (
                 <button onClick={() => ask.tekrar(q.target)} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-primary-foreground font-extrabold shadow-soft transition-bouncy hover:scale-105">
                   {ask.mode === "flash" ? <Eye className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                   {ask.tekrarEtiketi}
@@ -118,16 +128,22 @@ const QuizGame = () => {
             </div>
             {ask.tabela(q.target)}
             <div className={cn("grid gap-3", q.options.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
-              {q.options.map((opt) => {
+              {q.options.map((opt, i) => {
                 const isCorrect = !!picked && opt.id === q.target.id;
                 const isWrong = picked === opt.id && opt.id !== q.target.id;
                 return (
                   <button key={opt.id} onClick={() => choose(opt)}
                     className={cn(
-                      "aspect-square rounded-3xl flex items-center justify-center shadow-card border-4 transition-bouncy bg-card border-primary/20 hover:-translate-y-1",
+                      "relative aspect-square rounded-3xl flex items-center justify-center shadow-card border-4 transition-bouncy bg-card border-primary/20 hover:-translate-y-1",
                       isCorrect && "bg-success border-success animate-pop",
                       isWrong && "bg-destructive border-destructive animate-shake",
                     )}>
+                    {/* PC'de tuş rozeti: fare zorunlu olmasın, 1-4 ile de seçilsin */}
+                    {pc && (
+                      <span className="absolute left-2 top-2 rounded-md bg-muted px-1.5 text-xs font-extrabold text-muted-foreground">
+                        {i + 1}
+                      </span>
+                    )}
                     <span className={cn(ask.yazili ? "text-2xl" : "text-7xl")}>
                       {ask.sik(opt)}
                     </span>

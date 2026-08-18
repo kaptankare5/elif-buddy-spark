@@ -402,8 +402,11 @@ const t4_harf_hareke: ContentTopic = {
   items: buildHarekeExtras(),
 };
 
-// 5. KONU — CEZM: her harf (Elif hariç, Kef için ses yok)
-const CEZM_MISSING = new Set([22]); // 22=Kef ses yok
+// 5. KONU — CEZM: her harf (Elif hariç)
+// Kef'in üç cezimli kartı uzun süre SESSİZDİ (cezm-21-*.mp3 yoktu) — kaydı
+// olmayan öğe oyun havuzuna ve konu testine hiç girmediği için o üç kart
+// yalnız sayfada duruyordu. Hocanın tek parça kaydından kesilip eklendi.
+const CEZM_MISSING = new Set<number>(); // eksik kayıt kalmadı
 
 // Kur'an sıklığına göre seçilmiş cezm heceleri (tam Kur'an taraması,
 // engine5 sayımı — Hafs/Âsım, Türk mushafı kuralı: idgamlı işaretsiz

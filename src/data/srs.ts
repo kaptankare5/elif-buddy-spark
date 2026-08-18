@@ -448,6 +448,40 @@ const MASTERY = {
 } as const;
 export { MASTERY };
 
+/**
+ * Şık sayısına göre kanıt katsayısı (0..1).
+ *
+ * Bilgi kuramı: n şık arasından doğruyu bulmak log2(n) bit taşır. 4 şık
+ * 2 bit, 2 şık 1 bit → yarısı. Katsayı da aynı oranda: 4 şık 1.0 (mevcut
+ * davranış korunur), 3 şık 0.79, 2 şık 0.5. Şıksız (Flashcard beyanı)
+ * zaten ayrı yoldan tam puan alır.
+ */
+function sansPayi(optionCount?: number): number {
+  if (!optionCount || optionCount >= 4) return 1;
+  if (optionCount <= 1) return 1;              // şık yok → şans yok
+  return Math.log2(optionCount) / 2;           // 2 → 0.5, 3 → 0.79
+}
+
+/** Hızlı geçiş (ilk karşılaşmada doğrudan L3) için gereken en az şık. */
+const HIZLI_GECIS_MIN_SIK = 4;
+/**
+ * L3→L4 mandalı için gereken üst üste doğru sayısı.
+ *
+ * ⚠️ ÖLÇÜT SABİT: hangi modda olursa olsun, SIRF ŞANSLA L4'e çıkma olasılığı
+ * 4 şıklı hâlin altında kalmalı — yani 1/16. Gereken tekrar sayısı buradan
+ * çıkar: (1/n)^k ≤ 1/16 → k ≥ 4 / log2(n).
+ *   4 şık → 2 doğru (1/16, mevcut davranış korunur)
+ *   3 şık → 3 doğru (1/27, eşikten güvenli)
+ *   2 şık → 4 doğru (1/16)
+ * Sabit "3" yazmak yetmiyordu: 2 şıkta 3 doğru 1/8 eder, yani 4 şıklı hâlin
+ * iki katı kolay kalırdı.
+ */
+function gerekenUstUste(optionCount?: number): number {
+  if (!optionCount || optionCount >= 4) return 2;
+  if (optionCount <= 1) return 2;
+  return Math.ceil(4 / Math.log2(optionCount));
+}
+
 /** Epoch gün — "aynı gün mü?" karşılaştırması bunun üzerinden yapılır. */
 const dayOf = (ms: number) => Math.floor(ms / 86_400_000);
 
@@ -755,6 +789,18 @@ export interface AnswerMeta {
    * testlerden daha güçlü iz bırakır (Roediger & Karpicke çizgisi).
    */
   evidence?: "recognition" | "production";
+  /**
+   * Soru kaç ŞIKLA soruldu? (şıksız/serbest cevapta boş bırakılır)
+   *
+   * ⚠️ ŞANS ORANI ÖLÇÜMÜ BOZAR. Merdivenin bütün gerekçeleri 4 şıka göre
+   * yazılmıştı ("4 şıkta iki kez şansla tutturma 1/16"), ama şimşek modu
+   * 2 şık, tabela modu 3 şık gösteriyor ve Kolay zorlukta da şık azalıyor.
+   * 2 şıkta bir doğru cevap 1 bit, 4 şıkta 2 bit bilgi taşır — yani yarısı
+   * kadar kanıt. Bu alan olmadan iki durum ayırt edilemiyordu ve az şıklı
+   * modlarda seviye şişiyordu. Kullanımı: `sansPayi`, hızlı geçiş kapısı,
+   * L3→L4 mandalı ve MASTERY puanı.
+   */
+  optionCount?: number;
 }
 
 function dispatchCloudSaveFailure(error: unknown) {
@@ -809,7 +855,11 @@ function recordLocalSrsAnswer(
       // ve puan ona göre kırpılır. Taban MIN_GUVEN — en güvenilmez çocukta bile
       // Flashcard bir oyun cevabı kadar değer taşır, DEĞERSİZ olmaz.
       e.mastery = (e.mastery ?? 0)
-        + (uretim ? MASTERY.PRODUCTION * auditReliability() : MASTERY.RECOGNITION);
+        + (uretim
+            ? MASTERY.PRODUCTION * auditReliability()
+            // ⚠️ Tanıma puanı ŞIK SAYISIYLA ölçeklenir: 2 şıklı doğru cevap
+            // 4 şıklının yarısı kadar kanıt taşır (bkz. sansPayi).
+            : MASTERY.RECOGNITION * sansPayi(meta?.optionCount));
     }
     e.lastCorrectDay = bugun;
     e.stab = wasFirst && !yeniGunDogru ? HL_FIRST_WRONG : stabForStep(e.step ?? 1);
@@ -841,7 +891,16 @@ function recordLocalSrsAnswer(
       // Şık olmaması yalnız ŞANSLA TUTTURMAYI sıfırlar, KALICILIĞI kanıtlamaz;
       // kalıcılık ayrı günlere yayılmış tekrardan gelir. Beyanın tek ayrıcalığı
       // MASTERY'de tam puan almasıdır (üretim kanıtı), kestirme değil.
-      e.level = 3;
+      //
+      // ⚠️ KESTİRME YALNIZ 4+ ŞIKTA GEÇERLİ. Yukarıdaki "1/16" hesabı 4 şıka
+      // göre. Şimşek modu 2 şık gösteriyor: orada ilk karşılaşmada YAZI TURA
+      // ile L3'e çıkılıyordu (%50), ikinci doğruda L4 (%25). Az şıklı soru
+      // "zaten biliyordu" kararını veremez — normal basamak işler (L1→L2).
+      if (!meta || (meta.optionCount ?? 4) >= HIZLI_GECIS_MIN_SIK) {
+        e.level = 3;
+      } else {
+        e.level = ((e.level + 1) as Level);
+      }
     } else if (e.level < 3) {
       // L1→L2, L2→L3: tek doğru yeterli
       e.level = ((e.level + 1) as Level);
@@ -855,8 +914,10 @@ function recordLocalSrsAnswer(
       // cezalanmaz: küçük çocukta yavaşlık çoğu zaman bilgi eksikliği değil
       // parmak/dikkat. Ölçtük, süre şartını sertleştirince bilen ama temkinli
       // çocuğun geçme oranı %99'dan %87'ye düşüyordu (kullanıcı şartı).
+      // ⚠️ Gereken üst üste doğru sayısı ŞIK SAYISINA bağlı: 4 şıkta 2 doğru
+      // şansla %6.25, 2 şıkta %25 olurdu. 2-3 şıkta 3 doğru istenir (%12.5).
       const akiciSayilir = fluent || e.correct === e.total;
-      if ((e.consecutiveCorrect ?? 0) >= 2 && akiciSayilir) {
+      if ((e.consecutiveCorrect ?? 0) >= gerekenUstUste(meta?.optionCount) && akiciSayilir) {
         e.level = 4;
       }
     } else if (e.level === 4) {

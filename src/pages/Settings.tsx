@@ -10,6 +10,7 @@ import { useGameMode, FREE_PLAY_MIN_SEEN } from "@/lib/gameMode";
 import { freePlaySeenCount } from "@/pages/games/_shared";
 import { cn } from "@/lib/utils";
 import { ASK_MODES, useAskMode, FLASH_PRESETS, useFlashMs, yaziliSik } from "@/lib/askMode";
+import { ZORLUKLAR, useZorluk, type Zorluk } from "@/lib/zorluk";
 import { FlashKalibre } from "@/components/FlashKalibre";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +27,7 @@ const Settings = () => {
   const [s, set] = useSettings();
   const [mode, setMode] = useGameMode();
   const [ask, setAsk] = useAskMode();
+  const [zorluk, setZorluk] = useZorluk();
   const [flashMs, setFlashMs] = useFlashMs();
   const [kalibre, setKalibre] = useState(false);
   // ⚠️ OKUMA ONAYI: Şimşek/Tabela şıkları LATİN harfle yazılı. Çocuk Türkçe
@@ -238,6 +240,44 @@ const Settings = () => {
             </p>
           </div>
 
+          {/* OYUN ZORLUĞU */}
+          <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-primary/30">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg">🎚️</span>
+              <h3 className="font-extrabold text-foreground text-sm">Oyun zorluğu</h3>
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
+              Oyunların <b>başlangıç hızını</b> ve <b>ne kadar çabuk zorlaştığını</b>
+              belirler. Oyunlar artık sabit hızda gitmiyor: doğru cevap verdikçe
+              hızlanıyorlar. Zorluk oyuna <b>girerken</b> dondurulur.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.keys(ZORLUKLAR) as Zorluk[]).map((z) => (
+                <button
+                  key={z}
+                  onClick={() => setZorluk(z)}
+                  className={cn(
+                    "rounded-2xl p-2 border-2 text-left transition-bouncy",
+                    zorluk === z ? "bg-primary/15 border-primary shadow-soft" : "bg-muted/40 border-border",
+                  )}
+                >
+                  <div className="text-xs font-extrabold text-foreground">
+                    {ZORLUKLAR[z].emoji} {ZORLUKLAR[z].ad}
+                  </div>
+                  <div className="text-[10px] font-bold text-muted-foreground leading-tight mt-0.5">
+                    {ZORLUKLAR[z].aciklama}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
+              ⚠️ Kolay modda <b>şık sayısı azalır</b> (2 şık). Şansla doğru yapma
+              ihtimali arttığı için bu kolaylık <b>yalnız yeni öğrenilen harflerde</b>
+              geçerlidir; çocuğun bildiği harflerde şık sayısı düşmez ve az şıklı
+              doğru cevap <b>daha az kanıt</b> sayılır — seviye şansla şişmez.
+            </p>
+          </div>
+
           {/* DENEYSEL: oyunda soru sorma yöntemi */}
           <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-gold/40">
             <div className="flex items-center gap-2 mb-1">
@@ -247,9 +287,19 @@ const Settings = () => {
             <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
               Şu an oyunlar <b>sesi duyup harfi seçtiriyor</b>. Asıl hedef ise tersi:
               harfi <b>görüp adını söylemek</b> (Elifbâ kitabının sorduğu yön).
-              <b> Şimşek</b> ve <b>Tabela</b> soruyu bu yöne çevirir — şıklar harfin
-              <b> yazılı adı</b> olur.
+              Dört yeni yöntem soruyu bu yöne çevirir:
             </p>
+            <ul className="text-[11px] text-muted-foreground mb-3 leading-snug list-disc pl-4 space-y-0.5">
+              <li><b>Şimşek / Tabela</b> — şıklar harfin <b>yazılı adı</b>
+                (Latin harfi okumayı gerektirir).</li>
+              <li><b>Ses Şıkları</b> — harf ekranda durur, şıklar 🔊 düğmesidir.
+                Çocuk dinleyip eşleştirir; <b>okuma gerekmez</b>. İlk dokunuş
+                dinletir, ikinci dokunuş seçer.</li>
+              <li><b>Şekil Eşleme</b> — harfin <b>başka bir hâli</b> asılır
+                (ـبـ gibi), şıklar harflerin yalın hâlidir. Bunu ses hiç
+                soramaz: bir harfin başta/ortada/sonda hâlleri aynı kaydı
+                çalıyor, o yüzden 84 şekil oyunlarda hiç ölçülemiyordu.</li>
+            </ul>
             <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
               Şu oyunlarda çalışır: <b>Yarışı, Partisi, Hızlı Quiz, Balon,
               Uzay Savaşı, Uçan Kuş, Kutu Boşalt, Elifbâ Macerası, Yılan</b>.
@@ -258,7 +308,7 @@ const Settings = () => {
               Hafıza/Eşleştirme/Üçlü/Yapboz'da soru zaten görsel olduğu için
               bu yöntemler geçerli değil.
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {ASK_MODES.map((m) => (
                 <button
                   key={m.id}
@@ -278,9 +328,12 @@ const Settings = () => {
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
-              ⚠️ Yeni yöntemler <b>Latin harflerini okuyabilmeyi</b> gerektirir — çocuk
-              henüz Türkçe okuyamıyorsa &quot;Klasik&quot;te kalın. Değişiklik
-              <b> bir sonraki yarışta</b> geçerli olur.
+              ⚠️ <b>Şimşek</b> ve <b>Tabela</b> Latin harflerini okuyabilmeyi
+              gerektirir; çocuk henüz Türkçe okuyamıyorsa <b>Ses Şıkları</b>
+              ya da <b>Şekil Eşleme</b> uygun. Ses Şıkları ve Şekil Eşleme
+              yalnız sıra tabanlı oyunlarda çalışır (Balon, Hızlı Quiz, Kutu
+              Boşalt); kaçma/vurma oyunlarında şıkkın kendisi engel olduğu için
+              Klasiğe düşer. Değişiklik <b>bir sonraki oyunda</b> geçerli olur.
             </p>
 
             {ask === "flash" && (

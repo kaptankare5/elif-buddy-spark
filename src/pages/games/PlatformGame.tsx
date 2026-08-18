@@ -1499,7 +1499,7 @@ const PlatformGame = () => {
   // Soru sorma yöntemi: yazılı modda bloklarda harfin ADI yazar, glif üstte
   // asılı durur (kullanıcı şartı).
   // Oyun alanı 16/10 dar bir şerit — şimşek glifi küçük olmalı.
-  const ask = useAskLayer({ flashBoy: "min(3.6rem, 15vw)" });
+  const ask = useAskLayer({ flashBoy: "min(3.6rem, 15vw)", sesliDestek: false });
   const askRef = useRef(ask); askRef.current = ask;
   const yaziliRef = useRef(ask.yazili); yaziliRef.current = ask.yazili;
   const [hedefGlif, setHedefGlif] = useState<ContentItem | null>(null);

@@ -22,8 +22,23 @@ bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
   ("soru sormadı, sadece cevaplar vardı"). Test kilidi 1234 bütün konuları
   açınca kayıtsız öğeler havuza giriyordu. Kayıtsız öğeler konu sayfasında
   ve Flashcard'da durur (orada soru görseldir). Bekçi: `audioFiles.test.ts`.
-  Hâlâ kaydı OLMAYANLAR: cezm 21 ve 28 (Kaf/Ye), sedde 28 (Ye), bütün
-  "Ekstralar" kelime kartları, `zamir-lafzatullah` ve `elif-lam-ra` konuları.
+  Hâlâ kaydı OLMAYANLAR (ölçüldü, 56 öğe): bütün "Ekstralar" kartları
+  (cezm 14, şedde 14, tenvin 8), `zamir-lafzatullah` (8) ve `elif-lam-ra` (8)
+  konularının HEPSİ, bir de `asar-med-kasr` konusu tamamen boş (0 öğe).
+  Çekirdek kartların kaydı TAM: basic 28, hareke 84, med 84, tenvin 84,
+  sedde 81, cezm 81.
+- ⚠️ **BÜTÜN ÇEKİRDEK KAYITLAR YENİ ÇEKİM** (kullanıcı kararı, 439 dosya):
+  hocanın tek parça kayıtlarından (`kaptankare5/sound` → "Dünya 1. ses kuran")
+  `tools/ses/` betikleriyle kesildi. Önce hareke/med/tenvin/cezm/şedde (411),
+  sonra basic'in 28 harf adı da eklendi ("kaç aydır kullanılan eski sesleri
+  sil"). ⚠️ Harf ADLARI için kesim eşiği **-40 dB** (ötekilerde -25):
+  yumuşak başlangıçlı adlarda (-25 dB'de) sözün ilk hecesi kesiliyordu.
+  Ayrıca **+3.8 dB kazanç** uygulandı — ham kesim -26.8 dBFS ile bütün
+  ailelerin altında kalıyordu. Eşleme tahminle değil
+  MFCC parmak iziyle doğrulandı (kayma denetimi: ofset 0 → ortalama sıra
+  10.7, ±1 → 30-31). Kazanç: eski şedde kayıtları **11 dB kısıktı**
+  (−31.9 dBFS), yeni set −20.9 ve bütün aileler 4.6 dB içinde — oyunlarda
+  arka arkaya çalarken ses seviyesi artık zıplamıyor.
 - **Daima `playItem(item)` kullan** (item.audio'yu çalar). `playSpeech(text)`
   metni `public/audio/manifest.json`'da arar; bulamazsa ROBOTİK tarayıcı
   TTS'ine düşer. Harf sesi için playSpeech KULLANMA. "Tebrikler!" gibi TTS
@@ -270,6 +285,24 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
 ### Soru sorma yöntemi (`src/lib/askMode.ts` + `games/_askUI.tsx`)
 Ayarlar → "Oyunda soru yöntemi". Varsayılan **klasik**; ESKİ MOD SİLİNMEDİ.
 Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar).
+- ⚠️ **OKUMA BİLMEYEN ÇOCUK İÇİN İKİ MOD** (kullanıcı tespiti: "çocuklar
+  okuma bilmiyor, o yüzden harfi gösterip şıkları yazılı veremiyoruz"):
+  **sesli** "Ses Şıkları" — glif asılı, şıklar 🔊; ilk dokunuş DİNLETİR,
+  ikincisi seçer (`ask.onayla`, oyunun seçim işleyicisinin ilk satırı).
+  Şık en fazla 3 (`SESLI_SIK`): 4 şık ~6 sn dinleme, çocuk ilkini unutuyor.
+  **sekil** "Şekil Eşleme" — harfin BAŞKA hâli asılı (`ـبـ`), şıklar harfler.
+  ⚠️ Bunu SES SORAMAZ: bir harfin dört hâli aynı mp3'ü çalıyor (`sameSound`
+  onları eliyor), yani 2. konudaki 84 şekil oyunlarda hiç ölçülemiyordu.
+  ⚠️ Şekil Eşlemede ÇELDİRİCİLER BAŞKA HARF olmalı — aynı harfin başka
+  harekesi gelirse sorunun İKİ doğru cevabı olur (ölçüldü: Quiz'de hedef
+  3. konudan gelince çeldiriciler hep aynı harfin harekeleriydi).
+  Destek bayrakları: `sesliDestek` / `sekilDestek` — aksiyon oyunlarında şık
+  engelin kendisi olduğu için ikisi de klasiğe düşer; Kutu Boşalt'ta tahtayı
+  oyun kendi kurduğu için (12 kutu) yine klasik. Kart/Parti `getAskMode()`
+  yerine `oyunAskModu()` kullanır: `mode !== "klasik"` diye bakan kod yolları
+  yeni modları YAZILI sanıp panolara Latin ad basardı.
+- `ask.tekrarVar`: glifin ASILI durduğu modlarda tekrar düğmesi ÖLÜDÜR (ses
+  çalmak cevabı vermek olur). Oyunlar mod adına değil buna bakar.
 - **klasik**: sesi duy → glif seç. (Mevcut/varsayılan.)
 - **flash** "Şimşek": glif kısa süre parlar söner → şıklar YAZILI AD.
   ⚠️ **SÜRE AYARLANABİLİR** (`FLASH_PRESETS`, Ayarlar: 0.3/0.5/0.8/1.3 sn,

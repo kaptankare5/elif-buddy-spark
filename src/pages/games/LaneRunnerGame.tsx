@@ -31,7 +31,7 @@ let POP_UID = 1;
 
 const LaneRunnerGame = () => {
   // İki şeritli oyun — şimşek modunun 2 şıkkına doğal olarak uyuyor.
-  const ask = useAskLayer();
+  const ask = useAskLayer({ sesliDestek: false });
   const [lane, setLane] = useState<0 | 1>(0);
   const [lastSwitchDir, setLastSwitchDir] = useState<-1 | 0 | 1>(0);
   const [objs, setObjs] = useState<Obj[]>([]);
