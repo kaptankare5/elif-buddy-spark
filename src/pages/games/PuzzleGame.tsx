@@ -7,6 +7,7 @@ import { getZorluk, type Zorluk } from "@/lib/zorluk";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Volume2 } from "lucide-react";
+import { sfx, titre } from "@/lib/juice";
 
 /**
  * Yapboz — yaşa göre:
@@ -66,10 +67,13 @@ const PuzzleGame = () => {
 
   const tap = (i: number) => {
     if (solved) return;
-    if (first === null) { setFirst(i); return; }
-    if (first === i) { setFirst(null); return; }
+    // Seçme ve takas AYRI sesler: çocuk hangi aşamada olduğunu duyarak da
+    // anlasın (parça seçildi mi, yer değişti mi).
+    if (first === null) { sfx("kaydir"); setFirst(i); return; }
+    if (first === i) { sfx("kaydir"); setFirst(null); return; }
     const next = [...tiles];
     [next[first], next[i]] = [next[i], next[first]];
+    sfx("patlat");
     setTiles(next);
     setFirst(null);
 
@@ -78,6 +82,7 @@ const PuzzleGame = () => {
       setScore((s) => s + 1);
       if (item) {
         // Doğru cevap sesi → sonra harfin gerçek okunuşu
+        sfx("bitis");
         playFeedback(true);
         setTimeout(() => { void playItem(item); }, 300);
       }

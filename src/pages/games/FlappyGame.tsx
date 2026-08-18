@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ipucu } from "@/lib/klavye";
 import { rampa, zorlukAyari } from "@/lib/zorluk";
+import { sfx, titre } from "@/lib/juice";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle, pickWrongs } from "./_shared";
@@ -80,6 +81,8 @@ const FlappyGame = () => {
   const yRef = useRef(40); yRef.current = birdY;
   const targetRef = useRef<ContentItem | null>(null); targetRef.current = target;
   const askRef = useRef(ask); askRef.current = ask;
+  // Arka arkaya yutulan doğru harfler — ses tizleşir.
+  const yutmaSeri = useRef(0);
   const yaziliRef = useRef(ask.yazili); yaziliRef.current = ask.yazili;
 
   const pausedRef = useRef(true); pausedRef.current = paused;
@@ -101,6 +104,7 @@ const FlappyGame = () => {
       // ilk uçuşta hedefi seslendir
       if (target) void askRef.current.sor(target);
     }
+    sfx("zipla");
     setVel(FLAP);
   }, [gameOver, paused, target]);
 
@@ -134,7 +138,7 @@ const FlappyGame = () => {
       const nv = velRef.current + GRAVITY;
       const ny = yRef.current + nv;
       if (ny > H - 4) {
-        setGameOver(true); playFeedback(false); return true;
+        sfx("carp"); titre("sert"); setGameOver(true); playFeedback(false); return true;
       }
       if (ny < 0) { setBirdY(0); setVel(0); }
       else { setBirdY(ny); setVel(nv); }
@@ -240,6 +244,7 @@ const FlappyGame = () => {
           recordLetterMastery(collidedTarget.item.id, true);
           recordGameAnswer(collidedTarget.item, true);
           setDogru((d) => d + 1);
+          sfx("topla", { seri: yutmaSeri.current++ });
           playFeedback(true);
           setScore((s) => s + 1);
           next = next.filter((l) => {
@@ -257,6 +262,8 @@ const FlappyGame = () => {
           recordLetterMastery(targetRef.current!.id, false);
           recordGameAnswer(targetRef.current!, false, { chosenId: collidedWrong.item.id });
           if (isSuper) enqueueRetryItem(targetRef.current!);
+          yutmaSeri.current = 0;
+          titre("hata");
           playFeedback(false);
           // Yanlış harfi sol kenarda kısa süre parlat ki oyuncu görsün
           const flashed: Letter = { ...collidedWrong, x: 10, missed: true };

@@ -2,6 +2,7 @@
 // Sesler build-time ElevenLabs ile üretildi → public/audio/{tr,en}/<sha1>.mp3
 import manifest from "../../public/audio/manifest.json";
 import type { ContentItem, Lang } from "@/data/types";
+import { titre, type Titresim } from "@/lib/titresim";
 
 let activeAudio: HTMLAudioElement | null = null;
 let activeUtterance: SpeechSynthesisUtterance | null = null;
@@ -287,7 +288,9 @@ function getCtx(): AudioContext | null {
   } catch { return null; }
 }
 
-function tone(freq: number, dur: number, type: OscillatorType, startOffset = 0, gain = 0.18) {
+// ⚠️ juice.ts de kullanıyor — ses üretimi TEK YERDE kalsın, ikinci bir
+// AudioContext açmak mobil tarayıcıda ses kilidini bozuyor.
+export function tone(freq: number, dur: number, type: OscillatorType, startOffset = 0, gain = 0.18) {
   const ctx = getCtx();
   if (!ctx) return;
   const t0 = ctx.currentTime + startOffset;
@@ -335,7 +338,16 @@ export async function playFeedback(positive: boolean) {
 // Kısa oyun sfx — müzik yerine tek atımlık tonlar (İslami hassasiyet: müzik
 // yok, sadece bildirim/geri bildirim sesleri). Coin: parlak iki nota;
 // stomp: yumuşak "puf"; hurt: alçak buzz.
+// ⚠️ TİTREŞİM BURADAN GELİR: playSfx zaten 3B oyunların her önemli anında
+// (para, çarpma, güç) çağrılıyor. Titreşimi 24 çağrı yerine tek yere koymak
+// hem bir yeri atlamayı imkânsız kılıyor hem de ses↔dokunuş eşleşmesini
+// tutarlı tutuyor.
+const SFX_TITRESIM: Record<string, Titresim> = {
+  coin: "hafif", stomp: "sert", hurt: "sert", dove: "orta",
+};
+
 export function playSfx(kind: "coin" | "stomp" | "hurt" | "dove") {
+  titre(SFX_TITRESIM[kind] ?? "hafif");
   if (kind === "coin") {
     tone(1320, 0.06, "triangle", 0, 0.16);
     tone(1760, 0.10, "triangle", 0.05, 0.16);

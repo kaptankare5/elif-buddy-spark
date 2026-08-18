@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ipucu } from "@/lib/klavye";
 import { rampa } from "@/lib/zorluk";
+import { sfx, titre } from "@/lib/juice";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
@@ -92,6 +93,8 @@ const SnakeGame = () => {
   }, []);
 
   const askRef = useRef(ask); askRef.current = ask;
+  // Arka arkaya yenen doğru harfler serisi — ses her seferinde tizleşir.
+  const yemeSeri = useRef(0);
 
   const startQuiz = useCallback((occupied: Cell[]) => {
     const pool = gamePool();
@@ -178,11 +181,13 @@ const SnakeGame = () => {
         const next: Cell = { x: head.x + d.x, y: head.y + d.y };
         if (next.x < 0 || next.x >= COLS || next.y < 0 || next.y >= ROWS) {
           setGameOver(true);
+          sfx("carp"); titre("sert"); yemeSeri.current = 0;
           playFeedback(false);
           return prev;
         }
         if (prev.some((c) => c.x === next.x && c.y === next.y)) {
           setGameOver(true);
+          sfx("carp"); titre("sert"); yemeSeri.current = 0;
           playFeedback(false);
           return prev;
         }
@@ -207,6 +212,7 @@ const SnakeGame = () => {
               grew = true;
               setScore((s) => s + 5);
               setDogru((d) => d + 1);
+              sfx("topla", { seri: yemeSeri.current++ });
               playFeedback(true);
               // Kayıt bitmeden yeni soru sorulmasın (yazılı modda).
               const bitince = askRef.current.cevapSesi(quiz.target, true);
@@ -218,6 +224,8 @@ const SnakeGame = () => {
                 else newFood(newSnake);
               });
             } else {
+              yemeSeri.current = 0;
+              titre("hata");
               playFeedback(false);
               // Süper modda: aynı soruyu tekrar sor, oyunu bitirme
               if (isSuper) {

@@ -12,6 +12,7 @@ import { sureIcin } from "@/lib/zorluk";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
+import { sfx, titre } from "@/lib/juice";
 
 interface Q { target: ContentItem; options: ContentItem[]; }
 
@@ -25,6 +26,8 @@ function makeQ(secenekler: Secici): Q {
 
 const QuizGame = () => {
   const ask = useAskLayer();
+  // Arka arkaya doğru — juice sesi her seferinde tizleşir (Mario para kuralı).
+  const seri = useRef(0);
   const [q, setQ] = useState<Q>(() => makeQ(ask.secenekler));
   const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState(0);
@@ -69,6 +72,8 @@ const QuizGame = () => {
       responseMs, gameId: "quiz",
       chosenId: item.id, shownIds: q.options.map((o) => o.id),
     });
+    if (correct) { sfx("topla", { seri: seri.current++ }); titre("basari"); }
+    else { seri.current = 0; sfx("carp"); titre("hata"); }
     await playFeedback(correct);
     // Yazılı modda doğru cevaptan sonra harfin GERÇEK OKUNUŞU çalar; kayıt
     // BİTMEDEN yeni soru gelmez (klasikte söz hemen çözülür).

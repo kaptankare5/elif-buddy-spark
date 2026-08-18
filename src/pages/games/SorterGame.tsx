@@ -10,6 +10,7 @@ import { useGameMode } from "@/lib/gameMode";
 import { getGameItemLevel, recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 import { tahtaBoyu } from "@/lib/zorluk";
+import { sfx, titre } from "@/lib/juice";
 
 // =============================================================
 // Kutu Boşalt — Sistem rastgele bir harfi söyler ("ha"). Kutudan
@@ -102,6 +103,7 @@ const SorterGame = () => {
   // Kazanınca otomatik yeni seviye
   useEffect(() => {
     if (!won) return;
+    sfx("bitis");
     playFeedback(true);
     const t = setTimeout(() => {
       setBoard(buildBox(ask.ayriAdlar));
@@ -131,6 +133,10 @@ const SorterGame = () => {
       setBoard((b) => ({ ...b, cells: b.cells.map((x) => x.uid === c.uid ? { ...x, cleared: true } : x) }));
       const newProgress = progress + 1;
       setProgress(newProgress);
+      // Aynı tipten her doğru kutuda ses bir basamak tizleşir; tip bitince
+      // "seri" sesi gelir — ilerleme duyulur olsun.
+      sfx(newProgress >= PER_TYPE ? "seri" : "topla", { seri: newProgress });
+      titre(newProgress >= PER_TYPE ? "basari" : "hafif");
       playFeedback(true);
       // Yazılı modda her doğruda harfin gerçek okunuşu (tip tamamlanınca
       // zaten aşağıda playItem çalıyor — iki kez çalmasın).
@@ -166,6 +172,8 @@ const SorterGame = () => {
       setBusy(true);
       recordLetterMastery(target.id, false);
       recordGameAnswer(target, false, { chosenId: c.item.id });
+      sfx("carp");
+      titre("hata");
       await playFeedback(false);
       setBoard((b) => ({ ...b, cells: b.cells.map((x) => x.uid === c.uid ? { ...x, wrong: true } : x) }));
       setTimeout(() => {
