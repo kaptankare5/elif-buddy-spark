@@ -30,7 +30,7 @@ var LETTERS = [
   { n: 18, name: "Ayn", iso: "\u0639", init: "\uFECB", med: "\uFECC", fin: "\uFECA", speech: "ayn", cons: "", thick: "ince" },
   { n: 19, name: "Gayn", iso: "\u063A", init: "\uFECF", med: "\uFED0", fin: "\uFECE", speech: "gay\u0131n", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe", iso: "\u0641", init: "\uFED3", med: "\uFED4", fin: "\uFED2", speech: "fe", cons: "f", thick: "ince" },
-  { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "k", thick: "kalin" },
+  { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "g", thick: "kalin" },
   { n: 22, name: "Kef", iso: "\u0643", init: "\uFEDB", med: "\uFEDC", fin: "\uFEDA", speech: "kef", cons: "k", thick: "ince" },
   { n: 23, name: "Lem", iso: "\u0644", init: "\uFEDF", med: "\uFEE0", fin: "\uFEDE", speech: "lem", cons: "l", thick: "ince" },
   { n: 24, name: "Mim", iso: "\u0645", init: "\uFEE3", med: "\uFEE4", fin: "\uFEE2", speech: "mim", cons: "m", thick: "ince" },
@@ -48,6 +48,39 @@ var pad2 = (n) => n < 10 ? `0${n}` : String(n);
 var audioPath = (name) => `/audio/elifba/${name}`;
 var byName = new Map(LETTERS.map((l) => [l.name, l]));
 var bolum = (n) => `${Math.floor((n - 1) / 4) + 1}. B\xF6l\xFCm`;
+var YAZILIS_SECTIONS = [
+  [1, 22, 23],
+  // ا ك ل — dikey çizgililer
+  [2, 3, 4],
+  // ب ت ث — diş + nokta
+  [5, 6, 7],
+  // ج ح خ — çanaklılar
+  [8, 9],
+  // د ذ
+  [10, 11],
+  // ر ز
+  [12, 13],
+  // س ش
+  [14, 15],
+  // ص ض
+  [16, 17],
+  // ط ظ
+  [18, 19],
+  // ع غ
+  [20, 21],
+  // ف ق
+  [24, 27],
+  // م ه — ilmekliler
+  [25, 28],
+  // ن ي — diş ailesinin devamı
+  [26]
+  // و
+];
+var YAZILIS_SECTION_OF = /* @__PURE__ */ new Map();
+YAZILIS_SECTIONS.forEach((letters, i) => {
+  for (const n of letters) YAZILIS_SECTION_OF.set(n, `${i + 1}. B\xF6l\xFCm`);
+});
+var bolumYazilis = (n) => YAZILIS_SECTION_OF.get(n) ?? "Ekstralar";
 var P = "elifba";
 var t1_harfler = {
   id: "harfler",
@@ -76,6 +109,12 @@ var t2_yazilislar = {
   emoji: "\uFE91",
   practiceMode: "visual",
   gridCols: 3,
+  // YENİ MÜFREDAT (kullanıcı kararı): bu konu ALIŞTIRMASIZ — çocuk videoyu
+  // izler ya da harfleri birkaç dakika dinler ve geçer. Başta/ortada/sonda
+  // hâlleri tek başına ezberletilmez; sıradaki konuda HAREKEYLE BİRLİKTE
+  // alıştırması yapılır (şe → şın ortada + fetha). Tek başına 84 şekil
+  // ezberletmek hem sıkıcı hem de okumaya doğrudan katkısı yok.
+  noPractice: true,
   items: LETTERS.flatMap((l) => [
     {
       id: `l2-${pad2(l.n)}-init`,
@@ -85,7 +124,7 @@ var t2_yazilislar = {
       emoji: l.init,
       translit: `${l.name} (ba\u015Fta)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolum(l.n)
+      section: bolumYazilis(l.n)
     },
     {
       id: `l2-${pad2(l.n)}-med`,
@@ -95,7 +134,7 @@ var t2_yazilislar = {
       emoji: l.med,
       translit: `${l.name} (ortada)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolum(l.n)
+      section: bolumYazilis(l.n)
     },
     {
       id: `l2-${pad2(l.n)}-fin`,
@@ -105,7 +144,7 @@ var t2_yazilislar = {
       emoji: l.fin,
       translit: `${l.name} (sonda)`,
       audio: audioPath(`basic-${pad2(l.n)}.mp3`),
-      section: bolum(l.n)
+      section: bolumYazilis(l.n)
     }
   ])
 };
@@ -262,7 +301,17 @@ function buildHarekeExtras() {
         emoji: form + HV_MARK[hv],
         translit: read,
         audio: audioPath(`hareke-${pad2(l.n)}-${suf}.mp3`),
-        section: "Ekstralar"
+        section: bolum(l.n),
+        // ÖLÇÜLEN: harekeyi bildiği varsayılır, hata harfin ŞEKLİNE
+        // yazılır. 2. konuda (Yazılışlar) alıştırmasız geçilen
+        // başta/ortada/sonda hâlleri asıl burada ölçülür.
+        skill: `l2-${pad2(l.n)}-${pos}`,
+        // Şıklar AYNI HAREKELİ olmalı: ölçülen harfin şekli,
+        // harekeler karışsaydı çocuk sesteki ünlüden eler, şekle bakmazdı.
+        distractorKey: `hv-${hv}`,
+        // Bu soru harekeyi BİLDİĞİNİ varsayar. Hareke L4 değilse yanlış
+        // cevap şekle değil HAREKEYE yazılır (yanlış teşhis olmasın).
+        prereqSkill: `hrk-${suf}`
       });
     }
   }
@@ -272,6 +321,9 @@ var t3_harekeler = {
   id: "harekeler",
   parent: P,
   title: "3. Harekeler",
+  // Şıklar aynı harfin üç harekesi (بَ بِ بُ) — dördüncü şık başka harf
+  // olurdu ve çocuk harekeye bakmadan elerdi.
+  optionCount: 3,
   description: "Fetha, esre ve \xF6tre",
   emoji: "\uFE77",
   practiceMode: "visual",
@@ -293,12 +345,31 @@ var t3_harekeler = {
           emoji: l.iso + h.mark,
           translit: sesMap[h.vowel],
           audio: audioPath(`hareke-${pad2(l.n)}-${h.suf}.mp3`),
-          section: bolum(l.n)
+          section: bolum(l.n),
+          // ÖLÇÜLEN: harf değil HAREKE. 84 hece sorulur ama yeni bilgi 3
+          // tanedir (28 harf 1. konuda öğrenildi). Çocuk üstün/esre/ötreyi
+          // ayırt edebiliyorsa konu biter — bkz. src/lib/skills.ts.
+          skill: `hrk-${h.suf}`,
+          // Şıklar AYNI HARF olmalı (بَ بِ بُ): ölçülen hareke,
+          // farklı harf koyulsaydı çocuk harften tanır, harekeye bakmazdı.
+          distractorKey: `harf-${pad2(l.n)}`
         };
       })
-    ),
-    ...buildHarekeExtras()
+    )
   ]
+};
+var OGRETME_ORNEKLEMI = /* @__PURE__ */ new Set([2, 10, 12, 24]);
+var CEKIRDEK_AGIRLIK = 3;
+var ekstraAgirlik = (frekans) => CEKIRDEK_AGIRLIK + frekans * 2;
+var t4_harf_hareke = {
+  id: "harf-hareke",
+  parent: P,
+  title: "4. Harf + Hareke Al\u0131\u015Ft\u0131rmas\u0131",
+  description: "Harflerin ba\u015Fta/ortada/sonda h\xE2lleri, harekeyle",
+  emoji: "\uFEB7\u064E",
+  practiceMode: "visual",
+  gridCols: 3,
+  items: buildHarekeExtras()
 };
 var CEZM_MISSING = /* @__PURE__ */ new Set([22]);
 var CEZM_EKSTRA = [
@@ -334,7 +405,7 @@ var CEZM_EKSTRA = [
 var t4_cezm = {
   id: "cezm",
   parent: P,
-  title: "4. Cezm",
+  title: "5. Cezm",
   description: "Cezimli okuyu\u015F (eb, ib, \xFCb\u2026)",
   emoji: "\uFE7F",
   practiceMode: "visual",
@@ -350,13 +421,13 @@ var t4_cezm = {
         { v: "i", audio: `cezm-${pad2(cezmIdx)}-i.mp3`, sp: `${v.i}${base}` },
         { v: "u", audio: `cezm-${pad2(cezmIdx)}-u.mp3`, sp: `${v.u}${base}` }
       ].map((h, idx) => {
-        const elifPre = idx === 0 ? "\u0627\u064E" : idx === 1 ? "\u0625\u0650" : "\u0623\u064F";
+        const elifPre = idx === 0 ? "\u0627\u064E" : idx === 1 ? "\u0627\u0650" : "\u0627\u064F";
         return {
           id: `l4-${pad2(l.n)}-${h.v}`,
           label: `${h.sp}`,
           speech: h.sp,
           lang: "tr",
-          // Örn: أَبْ / إِبْ / أُبْ
+          // Örn: اَبْ / اِبْ / اُبْ
           emoji: `${elifPre}${l.iso}\u0652`,
           translit: h.sp,
           audio: hasAudio ? audioPath(h.audio) : void 0,
@@ -372,7 +443,7 @@ var t4_cezm = {
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
-      weight: w
+      weight: ekstraAgirlik(w)
     }))
   ]
 };
@@ -406,10 +477,15 @@ var SEDDE_EKSTRA = [
   ["\u062D\u064E\u062A\u064E\u0651", "hatte", 1]
   //   142
 ];
+var SEDDE_ELIF_PRE = {
+  fetha: "\u0627\u064E",
+  esre: "\u0627\u0650",
+  otre: "\u0627\u064F"
+};
 var t5_sedde = {
   id: "sedde",
   parent: P,
-  title: "5. \u015Eedde",
+  title: "6. \u015Eedde",
   description: "\u015Eeddeli okuyu\u015F (ebbe, ibbi, \xFCbb\xFC\u2026)",
   emoji: "\uFE7D",
   practiceMode: "visual",
@@ -430,11 +506,17 @@ var t5_sedde = {
           label: sesMap[h.vowel],
           speech: sesMap[h.vowel],
           lang: "tr",
-          // Örn: بَّ / بِّ / بُّ
-          emoji: l.iso + "\u0651" + h.mark,
+          // Şeddeli hece TEK BAŞINA okunamaz: "بَّ" yazıp "ebbe" demek
+          // olmuyor, şeddenin ikizlediği ilk sessizin bir önceki heceye
+          // yaslanması gerekiyor. Cezm konusunda olduğu gibi harekeli elif
+          // ön eki konur → اَبَّ / اِبِّ / اُبُّ (ebbe / ibbi / übbü).
+          // Ekstra kartlar (اِنَّ, رَبِّ…) da zaten bu biçimde.
+          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}\u0651${h.mark}`,
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
-          section: bolum(l.n)
+          section: bolum(l.n),
+          // Yalnız öğretme örneklemi sorulur; gerisi görülür/dinlenir.
+          practice: OGRETME_ORNEKLEMI.has(l.n)
         };
       });
     }),
@@ -446,7 +528,7 @@ var t5_sedde = {
       emoji: ar,
       translit: sp,
       section: "Ekstralar",
-      weight: w
+      weight: ekstraAgirlik(w)
     }))
   ]
 };
@@ -480,50 +562,58 @@ var MED_EKSTRA = [
   ["\u0647\u0650\u064A", "h\xEE", 3]
   // 1.091
 ];
+var HARAKA_SUF = {
+  "\u064E": "fetha",
+  "\u0650": "esre",
+  "\u064F": "otre"
+};
+var MADD_HARFI = /* @__PURE__ */ new Set(["\u0627", "\u0649", "\u064A", "\u0648"]);
+var byIso = new Map(LETTERS.map((l) => [l.iso, l]));
+function medAudio(ar) {
+  const cp = [...ar];
+  if (cp.length !== 3) return void 0;
+  const l = byIso.get(cp[0]);
+  const suf = HARAKA_SUF[cp[1]];
+  if (!l || !suf || !MADD_HARFI.has(cp[2])) return void 0;
+  return audioPath(`med-${pad2(l.n)}-${suf}.mp3`);
+}
+var MED_FORMS = [
+  { suf: "fetha", mark: "\u064E", harf: "\u0627" },
+  { suf: "esre", mark: "\u0650", harf: "\u0649" },
+  { suf: "otre", mark: "\u064F", harf: "\u0648" }
+];
+function medVowel(thick, suf) {
+  if (suf === "esre") return "\xEE";
+  if (suf === "otre") return "\xFB";
+  return thick === "ince" ? "\xEA" : "\xE2";
+}
 var t6_med = {
   id: "med",
   parent: P,
-  title: "6. Med Harfleri",
+  title: "7. Med Harfleri",
   description: "Elif, vav ve ye ile uzatma",
   emoji: "\uFE81",
   practiceMode: "visual",
   gridCols: 3,
   items: [
-    ...[
-      { ar: "\u0628\u064E\u0627", sp: "b\xE2" },
-      { ar: "\u0628\u0650\u0649", sp: "b\xEE" },
-      { ar: "\u0628\u064F\u0648", sp: "b\xFB" },
-      { ar: "\u062A\u064E\u0627", sp: "t\xE2" },
-      { ar: "\u062A\u0650\u0649", sp: "t\xEE" },
-      { ar: "\u062A\u064F\u0648", sp: "t\xFB" },
-      { ar: "\u062B\u064E\u0627", sp: "s\xE2" },
-      { ar: "\u062B\u0650\u0649", sp: "s\xEE" },
-      { ar: "\u062B\u064F\u0648", sp: "s\xFB" },
-      { ar: "\u062C\u064E\u0627", sp: "c\xE2" },
-      { ar: "\u062C\u0650\u0649", sp: "c\xEE" },
-      { ar: "\u062C\u064F\u0648", sp: "c\xFB" },
-      { ar: "\u062D\u064E\u0627", sp: "h\xE2" },
-      { ar: "\u062D\u0650\u0649", sp: "h\xEE" },
-      { ar: "\u062D\u064F\u0648", sp: "h\xFB" },
-      { ar: "\u062F\u064E\u0627", sp: "d\xE2" },
-      { ar: "\u0630\u064E\u0627", sp: "z\xE2" },
-      { ar: "\u0631\u064E\u0627", sp: "r\xE2" },
-      { ar: "\u0632\u064E\u0627", sp: "z\xE2" },
-      { ar: "\u0633\u064E\u0627", sp: "s\xE2" },
-      { ar: "\u0634\u064E\u0627", sp: "\u015F\xE2" },
-      { ar: "\u0642\u064E\u0627\u0644\u064E", sp: "k\xE2le" },
-      { ar: "\u0643\u064E\u0627\u0646\u064E", sp: "k\xE2ne" },
-      { ar: "\u0643\u0650\u062A\u064E\u0627\u0628\u064F", sp: "kit\xE2b\xFC" }
-    ].map((it, i) => ({
-      id: `l6-${pad2(i + 1)}`,
-      label: it.sp,
-      speech: it.sp,
-      lang: "tr",
-      emoji: it.ar,
-      translit: it.sp,
-      // Med listesi harf-numarası düzeninde değil — sıralı 6'lı gruplar
-      section: `${Math.floor(i / 6) + 1}. B\xF6l\xFCm`
-    })),
+    ...LETTERS.flatMap(
+      (l) => MED_FORMS.map((m) => {
+        const sp = `${l.cons}${medVowel(l.thick, m.suf)}`;
+        const ar = l.n === 1 && m.suf === "fetha" ? "\u0622" : l.iso + m.mark + m.harf;
+        return {
+          id: `l6-${pad2(l.n)}-${m.suf}`,
+          label: sp,
+          speech: sp,
+          lang: "tr",
+          emoji: ar,
+          translit: sp,
+          audio: audioPath(`med-${pad2(l.n)}-${m.suf}.mp3`),
+          section: bolum(l.n),
+          // Yalnız öğretme örneklemi sorulur; gerisi görülür/dinlenir.
+          practice: OGRETME_ORNEKLEMI.has(l.n)
+        };
+      })
+    ),
     ...MED_EKSTRA.map(([ar, sp, w], i) => ({
       id: `l6e-${pad2(i + 1)}`,
       label: sp,
@@ -531,15 +621,16 @@ var t6_med = {
       lang: "tr",
       emoji: ar,
       translit: sp,
+      audio: medAudio(ar),
       section: "Ekstralar",
-      weight: w
+      weight: ekstraAgirlik(w)
     }))
   ]
 };
 var t7_asar = {
   id: "asar-med-kasr",
   parent: P,
-  title: "7. \xC2sar, Med ve Kasr",
+  title: "8. \xC2sar, Med ve Kasr",
   description: "Uzatma i\u015Faretleri \u2014 videoyu izle",
   emoji: "\uFEF5",
   practiceMode: "visual",
@@ -561,7 +652,7 @@ var TENVIN_EKSTRA = [
 var t8_tenvin = {
   id: "tenvin",
   parent: P,
-  title: "8. Tenvin",
+  title: "9. Tenvin",
   description: "\u0130ki \xFCst\xFCn, iki esre, iki \xF6tre",
   emoji: "\u08F0",
   practiceMode: "visual",
@@ -583,7 +674,9 @@ var t8_tenvin = {
         emoji: d.glyph,
         translit: d.read,
         audio: audioPath(`tenvin-${pad2(l.n)}-${d.file}.mp3`),
-        section: bolum(l.n)
+        section: bolum(l.n),
+        // Yalnız öğretme örneklemi sorulur; gerisi görülür/dinlenir.
+        practice: OGRETME_ORNEKLEMI.has(l.n)
       }));
     }),
     ...TENVIN_EKSTRA.map(([ar, sp], i) => ({
@@ -593,14 +686,16 @@ var t8_tenvin = {
       lang: "tr",
       emoji: ar,
       translit: sp,
-      section: "Ekstralar"
+      section: "Ekstralar",
+      // Ekstralar L4'te bile diğer L4 öğelerden daha sık sorulsun.
+      weight: ekstraAgirlik(3)
     }))
   ]
 };
 var t9_zamir = {
   id: "zamir-lafzatullah",
   parent: P,
-  title: "9. Zamir ve Lafzatullah",
+  title: "10. Zamir ve Lafzatullah",
   description: "Allah lafz\u0131n\u0131n okunu\u015Fu",
   emoji: "\uFDF2",
   practiceMode: "visual",
@@ -628,7 +723,7 @@ var t9_zamir = {
 var t10_elif_lam = {
   id: "elif-lam-ra",
   parent: P,
-  title: "10. Elif-L\xE2m Tak\u0131s\u0131 ve R\xE2",
+  title: "11. Elif-L\xE2m Tak\u0131s\u0131 ve R\xE2",
   description: "\u0627\u0644 tak\u0131s\u0131 ve r\xE2 harfinin okunu\u015Fu",
   emoji: "\uFE8D\uFEDF",
   practiceMode: "visual",
@@ -657,6 +752,7 @@ var elifbaTopics = [
   t1_harfler,
   t2_yazilislar,
   t3_harekeler,
+  t4_harf_hareke,
   t4_cezm,
   t5_sedde,
   t6_med,
