@@ -7,9 +7,10 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 **DOĞRULAMA — dikkat:** `npx tsc --noEmit` HİÇBİR ŞEYİ denetlemez! Kök
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
-(+ `npx eslint src/` + `npx vitest run`). Bilinen 4 hata Lovable'ın
-`src/lib/mcp/` dosyalarında (`@lovable.dev/mcp-js` paketi kurulu değil) —
-bizim değil, sayı 4'ün üstüne çıkarsa yeni hata var demektir.
+(+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
+**tsc 0 hata · vitest 198 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
+hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
 ## Mimari — kritik kurallar
 
@@ -122,6 +123,21 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   `meta.selfReport`'u yalnız "üretim kanıtı" demektir, kestirme değil. Hızlı
   geçişte SÜRE şartı YOK — ölçtük, koyunca bilen ama temkinli çocuğun geçme
   oranı %99'dan %87'ye düşüyor.
+- ⚠️ **ŞIK SAYISI KANITI SULANDIRIR** (`sansPayi`/`gerekenUstUste`, srs.ts):
+  4 şıkta şans %25, 2 şıkta **%50** — aynı "doğru" iki modda aynı şeyi
+  kanıtlamaz. Yeni modlar (Ses Şıkları 3 şık, Şimşek 2 şık) ve Kolay zorluk
+  şık sayısını düşürdüğü için ölçüm bozuluyordu. Çözüm SEVİYE CEZASI DEĞİL
+  (kullanıcı "3 seviye mi düşsün" diye sordu — yanlış cevabın −2 kuralı
+  DEĞİŞMEDİ), **kanıtın ağırlığı**: `sansPayi(n) = log2(n)/2` → 2 şık ½,
+  3 şık 0.79, 4+ şık tam. L3→L4 için gereken üst üste doğru da şık sayısına
+  bağlı: `gerekenUstUste(n) = ceil(4 / log2(n))` → 4 şıkta 2, 3 şıkta 3,
+  2 şıkta 4. (Düz "hepsinde 3" demek yetmiyordu: 2 şık × 3 doğru = 1/8,
+  4 şık × 2 doğrudan İKİ KAT kolay.) **Hızlı geçiş yalnız 4+ şıkta**
+  (`HIZLI_GECIS_MIN_SIK`) — 2 şıkta yazı-tura ile L3 verilemez; az şıkta
+  merdiven tek basamak çıkar.
+- ⚠️ Şık sayısı `AnswerMeta.optionCount`; oyunlar vermezse
+  `gameProgress.recordGameAnswer` `shownIds.length`'ten türetir ama **en az
+  2 öğe şart** — tek elemanlı `shownIds` "1 şık" sanılıp ölçümü bozuyordu.
 - ⚠️ Bunun bekçisi `gameProgress.showHintFor`: oyunda ipucu halkası yalnız L1
   VE harf DAHA ÖNCE GÖRÜLMÜŞSE yanar. İlk karşılaşmada parlarsa çocuk harfi
   tanımadan basar ve bilmediği harf L3 olur.
@@ -415,6 +431,26 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   Çocuk Latin harfi okuyamıyorsa mod ölçüm bile yapamaz (her soru rastgele
   işaretlenir, SRS bunu "bilmiyor" sanar).
 
+### Zorluk ve klavye (`src/lib/zorluk.ts` + `src/lib/klavye.ts`)
+- ⚠️ **OYUNLAR SABİT HIZDA GİTMEZ** (kullanıcı tespiti: "hep aynı hızda
+  geliyorlar, tek düze"). `rampa(dogruSayisi)` başlangıç hızından tavana
+  **KAREKÖK** eğrisiyle çıkar — doğrusal rampa ilk 5 soruda hiç fark
+  ettirmeyip sonra duvara çarpıyordu; karekök erken hissettirir, geç
+  boğar. Ölçüt SKOR DEĞİL **doğru sayısı** (skor seri bonusu/2X ile şişer;
+  Koşusu'nda bu yüzden `SPEED_FULL` doğruya bağlanmıştı).
+- **Üç kademe** `ZORLUKLAR` (kolay/orta/zor): her biri `baslangic`, `tavan`,
+  `tavanDogru` (tavana kaç doğruda varılır), `can`, `sik`. **Varsayılan
+  KOLAY** (kullanıcı şartı — çocuklar hep kolayla başlasın).
+- ⚠️ `sikSayisiIcin(seviye, tavan)` şık sayısını **yalnız L1-L2'de** düşürür:
+  yeni harfte az şık yardımdır, bilinen harfte ölçümü sulandırmak olur
+  (yukarıdaki `sansPayi` bunu zaten cezalandırıyor, ikisi birlikte çalışır).
+- **PC'de oynanır** (`klavye.ts`): WASD **ve** yön tuşları birlikte (basit
+  oyunlarda ikisi de), boşluk = zıpla/ateş, şıklar için **1-9**
+  (`useSecenekTuslari`, Digit + Numpad). Tuş kodu `e.code` ile okunur —
+  `e.key` Türkçe klavyede farklı harf verir. `pcMi()` =
+  `matchMedia("(pointer: fine)")`; ipucu metni `ipucu(dokunmatik, klavye)`
+  ile cihaza göre yazılır (telefonda "SPACE" yazmak kafa karıştırıyor).
+
 ### Oyunlar
 - ⚠️ **HAFIZA'DA SÜPER MOD = SES↔RESİM** (kullanıcı fikri): çift artık iki
   aynı glif değil; "a" yüzü GLİF (sessiz açılır), "b" yüzü 🔊 (açılınca
@@ -627,6 +663,23 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
 - main'e gönderim yöntemi (kabul görmüş): yerelde commit →
   `git commit-tree HEAD^{tree} -p origin/main` ile ileri commit → push
   (force-push YOK, geçmiş korunur).
+- ⚠️ **DALDA OLAN CANLIDA YOK DEMEKTİR.** Dal ile main AYRI: dala commit
+  atmak uygulamayı güncellemez, Lovable **main'i** yayınlar. Bir kez
+  442 ses dosyası dalda hazır dururken kullanıcı eski sesleri duydu ve
+  "yapmadın" sandı. İş bitti demeden önce
+  `git diff --name-status origin/main HEAD` ile bak.
+- ⚠️ **main'i dala MERGE ETME.** main'in ağacı zaten bu dalın kopyasıdır
+  (commit-tree ile gidiyor) ama git bunu bilmez: `git merge origin/main`
+  12 sahte çakışma üretti (bütün oyun dosyaları). Doğrusu CERRAHİ ALIM —
+  `git diff --name-status <main'e-en-son-gönderdiğim-commit> origin/main`
+  ile Lovable'ın DOKUNDUĞU dosyaları bul, yalnız onları
+  `git checkout origin/main -- <yol>` ile al.
+- ⚠️ **`commit-tree HEAD^{tree}` DALIN AĞACINI OLDUĞU GİBİ KOYAR** — main'de
+  olup dalda olmayan dosya SESSİZCE SİLİNİR. Göndermeden önce emniyet:
+  `git diff --name-status origin/main HEAD | grep '^D'` boş çıkmalı.
+- ⚠️ **Depo shallow klonlanıyor** (`.git/shallow` var, main'in geçmişi 96
+  commit). Ortak ata bulunamadığı için git "refusing to merge unrelated
+  histories" der; gerekirse `git fetch --unshallow origin`.
 - gh CLI yok; PR gerekirse GitHub REST API + `git credential fill` token'ı.
 - `.claude/` commit'lenmez. Commit mesajları Türkçe özet + madde.
 
