@@ -6,6 +6,7 @@ import { InGameQuiz } from "@/components/InGameQuiz";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { useGameMode } from "@/lib/gameMode";
+import { tahtaBoyu } from "@/lib/zorluk";
 import { gamePool, pickCluster, shuffle } from "./_shared";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
@@ -33,10 +34,24 @@ function buildBoard(pairs: number): Card[] {
 
 const PAIRS = 6;
 
+/**
+ * Zorluğa göre çift sayısı: Kolay 4, Orta 6, Zor 8.
+ *
+ * ⚠️ ÇİFT SAYIYA YUVARLANIR: `tahtaBoyu` tek sayı döndürebiliyor (Kolay'da 5)
+ * ve ızgara 3 sütunlu — 10 kart 3+3+3+1 diziliyor, son satırda tek kart
+ * kalınca tahta bozuk görünüyor.
+ * ⚠️ AŞAĞI yuvarlanır, en yakına DEĞİL: `Math.round(5/2)*2` altı veriyor,
+ * yani Kolay ile Orta AYNI tahtayı alıyordu (ölçüldü: 6 · 6 · 8) ve zorluk
+ * bu oyunda hiçbir şey değiştirmiyordu.
+ */
+function ciftSayisi(): number {
+  return Math.max(4, Math.floor(tahtaBoyu(PAIRS, 4, 8) / 2) * 2);
+}
+
 const MemoryGame = () => {
   const [mode] = useGameMode();
   const isSuper = mode === "super";
-  const [cards, setCards] = useState<Card[]>(() => buildBoard(PAIRS));
+  const [cards, setCards] = useState<Card[]>(() => buildBoard(ciftSayisi()));
   const [first, setFirst] = useState<Card | null>(null);
   const [busy, setBusy] = useState(false);
   const [moves, setMoves] = useState(0);
@@ -66,7 +81,7 @@ const MemoryGame = () => {
   const won = useMemo(() => cards.length > 0 && cards.every((c) => c.matched), [cards]);
 
   const reset = () => {
-    setCards(buildBoard(PAIRS)); setFirst(null); setBusy(false); setMoves(0);
+    setCards(buildBoard(ciftSayisi())); setFirst(null); setBusy(false); setMoves(0);
     matchCountRef.current = 0; setShowQuiz(false); acilanSesler.current = new Set();
   };
 

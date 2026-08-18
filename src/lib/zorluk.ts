@@ -37,23 +37,38 @@ export interface ZorlukAyari {
   can: number;
   /** Öğrenme bölgesinde (L1-L2) gösterilecek şık sayısı. */
   sik: number;
+  /**
+   * SÜRELİ oyunlarda süre çarpanı (Hızlı Quiz, Üçlü Eşle).
+   * ⚠️ Kolayda süre UZAR (1'in üstü), zorda KISALIR — hız çarpanının tersi
+   * yönde çalışır; ikisini aynı alandan türetme.
+   */
+  sure: number;
+  /**
+   * TAHTA oyunlarında (Hafıza, Üçlü Eşleştir, Üçlü Eşle, Kutu Boşalt) aynı
+   * anda takip edilmesi gereken FARKLI ŞEY sayısının çarpanı.
+   * ⚠️ Bu oyunlarda zorluk HIZ değildir: hafıza yükü ve seçenek çeşitliliğidir.
+   */
+  tahta: number;
 }
 
 export const ZORLUKLAR: Record<Zorluk, ZorlukAyari> = {
   kolay: {
     ad: "Kolay", emoji: "🐢",
-    aciklama: "Yavaş başlar, yavaş hızlanır. Yeni öğrenen için.",
+    aciklama: "Yavaş, bol can, uzun süre, küçük tahta. Yeni öğrenen için.",
     baslangic: 0.75, tavan: 1.3, tavanDogru: 40, can: 5, sik: 2,
+    sure: 1.5, tahta: 0.75,
   },
   orta: {
     ad: "Orta", emoji: "🐇",
-    aciklama: "Normal hız, oyun ilerledikçe belirgin zorlaşır.",
+    aciklama: "Normal hız ve süre; oyun ilerledikçe belirgin zorlaşır.",
     baslangic: 1.0, tavan: 1.8, tavanDogru: 25, can: 3, sik: 3,
+    sure: 1.0, tahta: 1.0,
   },
   zor: {
     ad: "Zor", emoji: "🐆",
-    aciklama: "Hızlı başlar, çabuk zorlaşır. Harfleri bilen için.",
+    aciklama: "Hızlı, kısa süre, kalabalık tahta. Harfleri bilen için.",
     baslangic: 1.25, tavan: 2.4, tavanDogru: 15, can: 3, sik: 4,
+    sure: 0.75, tahta: 1.3,
   },
 };
 
@@ -113,4 +128,25 @@ export function useZorluk(): [Zorluk, (z: Zorluk) => void] {
     };
   }, []);
   return [z, (n: Zorluk) => { setZorluk(n); setZ(n); }];
+}
+
+/**
+ * Süreli oyunlarda saniye. Kolayda uzar, zorda kısalır.
+ *
+ * ⚠️ Aşağı yuvarlama YOK, 5'e yuvarlanır: "90 sn" ile "88 sn" çocuk için aynı
+ * ama ekranda ikincisi rastgele görünüyor.
+ */
+export function sureIcin(tabanSn: number, z: Zorluk = getZorluk()): number {
+  return Math.max(15, Math.round((tabanSn * zorlukAyari(z).sure) / 5) * 5);
+}
+
+/**
+ * Tahta oyunlarında "aynı anda kaç farklı şey" sayısı.
+ *
+ * ⚠️ ALT SINIR ŞART: `tahta` çarpanı küçük tabanlarda (3-4) aşağı yuvarlanınca
+ * oyunu BOZUYOR — 4 çeşitli bir eşleştirme oyunu 2 çeşide inince eşleşmeler
+ * kendiliğinden oluyor ve oyun bitiyor. Her çağrı kendi tabanını verir.
+ */
+export function tahtaBoyu(taban: number, alt: number, ust: number, z: Zorluk = getZorluk()): number {
+  return Math.max(alt, Math.min(ust, Math.round(taban * zorlukAyari(z).tahta)));
 }

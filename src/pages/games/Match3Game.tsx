@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { gamePool, pickCluster, pickWrongs, shuffle } from "./_shared";
+import { tahtaBoyu } from "@/lib/zorluk";
 import { recordLetterMastery } from "@/data/srs";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
@@ -16,6 +17,15 @@ import type { ContentItem } from "@/data/types";
 const COLS = 5;
 const ROWS = 6;
 const TYPES_COUNT = 4;
+
+/**
+ * Zorluğa göre harf ÇEŞİDİ: Kolay 3, Orta 4, Zor 5.
+ *
+ * ⚠️ Bu oyunda zorluk HIZ değil ÇEŞİTLİLİK: az çeşitte üçlüler kendiliğinden
+ * oluşuyor (kolay), çok çeşitte çocuk aramak zorunda kalıyor. 3'ün altına
+ * inilmez — 2 çeşitte tahta kendi kendini patlatıyor, oyun kalmıyor.
+ */
+function cesitSayisi(): number { return tahtaBoyu(TYPES_COUNT, 3, 6); }
 
 type Cell = { id: number; item: ContentItem | null };
 
@@ -136,7 +146,7 @@ function findPossibleMatchTypes(g: Cell[][]): ContentItem[] {
 }
 
 const Match3Game = () => {
-  const [types, setTypes] = useState<ContentItem[]>(() => pickCluster(gamePool(), TYPES_COUNT));
+  const [types, setTypes] = useState<ContentItem[]>(() => pickCluster(gamePool(), cesitSayisi()));
   const [grid, setGrid] = useState<Cell[][]>(() => buildGrid(types));
   const [selected, setSelected] = useState<{ r: number; c: number } | null>(null);
   const [score, setScore] = useState(0);
@@ -146,7 +156,7 @@ const Match3Game = () => {
 
   useEffect(() => {
     const h = () => {
-      const t = pickCluster(gamePool(), TYPES_COUNT);
+      const t = pickCluster(gamePool(), cesitSayisi());
       setTypes(t); setGrid(buildGrid(t)); setScore(0); setSelected(null);
     };
     window.addEventListener("games-lang-change", h);
@@ -260,7 +270,7 @@ const Match3Game = () => {
   };
 
   const reset = () => {
-    const t = pickCluster(gamePool(), TYPES_COUNT);
+    const t = pickCluster(gamePool(), cesitSayisi());
     setTypes(t); setGrid(buildGrid(t)); setScore(0); setSelected(null); setBusy(false);
     setMoveCount(0); setQuiz(null);
   };

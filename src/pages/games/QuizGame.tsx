@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { gardenTease } from "@/lib/sessionEnd";
 import { gamePool } from "./_shared";
 import { useAskLayer } from "./_askUI";
+import { sureIcin } from "@/lib/zorluk";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
@@ -27,7 +28,10 @@ const QuizGame = () => {
   const [q, setQ] = useState<Q>(() => makeQ(ask.secenekler));
   const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState(0);
-  const [time, setTime] = useState(60);
+  // Süre zorluğa bağlı: Kolay 90 sn, Orta 60, Zor 45. Okumayı yeni öğrenen
+  // çocuk 60 sn'de ancak 6-7 soruya yetişiyordu.
+  const sureRef = useRef(sureIcin(60));
+  const [time, setTime] = useState(sureRef.current);
   const questionStartRef = useRef<number>(Date.now());
   const teaseRef = useRef(gardenTease()); // yüksek notada bitiş — sabit tek cümle
 
@@ -43,7 +47,7 @@ const QuizGame = () => {
   }, [q.target.id]);
 
   useEffect(() => {
-    const h = () => { setScore(0); setTime(60); setQ(makeQ(ask.secenekler)); setPicked(null); };
+    const h = () => { sureRef.current = sureIcin(60); setScore(0); setTime(sureRef.current); setQ(makeQ(ask.secenekler)); setPicked(null); };
     window.addEventListener("games-lang-change", h);
     return () => window.removeEventListener("games-lang-change", h);
   }, [ask.secenekler]);
@@ -75,7 +79,7 @@ const QuizGame = () => {
   const ended = time <= 0;
   // Süre dolunca bekleyen telafi açılır
   useRemedyOnGameOver(ended);
-  const reset = () => { setScore(0); setTime(60); setQ(makeQ(ask.secenekler)); setPicked(null); };
+  const reset = () => { sureRef.current = sureIcin(60); setScore(0); setTime(sureRef.current); setQ(makeQ(ask.secenekler)); setPicked(null); };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary/40 to-background">

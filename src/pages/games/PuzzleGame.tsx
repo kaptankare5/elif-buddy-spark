@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle } from "./_shared";
 import { useAge } from "@/lib/age";
+import { getZorluk, type Zorluk } from "@/lib/zorluk";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Volume2 } from "lucide-react";
@@ -13,9 +14,17 @@ import { Volume2 } from "lucide-react";
  *   5-6 yaş → 3x3  (9 parça)
  * Tap-to-swap. Bittiğinde nesnenin adı seslendirilir.
  */
-function gridForAge(age: number | null): number {
-  if (!age || age <= 4) return 2; // 4 parça
-  return 3; // 9 parça
+/**
+ * Parça sayısı YAŞA göre, zorluk onu bir basamak kaydırır.
+ *
+ * ⚠️ YAŞ TABAN, ZORLUK KAYDIRMA: yaşı silip yalnız zorluğa bakmak 4 yaşındaki
+ * çocuğu Zor'da 16 parçaya atıyordu. Zorluk en fazla ±1 basamak oynatır ve
+ * 2×2'nin altına inilmez (tek parça yapboz değildir).
+ */
+function gridForAge(age: number | null, z: Zorluk = getZorluk()): number {
+  const taban = !age || age <= 4 ? 2 : 3;   // 4 parça / 9 parça
+  const kaydir = z === "kolay" ? -1 : z === "zor" ? 1 : 0;
+  return Math.max(2, Math.min(4, taban + kaydir));
 }
 
 const PuzzleGame = () => {

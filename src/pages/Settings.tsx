@@ -247,9 +247,12 @@ const Settings = () => {
               <h3 className="font-extrabold text-foreground text-sm">Oyun zorluğu</h3>
             </div>
             <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
-              Oyunların <b>başlangıç hızını</b> ve <b>ne kadar çabuk zorlaştığını</b>
-              belirler. Oyunlar artık sabit hızda gitmiyor: doğru cevap verdikçe
-              hızlanıyorlar. Zorluk oyuna <b>girerken</b> dondurulur.
+              <b>15 oyunun hepsinde</b> geçerli. Hız oyunlarında (Koşusu, Macera,
+              Parti, Yarışı…) başlangıç hızını, ne kadar çabuk zorlaştığını ve
+              <b>can sayısını</b>; Hızlı Quiz'de <b>süreyi</b>; Hafıza, Üçlü Eşleştir,
+              Kutu Boşalt ve Yapboz'da <b>tahtanın büyüklüğünü</b> belirler.
+              Oyunlar sabit hızda gitmiyor: doğru cevap verdikçe hızlanıyorlar.
+              Zorluk oyuna <b>girerken</b> dondurulur.
             </p>
             <div className="grid grid-cols-3 gap-2">
               {(Object.keys(ZORLUKLAR) as Zorluk[]).map((z) => (

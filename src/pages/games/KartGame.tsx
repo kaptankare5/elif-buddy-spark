@@ -40,6 +40,7 @@ import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
+import { zorlukAyari } from "@/lib/zorluk";
 import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture, blockedTexture } from "./_letterTexture";
 import { getAskMode, okunurAd, pickNameWrongs, getFlashMs, FLASH_CUE_MS, FLASH_SIK, USTTE_SIK, yaziliSik, type AskMode } from "@/lib/askMode";
 import type { ContentItem } from "@/data/types";
@@ -610,6 +611,22 @@ const KartGame = () => {
     const rockMat = keep(new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.95 }));
     const rockGeo = keep(new THREE.DodecahedronGeometry(2.4, 0));
     const decoPos = new THREE.Vector3();
+
+    // ⚠️ DEKOR TEK TEK ÇİZİLMEZ — InstancedMesh. Ölçüldü: ~240 ağaç/kaya ayrı
+    // Mesh olarak kurulduğunda kare başına 206 ÇİZİM ÇAĞRISI çıkıyordu; mobil
+    // GPU'da asıl darboğaz üçgen değil çağrı sayısıdır (her çağrı CPU→GPU
+    // durum değişimi). Üç instanced yığın (gövde · tepe · kaya) bunların
+    // hepsini 3 çağrıya indiriyor.
+    // ⚠️ InstancedMesh frustum culling YAPMAZ: görünmeyen ağaçların üçgeni de
+    // gönderilir. Ağaçlar bilerek düşük poligonlu (silindir 7, koni 9, kaya
+    // dodecahedron) — takas çağrı lehine.
+    const govdeler: THREE.Matrix4[] = [];
+    const tepeler: THREE.Matrix4[] = [];
+    const kayalar: THREE.Matrix4[] = [];
+    const M = new THREE.Matrix4();
+    const Q0 = new THREE.Quaternion();
+    const S = new THREE.Vector3();
+    const P = new THREE.Vector3();
     for (let i = 0; i < SAMPLES; i += 11) {
       // ⚠️ Kapıya YAKLAŞIRKEN ağaç/kaya konmaz: 15-31 birim yanda duran ~10
       // birim boyundaki ağaç, virajın içinde kalınca kapıyı tam olarak
@@ -622,26 +639,37 @@ const KartGame = () => {
         const off = (ROAD_HALF + 6) + ((i * 7) % 16);
         worldAt(i * SEG, side * off, decoPos);
         if ((i / 11) % 4 === 3) {
-          const r = new THREE.Mesh(rockGeo, rockMat);
-          r.position.copy(decoPos);
-          r.position.y += 0.8;
-          r.scale.setScalar(0.6 + ((i * 13) % 7) / 10);
-          r.castShadow = true;
-          scene.add(r);
+          const sc = 0.6 + ((i * 13) % 7) / 10;
+          P.copy(decoPos); P.y += 0.8;
+          kayalar.push(M.clone().compose(P, Q0, S.setScalar(sc)));
         } else {
-          const t = new THREE.Group();
-          const tr = new THREE.Mesh(treeTrunk, trunkMat);
-          tr.position.y = 2;
-          const tp = new THREE.Mesh(treeTop, leafMat);
-          tp.position.y = 6.4;
-          tp.castShadow = true;
-          t.add(tr, tp);
-          t.position.copy(decoPos);
-          t.scale.setScalar(0.85 + ((i * 17) % 9) / 12);
-          scene.add(t);
+          const sc = 0.85 + ((i * 17) % 9) / 12;
+          // Ağaç eskiden Group'tu (gövde y=2, tepe y=6.4 YEREL); instanced'da
+          // grup yok, yerel ofset ölçekle çarpılıp dünyaya taşınır.
+          P.copy(decoPos); P.y += 2 * sc;
+          govdeler.push(M.clone().compose(P, Q0, S.setScalar(sc)));
+          P.copy(decoPos); P.y += 6.4 * sc;
+          tepeler.push(M.clone().compose(P, Q0, S.setScalar(sc)));
         }
       }
     }
+    const yigin = (geo: THREE.BufferGeometry, mat: THREE.Material, mats: THREE.Matrix4[], golge: boolean) => {
+      if (!mats.length) return;
+      const im = new THREE.InstancedMesh(geo, mat, mats.length);
+      mats.forEach((m, k) => im.setMatrixAt(k, m));
+      im.instanceMatrix.needsUpdate = true;
+      im.castShadow = golge;
+      im.frustumCulled = false;   // her örnek ayrı yerde; kutu tüm pisti kaplar
+      scene.add(im);
+      // Geometri/malzeme zaten keep() ile kayıtlı; InstancedMesh'in kendi
+      // dispose'u onları da bırakır ama ORTAK geometriyi iki kez bırakmayalım —
+      // yalnız mesh'in kendi tamponu için dispose çağrılır.
+      disposables.push({ dispose: () => im.dispose() });
+    };
+    yigin(treeTrunk, trunkMat, govdeler, false);
+    yigin(treeTop, leafMat, tepeler, true);
+    yigin(rockGeo, rockMat, kayalar, true);
+
     // bulutlar
     const cloudMat = keep(new THREE.SpriteMaterial({
       map: keep(emojiTexture("☁️", 256)), transparent: true, opacity: 0.95, depthWrite: false,
@@ -1093,7 +1121,9 @@ const KartGame = () => {
       return {
         id, name, isPlayer, s: 0, u: homeU, y: 0, vy: 0, v: 0, lap: 1,
         turboT: 0, starT: 0, mudT: 0, spinT: 0, glowT: 0, drift: 0,
-        skill: isPlayer ? 1 : def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0]),
+        // ⚠️ Bot becerisi = İDEAL ÇİZGİDE KALMA (viraj alma), kapı seçimi
+        // değil. Zorlukta botlar virajı daha iyi alır, yarış sıkışır.
+        skill: isPlayer ? 1 : Math.min(1, (def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0])) * zorlukAyari().baslangic),
         targetU: homeU, homeU, gateChoice: null, finished: null,
         group, body, wheels, bodyMat, aura,
       };
