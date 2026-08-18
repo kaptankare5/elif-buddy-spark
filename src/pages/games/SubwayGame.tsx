@@ -8,6 +8,7 @@
 // puan kaybı + doğru cevap gösterilir. Cevaplar SRS ilerlemesine işlenir.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { UyarlanirDpr } from "./_perf";
 import * as THREE from "three";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
@@ -1343,6 +1344,7 @@ const SubwayGame = () => {
             camera={{ fov: 64, near: 0.1, far: 115, position: [0, 4.7, 8.6] }}
             onCreated={({ gl }) => { MAX_ANISO = gl.capabilities.getMaxAnisotropy(); }}
           >
+            <UyarlanirDpr min={1} max={1.75} />
             <color attach="background" args={["#bfe4f7"]} />
             <fog attach="fog" args={["#bfe4f7", 40, 95]} />
             <ambientLight intensity={0.85} />
