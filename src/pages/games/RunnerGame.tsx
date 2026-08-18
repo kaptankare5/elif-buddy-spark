@@ -1,4 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { ipucu } from "@/lib/klavye";
+import { rampa, zorlukAyari } from "@/lib/zorluk";
 
 const ShipSvg = memo(() => (
   <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -59,6 +61,10 @@ const ENEMY_SIZE = 10;
 const ENEMY_PX = 56;               // klasik dairenin çapı (px)
 const YAZILI_EN_PX = ENEMY_PX * 2.0;    // yazılı hap genişliği
 const YAZILI_BOY_PX = ENEMY_PX * 0.78;  // yazılı hap yüksekliği
+// ⚠️ TABAN hız — gerçek hız buna RAMPA çarpanı uygulanarak bulunur.
+// Eskiden bu değer sabitti: düşman ekranı hep 9.2 saniyede geçiyordu, oyun
+// ilk dakikayla yirminci dakikada aynıydı. Skorla yalnız DOĞUŞ SIKLIĞI
+// artıyordu (2.24 sn → 1.12 sn) ve o da skor 70'te tavan yapıp duruyordu.
 const ENEMY_FALL = 0.35;
 const BULLET_SPEED = 2.2;
 const SHIP_SPEED = 1.8;
@@ -89,7 +95,11 @@ const RunnerGame = () => {
   const [roundItems, setRoundItems] = useState<ContentItem[]>([]);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
-  const [lives, setLives] = useState(3);
+  // ⚠️ RAMPA SKORA DEĞİL DOĞRU SAYISINA bağlanır: skor seri bonusuyla
+  // şişiyor, çocuk birkaç doğruda tavana çıkardı (Koşusu'nda bu ders alındı).
+  const [dogru, setDogru] = useState(0);
+  const zorluk = useRef(zorlukAyari());
+  const [lives, setLives] = useState(zorluk.current.can);
   const [gameOver, setGameOver] = useState(false);
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
@@ -104,6 +114,7 @@ const RunnerGame = () => {
   const enemiesRef = useRef<Enemy[]>([]); enemiesRef.current = enemies;
   const roundLockRef = useRef(false); // aynı el içinde çift tetiklemeyi önler
   const tickRef = useRef(0);
+  const dogruRef = useRef(0); dogruRef.current = dogru;
   const moveDirRef = useRef<-1 | 0 | 1>(0);
   const lastShotRef = useRef(0);
 
@@ -199,12 +210,15 @@ const RunnerGame = () => {
 
     const step = () => {
       tickRef.current += 1;
+      const hizCarpani = rampa(dogruRef.current);
 
       if (moveDirRef.current !== 0) {
         setShipX((x) => Math.max(SHIP_W / 2, Math.min(100 - SHIP_W / 2, x + moveDirRef.current * SHIP_SPEED)));
       }
 
-      const spawnEvery = Math.max(35, 70 - Math.floor(score * 0.5));
+      // Sıklık da hızla birlikte artar (yalnız sıklık artınca oyun
+      // "kalabalıklaşıyor" ama hızlanmıyor gibi hissediliyordu).
+      const spawnEvery = Math.max(28, Math.round(78 / hizCarpani));
       if (tickRef.current % spawnEvery === 0 && enemiesRef.current.length < MAX_ENEMIES) {
         const t = targetRef.current;
         const ri = roundItemsRef.current;
@@ -245,13 +259,17 @@ const RunnerGame = () => {
         const survivors: Enemy[] = [];
         const sx = shipXRef.current;
         for (const e of arr) {
-          const ny = e.y + ENEMY_FALL;
+          const ny = e.y + ENEMY_FALL * hizCarpani;
           const hitsShip =
             Math.abs(e.x - sx) < (SHIP_W / 2 + yariOlcu().en - 2) &&
             Math.abs(ny - SHIP_TOP) < (SHIP_H / 2 + yariOlcu().boy - 2);
           if (hitsShip) {
             collided = true;
-            if (e.isTarget && targetRef.current) { recordGameAnswer(targetRef.current, false); }
+            if (e.isTarget && targetRef.current) {
+              recordGameAnswer(targetRef.current, false, {
+                gameId: "runner", shownIds: enemiesRef.current.map((x) => x.item.id),
+              });
+            }
             continue;
           }
           if (ny > 100) continue;
@@ -294,7 +312,14 @@ const RunnerGame = () => {
         if (hitTarget && targetRef.current && !roundLockRef.current) {
           roundLockRef.current = true;
           const t = targetRef.current;
-          recordGameAnswer(t, true);
+          // Ekrandaki düşmanlar bu sorunun ŞIKLARI: hem karışıklık ölçümü
+          // hem şık sayısı koruması (srs.ts) buradan besleniyor. Eskiden
+          // meta hiç yollanmıyordu, oyun bu iki sisteme kör kalıyordu.
+          recordGameAnswer(t, true, {
+            gameId: "runner", chosenId: t.id,
+            shownIds: enemiesRef.current.map((x) => x.item.id),
+          });
+          setDogru((d) => d + 1);
           setScore((s) => s + 3);
           setCombo((c) => c + 1);
           flashFx("good");
@@ -306,7 +331,11 @@ const RunnerGame = () => {
             setTimeout(() => { void nextRound(); }, 600);
           });
         } else if (hitWrong && !hitTarget) {
-          if (targetRef.current) { recordGameAnswer(targetRef.current, false); }
+          if (targetRef.current) {
+            recordGameAnswer(targetRef.current, false, {
+              gameId: "runner", shownIds: enemiesRef.current.map((x) => x.item.id),
+            });
+          }
           loseLifeAndRenew();
         }
         return moved;
@@ -331,7 +360,8 @@ const RunnerGame = () => {
 
   const reset = () => {
     setShipX(50); setEnemies([]); setBullets([]); setTarget(null); setRoundItems([]);
-    setScore(0); setCombo(0); setLives(3); setGameOver(false); setPaused(true);
+    zorluk.current = zorlukAyari();
+    setScore(0); setCombo(0); setDogru(0); setLives(zorluk.current.can); setGameOver(false); setPaused(true);
     pausedRef.current = true;
     setPops([]); UID = 1; POP_UID = 1; tickRef.current = 0; moveDirRef.current = 0;
     roundLockRef.current = false;
@@ -460,7 +490,7 @@ const RunnerGame = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/85 backdrop-blur-sm">
               <div className="text-6xl mb-3 animate-bounce">🚀</div>
               <div className="text-2xl font-extrabold text-info mb-1">Hazır?</div>
-              <div className="text-xs font-bold text-muted-foreground mb-1">◀ ▶ hareket • Space ateş</div>
+              <div className="text-xs font-bold text-muted-foreground mb-1">{ipucu("◀ ▶ hareket • 🔥 ateş", "← → veya A/D hareket • Space ateş")}</div>
               <button onClick={() => startGame()} className="rounded-full bg-primary text-primary-foreground px-8 py-3 font-extrabold shadow-elegant animate-pulse mt-3">
                 ▶ Başla
               </button>

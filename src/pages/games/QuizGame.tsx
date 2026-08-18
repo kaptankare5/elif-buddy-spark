@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSecenekTuslari, usePcMi } from "@/lib/klavye";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,9 @@ const QuizGame = () => {
     return () => window.removeEventListener("games-lang-change", h);
   }, [ask.secenekler]);
 
+  // PC: 1-2-3-4 tuşlarıyla şık seçilebilsin (fare zorunlu olmasın).
+  const pc = usePcMi();
+  useSecenekTuslari(q?.options.length ?? 0, (i) => { const o = q?.options[i]; if (o) void choose(o); }, !!q);
   const choose = async (item: ContentItem) => {
     if (picked || time <= 0) return;
     setPicked(item.id);
@@ -118,16 +122,22 @@ const QuizGame = () => {
             </div>
             {ask.tabela(q.target)}
             <div className={cn("grid gap-3", q.options.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
-              {q.options.map((opt) => {
+              {q.options.map((opt, i) => {
                 const isCorrect = !!picked && opt.id === q.target.id;
                 const isWrong = picked === opt.id && opt.id !== q.target.id;
                 return (
                   <button key={opt.id} onClick={() => choose(opt)}
                     className={cn(
-                      "aspect-square rounded-3xl flex items-center justify-center shadow-card border-4 transition-bouncy bg-card border-primary/20 hover:-translate-y-1",
+                      "relative aspect-square rounded-3xl flex items-center justify-center shadow-card border-4 transition-bouncy bg-card border-primary/20 hover:-translate-y-1",
                       isCorrect && "bg-success border-success animate-pop",
                       isWrong && "bg-destructive border-destructive animate-shake",
                     )}>
+                    {/* PC'de tuş rozeti: fare zorunlu olmasın, 1-4 ile de seçilsin */}
+                    {pc && (
+                      <span className="absolute left-2 top-2 rounded-md bg-muted px-1.5 text-xs font-extrabold text-muted-foreground">
+                        {i + 1}
+                      </span>
+                    )}
                     <span className={cn(ask.yazili ? "text-2xl" : "text-7xl")}>
                       {ask.sik(opt)}
                     </span>

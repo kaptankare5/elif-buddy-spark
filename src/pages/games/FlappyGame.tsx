@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { ipucu } from "@/lib/klavye";
+import { rampa, zorlukAyari } from "@/lib/zorluk";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { gamePool, shuffle, pickWrongs } from "./_shared";
@@ -18,6 +20,9 @@ const H = 100;
 const GRAVITY = 0.13;
 const FLAP = -2.6;
 const BIRD_X = 18;
+// ⚠️ TABAN hız — gerçek hız buna RAMPA çarpanı uygulanır. Eskiden sabitti:
+// harf 11.5 birim/sn ile geçiyor, dalga 4.3 saniyede bir geliyordu ve
+// hiçbiri skora bağlı değildi — oyunun 1. dakikası 20. dakikasıyla aynıydı.
 const LETTER_SPEED = 0.38;     // daha yavaş
 const SPAWN_EVERY = 130;       // tick (daha seyrek dalga, üst üste binmesin)
 const TICK_MS = 33;
@@ -60,13 +65,17 @@ const FlappyGame = () => {
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [score, setScore] = useState(0);
   const [eaten, setEaten] = useState(0);
-  const [lives, setLives] = useState(3);
+  // Rampa SKORA değil DOĞRU sayısına bağlı (skor seri/bonusla şişebiliyor).
+  const [dogru, setDogru] = useState(0);
+  const zorluk = useRef(zorlukAyari());
+  const [lives, setLives] = useState(zorluk.current.can);
   const [gameOver, setGameOver] = useState(false);
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
   const [paused, setPaused] = useState(true);
 
   const tickRef = useRef(0);
+  const dogruRef = useRef(0); dogruRef.current = dogru;
   const velRef = useRef(0); velRef.current = vel;
   const yRef = useRef(40); yRef.current = birdY;
   const targetRef = useRef<ContentItem | null>(null); targetRef.current = target;
@@ -98,7 +107,8 @@ const FlappyGame = () => {
   // Klavye / boşluk
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === "Space" || e.code === "ArrowUp") { e.preventDefault(); flap(); }
+      // PC: Space / ↑ / W — üçü de zıplatır (WASD ile ok tuşları aynı işi görsün).
+      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") { e.preventDefault(); flap(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -118,6 +128,7 @@ const FlappyGame = () => {
 
     const step = () => {
       tickRef.current += 1;
+      const hizCarpani = rampa(dogruRef.current);
 
       // Bird fizik
       const nv = velRef.current + GRAVITY;
@@ -129,7 +140,10 @@ const FlappyGame = () => {
       else { setBirdY(ny); setVel(nv); }
 
       // Spawn
-      if (tickRef.current % SPAWN_EVERY === 0 && targetRef.current) {
+      // Dalga aralığı da hızla birlikte kısalır; yoksa harfler hızlanıp
+      // ekran boşalıyor ve oyun "daha zor" değil "daha tenha" oluyor.
+      const dalgaAralik = Math.max(70, Math.round(SPAWN_EVERY / hizCarpani));
+      if (tickRef.current % dalgaAralik === 0 && targetRef.current) {
         setLetters((prev) => {
           if (prev.length >= MAX_LETTERS) return prev;
           const nearXs = prev.filter((p) => p.x > 100 - NEAR_DX * 2).map((p) => p.y);
@@ -182,7 +196,7 @@ const FlappyGame = () => {
           if (l.hit) continue;
           // "missed" işaretli harfler ekranda dururlar (sol kenarda gözüksünler)
           if (l.missed) { moved.push(l); continue; }
-          const nx = l.x - LETTER_SPEED;
+          const nx = l.x - LETTER_SPEED * hizCarpani;
           if (nx < -8) {
             if (l.item.id === curTargetId) {
               // Hedef harfi kaçırdı — sol kenarda kırmızı parlasın, sonra kaybolsun
@@ -225,6 +239,7 @@ const FlappyGame = () => {
         if (collidedTarget) {
           recordLetterMastery(collidedTarget.item.id, true);
           recordGameAnswer(collidedTarget.item, true);
+          setDogru((d) => d + 1);
           playFeedback(true);
           setScore((s) => s + 1);
           next = next.filter((l) => {
@@ -297,7 +312,8 @@ const FlappyGame = () => {
   }, [gameOver, paused, pickTarget]);
 
   const reset = () => {
-    setBirdY(40); setVel(0); setLetters([]); setScore(0);
+    zorluk.current = zorlukAyari();
+    setBirdY(40); setVel(0); setLetters([]); setScore(0); setDogru(0); setLives(zorluk.current.can);
     setEaten(0); setLives(3); setGameOver(false); setPaused(true);
     UID = 1; tickRef.current = 0;
     setTimeout(pickTarget, 0);
@@ -454,7 +470,7 @@ const FlappyGame = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
               <div className="text-5xl mb-2">🐤</div>
               <div className="text-xl font-extrabold text-info mb-1">Hazır?</div>
-              <div className="text-sm font-bold text-muted-foreground">Zıplamak için ekrana dokun</div>
+              <div className="text-sm font-bold text-muted-foreground">{ipucu("Zıplamak için ekrana dokun", "Zıplamak için Space · ↑ · W")}</div>
             </div>
           )}
         </div>

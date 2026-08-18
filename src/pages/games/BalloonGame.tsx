@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useSecenekTuslari, usePcMi } from "@/lib/klavye";
+import { rampa } from "@/lib/zorluk";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
@@ -30,6 +32,8 @@ const BalloonGame = () => {
   const [score, setScore] = useState(0);
   const [misses, setMisses] = useState(0);
   const [flash, setFlash] = useState(false); // doğru cevapta ışık parlaması (normal mod kolaylık)
+  /** Doğru cevap sayısı — rampa buna bakar (skor değil). */
+  const dogruRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(0);
 
@@ -47,7 +51,9 @@ const BalloonGame = () => {
       item: it,
       x: aralik * (i + 1) + (Math.random() * 6 - 3),
       y: 100 + i * 15,
-      speed: 0.18 + Math.random() * 0.12,
+      // ⚠️ Hız RAMPAYA bağlı. Eskiden 0.18-0.30 arası rastgeleydi ve skordan
+      // tamamen bağımsızdı: balonlar 50 doğru sonra da aynı tempoda çıkıyordu.
+      speed: (0.18 + Math.random() * 0.12) * rampa(dogruRef.current),
       popped: false,
     })));
     void ask.sor(tgt);
@@ -78,12 +84,15 @@ const BalloonGame = () => {
   useEffect(() => { newRound(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   useEffect(() => {
-    const h = () => { setScore(0); setMisses(0); newRound(); };
+    const h = () => { setScore(0); setMisses(0); dogruRef.current = 0; newRound(); };
     window.addEventListener("games-lang-change", h);
     return () => window.removeEventListener("games-lang-change", h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // PC: 1-5 tuşlarıyla balon patlatılabilsin (patlamış balon atlanır).
+  const pc = usePcMi();
+  useSecenekTuslari(balloons.length, (i) => { const b = balloons[i]; if (b && !b.popped) void pop(b); });
   const pop = async (b: Balloon) => {
     if (b.popped || !target) return;
     setBalloons((bs) => bs.map((x) => x.uid === b.uid ? { ...x, popped: true } : x));
@@ -95,6 +104,7 @@ const BalloonGame = () => {
     });
     if (correct) {
       setScore((s) => s + 1);
+      dogruRef.current += 1;
       setFlash(true); setTimeout(() => setFlash(false), 450); // ışık parlaması
       await playFeedback(true);
       // ⚠️ Yeni tur, harfin kaydı BİTİNCE başlar (klasikte söz hemen çözülür,
@@ -168,6 +178,9 @@ const BalloonGame = () => {
                 )}
                 style={{ left: `${b.x}%`, bottom: `${b.y}%` }}
               >
+                {pc && !b.popped && (
+                  <span className="absolute left-1 top-1 rounded bg-white/85 px-1 text-[10px] font-extrabold text-foreground/70">{i + 1}</span>
+                )}
                 <div className={cn(
                   "flex items-center justify-center shadow-card",
                   // Yazılı modda balon yerine GENİŞ TABELA: "Be (başta)" gibi bir ad

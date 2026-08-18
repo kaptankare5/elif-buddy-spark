@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSecenekTuslari, usePcMi } from "@/lib/klavye";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,9 @@ const SorterGame = () => {
 
   const reset = () => { setBoard(buildBox(ask.ayriAdlar)); setScore(0); setBusy(false); setTarget(null); setProgress(0); setLevel(1); };
 
+  // PC: 1-9 tuşlarıyla kutu seçilebilsin (boşalmış kutu atlanır).
+  const pc = usePcMi();
+  useSecenekTuslari(board.cells.length, (i) => { const c = board.cells[i]; if (c && !c.cleared) tap(c); });
   const tap = async (c: Cell) => {
     if (busy || c.cleared || !target) return;
     if (c.item.id === target.id) {
@@ -234,7 +238,7 @@ const SorterGame = () => {
         ) : (
           <div className="rounded-3xl bg-gradient-to-br from-warning/30 to-warning/10 border-8 border-warning/60 shadow-card p-3">
             <div className="grid grid-cols-3 gap-2">
-              {board.cells.map((c) => {
+              {board.cells.map((c, ci) => {
                 const highlight = showHint && target && c.item.id === target.id && !c.cleared;
                 return (
                   <button
@@ -242,7 +246,7 @@ const SorterGame = () => {
                     onClick={() => tap(c)}
                     disabled={c.cleared}
                     className={cn(
-                      "aspect-square rounded-2xl flex items-center justify-center shadow-soft border-4 transition-bouncy",
+                      "relative aspect-square rounded-2xl flex items-center justify-center shadow-soft border-4 transition-bouncy",
                       ask.yazili ? "text-base px-1" : "text-4xl",
                       c.cleared ? "opacity-0 pointer-events-none" :
                         c.wrong ? "bg-destructive/30 border-destructive animate-pop" :
@@ -250,6 +254,12 @@ const SorterGame = () => {
                             "bg-card border-primary/20 hover:-translate-y-1 active:scale-95",
                     )}
                   >
+                    {/* PC'de tuş rozeti — kutu 1-9 tuşuyla da seçilebilir */}
+                    {pc && !c.cleared && (
+                      <span className="absolute left-1 top-1 rounded bg-muted px-1 text-[10px] font-extrabold text-muted-foreground">
+                        {ci + 1}
+                      </span>
+                    )}
                     {!c.cleared && <span>{ask.sik(c.item)}</span>}
                   </button>
                 );

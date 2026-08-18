@@ -10,6 +10,7 @@ import { useGameMode, FREE_PLAY_MIN_SEEN } from "@/lib/gameMode";
 import { freePlaySeenCount } from "@/pages/games/_shared";
 import { cn } from "@/lib/utils";
 import { ASK_MODES, useAskMode, FLASH_PRESETS, useFlashMs, yaziliSik } from "@/lib/askMode";
+import { ZORLUKLAR, useZorluk, type Zorluk } from "@/lib/zorluk";
 import { FlashKalibre } from "@/components/FlashKalibre";
 import { consentGiven, setConsent, deleteMyAnalytics, updateMyProfile } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +27,7 @@ const Settings = () => {
   const [s, set] = useSettings();
   const [mode, setMode] = useGameMode();
   const [ask, setAsk] = useAskMode();
+  const [zorluk, setZorluk] = useZorluk();
   const [flashMs, setFlashMs] = useFlashMs();
   const [kalibre, setKalibre] = useState(false);
   // ⚠️ OKUMA ONAYI: Şimşek/Tabela şıkları LATİN harfle yazılı. Çocuk Türkçe
@@ -235,6 +237,44 @@ const Settings = () => {
               tutturmak ve eleyerek bulmak mümkün olduğu için tek cevap yarım
               sayılır. İkisi karışık oynanırsa kanıtlar toplanır. Yani oyun da
               son yıldızı verir — sadece daha uzun yoldan.
+            </p>
+          </div>
+
+          {/* OYUN ZORLUĞU */}
+          <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-primary/30">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg">🎚️</span>
+              <h3 className="font-extrabold text-foreground text-sm">Oyun zorluğu</h3>
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-3 leading-snug">
+              Oyunların <b>başlangıç hızını</b> ve <b>ne kadar çabuk zorlaştığını</b>
+              belirler. Oyunlar artık sabit hızda gitmiyor: doğru cevap verdikçe
+              hızlanıyorlar. Zorluk oyuna <b>girerken</b> dondurulur.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.keys(ZORLUKLAR) as Zorluk[]).map((z) => (
+                <button
+                  key={z}
+                  onClick={() => setZorluk(z)}
+                  className={cn(
+                    "rounded-2xl p-2 border-2 text-left transition-bouncy",
+                    zorluk === z ? "bg-primary/15 border-primary shadow-soft" : "bg-muted/40 border-border",
+                  )}
+                >
+                  <div className="text-xs font-extrabold text-foreground">
+                    {ZORLUKLAR[z].emoji} {ZORLUKLAR[z].ad}
+                  </div>
+                  <div className="text-[10px] font-bold text-muted-foreground leading-tight mt-0.5">
+                    {ZORLUKLAR[z].aciklama}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
+              ⚠️ Kolay modda <b>şık sayısı azalır</b> (2 şık). Şansla doğru yapma
+              ihtimali arttığı için bu kolaylık <b>yalnız yeni öğrenilen harflerde</b>
+              geçerlidir; çocuğun bildiği harflerde şık sayısı düşmez ve az şıklı
+              doğru cevap <b>daha az kanıt</b> sayılır — seviye şansla şişmez.
             </p>
           </div>
 

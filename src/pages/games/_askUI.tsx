@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { EmojiView } from "@/components/EmojiView";
 import { playItem } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { sikSayisiIcin } from "@/lib/zorluk";
 import {
   getAskMode, okunurAd, pickNameWrongs, adZorlugu, sikSayisi, yaziliSik, sameName,
   getFlashMs, FLASH_CUE_MS, markGlifBekleniyor, markGlifGosterildi, clearGlifIzi,
@@ -202,7 +203,13 @@ export function useAskLayer(opts?: {
   }, [mode]);
 
   const secenekler = useCallback((pool: ContentItem[], target: ContentItem, k: number) => {
-    const n = sikSayisi(mode, k);
+    // Şık sayısı iki filtreden geçer:
+    //  1) SORU YÖNTEMİ — şimşek 2, tabela 3, klasik oyunun istediği kadar
+    //  2) ZORLUK — Kolay 2, Orta 3, Zor 4
+    // ⚠️ (2) ÖLÇÜM BÖLGESİNİ KORUR: `sikSayisiIcin` az şıkkı yalnız L1-L2
+    // harflerde verir. L3+ "biliyor sayıldı" demek ve L3→L4→L5 kararı orada
+    // veriliyor; orada şık azaltmak yalan ustalık üretirdi.
+    const n = sikSayisiIcin(getGameItemLevel(target), sikSayisi(mode, k));
     return shuffle([target, ...celdiriciler(pool, target, Math.max(0, n - 1))]);
   }, [mode, celdiriciler]);
 

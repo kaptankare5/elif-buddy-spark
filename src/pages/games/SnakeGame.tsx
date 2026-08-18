@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { ipucu } from "@/lib/klavye";
+import { rampa } from "@/lib/zorluk";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
@@ -16,7 +18,11 @@ const COLS = 14;
 const ROWS = 18;
 /** Yazılı modda bir kelime şeridinin kaç ızgara karesi kapladığı. */
 const AD_GENISLIK = 5;
+// ⚠️ TABAN adım süresi — gerçek süre RAMPA ile KISALIR. Eskiden sabitti:
+// yılan baştan sona 3.85 hamle/sn ile gidiyordu, oyun hiç zorlaşmıyordu.
 const TICK_MS = 260;
+/** Yılan bundan hızlı olmasın — 6 yaşındaki parmak yetişemiyor. */
+const TICK_MIN_MS = 110;
 const SWIPE_MIN = 24; // px — bu kadar kaydırınca yön değişir
 
 type Cell = { x: number; y: number };
@@ -66,6 +72,8 @@ const SnakeGame = () => {
   const [quiz, setQuiz] = useState<QuizState | null>(null);
   const [eaten, setEaten] = useState(0);
   const [score, setScore] = useState(0);
+  // Rampa DOĞRU sayısına bağlı (yem yemek değil, sınavı geçmek hızlandırır).
+  const [dogru, setDogru] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
@@ -144,10 +152,17 @@ const SnakeGame = () => {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const d = dirRef.current;
-      if (e.key === "ArrowUp" && d.y === 0) setDir({ x: 0, y: -1 });
-      else if (e.key === "ArrowDown" && d.y === 0) setDir({ x: 0, y: 1 });
-      else if (e.key === "ArrowLeft" && d.x === 0) setDir({ x: -1, y: 0 });
-      else if (e.key === "ArrowRight" && d.x === 0) setDir({ x: 1, y: 0 });
+      // ⚠️ e.key DEĞİL e.code: e.key klavye düzenine göre değişir, WASD
+      // Türkçe F klavyede başka harf verir. e.code fiziksel tuşu söyler.
+      const yukari = e.code === "ArrowUp" || e.code === "KeyW";
+      const asagi = e.code === "ArrowDown" || e.code === "KeyS";
+      const sol = e.code === "ArrowLeft" || e.code === "KeyA";
+      const sag = e.code === "ArrowRight" || e.code === "KeyD";
+      if (yukari || asagi || sol || sag) e.preventDefault();
+      if (yukari && d.y === 0) setDir({ x: 0, y: -1 });
+      else if (asagi && d.y === 0) setDir({ x: 0, y: 1 });
+      else if (sol && d.x === 0) setDir({ x: -1, y: 0 });
+      else if (sag && d.x === 0) setDir({ x: 1, y: 0 });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -191,6 +206,7 @@ const SnakeGame = () => {
             if (correct) {
               grew = true;
               setScore((s) => s + 5);
+              setDogru((d) => d + 1);
               playFeedback(true);
               // Kayıt bitmeden yeni soru sorulmasın (yazılı modda).
               const bitince = askRef.current.cevapSesi(quiz.target, true);
@@ -233,9 +249,11 @@ const SnakeGame = () => {
         if (!grew) newSnake.pop();
         return newSnake;
       });
-    }, TICK_MS);
+    }, Math.max(TICK_MIN_MS, Math.round(TICK_MS / rampa(dogru))));
     return () => clearInterval(id);
-  }, [gameOver, paused, food, quiz, eaten, newFood, startQuiz, isSuper]);
+    // `dogru` bağımlılıkta: doğru cevap sayısı artınca interval YENİDEN kurulur
+    // ve yılan hızlanır. setInterval süresi kurulduktan sonra değiştirilemez.
+  }, [gameOver, paused, food, quiz, eaten, newFood, startQuiz, isSuper, dogru]);
 
   const reset = () => {
     const initial = [{ x: 5, y: 9 }, { x: 4, y: 9 }, { x: 3, y: 9 }];
@@ -243,6 +261,7 @@ const SnakeGame = () => {
     setDir({ x: 1, y: 0 });
     setEaten(0);
     setScore(0);
+    setDogru(0);
     setGameOver(false);
     setPaused(true);
     setQuiz(null);
@@ -435,7 +454,7 @@ const SnakeGame = () => {
               <div className="text-7xl mb-3 animate-bounce">🐍</div>
               <div className="text-2xl font-black text-success mb-2 drop-shadow-sm">Hazır mısın?</div>
               <div className="text-xs font-extrabold text-muted-foreground px-6 text-center max-w-[80%]">
-                Ekrana parmağını sürükle ↑↓←→
+                {ipucu("Ekrana parmağını sürükle ↑↓←→", "Ok tuşları veya W A S D")}
               </div>
               <div className="mt-4 px-6 py-2.5 rounded-full bg-gradient-to-r from-success to-emerald-600 text-white font-black text-sm shadow-elegant">
                 ▶ Başla!
