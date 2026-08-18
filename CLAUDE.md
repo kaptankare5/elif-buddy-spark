@@ -23,11 +23,21 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   ("soru sormadı, sadece cevaplar vardı"). Test kilidi 1234 bütün konuları
   açınca kayıtsız öğeler havuza giriyordu. Kayıtsız öğeler konu sayfasında
   ve Flashcard'da durur (orada soru görseldir). Bekçi: `audioFiles.test.ts`.
-  Hâlâ kaydı OLMAYANLAR (ölçüldü, 56 öğe): bütün "Ekstralar" kartları
-  (cezm 14, şedde 14, tenvin 8), `zamir-lafzatullah` (8) ve `elif-lam-ra` (8)
-  konularının HEPSİ, bir de `asar-med-kasr` konusu tamamen boş (0 öğe).
-  Çekirdek kartların kaydı TAM: basic 28, hareke 84, med 84, tenvin 84,
-  sedde 81, cezm 81.
+  ✅ **ARTIK KAYDI OLMAYAN KART YOK — 667/667 öğe sesli** (bekçi:
+  `audioFiles.test.ts`). Çekirdek: basic 28, hareke 84, med 84, tenvin 84,
+  sedde 81, cezm 81. Ekstralar (`tools/ses/ekstra.py`, 66 dosya): cezm 14,
+  şedde 14, med 14, tenvin 8, `zamir-*` 8, `eliflam-*` 8.
+  Tek boşluk: `asar-med-kasr` konusunun İÇİ boş (0 öğe) — kaydı var
+  ("asar med kasr.m4a", 11 parça) ama karşılık gelen kart yok.
+- ⚠️ **EKSTRA KAYITLARINDA PARÇA SAYISI TEK BAŞINA KANIT DEĞİL**: şeddede
+  -28 dB/d=0.8 de 14 parça veriyordu ama YANLIŞ 14 — şeddeli kelimeyi
+  ortadan bölüp SON kelimeyi tamamen kaçırıyordu (kayıt 31.6 sn, kesim
+  28.7'de bitiyor). Hiza **kayma denetimiyle** doğrulanır: ekstranın bir
+  hecesi zaten çekirdekte var, ofset 0 ile ±1 arasında uçurum olmalı
+  (cezm 6.6 ↔ 36-39, şedde 7.7 ↔ 31-34, med 14.4 ↔ 32-37; rastgele 40).
+  Çekirdek karşılığı olmayan Zamir/Elif-Lâm'da HECE↔SÜRE korelasyonu
+  kullanıldı (0.953 ve 0.890). Ekstra çekimi çekirdekten 7-19 dB KISIKTI;
+  her aile kendi çekirdeğinin seviyesine getirildi, pay 0.10 sn.
 - ⚠️ **BÜTÜN ÇEKİRDEK KAYITLAR YENİ ÇEKİM** (kullanıcı kararı, 439 dosya):
   hocanın tek parça kayıtlarından (`kaptankare5/sound` → "Dünya 1. ses kuran")
   `tools/ses/` betikleriyle kesildi. Önce hareke/med/tenvin/cezm/şedde (411),
@@ -93,8 +103,9 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   çekirdekten sık gelir. ⚠️ Çarpan tek başına YETMEZ: en seyrek Ekstra
   (f=1) ×2 = 2 ile çekirdeğin altında kalıyordu, taban şart.
 - Topic testi ses şartı uygular (oyun havuzu gibi): kaydı olmayan öğe soru
-  olmaz. Şedde/Tenvin/Cezm Ekstralar'ının kaydı henüz yok — kayıt eklenince
-  süzgeç onları kendiliğinden geri alır. Flashcard süzülmez (soru görsel).
+  olmaz. (Şedde/Tenvin/Cezm Ekstraları bir dönem bu yüzden hiç sorulmuyordu;
+  kayıtları gelince süzgeç onları kendiliğinden geri aldı.) Flashcard
+  süzülmez (soru görsel).
 - Maliyet: Elifbâ'yı bitirmek **1334 → 498** doğru cevap.
 - ⚠️ `git update-index --cacheinfo` YENİ dosya yolu için `--add` ister;
   onsuz sessizce atlar ve main derlenmez hâlde kalır (bir kez oldu).
