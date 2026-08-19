@@ -929,8 +929,15 @@ sınırının çok altında, ses dosyalarını KÜÇÜLTME.
   ile Lovable'ın DOKUNDUĞU dosyaları bul, yalnız onları
   `git checkout origin/main -- <yol>` ile al.
 - ⚠️ **`commit-tree HEAD^{tree}` DALIN AĞACINI OLDUĞU GİBİ KOYAR** — main'de
-  olup dalda olmayan dosya SESSİZCE SİLİNİR. Göndermeden önce emniyet:
-  `git diff --name-status origin/main HEAD | grep '^D'` boş çıkmalı.
+  olup dalda olmayan dosya SESSİZCE SİLİNİR, main'de DEĞİŞMİŞ bir dosya da
+  sessizce ESKİ hâline döner.
+  ⚠️ **`grep '^D'` YETMEZ — bir kez tam olarak bundan dolayı Lovable'ın işi
+  ezildi.** Yalnız silinenlere bakıyordum; Lovable araya 5 commit atıp şedde
+  okunuşlarını düzeltmişti (`ebbe/ibbe/übbe`), benim ağacım onları `M` olarak
+  geri aldı. Doğru emniyet, göndermeden HEMEN önce:
+  `git fetch origin main && git diff --name-status HEAD origin/main`
+  çıktısı BOŞ olmalı. Boş değilse önce cerrahi alım yap
+  (`git checkout origin/main -- <yol>`), testleri çalıştır, sonra gönder.
 - ⚠️ **Depo shallow klonlanıyor** (`.git/shallow` var, main'in geçmişi 96
   commit). Ortak ata bulunamadığı için git "refusing to merge unrelated
   histories" der; gerekirse `git fetch --unshallow origin`.
