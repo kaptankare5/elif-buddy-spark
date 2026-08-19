@@ -545,7 +545,12 @@ const t5_sedde: ContentTopic = {
           // yaslanması gerekiyor. Cezm konusunda olduğu gibi harekeli elif
           // ön eki konur → اَبَّ / اِبِّ / اُبُّ (ebbe / ibbi / übbü).
           // Ekstra kartlar (اِنَّ, رَبِّ…) da zaten bu biçimde.
-          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}ّ${h.mark}`,
+          // ⚠️ NFC ile normalize: Unicode'un kanonik sırası HAREKEYİ şeddeden
+          // ÖNCE ister ve Diyanet metni de öyle kodlanmış (الضَّٓالّ۪ينَ =
+          // ض + fetha + şedde). Biz şeddeyi önce yazıyorduk; ekranda ikisi
+          // PİKSEL PİKSEL aynı çiziliyor (ölçüldü) ama dizgiler eşit
+          // olmadığı için karşılaştırma/arama sessizce tutmuyordu.
+          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}ّ${h.mark}`.normalize("NFC"),
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
           section: bolum(l.n),

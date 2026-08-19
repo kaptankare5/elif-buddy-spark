@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 280 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 281 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -107,9 +107,14 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   Ekstralar `ف۪ي ذ۪ي ه۪ي`). ⚠️ Bu değişiklik `HARAKA_SUF` tablosuna `۪` da
   eklemeyi ZORUNLU kılar: `medAudio` heceyi harekeden tanıyor, eklenmezse
   28 med kartı sessiz kalır ve ses şartı yüzünden oyun havuzundan düşer.
+  ⚠️ **KODLAMA DA MUSHAFLA AYNI OLMALI (NFC)**: Unicode kanonik sırası
+  hareke → şedde; Diyanet metni öyle kodlanmış (`ض + fetha + şedde`). Şedde
+  kartları ters sırada üretiliyordu (81 kart). Ekranda fark YOK — iki kodlama
+  piksel piksel aynı çiziliyor (ölçüldü) — ama dizgiler eşit olmadığı için
+  karşılaştırma/arama/tekrar-eleme sessizce tutmuyordu.
   Bekçi: `src/test/imla.test.ts` — ekrandaki BÜTÜN Arapça metni (konu
-  rozetleri, kartlar, ezber parçaları; 300+ dizgi) dört kurala karşı tarar
-  ve kural motorunun kendisini de test eder.
+  rozetleri, kartlar, ezber parçaları; 300+ dizgi) beş kurala + NFC'ye karşı
+  tarar ve kural motorunun kendisini de test eder.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
   hareke okunuşları üretilir (kalın 7 harf a/ı/u; Râ karışık ra/ri/ru;
   gerisi e/i/ü). Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
