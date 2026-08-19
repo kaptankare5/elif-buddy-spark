@@ -14,7 +14,7 @@
 //   · Sipariş aktifken o harfin doğma olasılığı ARTAR (`agirlik`) — tahta
 //     çocuğa istediği şeyi aktif olarak besler. Match-3 türünün kendi çözümü:
 //     "hedef rengin doğma ağırlığını yükselt, imkânsız durumu denetle."
-//   · Sipariş `SABIR` hamlede tutulmazsa KENDİLİĞİNDEN başka harfe döner.
+//   · Sipariş `SABIR` EŞLEŞMEDE tutulmazsa KENDİLİĞİNDEN başka harfe döner.
 //     Çıkmaz sokak yok.
 //   · Hedef KÜÇÜK (`ADET` = 2-3). "20 tane topla" 6 yaşındaki için av,
 //     "2 tane" ritim.
@@ -22,23 +22,31 @@ import type { ContentItem } from "@/data/types";
 
 /** Bir siparişte kaç tane isteniyor. Küçük tutulur — av değil ritim. */
 export const SIPARIS_ADET = 2;
-/** Bu kadar hamlede tutmazsa sipariş başka harfe döner (çıkmaz sokak yok). */
-export const SIPARIS_SABIR = 12;
+/**
+ * Bu kadar EŞLEŞMEDE tutmazsa sipariş başka harfe döner (çıkmaz sokak yok).
+ *
+ * ⚠️ BİRİM EŞLEŞME, HAMLE DEĞİL: `siparisIsle` yalnız bir eşleşme olduğunda
+ * çağrılıyor. 12'yken Üçlü Eşleştir'in 25 hamlelik bütçesinde sipariş oyun
+ * boyunca neredeyse hiç dönmüyordu — "sabır" adı vardı, işlevi yoktu.
+ * 8 ile bir oyunda 2-3 kez döner: çocuk aradığını bulamazsa sıkışmadan
+ * yeni bir hedef görür.
+ */
+export const SIPARIS_SABIR = 8;
 /** Sipariş edilen harfin doğma ağırlığı (ötekiler 1). */
 export const SIPARIS_AGIRLIK = 2.5;
 
 export interface Siparis {
   hedef: ContentItem;
   kalan: number;
-  /** Sipariş verildiğinden beri geçen hamle. */
-  hamle: number;
+  /** Sipariş verildiğinden beri geçen EŞLEŞME sayısı (hamle değil). */
+  eslesme: number;
 }
 
 export function siparisAc(adaylar: ContentItem[], oncekiId?: string): Siparis | null {
   const havuz = adaylar.filter((x) => x.id !== oncekiId);
   const liste = havuz.length > 0 ? havuz : adaylar;
   if (liste.length === 0) return null;
-  return { hedef: liste[Math.floor(Math.random() * liste.length)], kalan: SIPARIS_ADET, hamle: 0 };
+  return { hedef: liste[Math.floor(Math.random() * liste.length)], kalan: SIPARIS_ADET, eslesme: 0 };
 }
 
 /**
@@ -77,15 +85,15 @@ export function siparisIsle(
   if (!siparis) return { siparis: null, isabet: false, tamam: false };
   const isabet = eslesenId === siparis.hedef.id;
   const kalan = isabet ? siparis.kalan - 1 : siparis.kalan;
-  const hamle = siparis.hamle + 1;
+  const eslesme = siparis.eslesme + 1;
 
   if (isabet && kalan <= 0) {
     return { siparis: siparisAc(adaylar, siparis.hedef.id), isabet: true, tamam: true };
   }
   // ⚠️ SABIR: tutmazsa kendiliğinden döner. Çocuk asla tek bir harfi
   // kovalamakta sıkışıp kalmaz.
-  if (hamle >= SIPARIS_SABIR) {
+  if (eslesme >= SIPARIS_SABIR) {
     return { siparis: siparisAc(adaylar, siparis.hedef.id), isabet, tamam: false };
   }
-  return { siparis: { ...siparis, kalan, hamle }, isabet, tamam: false };
+  return { siparis: { ...siparis, kalan, eslesme }, isabet, tamam: false };
 }

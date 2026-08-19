@@ -37,6 +37,16 @@ export function getYildiz(oyun: string, bolum: number): number {
  * engelliyor; amaç bölüme dönmeyi teşvik etmek.
  */
 export function setYildiz(oyun: string, bolum: number, yildiz: number) {
+  // ⚠️ GÜNLÜK SERİ BURADAN DA BESLENİR. Seriyi yalnız `oyunBitti` besliyordu;
+  // Macera ve Parti bölüm bitince yalnız yıldız yazıyor, rekor katmanını hiç
+  // çağırmıyor. Normal modda oyun cevabı SRS'e de yazılmadığı için bütün gün
+  // Macera oynayan çocuğun serisi HİÇ ilerlemiyordu — uygulamanın tek günlük
+  // geri dönüş kancası, çocuğun en çok vakit geçirdiği yerde ölüydü.
+  // ⚠️ Erken dönüşten ÖNCE: bölümü daha kötü bitirmek de "bugün oynadım"dır.
+  try {
+    void import("@/lib/streak").then((m) => m.recordStreakActivity()).catch(() => {});
+  } catch { /* ignore */ }
+
   const k = oku();
   const anahtar = `${oyun}:${bolum}`;
   if ((k[anahtar] ?? 0) >= yildiz) return;

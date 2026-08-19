@@ -8,6 +8,7 @@ import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Volume2 } from "lucide-react";
 import { sfx, titre } from "@/lib/juice";
+import { useOyunSonu } from "@/lib/oyunSonucu";
 
 /**
  * Yapboz — yaşa göre:
@@ -48,6 +49,14 @@ const PuzzleGame = () => {
   const [first, setFirst] = useState<number | null>(null);
   const [solved, setSolved] = useState(false);
   const [score, setScore] = useState(0);
+
+  /**
+   * Rekor = bu oturumda kaç yapboz tamamlandı. Oyunun bitişi yok, her yapboz
+   * bir "tur"; skor kümülatif olduğu için her çözümde kayıt tazelenir ve en
+   * iyisi kalır. ⚠️ Aynı çağrı GÜNLÜK SERİYİ de besliyor — Yapboz kayıt
+   * katmanına hiç bağlı değildi, oynayan çocuğun serisi ilerlemiyordu.
+   */
+  const rapor = useOyunSonu("puzzle", solved, score, { birim: "yapboz" });
 
   const sizeRef = useRef<HTMLDivElement>(null);
 
@@ -161,8 +170,15 @@ const PuzzleGame = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-success/85 backdrop-blur-sm animate-bounce-in">
               <div className="text-7xl mb-2">{item?.emoji}</div>
               <div className="text-2xl font-extrabold text-white mb-1">{item?.label}</div>
-              <div className="text-3xl font-extrabold text-white text-shadow-soft mb-4">
+              <div className="text-3xl font-extrabold text-white text-shadow-soft mb-1">
                 🎉 Aferin!
+              </div>
+              <div className="mb-4 text-sm font-bold text-white/90">
+                {score} yapboz
+                {rapor?.rekor && <span className="ml-1">· 🏆 rekor!</span>}
+                {!rapor?.rekor && rapor?.oncekiEnIyi != null && (
+                  <span className="ml-1">· rekorun {rapor.oncekiEnIyi}</span>
+                )}
               </div>
               <button
                 onClick={startNew}

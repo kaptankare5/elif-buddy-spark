@@ -254,7 +254,10 @@ const Match3Game = () => {
   };
 
   const tap = async (r: number, c: number) => {
-    if (busy || quiz) return;
+    // ⚠️ `bitti` EMNİYETİ: sonuç kartı şu an tam ekran kaplayıp tahtayı
+    // kapatıyor, ama kartı küçültmek/arkasını göstermek hamle bütçesini
+    // eksiye düşürürdü. Kural mantıkta dursun, görselde değil.
+    if (busy || quiz || bitti) return;
     if (!selected) { setSelected({ r, c }); return; }
     if (selected.r === r && selected.c === c) { setSelected(null); return; }
     const dr = Math.abs(selected.r - r), dc = Math.abs(selected.c - c);

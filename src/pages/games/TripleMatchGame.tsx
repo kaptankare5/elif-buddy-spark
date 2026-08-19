@@ -9,6 +9,7 @@ import { SiparisSeridi } from "@/components/SiparisSeridi";
 import { playItem, playFeedback } from "@/lib/audio";
 import type { ContentItem, Lang } from "@/data/types";
 import { sfx, titre } from "@/lib/juice";
+import { useOyunSonu } from "@/lib/oyunSonucu";
 
 // =============================================================
 // Triple Match — İçerik havuzundan (Türkçe/İngilizce) gelen kelimeler
@@ -72,6 +73,13 @@ const TripleMatchGame = () => {
   const [siparis, setSiparis] = useState<Siparis | null>(null);
   const [siparisParla, setSiparisParla] = useState(false);
   const lastTapRef = useRef<number>(Date.now());
+  /**
+   * Rekor = bu turda kaç ÜÇLÜ tamamlandı. Kaybederek biten oyun da sayılır
+   * (kaç eşleşmeye kadar dayandı). Aynı çağrı GÜNLÜK SERİYİ de besler — bu
+   * oyun kayıt katmanına hiç bağlanmamıştı, oturumdan oturuma hiçbir iz
+   * bırakmıyordu.
+   */
+  const rapor = useOyunSonu("triple", status !== "playing", matches, { birim: "eşleşme" });
 
   // Tahtadaki farklı harfler — siparişin aday havuzu.
   const tahtaTurleri = useMemo(() => {
@@ -263,6 +271,13 @@ const TripleMatchGame = () => {
               <div className="text-6xl">{status === "won" ? "🎉" : "💔"}</div>
               <div className="text-3xl font-extrabold text-foreground">
                 {status === "won" ? (isEn ? "You Win!" : "Kazandın!") : (isEn ? "Game Over" : "Oyun Bitti")}
+              </div>
+              <div className="-mt-2 text-sm font-bold text-muted-foreground">
+                {matches} eşleşme
+                {rapor?.rekor && <span className="ml-1 text-warning">· 🏆 rekor!</span>}
+                {!rapor?.rekor && rapor?.oncekiEnIyi != null && (
+                  <span className="ml-1">· rekorun {rapor.oncekiEnIyi}</span>
+                )}
               </div>
               <button
                 onClick={reset}

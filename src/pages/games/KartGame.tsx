@@ -41,7 +41,7 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { zorlukAyari } from "@/lib/zorluk";
-import { oyunBitti, getOyunKaydi } from "@/lib/oyunSonucu";
+import { oyunBitti, useOyunKayitlari } from "@/lib/oyunSonucu";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
 import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture, blockedTexture } from "./_letterTexture";
 import { getAskMode, okunurAd, pickNameWrongs, getFlashMs, FLASH_CUE_MS, FLASH_SIK, USTTE_SIK, yaziliSik, type AskMode } from "@/lib/askMode";
@@ -253,9 +253,13 @@ const KartGame = () => {
   const [track, setTrack] = useState(1);
   const [unlocked, setUnlocked] = useState(() => getUnlockedTrack());
   const yildizlar = useYildizlar();
+  // ⚠️ REKORLAR KANCAYLA OKUNUR, render sırasında `getOyunKaydi()` ile DEĞİL:
+  // öyleyken pist listesi her render'da 3 pist × 2 kez localStorage okuyup
+  // JSON ayrıştırıyordu (ve yeni rekor kartlara yansımıyordu — kanca olay
+  // dinliyor, düz okuma dinlemiyor).
+  const kayitlar = useOyunKayitlari();
   // Tur zamanlaması — ref, çünkü her karede okunuyor ve render tetiklememeli.
   const turBasiRef = useRef(0);
-  const sonTurRef = useRef<number | null>(null);
   const enIyiTurRef = useRef<number | null>(null);
   const [hud, setHud] = useState({ place: 1, lap: 1, pct: 0, kmh: 0, correct: 0, wrong: 0 });
   const [power, setPower] = useState<PowerKind | null>(null);
@@ -319,7 +323,6 @@ const KartGame = () => {
     setActivePower(null);
     setHud({ place: 1, lap: 1, pct: 0, kmh: 0, correct: 0, wrong: 0 });
     turBasiRef.current = performance.now();
-    sonTurRef.current = null;
     enIyiTurRef.current = null;
     setPhase("race");
     wrapRef.current?.requestFullscreen?.().catch(() => { /* izin yoksa sorun değil */ });
@@ -1360,7 +1363,6 @@ const KartGame = () => {
             const sure = (simdi - turBasiRef.current) / 1000;
             turBasiRef.current = simdi;
             if (r.lap >= 1 && sure > 5) {
-              sonTurRef.current = sure;
               if (enIyiTurRef.current === null || sure < enIyiTurRef.current) {
                 enIyiTurRef.current = sure;
                 showFlash(`⏱️ En iyi tur! ${sure.toFixed(1)} sn`, true);
@@ -1999,9 +2001,9 @@ const KartGame = () => {
                       {t.gates} soru kapısı · {LAPS} tur
                     </div>
                     {/* YA-1: en iyi tur — botların rastgeleliğinden etkilenmeyen adil rekor */}
-                    {open && getOyunKaydi(`kart-tur-${n}`) && (
+                    {open && kayitlar[`kart-tur-${n}`] && (
                       <div className="mt-0.5 text-[11px] font-extrabold text-warning tabular-nums">
-                        ⏱️ en iyi tur {getOyunKaydi(`kart-tur-${n}`)!.enIyi} sn
+                        ⏱️ en iyi tur {kayitlar[`kart-tur-${n}`].enIyi} sn
                       </div>
                     )}
                   </div>

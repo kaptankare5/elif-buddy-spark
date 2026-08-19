@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 250 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 273 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -455,8 +455,33 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   karşılaştırma yetkinlik hissini zedeliyor. `oyunBitti()` her oyun bitiminde
   tek satırla çağrılır, **günlük seriyi de besler**: seri yalnız SRS cevabıyla
   ilerliyordu, normal modda oyun oynayan çocuğun serisi hiç ilerlemiyordu.
-- ⚠️ **SKORUN YÖNÜ SAKLANIR** (`yuksek`/`dusuk`): Hafıza'da AZ hamle iyi,
-  ötekilerde ÇOK puan iyi. Tek alan ikisini tutamaz — "en iyi 40 hamle" çıkar.
+- ⚠️ **SKORUN YÖNÜ SAKLANIR** (`yuksek`/`dusuk`): kimi oyunda AZ iyi (hamle,
+  süre), ötekilerde ÇOK iyi (puan). Tek alan ikisini tutamaz — "en iyi 40
+  hamle" çıkar.
+- ⚠️ **BÜTÜN OYUNLAR KAYIT YAZAR — bekçisi `kalicilik.test.ts`.** Paket ilk
+  yazıldığında üçü dışarıda kalmıştı: Kutu Boşalt'ta `useOyunSonu` İMPORT
+  EDİLMİŞ ama hiç ÇAĞRILMAMIŞTI (ölü import; eslint bunu yakalamıyor), Üçlü
+  Eşle ve Yapboz'da hiç yoktu. Zararı yalnız "rekor yok" değil: **günlük seri
+  de beslenmiyor**. Test import değil ÇAĞRI arar.
+- ⚠️ **SERİ İKİ YERDEN BESLENİR**: `oyunBitti()` ve `setYildiz()`. Macera ile
+  Parti rekor yazmaz, yalnız yıldız yazar; seri yalnız `oyunBitti`ye bağlıyken
+  bütün gün Macera oynayan çocuğun serisi HİÇ ilerlemiyordu (normal modda oyun
+  cevabı SRS'e de yazılmaz). `setYildiz` seriyi ERKEN DÖNÜŞTEN ÖNCE besler —
+  bölümü daha kötü bitirmek de "bugün oynadım"dır.
+- ⚠️ **BİTİŞİ OLMAYAN OYUNDA KANCA İŞLEMEZ**: `useOyunSonu` bir `bitti`
+  bayrağının kenarını bekler. Kutu Boşalt'ta (tahta boşalınca yenisi kurulur)
+  kayıt ELDEN `oyunBitti()` ile yazılır.
+- ⚠️ **REKORUN ÖLÇEĞİ DEĞİŞİRSE ESKİ KAYIT ATILIR** (`yon`+`birim` uyuşmazlığı,
+  `oyunBitti`). Hafıza'nın rekoru "en az hamle"den "en çok tahta"ya geçti;
+  eski kayıt aynı anahtarda kalsaydı 6 HAMLElik rekor yeni ölçekte "6 tahta"
+  diye okunup çocuktan 7 tahta bitirmesini isteyecekti. Ölçek değişince kayıt
+  ilk oyun gibi baştan başlar (oynama sayacı korunur).
+- ⚠️ **HAFIZA'NIN REKORU HAMLE DEĞİL TAHTA SAYISIDIR**: `sonrakiTur` her turda
+  tahtayı bir çift büyütüyor (4 → 10) ve daha çok çift zorunlu olarak daha çok
+  hamle demek. Hamle rekoru olsaydı 1. turun rekoru (4 çift) ASLA kırılamazdı;
+  çocuk 9 çiftlik tahtayı kusursuz bitirse bile "rekorun 6" yazacaktı — en iyi
+  oynadığı turda başarısız hissedecekti. Tek tahtanın KALİTESİ ⭐ ile gösterilir,
+  o rekorun işi değil.
 - ⚠️ İlk oyunda "rekor kırdın" YAZILMAZ; kıyaslanacak şey yokken bunu demek
   sonraki gerçek rekoru değersizleştirir.
 - ⚠️ **SİPARİŞ KAPI DEĞİL BONUS** (`siparis.ts`, Üçlü Eşleştir + Üçlü Eşle).
@@ -464,8 +489,11 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   ikisini de kusursuz oynayabiliyordu (çikolata kaplı brokoli). Sipariş ŞART
   olsaydı iğne aramaya dönerdi (kullanıcı sorusu: "tek tane varsa 2 saat arar
   mı"). Bu yüzden: her eşleşme yine sayılır · sipariş edilen harfin doğma
-  ağırlığı ×2.5 (match-3 türünün kendi çözümü) · 12 hamlede tutmazsa
-  KENDİLİĞİNDEN başka harfe döner · hedef küçük (2 tane).
+  ağırlığı ×2.5 (match-3 türünün kendi çözümü) · `SIPARIS_SABIR` (8) EŞLEŞMEDE
+  tutmazsa KENDİLİĞİNDEN başka harfe döner · hedef küçük (2 tane).
+  ⚠️ Sabrın birimi **eşleşme**, hamle DEĞİL (`Siparis.eslesme`): `siparisIsle`
+  yalnız eşleşmede çağrılıyor. 12'yken 25 hamlelik oyunda sipariş neredeyse
+  hiç dönmüyordu — adı vardı, işlevi yoktu.
   Ağırlık daha yükseğe çekilmez: tahtayı tek harfle doldurmak üçlüleri
   kendiliğinden oluşturur, düşünmek kalmaz.
 - ⚠️ **GÖREVLER KAÇIRMA CEZASIZ** (`gorevler.ts`, Koşusu): gün değişince
@@ -475,6 +503,10 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   yoksa yine tek bit olur. Bölüm AÇILMASI dereceye bağlı DEĞİL (kullanıcı
   şartı: sonuncu da olsa devam edebilmeli). Yıldız geriye gitmez — kazanılanı
   kaybetme korkusu tekrar oynamayı engelliyor.
+- ⚠️ **REKOR RENDER SIRASINDA OKUNMAZ**: `getOyunKaydi()` düz localStorage
+  okuması yapar; Yarışı'nın pist listesi her render'da 3 pist × 2 kez okuyup
+  JSON ayrıştırıyordu ve yeni rekor kartlara yansımıyordu. Bileşenlerde
+  `useOyunKayitlari()` kancası kullan (olay dinler).
 - ⚠️ **UZAY SAVAŞI'NDA HEDEF EKRANDA OLMAK ZORUNDA**: ekranda hedef yokken bile
   doğru harf yalnız %55 olasılıkla gönderiliyordu; çocuk "şın'ı vur" duyup şın'ı
   hiç göremeden bekliyordu (ölçüm: ilk soru 22.9 sn).

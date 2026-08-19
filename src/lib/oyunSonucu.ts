@@ -69,7 +69,17 @@ export function oyunBitti(
   const birim = opts?.birim ?? "puan";
   const hepsi = oku();
   const eski = hepsi[oyunId];
-  const oncekiEnIyi = eski && eski.oynama > 0 ? eski.enIyi : null;
+  /**
+   * ⚠️ ÖLÇEK DEĞİŞTİYSE ESKİ REKOR ATILIR.
+   *
+   * Bir oyunun neyi rekor saydığı değişebiliyor (Hafıza "en az hamle"den
+   * "en çok tahta"ya geçti). Eski kayıt aynı anahtarda durursa sayılar
+   * KARŞILAŞTIRILAMAZ hâle gelir: 6 hamlelik eski rekor, yeni ölçekte
+   * "6 tahta" gibi okunup çocuktan 7 tahta bitirmesini ister. Yön ya da
+   * birim uyuşmuyorsa kayıt yok sayılır, ilk oyun gibi baştan başlar.
+   */
+  const uyumlu = !!eski && eski.yon === yon && eski.birim === birim;
+  const oncekiEnIyi = uyumlu && eski.oynama > 0 ? eski.enIyi : null;
 
   const daha = oncekiEnIyi === null ? true
     : yon === "yuksek" ? skor > oncekiEnIyi : skor < oncekiEnIyi;
@@ -77,6 +87,7 @@ export function oyunBitti(
   hepsi[oyunId] = {
     enIyi: daha ? skor : (oncekiEnIyi ?? skor),
     yon, birim,
+    // Oynama sayısı ölçek değişse de korunur — "hiç oynamadın" rozeti için.
     oynama: (eski?.oynama ?? 0) + 1,
     son: Date.now(),
   };
