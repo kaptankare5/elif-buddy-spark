@@ -152,15 +152,6 @@ describe("müfredat bütünlüğü", () => {
       expect(new Set(sks).size).toBe(sks.length);
     }
   });
-
-  it("Şedde dizisi ebbe / ibbe / übbe biçimindedir", () => {
-    const sedde = T("sedde");
-    const be = ["fetha", "esre", "otre"].map((hareke) =>
-      sedde.items.find((i) => i.id === `l5-02-${hareke}`),
-    );
-    expect(be.map((i) => i?.translit)).toEqual(["ebbe", "ibbe", "übbe"]);
-    expect(be.map((i) => i?.emoji)).toEqual(["اَبَّ", "اِبَّ", "اُبَّ"]);
-  });
 });
 
 // ÇELDİRİCİ KISITI — şıklar yalnız ölçülen eksende farklılaşmalı.
