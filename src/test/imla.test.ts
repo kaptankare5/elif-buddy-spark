@@ -18,8 +18,15 @@
  *   3. Noktasız `ى` yalnız hançer eliften sonra (`وَتَعَالٰى`); uzatma yâsı
  *      mushafta hep noktalı (`ف۪ي` · `بِي`).
  *   4. `ٓ` bir harfin üstüne doğrudan gelmez, HAREKENİN ardından gelir.
- *   5. MED YÂSININ ÖNÜNDEKİ ESRE KÜÇÜKTÜR: `ب۪ي` (`بِي` değil) — الرَّح۪يمِ ·
- *      ف۪ي · اَلَّذ۪ي · الْعَالَم۪ينَ. İKİ İSTİSNA var, ikisi de gerçek:
+ *   6. ⚠️ **ELMAS ÇİZEN İŞARETLER YASAK** — `۪` (U+06EA) · `۫` (U+06EB) ·
+ *      `۬` (U+06EC). Bunlar "boş/dolu merkezli durak" işaretleri; adları
+ *      küçük esreye benziyor ama fontta İÇİ BOŞ BİR ELMAS (◊) çiziliyor
+ *      (Amiri Quran ve Scheherazade New'de ölçüldü; kullanıcı ekranda
+ *      "الضَّٓالّ۪ينَ"in altında ◊ gördü). Doğrusu: uzun î için `ٖ` (U+0656
+ *      alt elif — küçük çizgi), yazılıp okunmayan harf için `۟` (U+06DF
+ *      küçük yuvarlak sıfır — mushaftaki küçük halka).
+ *   5. MED YÂSININ ÖNÜNDEKİ ESRE KÜÇÜKTÜR: `بٖي` (`بِي` değil) — الرَّحٖيمِ ·
+ *      فٖي · اَلَّذٖي · الْعَالَمٖينَ. İKİ İSTİSNA var, ikisi de gerçek:
  *      · Yâ KENDİ harekesini taşıyorsa med yâsı değil ÜNSÜZDÜR, normal esre
  *        doğrudur: `اِيَّاكَ` · `وَجْهِيَ`.
  *      · ⚠️ UZATMA DÜŞÜYORSA da normal esre yazılır. Med harfi sâkinle
@@ -33,7 +40,7 @@ import { describe, it, expect } from "vitest";
 import { getAllTopics } from "@/data/subjects";
 import { SURAS } from "@/data/ezber";
 
-const HAREKE = new Set(["ً", "ٌ", "ٍ", "َ", "ُ", "ِ", "ّ", "ْ", "ٰ"]);
+const HAREKE = new Set(["ً", "ٌ", "ٍ", "َ", "ُ", "ِ", "ّ", "ْ", "ٰ", "ٖ", "۟"]);
 const ARAPCA = /[؀-ۿ]/;
 
 /** Bir metnin ihlal ettiği kuralları döndürür (boş dizi = temiz). */
@@ -49,12 +56,14 @@ export function imlaHatalari(t: string): string[] {
       h.push("noktasız ى — uzatma yâsı noktalı olmalı");
     if (c === "ٓ" && !HAREKE.has(onceki))
       h.push("ٓ harekeden sonra gelmeli");
+    if (c === "۪" || c === "۫" || c === "۬")
+      h.push(`${c} fontta ELMAS (◊) çiziyor — uzun î için ٖ, sessiz harf için ۟`);
     if (c === "ي" && onceki === "ِ") {
       const sonraki = i + 1 < t.length ? t[i + 1] : "";
       // Hareke → yâ ünsüzdür (اِيَّاكَ). Boşluk → uzatma düşmüş olabilir
       // (فِي الْعُقَدِ). İkisi de kural dışı; bkz. yukarıdaki istisnalar.
       if (!HAREKE.has(sonraki) && sonraki !== " ")
-        h.push("med yâsının esresi KÜÇÜK olmalı (ب۪ي)");
+        h.push("med yâsının esresi KÜÇÜK olmalı (بٖي)");
     }
   }
   return h;
@@ -112,12 +121,14 @@ describe("imlâ — Türkiye (Diyanet) mushafı", () => {
     expect(imlaHatalari("أُولٰٓئِكَ").length, "kelime başı hemze yakalanmalı").toBeGreaterThan(0);
     expect(imlaHatalari("بِى").length, "noktasız ى yakalanmalı").toBeGreaterThan(0);
     expect(imlaHatalari("بِي").length, "büyük esreli med yâsı yakalanmalı").toBeGreaterThan(0);
+    expect(imlaHatalari("ب۪ي").length, "elmas çizen U+06EA yakalanmalı").toBeGreaterThan(0);
+    expect(imlaHatalari("اُو۬لٰٓئِكَ").length, "elmas çizen U+06EC yakalanmalı").toBeGreaterThan(0);
     // Doğru yazımlar temiz geçmeli:
     expect(imlaHatalari("اٰمَنَ")).toEqual([]);
     expect(imlaHatalari("حَٓاجُّوكَ")).toEqual([]);
     expect(imlaHatalari("الْمَلَأُ"), "kelime SONU hemze serbest").toEqual([]);
     expect(imlaHatalari("وَتَعَالٰى"), "hançer eliften sonra ى serbest").toEqual([]);
-    expect(imlaHatalari("ب۪ي"), "küçük esreli med yâsı doğru").toEqual([]);
+    expect(imlaHatalari("بٖي"), "küçük esreli med yâsı doğru").toEqual([]);
     expect(imlaHatalari("اِيَّاكَ"), "yâ ünsüzse normal esre doğru").toEqual([]);
     expect(imlaHatalari("فِي الْعُقَدِ"), "uzatma düşüyorsa normal esre doğru").toEqual([]);
   });
