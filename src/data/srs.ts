@@ -69,6 +69,11 @@ export interface LetterSrsEntry {
    * kanıtın cinsine göre puan ekler (bkz. MASTERY). Yanlışta yarılanır.
    */
   mastery?: number;
+  /**
+   * O GÜN İÇİN VERİLMİŞ kanıt puanı — "günün EN İYİ kanıtı" kuralının
+   * dayanağı (bkz. `recordAnswer`). Gün değişince yeniden yazılır.
+   */
+  dayEvidence?: number;
 }
 
 export type TopicSrs = Record<string, LetterSrsEntry>;
@@ -844,22 +849,42 @@ function recordLocalSrsAnswer(
   const bugun = dayOf(Date.now());
   const ayniGun = e.lastCorrectDay === bugun;
   const yeniGunDogru = correct && !ayniGun;
+  /**
+   * Bu cevabın kanıt değeri.
+   * ⚠️ ÜRETİM PUANI GÜVEN KATSAYISIYLA ÖLÇEKLENİR (lib/audit.ts): Flashcard
+   * beyanı doğrulanmıyor, çocuk cevabı gördükten sonra "biliyordum" diyor.
+   * 20 soruda bir gelen denetim kartı bu beyanın ne kadar tuttuğunu ölçer ve
+   * puan ona göre kırpılır. Taban MIN_GUVEN — en güvenilmez çocukta bile
+   * Flashcard bir oyun cevabı kadar değer taşır, DEĞERSİZ olmaz.
+   * ⚠️ TANIMA PUANI ŞIK SAYISIYLA ölçeklenir: 2 şıklı doğru cevap 4 şıklının
+   * yarısı kadar kanıt taşır (bkz. sansPayi) — 2 şıkta şans %50. Yani yalnız
+   * Şimşek (2 şık) oynayan çocuk L5'e 6 değil 12 ayrı günde ulaşır.
+   */
+  const kanitPuani = uretim
+    ? MASTERY.PRODUCTION * auditReliability()
+    : MASTERY.RECOGNITION * sansPayi(meta?.optionCount);
   if (correct) {
     if (yeniGunDogru) {
       e.step = (e.step ?? 0) + 1;
       // Ustalık puanı da yalnız FARKLI GÜNDE birikir — aynı oturumda
       // üst üste doğru yapmak ustalık kanıtı değildir.
-      // ⚠️ ÜRETİM PUANI GÜVEN KATSAYISIYLA ÖLÇEKLENİR (lib/audit.ts): Flashcard
-      // beyanı doğrulanmıyor, çocuk cevabı gördükten sonra "biliyordum" diyor.
-      // 20 soruda bir gelen denetim kartı bu beyanın ne kadar tuttuğunu ölçer
-      // ve puan ona göre kırpılır. Taban MIN_GUVEN — en güvenilmez çocukta bile
-      // Flashcard bir oyun cevabı kadar değer taşır, DEĞERSİZ olmaz.
-      e.mastery = (e.mastery ?? 0)
-        + (uretim
-            ? MASTERY.PRODUCTION * auditReliability()
-            // ⚠️ Tanıma puanı ŞIK SAYISIYLA ölçeklenir: 2 şıklı doğru cevap
-            // 4 şıklının yarısı kadar kanıt taşır (bkz. sansPayi).
-            : MASTERY.RECOGNITION * sansPayi(meta?.optionCount));
+      e.mastery = (e.mastery ?? 0) + kanitPuani;
+      e.dayEvidence = kanitPuani;
+    } else if (e.dayEvidence !== undefined && kanitPuani > e.dayEvidence) {
+      // ⚠️ GÜNÜN **EN İYİ** KANITI SAYILIR, İLK KANITI DEĞİL.
+      // Puan günde bir kez birikiyor; hangi cevabın sayılacağını SIRA
+      // belirlerse ölçüm çarpılıyordu: çocuk sabah Şimşek'te (2 şık, ¼ puan)
+      // doğru yapıp öğleden sonra Flashcard'da harfi ÜRETİRSE (1 puan) o gün
+      // yine ¼ ile kapanıyordu — daha güçlü kanıt sırf sonra geldiği için
+      // yok sayılıyordu. Şimdi aradaki fark ekleniyor: gün, o gün verilen
+      // en güçlü kanıt kadar sayar. Tersi olamaz — zayıf kanıt güçlüyü
+      // düşürmez, `>` karşılaştırması bunu garanti eder.
+      // ⚠️ `undefined` kontrolü göç içindir: bu alan eklenmeden önce kaydı
+      // olan çocukta o günün puanı zaten verilmiş olabilir; bilinmiyorsa
+      // yeniden vermek yerine atlanır (fazladan puan yazmak sahte ustalık
+      // üretir, eksik yazmak yalnız bir günlük gecikme).
+      e.mastery = (e.mastery ?? 0) + (kanitPuani - e.dayEvidence);
+      e.dayEvidence = kanitPuani;
     }
     e.lastCorrectDay = bugun;
     e.stab = wasFirst && !yeniGunDogru ? HL_FIRST_WRONG : stabForStep(e.step ?? 1);

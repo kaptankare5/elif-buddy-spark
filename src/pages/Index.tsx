@@ -85,7 +85,7 @@ const Index = () => {
 
         {/* Marka + hero — İslami yıldız desenli zümrüt bant */}
         <div className="mb-4 -mx-4 rounded-b-3xl bg-hero-emerald px-4 pb-5 pt-14 text-center shadow-card animate-bounce-in">
-          <div className="text-6xl font-arabic mb-1 leading-[1.3] text-white/95 text-shadow-soft">ﺇﻗﺮﺃ</div>
+          <div className="text-6xl font-arabic mb-1 leading-[1.3] text-white/95 text-shadow-soft">اِقْرَأْ</div>
           <h1 className="mb-0.5 text-4xl font-extrabold tracking-tight text-white text-shadow-soft">
             Elifbâ
           </h1>

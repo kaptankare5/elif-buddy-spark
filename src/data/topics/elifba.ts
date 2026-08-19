@@ -578,7 +578,7 @@ const MED_EKSTRA: Array<[string, string, number]> = [
   ["مَا", "mâ", 3],   // 3.890
   ["نَا", "nâ", 3],   // 3.351
   ["وَا", "vâ", 3],   // 2.641
-  ["آ", "â", 3],      // 2.244 — medli elif (uzatmalı hemze)
+  ["اٰ", "â", 3],      // 2.244 — medli elif (Türk imlâsı: elif + hançer elif)
   ["هَا", "hâ", 3],   // 1.956
   ["فِي", "fî", 3],   // 1.794
   ["لُو", "lû", 3],   // 1.563
@@ -614,7 +614,11 @@ function medAudio(ar: string): string | undefined {
 // Ses: med-NN-{fetha|esre|otre}.mp3 — 28 × 3 = 84 kayıt diskte tam.
 const MED_FORMS: Array<{ suf: "fetha" | "esre" | "otre"; mark: string; harf: string }> = [
   { suf: "fetha", mark: "َ", harf: "ا" },
-  { suf: "esre", mark: "ِ", harf: "ى" },
+  // ⚠️ MED YÂSI NOKTALI (ي), NOKTASIZ (ى) DEĞİL. Noktasız "ى" (elif-i
+  // maksûre) yalnız kelime SONUNDA ve "â" okunduğunda kullanılır
+  // (وَتَعَالٰى). Uzatma yâsı Türkiye mushafında hep noktalıdır — ف۪ي,
+  // الرَّح۪يمِ, اَلَّذ۪ي. "بِى" yazımı çocuğa yanlış harf öğretiyordu.
+  { suf: "esre", mark: "ِ", harf: "ي" },
   { suf: "otre", mark: "ُ", harf: "و" },
 ];
 
@@ -632,15 +636,17 @@ const t6_med: ContentTopic = {
   parent: P,
   title: "7. Med Harfleri",
   description: "Elif, vav ve ye ile uzatma",
-  emoji: "ﺁ",
+  // Rozet de Türk imlâsında: "ﺁ" (madda'lı bitişik biçim) yerine اٰ.
+  emoji: "اٰ",
   practiceMode: "visual",
   gridCols: 3,
   items: [
     ...LETTERS.flatMap((l) =>
       MED_FORMS.map((m) => {
         const sp = `${l.cons}${medVowel(l.thick, m.suf)}`;
-        // Elif + fetha + elif yazılmaz; medli elif "آ" ile gösterilir.
-        const ar = l.n === 1 && m.suf === "fetha" ? "آ" : l.iso + m.mark + m.harf;
+        // Elif + fetha + elif yazılmaz; medli elif Türk mushafında "اٰ"
+        // (elif + hançer elif) ile gösterilir — "آ" Medine imlâsıdır.
+        const ar = l.n === 1 && m.suf === "fetha" ? "اٰ" : l.iso + m.mark + m.harf;
         return {
           id: `l6-${pad2(l.n)}-${m.suf}`,
           label: sp,
@@ -677,17 +683,31 @@ const t6_med: ContentTopic = {
 // beklenen sırayla birebir örtüşüyor —
 //   bedel 1.2 · tabiî 1.4 · muttasıl 3.3 · muttasıl 3.1 · uzatmasız 1.4 ·
 //   muttasıl 3.5 · LÂZIM 5.3 · LÂZIM+şedde 4.1 sn
-// ⚠️ Kesimde 9 parça çıkıyordu: şeddeli حَآجُّوكَ duraklamadan ikiye
+// ⚠️ Kesimde 9 parça çıkıyordu: şeddeli حَٓاجُّوكَ duraklamadan ikiye
 // bölünüyordu (şedde kayıtlarındaki tuzağın aynısı). d=0.8 ile 8'e iniyor.
+// ⚠️ İMLÂ **TÜRKİYE (DİYANET) MUSHAFINA** GÖRE — Medine/Suudi imlâsıyla
+// karıştırma (kullanıcı şartı). Üç fark bu kartların hepsini etkiliyor:
+//   1. KELİME BAŞINDA ELİF ÜSTÜNDE HEMZE ÇİZİLMEZ: أُ إِ أَ diye yazılmaz,
+//      düz elif + hareke yazılır (اُ اِ اَ) — اَنْعَمْتَ · اُو۫تُوا · الْاَبْتَرُ.
+//      ⚠️ AMA KELİME İÇİNDE/SONUNDA HEMZE ÇİZİLİR: اِقْرَأْ · فَأْتِنَا ·
+//      الْمَلَأُ · شَانِئَكَ · الْمُؤْمِنُونَ. Kuralı "hemze hiç yok" diye
+//      genelleştirmek de yanlış olur (bir kez yapıp geri alındı).
+//   2. MED İŞARETİ AYRI BİR HARF DEĞİL: "آ" (tek kod noktası) kullanılmaz.
+//      Uzatma, kendinden önceki harfin HAREKESİNDEN SONRA gelen ٓ (U+0653)
+//      ile gösterilir, elif düz kalır: حَٓا · بَٓا · ضَّٓا. Kullanıcı tespiti
+//      buydu — "uzatma var ama fethası yok": eski "حَآ" yazımında fetha ile
+//      uzatma tek gliflenip fetha kayboluyordu.
+//   3. MEDD-İ BEDEL (kelime başı "â") elif + hançer elif ile yazılır: اٰ.
+// Kaynak: Diyanet mushaf metni (kuran.diyanet.gov.tr).
 const ASAR: Array<[string, string]> = [
-  ["آمَنَ", "âmene"],            // 2:285 — medd-i bedel
-  ["مَالِكِ", "mâliki"],          // 1:4  — medd-i tabiî
-  ["يُرَآءُونَ", "yürâûne"],       // 4:142 — medd-i muttasıl
-  ["أُولٰٓئِكَ", "ulâike"],        // yaygın — medd-i muttasıl
-  ["الْمَلَأُ", "el-mele'ü"],      // 7:60 — hemze var ama MED YOK (kasr)
-  ["آبَآؤُنَا", "âbâunâ"],         // 2:170 — medd-i muttasıl
-  ["الضَّآلِّينَ", "dâllîn"],      // 1:7  — medd-i lâzım (6 hareke)
-  ["حَآجُّوكَ", "hâccûke"],        // 3:20 — medd-i lâzım + şedde
+  ["اٰمَنَ", "âmene"],             // 2:285 — medd-i bedel (اٰ)
+  ["مَالِكِ", "mâliki"],           // 1:4  — medd-i tabiî
+  ["يُرَٓاؤُ۫نَ", "yürâûne"],        // 4:142 — medd-i muttasıl
+  ["اُو۬لٰٓئِكَ", "ulâike"],          // 2:5  — medd-i muttasıl
+  ["الْمَلَأُ", "el-mele'ü"],       // 7:60 — kelime SONU hemze çizilir; MED YOK (kasr)
+  ["اٰبَٓاؤُ۬نَا", "âbâunâ"],         // 7:70 — medd-i bedel + muttasıl
+  ["الضَّٓالّ۪ينَ", "dâllîn"],        // 1:7  — medd-i lâzım (6 hareke)
+  ["حَٓاجُّوكَ", "hâccûke"],         // 3:20 — medd-i lâzım + şedde
 ];
 
 const t7_asar: ContentTopic = {
@@ -695,7 +715,8 @@ const t7_asar: ContentTopic = {
   parent: P,
   title: "8. Âsar, Med ve Kasr",
   description: "Uzatma işaretleri — videoyu izle",
-  emoji: "ﻵ",
+  // Rozet, konunun kendi konusu olan MED İŞARETİNİ gösterir (مَٓا).
+  emoji: "مَٓا",
   practiceMode: "visual",
   gridCols: 2,
   noPractice: true,
@@ -782,7 +803,7 @@ const t9_zamir: ContentTopic = {
     { ar: "بِاللّٰهِ", sp: "billâhi" },
     { ar: "مَعَ اللّٰهِ", sp: "meallâhi" },
     { ar: "قُلِ اللَّهُمَّ", sp: "kulillâhümme" },
-    { ar: "فَإِنَّ اللّٰهَ", sp: "feinnallâhe" },
+    { ar: "فَاِنَّ اللّٰهَ", sp: "feinnallâhe" },
     { ar: "لَهُ", sp: "lehû" },
     { ar: "لَهُمْ", sp: "lehüm" },
     { ar: "بِهِ", sp: "bihî" },
@@ -813,7 +834,7 @@ const t10_elif_lam: ContentTopic = {
     { ar: "اَلشَّمْسُ", sp: "eş-şemsü" },
     { ar: "اَلرَّحْمٰنُ", sp: "er-Rahmân" },
     { ar: "اَلْحَمْدُ", sp: "el-hamdü" },
-    { ar: "وَيَسِّرْ لِى", sp: "ve yessir lî" },
+    { ar: "وَيَسِّرْ لِي", sp: "ve yessir lî" },
     { ar: "فَطَهِّرْ", sp: "fetahhir" },
     { ar: "وَاسْتَغْفِرْهُ", sp: "vestağfirhü" },
     { ar: "رَبِّ", sp: "Rabbi" },

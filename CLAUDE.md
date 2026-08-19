@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 273 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 277 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -70,13 +70,24 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   ب ت ث · ج ح خ · د ذ · ر ز · س ش · ص ض · ط ظ · ع غ · ف ق · م ه · ن ي · و).
   Bölüm ADLARI iki tarafta da sade ("N. Bölüm") — aile etiketi YOK
   (kullanıcı şartı). Harf sırası (LETTERS) hiç değişmedi.
-- ⚠️ **TÜRK ELİFBÂSI — hemze KULLANILMAZ.** Harekeli elif hep DÜZ elifle
-  yazılır: `اَ اِ اُ`. Arapça imlâda kelime başı elif teknik olarak hemzedir
-  (`أَ إِ أُ`) ama Diyanet Elifbâ kitabı çocuğa düz elifle öğretir; iki farklı
-  şekil göstermek karıştırır. Cezm ve şedde ön ekleri bu yüzden düzeltildi
-  (önce fetha düz elifle, esre/ötre hemzeyle yazılıyordu — kendi içinde de
-  tutarsızdı). İSTİSNA: gerçek Kur'an ibareleri (`فَإِنَّ اللّٰهَ`) ve medli
-  elif `آ` — onlar doğru imlâdır, dokunma.
+- ⚠️ **İMLÂ TÜRKİYE (DİYANET) MUSHAFINA GÖRE — Medine imlâsı DEĞİL.**
+  Kullanıcı şartı; kaynak `kuran.diyanet.gov.tr`. Dört kural:
+  1. **KELİME BAŞINDA hemze ÇİZİLMEZ**: `أَ إِ أُ` değil düz elif + hareke
+     `اَ اِ اُ` (`اَنْعَمْتَ` · `اُو۫تُوا` · `الْاَبْتَرُ` · `فَاِنَّ اللّٰهَ`).
+     Cezm/şedde ön ekleri bu yüzden düzeltilmişti.
+  2. ⚠️ **AMA KELİME İÇİNDE/SONUNDA hemze ÇİZİLİR**: `اِقْرَأْ` · `فَأْتِنَا`
+     · `الْمَلَأُ` · `شَانِئَكَ` · `الْمُؤْمِنُونَ`. Kuralı "hemze hiç yok"
+     diye genelleştirmek YANLIŞ — bir kez `الْمَلَأُ` → `الْمَلَاُ` yapılıp
+     geri alındı. Kürsülü hemzeye (`ؤ ئ ء`) hiç dokunma.
+  3. **MED İŞARETİ AYRI HARF DEĞİL**: `آ` (U+0622) kullanılmaz. Uzatma,
+     önceki harfin HAREKESİNDEN SONRA gelen `ٓ` (U+0653) ile gösterilir,
+     elif düz kalır: `حَٓاجُّوكَ` · `اٰبَٓاؤُ۬نَا` · `الضَّٓالّ۪ينَ`.
+     Kullanıcı tespiti buydu: "uzatma var ama fethası yok" — eski `حَآ`
+     yazımında fetha ile uzatma tek glife binip fetha kayboluyordu.
+     Kelime başı "â" (medd-i bedel) ise elif + hançer elif: `اٰمَنَ`, `اٰ`.
+  4. **MED YÂSI NOKTALI**: `بِي` (`بِى` değil). Noktasız `ى` yalnız kelime
+     SONUNDA ve "â" okunduğunda kullanılır (`وَتَعَالٰى`); uzatma yâsı
+     mushafta hep noktalı (`ف۪ي` · `اَلَّذ۪ي` · `الرَّح۪يمِ`).
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
   hareke okunuşları üretilir (kalın 7 harf a/ı/u; Râ karışık ra/ri/ru;
   gerisi e/i/ü). Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
@@ -187,6 +198,14 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   ikisi de her yöne aktarılıyor, üretim daha az tekrarla). Tavan yerine KUR:
   oyun daha uzun yoldan aynı yere varır. Ölçüm (40 gün × 30 soru × 6 çocuk):
   ⭐ yalan oranı Karışık %16.3 → **%5.0** (MIN_DAYS tabanıyla daha da aşağı).
+  ⚠️ **GÜNÜN EN İYİ KANITI SAYILIR, İLK KANITI DEĞİL** (`dayEvidence`):
+  puan günde bir kez birikiyor, dolayısıyla hangi cevabın sayılacağını SIRA
+  belirliyordu — sabah Şimşek'te (2 şık, ¼ puan) doğru yapan çocuk öğleden
+  sonra Flashcard'da harfi ÜRETSE bile gün ¼ ile kapanıyordu. Artık fark
+  ekleniyor; zayıf cevap güçlüyü DÜŞÜRMEZ. (Kullanıcı sorusu "L4→L5'te de
+  şık sayısı var mı" — var: `sansPayi` tanıma puanını ölçekliyor, yalnız
+  2 şıkla oynayan çocuk eşiğe 6 değil 12 ayrı günde varır. Bekçi:
+  `gunlukKanit.test.ts`.)
   ⚠️ `MASTERY.EPS` kayan nokta içindir: `6 × ½ = 1.9999…` eşiği tam sınırda
   bloke ediyordu.
 - ⚠️ **ARALIKLI TEKRAR TAKVİMİ** (`SPACING`, srs.ts): **AYNI GÜN SAYILMAZ.**
@@ -496,6 +515,14 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   hiç dönmüyordu — adı vardı, işlevi yoktu.
   Ağırlık daha yükseğe çekilmez: tahtayı tek harfle doldurmak üçlüleri
   kendiliğinden oluşturur, düşünmek kalmaz.
+- ⚠️ **SAYAÇLAR HATAYLA SIFIRLANMAZ** (kullanıcı itirazı): Kutu Boşalt'ın
+  sayacı "hatasız zincir" diye adlandırılmıştı. Burası ÖĞRENME uygulaması —
+  yanlış cevap ölçüm verisidir (SRS seviyeyi, karışıklık ısısını ondan
+  besliyor); hatayı görünür biçimde cezalandıran sayaç çocuğu emin olmadığında
+  denemekten caydırır ve yıldız kuralıyla da çelişir ("kazanılanı kaybetme
+  korkusu tekrar oynamayı engelliyor"). Sayaç artık boşaltılan kutu sayısı,
+  yalnız İLERİ gider. (Not: `tahtaHatasizRef` hiçbir yerde `false`
+  yapılmıyordu — etiket yanlıştı, davranış zaten kümülatifti.)
 - ⚠️ **GÖREVLER KAÇIRMA CEZASIZ** (`gorevler.ts`, Koşusu): gün değişince
   yenilenir, "kaybettin" hissi verilmez. Mesafe görevi oyun BİTİNCE işlenir —
   `gorevIlerlet` localStorage'a yazıyor, saniyede 60 kez yazmak telefonu kilitler.

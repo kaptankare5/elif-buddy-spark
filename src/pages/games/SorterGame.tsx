@@ -68,17 +68,19 @@ const SorterGame = () => {
   const [board, setBoard] = useState(() => buildBox(ask.ayriAdlar));
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [progress, setProgress] = useState(0);
-  // ⚠️ K-1 ZİNCİR: oyun sonsuz yeni tahta üretiyordu ve hiçbir şey birikmiyordu
-  // — sonsuz bir iş bandı. Zincir o sonsuzluğa bir eksen verir: art arda kaç
-  // tahtayı HATASIZ boşalttın. Hata zinciri kırar.
-  const [zincir, setZincir] = useState(0);
-  // ⚠️ REF, STATE DEĞİL: bu bayrağı yalnız "tahta bitti" effect'i okuyor ve o
-  // effect `won` değişince çalışıyor. State olsaydı bağımlılık listesine
-  // girmesi gerekirdi (eslint haklı olarak uyardı) ve girince her hatada
-  // effect yeniden kurulurdu. Ref bayat kapanış riskini de kaldırır.
-  const tahtaHatasizRef = useRef(true);
   /**
-   * ⚠️ REKOR BU OYUNDA "EN UZUN ZİNCİR".
+   * ⚠️ SAYAÇ "HATASIZ ZİNCİR" DEĞİL, BOŞALTILAN TAHTA SAYISIDIR — hata onu
+   * SIFIRLAMAZ.
+   *
+   * Önce hatasız zincir olarak yazılmıştı (art arda kaç tahtayı hiç yanlış
+   * yapmadan boşalttın). Kullanıcı itirazı haklı: burası bir ÖĞRENME
+   * uygulaması, yanlış cevap ölçüm verisidir — SRS seviyeyi ondan hesaplıyor,
+   * karışıklık ısısı ondan besleniyor. Hatayı görünür biçimde CEZALANDIRAN
+   * bir sayaç çocuğu emin olmadığında denemekten caydırır (5-8 yaşta
+   * kaybetme korkusu deneme davranışını doğrudan kısar) ve uygulamanın kendi
+   * kuralıyla da çelişiyordu: yıldızlar bilerek geriye gitmiyor ("kazanılanı
+   * kaybetme korkusu tekrar oynamayı engelliyor", bolumYildiz.ts).
+   * Şimdi sayaç yalnız İLERİ gider; hata yalnız SRS'e yazılır, ödülü silmez.
    *
    * Kutu Boşalt'ın BİTİŞİ YOK (tahta boşalınca yenisi kuruluyor), o yüzden
    * `useOyunSonu` kancası burada işlemez — kanca bir `bitti` bayrağının
@@ -88,7 +90,8 @@ const SorterGame = () => {
    * serisi hiç ilerlemiyordu (`useOyunSonu` import edilmiş ama hiç
    * çağrılmamıştı — ölü import).
    */
-  const zincirRef = useRef(0);
+  const [tahta, setTahta] = useState(0);
+  const tahtaRef = useRef(0);
   const [rapor, setRapor] = useState<SonucRaporu | null>(null);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
@@ -128,16 +131,15 @@ const SorterGame = () => {
     if (!won) return;
     sfx("bitis");
     playFeedback(true);
-    // K-1: tahta hatasız bittiyse zincir uzar, yoksa kırılır.
-    const yeniZincir = tahtaHatasizRef.current ? zincirRef.current + 1 : 0;
-    zincirRef.current = yeniZincir;
-    setZincir(yeniZincir);
-    setRapor(oyunBitti("sorter", yeniZincir, { yon: "yuksek", birim: "tahta" }));
+    // Tahta sayacı yalnız ileri gider (yukarıdaki nota bak).
+    const yeniTahta = tahtaRef.current + 1;
+    tahtaRef.current = yeniTahta;
+    setTahta(yeniTahta);
+    setRapor(oyunBitti("sorter", yeniTahta, { yon: "yuksek", birim: "tahta" }));
     const t = setTimeout(() => {
       setBoard(buildBox(ask.ayriAdlar));
       setTarget(null);
       setProgress(0);
-      tahtaHatasizRef.current = true;
       setLevel((l) => l + 1);
     }, 2200);
     return () => clearTimeout(t);
@@ -152,7 +154,7 @@ const SorterGame = () => {
   const reset = () => {
     setBoard(buildBox(ask.ayriAdlar)); setScore(0); setBusy(false); setTarget(null);
     setProgress(0); setLevel(1);
-    zincirRef.current = 0; setZincir(0); setRapor(null); tahtaHatasizRef.current = true;
+    tahtaRef.current = 0; setTahta(0); setRapor(null);
   };
 
   // PC: 1-9 tuşlarıyla kutu seçilebilsin (boşalmış kutu atlanır).
@@ -224,10 +226,10 @@ const SorterGame = () => {
         <div className="mb-3 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-primary/30">
             <div className="text-[10px] font-bold text-muted-foreground">
-              {zincir > 0 ? "Hatasız zincir" : "Seviye"}
+              {tahta > 0 ? "Boşalan kutu" : "Seviye"}
             </div>
             <div className="text-xl font-extrabold text-primary tabular-nums">
-              {zincir > 0 ? <>🔥 {zincir}</> : level}
+              {tahta > 0 ? <>🔥 {tahta}</> : level}
             </div>
           </div>
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-warning/30">
@@ -294,7 +296,7 @@ const SorterGame = () => {
             <div className="text-6xl mb-2">🎉</div>
             <p className="text-xl font-extrabold">Kutu boşaldı!</p>
             <p className="mt-1 text-sm font-bold text-muted-foreground">
-              🔥 {zincir} tahta üst üste
+              🔥 {tahta}. kutuyu boşalttın
               {rapor?.rekor && <span className="ml-1 text-warning">· 🏆 rekor!</span>}
               {!rapor?.rekor && rapor?.oncekiEnIyi != null && (
                 <span className="ml-1">· rekorun {rapor.oncekiEnIyi}</span>
