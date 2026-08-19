@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { rampa, zorlukAyari } from "@/lib/zorluk";
 import { Heart, Volume2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { sfx, titre } from "@/lib/juice";
+import { useOyunSonu } from "@/lib/oyunSonucu";
+import { OyunSonuKarti } from "@/components/OyunSonuKarti";
 
 /**
  * 🛤️ İki Yol Koşusu — pseudo-3D perspektifli koşu oyunu.
@@ -43,6 +45,7 @@ const LaneRunnerGame = () => {
   const zorluk = useRef(zorlukAyari());
   const [lives, setLives] = useState(zorluk.current.can);
   const [gameOver, setGameOver] = useState(false);
+  const rapor = useOyunSonu("lane", gameOver, score, { birim: "puan" });
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
   const [paused, setPaused] = useState(true);
@@ -434,14 +437,7 @@ const LaneRunnerGame = () => {
           )}
 
           {gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
-              <div className="text-5xl mb-2">🏁</div>
-              <div className="text-2xl font-extrabold text-destructive mb-1">Oyun Bitti</div>
-              <div className="text-sm font-bold text-muted-foreground mb-4">Puan: {score}</div>
-              <button onClick={reset} className="rounded-full bg-primary text-primary-foreground px-8 py-3 font-extrabold shadow-elegant">
-                🔁 Tekrar Oyna
-              </button>
-            </div>
+            <OyunSonuKarti skor={score} birim="puan" rapor={rapor} onTekrar={reset} />
           )}
         </div>
 

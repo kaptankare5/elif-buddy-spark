@@ -24,6 +24,8 @@ import { sfx, titre } from "@/lib/juice";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Volume2, Heart, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Pause, Play } from "lucide-react";
+import { useOyunSonu } from "@/lib/oyunSonucu";
+import { OyunSonuKarti } from "@/components/OyunSonuKarti";
 
 // ---- sabitler ----
 // Panolar büyütülünce (özellikle boy) şeritler de genişlemeli — yoksa komşu
@@ -937,6 +939,7 @@ const SubwayGame = () => {
   const [paused, setPaused] = useState(true);
   const [started, setStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const rapor = useOyunSonu("subway", gameOver, score, { birim: "puan" });
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
   const [question, setQuestion] = useState<string | null>(null);
@@ -1473,17 +1476,7 @@ const SubwayGame = () => {
 
           {/* oyun bitti */}
           {gameOver && (
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/95">
-              <div className="text-4xl mb-2">😢</div>
-              <div className="text-2xl font-extrabold text-destructive mb-2">Oyun Bitti</div>
-              <div className="text-sm font-bold text-muted-foreground mb-4">Puan: {score}</div>
-              <button
-                onClick={reset}
-                className="rounded-full bg-primary text-primary-foreground px-6 py-3 font-extrabold shadow-soft active:scale-95"
-              >
-                Tekrar Oyna
-              </button>
-            </div>
+            <OyunSonuKarti skor={score} birim="puan" rapor={rapor} onTekrar={reset} ek={<>{correctCount} harf bildin</>} />
           )}
         </div>
 

@@ -5,6 +5,10 @@ import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { gamePool, pickCluster, pickWrongs, shuffle } from "./_shared";
 import { tahtaBoyu } from "@/lib/zorluk";
+import { agirlikliSec, siparisAc, siparisIsle, type Siparis } from "@/lib/siparis";
+import { SiparisSeridi } from "@/components/SiparisSeridi";
+import { useOyunSonu } from "@/lib/oyunSonucu";
+import { OyunSonuKarti } from "@/components/OyunSonuKarti";
 import { recordLetterMastery } from "@/data/srs";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
@@ -18,6 +22,8 @@ import { sfx, titre } from "@/lib/juice";
 const COLS = 5;
 const ROWS = 6;
 const TYPES_COUNT = 4;
+/** M-2: bir oturumda kaç hamle. Match-3 gerilimi hamle kıtlığından gelir. */
+const HAMLE_BUTCESI = 25;
 
 /**
  * Zorluğa göre harf ÇEŞİDİ: Kolay 3, Orta 4, Zor 5.
@@ -35,11 +41,16 @@ const nid = () => ++_uid;
 
 function rand<T>(a: T[]): T { return a[Math.floor(Math.random() * a.length)]; }
 
+// ⚠️ SİPARİŞ AĞIRLIĞI BURADAN OKUNUR: `makeCell` saf bir fonksiyon, React
+// state'ine erişemiyor. Modül düzeyindeki bu kutu, aktif siparişi doğum
+// mantığına taşır — sipariş edilen harf daha sık düşer (bkz. siparis.ts).
+let aktifSiparis: Siparis | null = null;
+
 function makeCell(types: ContentItem[], avoid?: { left?: ContentItem | null; left2?: ContentItem | null; up?: ContentItem | null; up2?: ContentItem | null }): Cell {
   let it: ContentItem;
   let tries = 0;
   do {
-    it = rand(types);
+    it = agirlikliSec(types, aktifSiparis);
     tries++;
   } while (
     tries < 20 && (
@@ -154,6 +165,12 @@ const Match3Game = () => {
   const [busy, setBusy] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
   const [quiz, setQuiz] = useState<{ target: ContentItem; options: ContentItem[] } | null>(null);
+  const [siparis, setSiparis] = useState<Siparis | null>(() => { const s0 = siparisAc(types); aktifSiparis = s0; return s0; });
+  const [siparisParla, setSiparisParla] = useState(false);
+  // M-2 HAMLE BÜTÇESİ: her hamlenin bedeli olsun. Bitince oyun kapanır.
+  const [kalanHamle, setKalanHamle] = useState(HAMLE_BUTCESI);
+  const bitti = kalanHamle <= 0;
+  const rapor = useOyunSonu("match3", bitti, score, { birim: "puan" });
 
   useEffect(() => {
     const h = () => {
@@ -203,6 +220,18 @@ const Match3Game = () => {
         // ⚠️ ZİNCİR DERİNLEŞTİKÇE TİZLEŞİR: art arda patlayan gruplarda aynı
         // sesi duymak zinciri görünmez kılıyor; yükselen perde "devam ediyor"
         // diyor. Match-3'lerin klasik kuralı.
+        // M-1: bu eşleşme siparişi karşıladı mı?
+        {
+          const so = siparisIsle(aktifSiparis, item.id, types);
+          if (so.isabet) {
+            setScore((sc) => sc + group.length);     // çift puan (aşağıdaki normal puanla birlikte)
+            setSiparisParla(true);
+            setTimeout(() => setSiparisParla(false), 700);
+          }
+          if (so.tamam) { sfx("seri"); void playItem(item); }
+          aktifSiparis = so.siparis;
+          setSiparis(so.siparis);
+        }
         sfx("patlat", { seri: cascadeIndex * 2 });
         titre(cascadeIndex > 0 ? "orta" : "hafif");
         setScore((s) => s + group.length);
@@ -238,6 +267,7 @@ const Match3Game = () => {
     swapped[sel.r][sel.c] = swapped[r][c];
     swapped[r][c] = a;
     setGrid(swapped);
+    setKalanHamle((h) => h - 1);
     await new Promise((res) => setTimeout(res, 200));
     const matches = findMatches(swapped);
     if (!matches.length) {
@@ -278,6 +308,8 @@ const Match3Game = () => {
 
   const reset = () => {
     const t = pickCluster(gamePool(), cesitSayisi());
+    const s0 = siparisAc(t); aktifSiparis = s0; setSiparis(s0);
+    setKalanHamle(HAMLE_BUTCESI);
     setTypes(t); setGrid(buildGrid(t)); setScore(0); setSelected(null); setBusy(false);
     setMoveCount(0); setQuiz(null);
   };
@@ -287,19 +319,30 @@ const Match3Game = () => {
       <main className="container mx-auto max-w-xl px-4 pb-16">
         <PageHeader title="🍬 Üçlü Eşleştir" backTo="/oyunlar" centered onReset={reset} />
 
+        <SiparisSeridi siparis={siparis} parla={siparisParla} />
+
         <div className="mb-3 grid grid-cols-2 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-primary/30">
             <div className="text-[10px] font-bold text-muted-foreground">Eşleşme</div>
             <div className="text-xl font-extrabold text-primary">{score}</div>
           </div>
-          <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-warning/30 flex items-center justify-center gap-1">
-            {types.map((t) => <span key={t.id} className="text-2xl"><EmojiView value={t.emoji} /></span>)}
+          <div className={cn(
+            "rounded-xl bg-card p-2 shadow-soft border-2",
+            kalanHamle <= 5 ? "border-destructive/60" : "border-warning/30",
+          )}>
+            <div className="text-[10px] font-bold text-muted-foreground">Hamle</div>
+            <div className={cn("text-xl font-extrabold tabular-nums",
+              kalanHamle <= 5 ? "text-destructive" : "text-warning")}>{kalanHamle}</div>
           </div>
         </div>
 
         <p className="text-center text-sm font-bold text-muted-foreground mb-2">
           Komşu kutuları yer değiştir — 3'lü dizilim patlasın!
         </p>
+
+        {bitti && (
+          <OyunSonuKarti skor={score} birim="eşleşme" rapor={rapor} onTekrar={reset} />
+        )}
 
         <div className="relative rounded-3xl bg-gradient-to-br from-topic-pink/30 to-warning/20 border-8 border-topic-pink/60 shadow-card p-2">
           <div

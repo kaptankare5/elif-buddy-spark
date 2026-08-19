@@ -9,6 +9,7 @@ import { gardenTease } from "@/lib/sessionEnd";
 import { gamePool } from "./_shared";
 import { useAskLayer } from "./_askUI";
 import { sureIcin } from "@/lib/zorluk";
+import { useOyunSonu } from "@/lib/oyunSonucu";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
@@ -28,6 +29,8 @@ const QuizGame = () => {
   const ask = useAskLayer();
   // Arka arkaya doğru — juice sesi her seferinde tizleşir (Mario para kuralı).
   const seri = useRef(0);
+  const [seriGoster, setSeriGoster] = useState(0);
+  const carpan = Math.min(3, 1 + Math.floor(seriGoster / 3));
   const [q, setQ] = useState<Q>(() => makeQ(ask.secenekler));
   const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState(0);
@@ -66,7 +69,11 @@ const QuizGame = () => {
     if (picked || time <= 0) return;
     setPicked(item.id);
     const correct = item.id === q.target.id;
-    if (correct) setScore((s) => s + 1);
+    // ⚠️ Q-1 SERİ ÇARPANI (Kahoot'un "ardışık doğru bonusu"): 12. doğru cevap
+    // 1. doğru cevapla aynı puanı verince ivme hissi oluşmuyordu. Çarpan 1→3
+    // arasında; yanlışta sıfırlanır. Tavan 3, yoksa puan anlamsızlaşıyor.
+    if (correct) { setScore((sc) => sc + carpan); setSeriGoster(seri.current + 1); }
+    else setSeriGoster(0);
     const responseMs = Date.now() - questionStartRef.current;
     recordGameAnswer(q.target, correct, {
       responseMs, gameId: "quiz",
@@ -82,9 +89,10 @@ const QuizGame = () => {
   };
 
   const ended = time <= 0;
+  const rapor = useOyunSonu("quiz", ended, score, { birim: "puan" });
   // Süre dolunca bekleyen telafi açılır
   useRemedyOnGameOver(ended);
-  const reset = () => { sureRef.current = sureIcin(60); setScore(0); setTime(sureRef.current); setQ(makeQ(ask.secenekler)); setPicked(null); };
+  const reset = () => { sureRef.current = sureIcin(60); seri.current = 0; setSeriGoster(0); setScore(0); setTime(sureRef.current); setQ(makeQ(ask.secenekler)); setPicked(null); };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary/40 to-background">
@@ -95,6 +103,11 @@ const QuizGame = () => {
           <div className="rounded-2xl bg-card p-3 text-center shadow-card border-2 border-warning/30">
             <div className="text-xs text-muted-foreground font-bold">Puan</div>
             <div className="text-2xl font-extrabold text-success">⭐ {score}</div>
+            {carpan > 1 && (
+              <div className="mt-0.5 text-[11px] font-extrabold text-warning animate-juice-pop" key={carpan}>
+                ×{carpan} seri!
+              </div>
+            )}
           </div>
           <div className="rounded-2xl bg-card p-3 text-center shadow-card border-2 border-info/30">
             <div className="text-xs text-muted-foreground font-bold">Süre</div>
@@ -106,7 +119,15 @@ const QuizGame = () => {
           <div className="rounded-3xl bg-card p-8 text-center shadow-card border-4 border-success/40 animate-bounce-in">
             <div className="text-7xl mb-3">🏆</div>
             <h2 className="text-2xl font-extrabold text-foreground mb-2">Tebrikler!</h2>
-            <p className="text-lg text-muted-foreground mb-3">Skorun: <span className="text-success font-extrabold">{score}</span></p>
+            {rapor?.rekor && (
+              <div className="mb-2 inline-block rounded-full bg-warning/20 px-3 py-1 text-xs font-extrabold text-warning">🏆 YENİ REKOR</div>
+            )}
+            <p className="text-lg text-muted-foreground mb-1">Skorun: <span className="text-success font-extrabold">{score}</span></p>
+            {rapor?.oncekiEnIyi != null && (
+              <p className="mb-3 text-sm font-bold text-muted-foreground">
+                {rapor.rekor ? <>eskisi {rapor.oncekiEnIyi}</> : <>rekorun {rapor.oncekiEnIyi}{rapor.kalan != null && <> · <span className="text-primary">{rapor.kalan} kaldı!</span></>}</>}
+              </p>
+            )}
             {/* Yüksek notada bitiş — Zeigarnik + bahçe teşviki (yarın geri getirir) */}
             <div className="mb-4 rounded-2xl bg-success/10 border-2 border-success/30 px-4 py-2.5 text-sm font-extrabold text-success">
               {teaseRef.current}

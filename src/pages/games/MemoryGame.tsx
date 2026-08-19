@@ -7,6 +7,7 @@ import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { useGameMode } from "@/lib/gameMode";
 import { tahtaBoyu } from "@/lib/zorluk";
+import { useOyunSonu } from "@/lib/oyunSonucu";
 import { gamePool, pickCluster, shuffle } from "./_shared";
 import { recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
@@ -45,14 +46,28 @@ const PAIRS = 6;
  * yani Kolay ile Orta AYNI tahtayı alıyordu (ölçüldü: 6 · 6 · 8) ve zorluk
  * bu oyunda hiçbir şey değiştirmiyordu.
  */
-function ciftSayisi(): number {
-  return Math.max(4, Math.floor(tahtaBoyu(PAIRS, 4, 8) / 2) * 2);
+function ciftSayisi(tur = 0): number {
+  // ⚠️ H-2 TUR ZİNCİRİ: Kolay'da 4 çiftle tahta 22 SANİYEDE bitiyordu ve
+  // sonrası boştu. Her turda bir çift eklenir; oturum 22 saniye değil birkaç
+  // dakika sürer. Tavan 10 — türün kuralı "kart sayısı çocuğun çalışma
+  // belleğine göre", sonsuz büyüyen tahta hafıza oyunu olmaktan çıkar.
+  const taban = Math.max(4, Math.floor(tahtaBoyu(PAIRS, 4, 8) / 2) * 2);
+  return Math.min(10, taban + tur);
+}
+
+/** ⚠️ H-1 YILDIZ: kusursuz oyun = çift sayısı kadar hamle. 1.5 katına kadar
+ *  3 yıldız, 2 katına kadar 2, sonrası 1. "Bitirdim" ile "iyi bitirdim" ayrı. */
+function yildiz(hamle: number, cift: number): number {
+  if (hamle <= cift * 1.5) return 3;
+  if (hamle <= cift * 2.2) return 2;
+  return 1;
 }
 
 const MemoryGame = () => {
   const [mode] = useGameMode();
   const isSuper = mode === "super";
-  const [cards, setCards] = useState<Card[]>(() => buildBoard(ciftSayisi()));
+  const [tur, setTur] = useState(0);
+  const [cards, setCards] = useState<Card[]>(() => buildBoard(ciftSayisi(0)));
   const [first, setFirst] = useState<Card | null>(null);
   const [busy, setBusy] = useState(false);
   const [moves, setMoves] = useState(0);
@@ -80,10 +95,24 @@ const MemoryGame = () => {
    */
   const ilkKartYeniSes = useRef(false);
 
+  /** H-2: aynı oturumda bir sonraki tahta — bir çift daha büyük. */
+  const sonrakiTur = () => {
+    const t = tur + 1;
+    setTur(t);
+    setCards(buildBoard(ciftSayisi(t))); setFirst(null); setBusy(false); setMoves(0);
+    matchCountRef.current = 0; setShowQuiz(false); acilanSesler.current = new Set();
+    eslesmeSeri.current = 0;
+  };
+
   const won = useMemo(() => cards.length > 0 && cards.every((c) => c.matched), [cards]);
+  const ciftAdet = cards.length / 2;
+  // ⚠️ HAMLE REKORUNDA "AZ İYİ": yön `dusuk`, yoksa "en iyi 40 hamle" gibi
+  // ters bir rekor çıkıyor.
+  const rapor = useOyunSonu("memory", won, moves, { yon: "dusuk", birim: "hamle" });
 
   const reset = () => {
-    setCards(buildBoard(ciftSayisi())); setFirst(null); setBusy(false); setMoves(0);
+    setTur(0);
+    setCards(buildBoard(ciftSayisi(0))); setFirst(null); setBusy(false); setMoves(0);
     matchCountRef.current = 0; setShowQuiz(false); acilanSesler.current = new Set();
   };
 
@@ -193,9 +222,24 @@ const MemoryGame = () => {
 
         {won && (
           <div className="rounded-3xl bg-card p-6 mb-4 text-center shadow-card border-4 border-success/40 animate-bounce-in">
-            <div className="text-5xl mb-2">🏆</div>
-            <p className="text-lg font-extrabold">Hepsini buldun! {moves} hamle</p>
-            <button onClick={reset} className="mt-3 rounded-full bg-primary px-5 py-2 font-bold text-primary-foreground">Tekrar Oyna</button>
+            <div className="text-3xl mb-1 tracking-widest">
+              {"⭐".repeat(yildiz(moves, ciftAdet))}
+              <span className="opacity-25">{"⭐".repeat(3 - yildiz(moves, ciftAdet))}</span>
+            </div>
+            <p className="text-lg font-extrabold">Hepsini buldun!</p>
+            <p className="text-sm font-bold text-muted-foreground">
+              {moves} hamle
+              {rapor?.rekor && <span className="ml-1 text-warning">· 🏆 rekor!</span>}
+              {!rapor?.rekor && rapor?.oncekiEnIyi != null && <span className="ml-1">· rekorun {rapor.oncekiEnIyi}</span>}
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <button onClick={sonrakiTur} className="rounded-full bg-primary px-5 py-3 font-extrabold text-primary-foreground shadow-card active:scale-95">
+                ▶️ Bir tahta daha ({ciftSayisi(tur + 1)} çift)
+              </button>
+              <button onClick={reset} className="rounded-full border-2 border-border bg-muted/40 px-5 py-2 text-sm font-extrabold text-muted-foreground active:scale-95">
+                Baştan başla
+              </button>
+            </div>
           </div>
         )}
 

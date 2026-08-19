@@ -38,6 +38,8 @@ import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Heart, Volume2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { sfx, titre } from "@/lib/juice";
+import { useOyunSonu } from "@/lib/oyunSonucu";
+import { OyunSonuKarti } from "@/components/OyunSonuKarti";
 
 /**
  * 🚀 Uzay Savaşı — eğitici nişancı.
@@ -104,6 +106,7 @@ const RunnerGame = () => {
   const zorluk = useRef(zorlukAyari());
   const [lives, setLives] = useState(zorluk.current.can);
   const [gameOver, setGameOver] = useState(false);
+  const rapor = useOyunSonu("runner", gameOver, score, { birim: "puan" });
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
   const [paused, setPaused] = useState(true);
@@ -228,8 +231,12 @@ const RunnerGame = () => {
         const t = targetRef.current;
         const ri = roundItemsRef.current;
         if (t && ri.length > 0) {
+          // ⚠️ U-1 — SORULAN HARF EKRANDA OLMAK ZORUNDA. Eskiden ekranda hedef
+          // yokken bile yalnız %55 olasılıkla gönderiliyordu: çocuk "şın'ı vur"
+          // duyup şın'ı hiç göremeden bekliyordu. Ölçüldü — ilk soruya kadar
+          // 22.9 saniye. Hedef yoksa KESİN gönderilir; varsa çeldirici gelir.
           const hasTarget = enemiesRef.current.some((e) => e.isTarget);
-          const putTarget = !hasTarget && Math.random() < 0.55;
+          const putTarget = !hasTarget;
           const others = ri.filter((p) => p.id !== t.id);
           const item = putTarget
             ? t
@@ -505,14 +512,7 @@ const RunnerGame = () => {
           )}
 
           {gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
-              <div className="text-5xl mb-2">💥</div>
-              <div className="text-2xl font-extrabold text-destructive mb-1">Oyun Bitti</div>
-              <div className="text-sm font-bold text-muted-foreground mb-4">Puan: {score}</div>
-              <button onClick={reset} className="rounded-full bg-primary text-primary-foreground px-8 py-3 font-extrabold shadow-elegant">
-                🔁 Tekrar Oyna
-              </button>
-            </div>
+            <OyunSonuKarti skor={score} birim="puan" rapor={rapor} onTekrar={reset} />
           )}
         </div>
 
