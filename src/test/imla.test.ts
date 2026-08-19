@@ -84,6 +84,20 @@ describe("imlâ — Türkiye (Diyanet) mushafı", () => {
     expect(metinler.length).toBeGreaterThan(300);
   });
 
+  /**
+   * ⚠️ KODLAMA DA MUSHAFLA AYNI OLMALI (NFC). Unicode kanonik sırası hareke →
+   * şedde; Diyanet metni de öyle kodlanmış (`الضَّٓالّ۪ينَ`). Şedde kartları
+   * ters sırada üretiliyordu (şedde → hareke). Ekranda fark YOK (iki kodlama
+   * piksel piksel aynı çiziliyor, ölçüldü) ama dizgiler eşit olmadığı için
+   * karşılaştırma, arama ve tekrar-eleme sessizce tutmuyor.
+   */
+  it("bütün metin NFC ile kodlanmış (mushafla aynı sıra)", () => {
+    const bozuk = metinler
+      .filter(([, t]) => t !== t.normalize("NFC"))
+      .map(([yer, t]) => `${yer}: "${t}"`);
+    expect(bozuk, `NFC dışı kodlama:\n${bozuk.join("\n")}`).toEqual([]);
+  });
+
   it("hiçbir kartta kural ihlali yok", () => {
     const kotu = metinler
       .map(([yer, t]) => [yer, t, imlaHatalari(t)] as const)
