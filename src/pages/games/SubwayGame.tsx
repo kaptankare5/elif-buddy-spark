@@ -21,9 +21,12 @@ import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer 
 import { useGameMode } from "@/lib/gameMode";
 import { zorlukAyari } from "@/lib/zorluk";
 import { sfx, titre } from "@/lib/juice";
+import { gorevIlerlet, useGorevler, gorevMetni } from "@/lib/gorevler";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Volume2, Heart, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Pause, Play } from "lucide-react";
+import { useOyunSonu } from "@/lib/oyunSonucu";
+import { OyunSonuKarti } from "@/components/OyunSonuKarti";
 
 // ---- sabitler ----
 // Panolar büyütülünce (özellikle boy) şeritler de genişlemeli — yoksa komşu
@@ -937,6 +940,18 @@ const SubwayGame = () => {
   const [paused, setPaused] = useState(true);
   const [started, setStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const rapor = useOyunSonu("subway", gameOver, score, { birim: "puan" });
+  const gorevler = useGorevler();
+  // ⚠️ MESAFE OYUN BİTİNCE İŞLENİR, her karede değil: `gorevIlerlet`
+  // localStorage'a yazıyor; saniyede 60 kez yazmak telefonu kilitler.
+  const mesafeYazildi = useRef(false);
+  useEffect(() => {
+    if (!gameOver) { mesafeYazildi.current = false; return; }
+    if (mesafeYazildi.current) return;
+    mesafeYazildi.current = true;
+    const m = Math.round(sim.current.D);
+    if (m > 0 && gorevIlerlet("mesafe", m).length > 0) sfx("seri");
+  }, [gameOver]);
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
   const [question, setQuestion] = useState<string | null>(null);
@@ -1142,6 +1157,7 @@ const SubwayGame = () => {
       playFeedback(true);
       void askRef.current.cevapSesi(gate.target!, true);
       if (!isSuper) { setFlash(true); setTimeout(() => setFlash(false), 450); } // normal modda ışık
+      if (gorevIlerlet("dogru", 1).length > 0) { sfx("seri"); titre("basari"); }
       setStreak((st) => {
         const n = st + 1;
         // Her 5 doğruda ayrı bir "seri" sesi — ilerleme duyulur olsun.
@@ -1196,6 +1212,7 @@ const SubwayGame = () => {
     coinSeri.current = t - coinSonZaman.current < 1200 ? coinSeri.current + 1 : 0;
     coinSonZaman.current = t;
     sfx("topla", { seri: coinSeri.current });
+    if (gorevIlerlet("altin", 1).length > 0) { sfx("seri"); titre("basari"); }
     setScore((sc) => sc + 2 * (sim.current.x2T > 0 ? 2 : 1));
   }, []);
 
@@ -1448,6 +1465,23 @@ const SubwayGame = () => {
           )}
 
           {/* başlangıç — ilk açılışta tam talimat */}
+          {/* S-1 GÖREV ŞERİDİ — başlamadan önce görünür: sonsuz koşuya yön verir. */}
+          {paused && !started && !gameOver && gorevler.length > 0 && (
+            <div className="absolute inset-x-3 top-3 z-20 rounded-2xl border-2 border-warning/50 bg-background/90 p-2.5 backdrop-blur-sm">
+              <div className="mb-1 text-[11px] font-extrabold text-warning">🎯 BUGÜNÜN GÖREVLERİ</div>
+              <div className="flex flex-col gap-1">
+                {gorevler.map((g) => (
+                  <div key={g.tur} className="flex items-center justify-between gap-2 text-[11px] font-bold">
+                    <span className={cn(g.bitti && "text-success line-through")}>{gorevMetni(g)}</span>
+                    <span className={cn("tabular-nums", g.bitti ? "text-success" : "text-muted-foreground")}>
+                      {g.bitti ? "✓" : `${g.ilerleme}/${g.hedef}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {paused && !started && !gameOver && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/85">
               <div className="text-5xl mb-2">🚄</div>
@@ -1473,17 +1507,7 @@ const SubwayGame = () => {
 
           {/* oyun bitti */}
           {gameOver && (
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/95">
-              <div className="text-4xl mb-2">😢</div>
-              <div className="text-2xl font-extrabold text-destructive mb-2">Oyun Bitti</div>
-              <div className="text-sm font-bold text-muted-foreground mb-4">Puan: {score}</div>
-              <button
-                onClick={reset}
-                className="rounded-full bg-primary text-primary-foreground px-6 py-3 font-extrabold shadow-soft active:scale-95"
-              >
-                Tekrar Oyna
-              </button>
-            </div>
+            <OyunSonuKarti skor={score} birim="puan" rapor={rapor} onTekrar={reset} ek={<>{correctCount} harf bildin</>} />
           )}
         </div>
 

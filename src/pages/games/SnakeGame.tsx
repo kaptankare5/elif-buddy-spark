@@ -14,6 +14,8 @@ import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Volume2, Eye } from "lucide-react";
+import { useOyunSonu } from "@/lib/oyunSonucu";
+import { OyunSonuKarti } from "@/components/OyunSonuKarti";
 
 const COLS = 14;
 const ROWS = 18;
@@ -76,6 +78,7 @@ const SnakeGame = () => {
   // Rampa DOĞRU sayısına bağlı (yem yemek değil, sınavı geçmek hızlandırır).
   const [dogru, setDogru] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+  const rapor = useOyunSonu("snake", gameOver, score, { birim: "puan" });
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
   const [paused, setPaused] = useState(true);
@@ -470,14 +473,7 @@ const SnakeGame = () => {
             </button>
           )}
           {gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-white/80 to-rose-100/90 backdrop-blur-sm">
-              <div className="text-7xl mb-2 animate-bounce-in">😵</div>
-              <div className="text-3xl font-black text-destructive mb-1 drop-shadow-sm">Oyun Bitti!</div>
-              <div className="text-sm font-extrabold text-muted-foreground mb-4">⭐ Puan: {score}</div>
-              <button onClick={reset} className="rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-7 py-3 font-black shadow-elegant border-2 border-white/40 active:scale-95">
-                🔄 Tekrar Oyna
-              </button>
-            </div>
+            <OyunSonuKarti skor={score} birim="puan" rapor={rapor} onTekrar={reset} />
           )}
         </div>
 

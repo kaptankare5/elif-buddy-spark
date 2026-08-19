@@ -10,6 +10,7 @@ import { useGameMode } from "@/lib/gameMode";
 import { getGameItemLevel, recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 import { tahtaBoyu } from "@/lib/zorluk";
+import { useOyunSonu } from "@/lib/oyunSonucu";
 import { sfx, titre } from "@/lib/juice";
 
 // =============================================================
@@ -67,6 +68,15 @@ const SorterGame = () => {
   const [board, setBoard] = useState(() => buildBox(ask.ayriAdlar));
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [progress, setProgress] = useState(0);
+  // ⚠️ K-1 ZİNCİR: oyun sonsuz yeni tahta üretiyordu ve hiçbir şey birikmiyordu
+  // — sonsuz bir iş bandı. Zincir o sonsuzluğa bir eksen verir: art arda kaç
+  // tahtayı HATASIZ boşalttın. Hata zinciri kırar.
+  const [zincir, setZincir] = useState(0);
+  // ⚠️ REF, STATE DEĞİL: bu bayrağı yalnız "tahta bitti" effect'i okuyor ve o
+  // effect `won` değişince çalışıyor. State olsaydı bağımlılık listesine
+  // girmesi gerekirdi (eslint haklı olarak uyardı) ve girince her hatada
+  // effect yeniden kurulurdu. Ref bayat kapanış riskini de kaldırır.
+  const tahtaHatasizRef = useRef(true);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -105,10 +115,13 @@ const SorterGame = () => {
     if (!won) return;
     sfx("bitis");
     playFeedback(true);
+    // K-1: tahta hatasız bittiyse zincir uzar, yoksa kırılır.
+    setZincir((z) => (tahtaHatasizRef.current ? z + 1 : 0));
     const t = setTimeout(() => {
       setBoard(buildBox(ask.ayriAdlar));
       setTarget(null);
       setProgress(0);
+      tahtaHatasizRef.current = true;
       setLevel((l) => l + 1);
     }, 2200);
     return () => clearTimeout(t);
@@ -190,8 +203,12 @@ const SorterGame = () => {
 
         <div className="mb-3 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-primary/30">
-            <div className="text-[10px] font-bold text-muted-foreground">Seviye</div>
-            <div className="text-xl font-extrabold text-primary">{level}</div>
+            <div className="text-[10px] font-bold text-muted-foreground">
+              {zincir > 0 ? "Hatasız zincir" : "Seviye"}
+            </div>
+            <div className="text-xl font-extrabold text-primary tabular-nums">
+              {zincir > 0 ? <>🔥 {zincir}</> : level}
+            </div>
           </div>
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-warning/30">
             <div className="text-[10px] font-bold text-muted-foreground">Temizlenen</div>

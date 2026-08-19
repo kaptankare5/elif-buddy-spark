@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { cn } from "@/lib/utils";
 import { gamePool, getGameLang, pickCluster } from "./_shared";
 import { tahtaBoyu } from "@/lib/zorluk";
+import { siparisAc, siparisIsle, type Siparis } from "@/lib/siparis";
+import { SiparisSeridi } from "@/components/SiparisSeridi";
 import { playItem, playFeedback } from "@/lib/audio";
 import type { ContentItem, Lang } from "@/data/types";
 import { sfx, titre } from "@/lib/juice";
@@ -65,7 +67,27 @@ const TripleMatchGame = () => {
   const [status, setStatus] = useState<"playing" | "won" | "lost">("playing");
   const [matches, setMatches] = useState(0);
   const [hintId, setHintId] = useState<number | null>(null);
+  // T-1 SİPARİŞ: eşleşme şekle bakıyordu, harf bilmek gerekmiyordu. Sipariş
+  // bonus (kapı DEĞİL) — her eşleşme yine sayılır, sipariş ek ödül verir.
+  const [siparis, setSiparis] = useState<Siparis | null>(null);
+  const [siparisParla, setSiparisParla] = useState(false);
   const lastTapRef = useRef<number>(Date.now());
+
+  // Tahtadaki farklı harfler — siparişin aday havuzu.
+  const tahtaTurleri = useMemo(() => {
+    const m = new Map<string, ContentItem>();
+    box.forEach((b) => m.set(b.item.id, b.item));
+    return [...m.values()];
+  }, [box]);
+
+  // İlk sipariş tahta kurulunca açılır; tahta boşalırsa kapanır.
+  useEffect(() => {
+    setSiparis((s0) => {
+      if (tahtaTurleri.length === 0) return null;
+      if (s0 && tahtaTurleri.some((t) => t.id === s0.hedef.id)) return s0;
+      return siparisAc(tahtaTurleri, s0?.hedef.id);
+    });
+  }, [tahtaTurleri]);
 
   useEffect(() => {
     const onChange = () => {
@@ -145,6 +167,12 @@ const TripleMatchGame = () => {
       setTray(compact);
       setBox(newBox);
       setMatches((m) => m + 1);
+      {
+        const so = siparisIsle(siparis, matchedKey, tahtaTurleri);
+        if (so.isabet) { setSiparisParla(true); setTimeout(() => setSiparisParla(false), 700); }
+        if (so.tamam) sfx("seri");
+        setSiparis(so.siparis);
+      }
       setFloatText(matchedItem.label);
       playItem(matchedItem);
       setTimeout(() => setFloatText(null), 1400);
@@ -179,11 +207,23 @@ const TripleMatchGame = () => {
             <div className="text-[10px] font-bold text-muted-foreground">{isEn ? "Left" : "Kalan"}</div>
             <div className="text-xl font-extrabold text-warning">{box.length}</div>
           </div>
-          <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-success/30">
+          {/* ⚠️ T-2 — TEPSİ BASKISI OKUNMUYORSA GERİLİM YARATMAZ. Türün ana
+              mekaniği bu: tepsi dolarsa kaybedersin. 5/7'den sonra kutu
+              kırmızıya döner ve nabız gibi atar. */}
+          <div className={cn(
+            "rounded-xl bg-card p-2 shadow-soft border-2",
+            tray.filter(Boolean).length >= TRAY_SIZE - 2
+              ? "border-destructive/70 animate-pulse" : "border-success/30",
+          )}>
             <div className="text-[10px] font-bold text-muted-foreground">{isEn ? "Tray" : "Tepsi"}</div>
-            <div className="text-xl font-extrabold text-success">{tray.filter(Boolean).length}/{TRAY_SIZE}</div>
+            <div className={cn("text-xl font-extrabold tabular-nums",
+              tray.filter(Boolean).length >= TRAY_SIZE - 2 ? "text-destructive" : "text-success")}>
+              {tray.filter(Boolean).length}/{TRAY_SIZE}
+            </div>
           </div>
         </div>
+
+        <SiparisSeridi siparis={siparis} parla={siparisParla} />
 
         <p className="text-center text-sm font-bold text-muted-foreground mb-2">
           {isEn ? "Tap items — collect 3 of a kind!" : "Tıkla — 3 aynısını topla!"}

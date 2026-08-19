@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { RouteHead } from "@/components/RouteHead";
 import { useGameMode, SUPER_MODE_GAMES } from "@/lib/gameMode";
+import { useOyunKayitlari, neZaman } from "@/lib/oyunSonucu";
 
 type Diff = "kolay" | "zor";
 interface GameDef { id: string; title: string; emoji: string; color: string; desc: string; diff: Diff }
@@ -30,22 +31,42 @@ const GAMES: GameDef[] = [
 
 const Games = () => {
   const [mode] = useGameMode();
+  const kayitlar = useOyunKayitlari();
   const visible = mode === "super" ? GAMES.filter((g) => SUPER_MODE_GAMES.has(g.id)) : GAMES;
   const kolay = visible.filter((g) => g.diff === "kolay");
   const zor = visible.filter((g) => g.diff === "zor");
 
-  const Card = ({ g, i }: { g: GameDef; i: number }) => (
-    <Link
-      key={g.id}
-      to={`/oyunlar/${g.id}`}
-      className={`bg-gradient-to-br ${g.color} group flex flex-col items-center justify-center gap-1.5 rounded-3xl p-5 text-white shadow-card transition-bouncy hover:-translate-y-1 hover:shadow-elegant min-h-[150px] animate-bounce-in`}
-      style={{ animationDelay: `${i * 60}ms` }}
-    >
-      <div className="text-5xl sm:text-6xl transition-transform group-hover:scale-110">{g.emoji}</div>
-      <h2 className="text-lg sm:text-xl font-extrabold text-shadow-soft text-center leading-tight">{g.title}</h2>
-      <p className="text-xs sm:text-sm font-semibold opacity-90 text-center leading-tight">{g.desc}</p>
-    </Link>
-  );
+  // ⚠️ Ö-4 — LİSTE KONUŞSUN. Kartlarda yalnız ad ve açıklama vardı; çocuk 15
+  // oyunun hangisini oynadığını, hangisinde ne yaptığını göremiyordu. Rekor ve
+  // "YENİ" rozeti özerkliği besler: neyi seçtiğini bilerek seçer.
+  const Card = ({ g, i }: { g: GameDef; i: number }) => {
+    const k = kayitlar[g.id];
+    return (
+      <Link
+        key={g.id}
+        to={`/oyunlar/${g.id}`}
+        className={`bg-gradient-to-br ${g.color} group relative flex flex-col items-center justify-center gap-1.5 rounded-3xl p-5 text-white shadow-card transition-bouncy hover:-translate-y-1 hover:shadow-elegant min-h-[150px] animate-bounce-in`}
+        style={{ animationDelay: `${i * 60}ms` }}
+      >
+        {!k && (
+          <span className="absolute right-2 top-2 rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-extrabold backdrop-blur-sm">
+            YENİ
+          </span>
+        )}
+        <div className="text-5xl sm:text-6xl transition-transform group-hover:scale-110">{g.emoji}</div>
+        <h2 className="text-lg sm:text-xl font-extrabold text-shadow-soft text-center leading-tight">{g.title}</h2>
+        <p className="text-xs sm:text-sm font-semibold opacity-90 text-center leading-tight">{g.desc}</p>
+        {k && (
+          <div className="mt-1 flex flex-col items-center gap-0.5">
+            <span className="rounded-full bg-black/20 px-2 py-0.5 text-[11px] font-extrabold tabular-nums backdrop-blur-sm">
+              🏆 {k.enIyi} {k.birim}
+            </span>
+            <span className="text-[10px] font-bold opacity-75">{neZaman(k.son)}</span>
+          </div>
+        )}
+      </Link>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-soft/40 to-background">
