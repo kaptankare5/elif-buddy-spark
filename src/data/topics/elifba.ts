@@ -793,7 +793,8 @@ const t9_zamir: ContentTopic = {
   parent: P,
   title: "10. Zamir ve Lafzatullah",
   description: "Allah lafzının okunuşu",
-  emoji: "ﷲ",
+  // Rozet de mushaf yazımında: "ﷲ" bitişik biçimi hançer elifi göstermiyor.
+  emoji: "اللّٰه",
   practiceMode: "visual",
   gridCols: 2,
   noPractice: true,
@@ -802,11 +803,16 @@ const t9_zamir: ContentTopic = {
     { ar: "اَللّٰهُ", sp: "Allâh" },
     { ar: "بِاللّٰهِ", sp: "billâhi" },
     { ar: "مَعَ اللّٰهِ", sp: "meallâhi" },
-    { ar: "قُلِ اللَّهُمَّ", sp: "kulillâhümme" },
+    { ar: "قُلِ اللّٰهُمَّ", sp: "kulillâhümme" },
     { ar: "فَاِنَّ اللّٰهَ", sp: "feinnallâhe" },
+    // ⚠️ ZAMİR HÂ'SININ İKİ YAZIMI AYRI: ötreli zamir mushafta SADE yazılır
+    // (`لَهُ` — Araf 70 "وَحْدَهُ", İhlâs 4 "لَهُ"), ama esreli zamir UZUN
+    // okunduğu için küçük esre alır: `ه۪` (Bakara 285 "مِنْ رَبِّه۪ ·
+    // وَمَلٰٓئِكَتِه۪ · وَكُتُبِه۪"). Düz `بِهِ` yazımı "bihi" diye KISA okutur,
+    // oysa kartın okunuşu "bihî".
     { ar: "لَهُ", sp: "lehû" },
     { ar: "لَهُمْ", sp: "lehüm" },
-    { ar: "بِهِ", sp: "bihî" },
+    { ar: "بِه۪", sp: "bihî" },
   ].map((it, i) => ({
     id: `l9-${pad2(i + 1)}`,
     audio: `/audio/elifba/zamir-${pad2(i + 1)}.mp3`,
@@ -834,7 +840,7 @@ const t10_elif_lam: ContentTopic = {
     { ar: "اَلشَّمْسُ", sp: "eş-şemsü" },
     { ar: "اَلرَّحْمٰنُ", sp: "er-Rahmân" },
     { ar: "اَلْحَمْدُ", sp: "el-hamdü" },
-    { ar: "وَيَسِّرْ لِي", sp: "ve yessir lî" },
+    { ar: "وَيَسِّرْ ل۪ي", sp: "ve yessir lî" },   // Tâhâ 26 — mushafta ل۪ي
     { ar: "فَطَهِّرْ", sp: "fetahhir" },
     { ar: "وَاسْتَغْفِرْهُ", sp: "vestağfirhü" },
     { ar: "رَبِّ", sp: "Rabbi" },

@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 277 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 280 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -88,6 +88,22 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   4. **MED YÂSI NOKTALI**: `بِي` (`بِى` değil). Noktasız `ى` yalnız kelime
      SONUNDA ve "â" okunduğunda kullanılır (`وَتَعَالٰى`); uzatma yâsı
      mushafta hep noktalı (`ف۪ي` · `اَلَّذ۪ي` · `الرَّح۪يمِ`).
+  5. **LAFZATULLAH HEP HANÇER ELİFLİ**: `اللّٰهُ` · `اللّٰهُمَّ` — düz
+     `اللَّهُمَّ` yazımı Türk mushafında yok (Âl-i İmrân 26 ile doğrulandı).
+  6. **ZAMİR HÂ'SININ İKİ HÂLİ AYRI**: ötreli zamir SADE yazılır (`لَهُ` —
+     İhlâs 4, Aʿrâf 70 `وَحْدَهُ`), esreli zamir uzun okunduğu için küçük
+     esre alır (`بِه۪` · `رَبِّه۪` · `وَكُتُبِه۪`). Düz `بِهِ` "bihi" diye
+     KISA okutur.
+  ⚠️ **İKİ AYRI YAZIM DÜZENİ VAR, KARIŞTIRMA:**
+  · **Öğretme tabloları** (hareke · cezm · şedde · med · tenvin) TAM HAREKE
+    kullanır: `بَ بِ بُ` → `بَا بِي بُو`. Amaç çocuğa harekeyi göstermek;
+    oraya mushafın küçük işaretini (`ب۪ي`) koymak öğretilmemiş bir işaret
+    demek olur.
+  · **Gerçek Kur'an ibareleri** (âsar · zamir · elif-lâm · ezber sûreleri)
+    MUSHAF yazımıyla: küçük esre `۪`, hançer elif `ٰ`, med `ٓ`.
+  Bekçi: `src/test/imla.test.ts` — ekrandaki BÜTÜN Arapça metni (konu
+  rozetleri, kartlar, ezber parçaları; 300+ dizgi) dört kurala karşı tarar
+  ve kural motorunun kendisini de test eder.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
   hareke okunuşları üretilir (kalın 7 harf a/ı/u; Râ karışık ra/ri/ru;
   gerisi e/i/ü). Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
