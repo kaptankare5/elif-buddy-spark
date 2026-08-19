@@ -580,22 +580,25 @@ const MED_EKSTRA: Array<[string, string, number]> = [
   ["وَا", "vâ", 3],   // 2.641
   ["اٰ", "â", 3],      // 2.244 — medli elif (Türk imlâsı: elif + hançer elif)
   ["هَا", "hâ", 3],   // 1.956
-  ["فِي", "fî", 3],   // 1.794
+  ["ف۪ي", "fî", 3],   // 1.794
   ["لُو", "lû", 3],   // 1.563
-  ["ذِي", "zî", 3],   // 1.470
+  ["ذ۪ي", "zî", 3],   // 1.470
   ["هُو", "hû", 3],   // 1.338
   ["يَا", "yâ", 3],   // 1.185
   ["رُو", "rû", 3],   // 1.184
   ["نُو", "nû", 3],   // 1.097
-  ["هِي", "hî", 3],   // 1.091
+  ["ه۪ي", "hî", 3],   // 1.091
 ];
 
 // Med hecesinin gerçek hoca kaydını bul: med-{harfNo}-{hareke}.mp3.
 // YALNIZ "harf + hareke + uzatma harfi" biçimindeki 3 kod noktalı heceler
 // eşleşir; قَالَ/كَانَ gibi kelimelerin kaydı yok ve ilk hecesinin sesini
 // (kâ) kelimeye iliştirmek çocuğa yanlış öğretir — onlar sessiz kalır.
+// ⚠️ KÜÇÜK ESRE (۪) DE ESREDİR: med yâsının önündeki hareke mushafta küçük
+// yazılıyor (ب۪ي). Bu tabloya eklenmezse `medAudio` o heceyi tanımaz, 28 med
+// kartı SESSİZ kalır ve ses şartı yüzünden oyun havuzundan da düşer.
 const HARAKA_SUF: Record<string, "fetha" | "esre" | "otre"> = {
-  "َ": "fetha", "ِ": "esre", "ُ": "otre",
+  "َ": "fetha", "ِ": "esre", "ُ": "otre", "۪": "esre",
 };
 const MADD_HARFI = new Set(["ا", "ى", "ي", "و"]); // ا ى ي و
 const byIso = new Map(LETTERS.map((l) => [l.iso, l]));
@@ -613,12 +616,16 @@ function medAudio(ar: string): string | undefined {
 // yoktu). Her harf için üç uzatma: fetha+elif (â), esre+ye (î), ötre+vav (û).
 // Ses: med-NN-{fetha|esre|otre}.mp3 — 28 × 3 = 84 kayıt diskte tam.
 const MED_FORMS: Array<{ suf: "fetha" | "esre" | "otre"; mark: string; harf: string }> = [
+  // ⚠️ UZUN "â" VE "û" MUSHAFTA ZATEN NORMAL HAREKEYLE YAZILIR — كَالَ değil
+  // مَالِكِ · اَعُوذُ · يُولَدْ · صُدُورِ. Yani بَا ve بُو mushaf yazımıdır,
+  // değişmedi.
   { suf: "fetha", mark: "َ", harf: "ا" },
-  // ⚠️ MED YÂSI NOKTALI (ي), NOKTASIZ (ى) DEĞİL. Noktasız "ى" (elif-i
-  // maksûre) yalnız kelime SONUNDA ve "â" okunduğunda kullanılır
-  // (وَتَعَالٰى). Uzatma yâsı Türkiye mushafında hep noktalıdır — ف۪ي,
-  // الرَّح۪يمِ, اَلَّذ۪ي. "بِى" yazımı çocuğa yanlış harf öğretiyordu.
-  { suf: "esre", mark: "ِ", harf: "ي" },
+  // ⚠️ AMA UZUN "î" FARKLI: mushafta med yâsının önündeki esre KÜÇÜK yazılır
+  // ve yâ noktalı kalır → ب۪ي. Kaynak Diyanet metni: الرَّح۪يمِ · ف۪ي ·
+  // اَلَّذ۪ي · الْعَالَم۪ينَ · قَد۪يرٌ. (Kullanıcı şartı: ders tabloları da
+  // Diyanet/Hayrat mushafına göre.) Noktasız "ى" ise YALNIZ kelime sonunda
+  // ve "â" okunurken kullanılır — وَتَعَالٰى.
+  { suf: "esre", mark: "۪", harf: "ي" },
   { suf: "otre", mark: "ُ", harf: "و" },
 ];
 
