@@ -371,7 +371,7 @@ var t4_harf_hareke = {
   gridCols: 3,
   items: buildHarekeExtras()
 };
-var CEZM_MISSING = /* @__PURE__ */ new Set([22]);
+var CEZM_MISSING = /* @__PURE__ */ new Set();
 var CEZM_EKSTRA = [
   ["\u0647\u064F\u0645\u0652", "h\xFCm", 3],
   // 2.577
@@ -437,6 +437,7 @@ var t4_cezm = {
     }),
     ...CEZM_EKSTRA.map(([ar, sp, w], i) => ({
       id: `l4e-${pad2(i + 1)}`,
+      audio: `/audio/elifba/cezm-ekstra-${pad2(i + 1)}.mp3`,
       label: sp,
       speech: sp.replace(/'/g, ""),
       lang: "tr",
@@ -511,7 +512,12 @@ var t5_sedde = {
           // yaslanması gerekiyor. Cezm konusunda olduğu gibi harekeli elif
           // ön eki konur → اَبَّ / اِبِّ / اُبُّ (ebbe / ibbi / übbü).
           // Ekstra kartlar (اِنَّ, رَبِّ…) da zaten bu biçimde.
-          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}\u0651${h.mark}`,
+          // ⚠️ NFC ile normalize: Unicode'un kanonik sırası HAREKEYİ şeddeden
+          // ÖNCE ister ve Diyanet metni de öyle kodlanmış (الضَّٓالّٖينَ =
+          // ض + fetha + şedde). Biz şeddeyi önce yazıyorduk; ekranda ikisi
+          // PİKSEL PİKSEL aynı çiziliyor (ölçüldü) ama dizgiler eşit
+          // olmadığı için karşılaştırma/arama sessizce tutmuyordu.
+          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}\u0651${h.mark}`.normalize("NFC"),
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
           section: bolum(l.n),
@@ -522,6 +528,7 @@ var t5_sedde = {
     }),
     ...SEDDE_EKSTRA.map(([ar, sp, w], i) => ({
       id: `l5e-${pad2(i + 1)}`,
+      audio: `/audio/elifba/sedde-ekstra-${pad2(i + 1)}.mp3`,
       label: sp,
       speech: sp,
       lang: "tr",
@@ -541,15 +548,15 @@ var MED_EKSTRA = [
   // 3.351
   ["\u0648\u064E\u0627", "v\xE2", 3],
   // 2.641
-  ["\u0622", "\xE2", 3],
-  // 2.244 — medli elif (uzatmalı hemze)
+  ["\u0627\u0670", "\xE2", 3],
+  // 2.244 — medli elif (Türk imlâsı: elif + hançer elif)
   ["\u0647\u064E\u0627", "h\xE2", 3],
   // 1.956
-  ["\u0641\u0650\u064A", "f\xEE", 3],
+  ["\u0641\u0656\u064A", "f\xEE", 3],
   // 1.794
   ["\u0644\u064F\u0648", "l\xFB", 3],
   // 1.563
-  ["\u0630\u0650\u064A", "z\xEE", 3],
+  ["\u0630\u0656\u064A", "z\xEE", 3],
   // 1.470
   ["\u0647\u064F\u0648", "h\xFB", 3],
   // 1.338
@@ -559,27 +566,21 @@ var MED_EKSTRA = [
   // 1.184
   ["\u0646\u064F\u0648", "n\xFB", 3],
   // 1.097
-  ["\u0647\u0650\u064A", "h\xEE", 3]
+  ["\u0647\u0656\u064A", "h\xEE", 3]
   // 1.091
 ];
-var HARAKA_SUF = {
-  "\u064E": "fetha",
-  "\u0650": "esre",
-  "\u064F": "otre"
-};
-var MADD_HARFI = /* @__PURE__ */ new Set(["\u0627", "\u0649", "\u064A", "\u0648"]);
 var byIso = new Map(LETTERS.map((l) => [l.iso, l]));
-function medAudio(ar) {
-  const cp = [...ar];
-  if (cp.length !== 3) return void 0;
-  const l = byIso.get(cp[0]);
-  const suf = HARAKA_SUF[cp[1]];
-  if (!l || !suf || !MADD_HARFI.has(cp[2])) return void 0;
-  return audioPath(`med-${pad2(l.n)}-${suf}.mp3`);
-}
 var MED_FORMS = [
+  // ⚠️ UZUN "â" VE "û" MUSHAFTA ZATEN NORMAL HAREKEYLE YAZILIR — كَالَ değil
+  // مَالِكِ · اَعُوذُ · يُولَدْ · صُدُورِ. Yani بَا ve بُو mushaf yazımıdır,
+  // değişmedi.
   { suf: "fetha", mark: "\u064E", harf: "\u0627" },
-  { suf: "esre", mark: "\u0650", harf: "\u0649" },
+  // ⚠️ AMA UZUN "î" FARKLI: mushafta med yâsının önündeki esre KÜÇÜK yazılır
+  // ve yâ noktalı kalır → بٖي. Kaynak Diyanet metni: الرَّحٖيمِ · فٖي ·
+  // اَلَّذٖي · الْعَالَمٖينَ · قَدٖيرٌ. (Kullanıcı şartı: ders tabloları da
+  // Diyanet/Hayrat mushafına göre.) Noktasız "ى" ise YALNIZ kelime sonunda
+  // ve "â" okunurken kullanılır — وَتَعَالٰى.
+  { suf: "esre", mark: "\u0656", harf: "\u064A" },
   { suf: "otre", mark: "\u064F", harf: "\u0648" }
 ];
 function medVowel(thick, suf) {
@@ -592,14 +593,15 @@ var t6_med = {
   parent: P,
   title: "7. Med Harfleri",
   description: "Elif, vav ve ye ile uzatma",
-  emoji: "\uFE81",
+  // Rozet de Türk imlâsında: "ﺁ" (madda'lı bitişik biçim) yerine اٰ.
+  emoji: "\u0627\u0670",
   practiceMode: "visual",
   gridCols: 3,
   items: [
     ...LETTERS.flatMap(
       (l) => MED_FORMS.map((m) => {
         const sp = `${l.cons}${medVowel(l.thick, m.suf)}`;
-        const ar = l.n === 1 && m.suf === "fetha" ? "\u0622" : l.iso + m.mark + m.harf;
+        const ar = l.n === 1 && m.suf === "fetha" ? "\u0627\u0670" : l.iso + m.mark + m.harf;
         return {
           id: `l6-${pad2(l.n)}-${m.suf}`,
           label: sp,
@@ -621,23 +623,55 @@ var t6_med = {
       lang: "tr",
       emoji: ar,
       translit: sp,
-      audio: medAudio(ar),
+      audio: `/audio/elifba/med-ekstra-${pad2(i + 1)}.mp3`,
       section: "Ekstralar",
       weight: ekstraAgirlik(w)
     }))
   ]
 };
+var ASAR = [
+  ["\u0627\u0670\u0645\u064E\u0646\u064E", "\xE2mene"],
+  // 2:285 — medd-i bedel (اٰ)
+  ["\u0645\u064E\u0627\u0644\u0650\u0643\u0650", "m\xE2liki"],
+  // 1:4  — medd-i tabiî
+  ["\u064A\u064F\u0631\u064E\u0653\u0627\u0624\u064F\u06DF\u0646\u064E", "y\xFCr\xE2\xFBne"],
+  // 4:142 — medd-i muttasıl
+  ["\u0627\u064F\u0648\u06DF\u0644\u0670\u0653\u0626\u0650\u0643\u064E", "ul\xE2ike"],
+  // 2:5  — medd-i muttasıl
+  // ⚠️ KART TEK BAŞINA DURUYOR: mushafta bu kelime cümle içinde geçtiği için
+  // vasl elifi harekesiz (`قَالَ الْمَلَأُ`), ama kart bir başlangıçtır —
+  // başlangıçta "ال" harekelidir (bkz. `اَلْحَمْدُ لِلّٰهِ`, `اَلشَّمْسُ`).
+  // Harekesiz elifle başlayan kart çocuğa "bu harf sessiz" demez, hiçbir şey
+  // demez (kullanıcı tespiti: "harekesiz harf gördün mü mushafta").
+  ["\u0627\u064E\u0644\u0652\u0645\u064E\u0644\u064E\u0623\u064F", "el-mele'\xFC"],
+  // 7:60 — kelime SONU hemze çizilir; MED YOK (kasr)
+  ["\u0627\u0670\u0628\u064E\u0653\u0627\u0624\u064F\u06DF\u0646\u064E\u0627", "\xE2b\xE2un\xE2"],
+  // 7:70 — medd-i bedel + muttasıl
+  ["\u0627\u064E\u0644\u0636\u064E\u0651\u0653\u0627\u0644\u0651\u0656\u064A\u0646\u064E", "d\xE2ll\xEEn"],
+  // 1:7  — medd-i lâzım (6 hareke); kart başı "ال" harekeli
+  ["\u062D\u064E\u0653\u0627\u062C\u064F\u0651\u0648\u0643\u064E", "h\xE2cc\xFBke"]
+  // 3:20 — medd-i lâzım + şedde
+];
 var t7_asar = {
   id: "asar-med-kasr",
   parent: P,
   title: "8. \xC2sar, Med ve Kasr",
   description: "Uzatma i\u015Faretleri \u2014 videoyu izle",
-  emoji: "\uFEF5",
+  // Rozet, konunun kendi konusu olan MED İŞARETİNİ gösterir (مَٓا).
+  emoji: "\u0645\u064E\u0653\u0627",
   practiceMode: "visual",
   gridCols: 2,
   noPractice: true,
   video: "https://www.youtube.com/watch?v=s6oYG1Bl77E",
-  items: []
+  items: ASAR.map(([ar, sp], i) => ({
+    id: `l7-${pad2(i + 1)}`,
+    label: sp,
+    speech: sp,
+    lang: "tr",
+    emoji: ar,
+    translit: sp,
+    audio: `/audio/elifba/asar-${pad2(i + 1)}.mp3`
+  }))
 };
 var TENVIN_EKSTRA = [
   ["\u0628\u064E\u062F\u064B\u0627", "beden"],
@@ -681,6 +715,7 @@ var t8_tenvin = {
     }),
     ...TENVIN_EKSTRA.map(([ar, sp], i) => ({
       id: `l8x-${pad2(i + 1)}`,
+      audio: `/audio/elifba/tenvin-ekstra-${pad2(i + 1)}.mp3`,
       label: sp,
       speech: sp,
       lang: "tr",
@@ -697,7 +732,8 @@ var t9_zamir = {
   parent: P,
   title: "10. Zamir ve Lafzatullah",
   description: "Allah lafz\u0131n\u0131n okunu\u015Fu",
-  emoji: "\uFDF2",
+  // Rozet de mushaf yazımında: "ﷲ" bitişik biçimi hançer elifi göstermiyor.
+  emoji: "\u0627\u0644\u0644\u0651\u0670\u0647",
   practiceMode: "visual",
   gridCols: 2,
   noPractice: true,
@@ -706,13 +742,19 @@ var t9_zamir = {
     { ar: "\u0627\u064E\u0644\u0644\u0651\u0670\u0647\u064F", sp: "All\xE2h" },
     { ar: "\u0628\u0650\u0627\u0644\u0644\u0651\u0670\u0647\u0650", sp: "bill\xE2hi" },
     { ar: "\u0645\u064E\u0639\u064E \u0627\u0644\u0644\u0651\u0670\u0647\u0650", sp: "meall\xE2hi" },
-    { ar: "\u0642\u064F\u0644\u0650 \u0627\u0644\u0644\u064E\u0651\u0647\u064F\u0645\u064E\u0651", sp: "kulill\xE2h\xFCmme" },
-    { ar: "\u0641\u064E\u0625\u0650\u0646\u064E\u0651 \u0627\u0644\u0644\u0651\u0670\u0647\u064E", sp: "feinnall\xE2he" },
+    { ar: "\u0642\u064F\u0644\u0650 \u0627\u0644\u0644\u0651\u0670\u0647\u064F\u0645\u064E\u0651", sp: "kulill\xE2h\xFCmme" },
+    { ar: "\u0641\u064E\u0627\u0650\u0646\u064E\u0651 \u0627\u0644\u0644\u0651\u0670\u0647\u064E", sp: "feinnall\xE2he" },
+    // ⚠️ ZAMİR HÂ'SININ İKİ YAZIMI AYRI: ötreli zamir mushafta SADE yazılır
+    // (`لَهُ` — Araf 70 "وَحْدَهُ", İhlâs 4 "لَهُ"), ama esreli zamir UZUN
+    // okunduğu için küçük esre alır: `هٖ` (Bakara 285 "مِنْ رَبِّهٖ ·
+    // وَمَلٰٓئِكَتِهٖ · وَكُتُبِهٖ"). Düz `بِهِ` yazımı "bihi" diye KISA okutur,
+    // oysa kartın okunuşu "bihî".
     { ar: "\u0644\u064E\u0647\u064F", sp: "leh\xFB" },
     { ar: "\u0644\u064E\u0647\u064F\u0645\u0652", sp: "leh\xFCm" },
-    { ar: "\u0628\u0650\u0647\u0650", sp: "bih\xEE" }
+    { ar: "\u0628\u0650\u0647\u0656", sp: "bih\xEE" }
   ].map((it, i) => ({
     id: `l9-${pad2(i + 1)}`,
+    audio: `/audio/elifba/zamir-${pad2(i + 1)}.mp3`,
     label: it.sp,
     speech: it.sp,
     lang: "tr",
@@ -735,12 +777,14 @@ var t10_elif_lam = {
     { ar: "\u0627\u064E\u0644\u0634\u064E\u0651\u0645\u0652\u0633\u064F", sp: "e\u015F-\u015Fems\xFC" },
     { ar: "\u0627\u064E\u0644\u0631\u064E\u0651\u062D\u0652\u0645\u0670\u0646\u064F", sp: "er-Rahm\xE2n" },
     { ar: "\u0627\u064E\u0644\u0652\u062D\u064E\u0645\u0652\u062F\u064F", sp: "el-hamd\xFC" },
-    { ar: "\u0648\u064E\u064A\u064E\u0633\u0650\u0651\u0631\u0652 \u0644\u0650\u0649", sp: "ve yessir l\xEE" },
+    { ar: "\u0648\u064E\u064A\u064E\u0633\u0650\u0651\u0631\u0652 \u0644\u0656\u064A", sp: "ve yessir l\xEE" },
+    // Tâhâ 26 — mushafta لٖي
     { ar: "\u0641\u064E\u0637\u064E\u0647\u0650\u0651\u0631\u0652", sp: "fetahhir" },
     { ar: "\u0648\u064E\u0627\u0633\u0652\u062A\u064E\u063A\u0652\u0641\u0650\u0631\u0652\u0647\u064F", sp: "vesta\u011Ffirh\xFC" },
     { ar: "\u0631\u064E\u0628\u0650\u0651", sp: "Rabbi" }
   ].map((it, i) => ({
     id: `l10-${pad2(i + 1)}`,
+    audio: `/audio/elifba/eliflam-${pad2(i + 1)}.mp3`,
     label: it.sp,
     speech: it.sp,
     lang: "tr",
