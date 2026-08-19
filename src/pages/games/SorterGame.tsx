@@ -10,7 +10,7 @@ import { useGameMode } from "@/lib/gameMode";
 import { getGameItemLevel, recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 import { tahtaBoyu } from "@/lib/zorluk";
-import { useOyunSonu } from "@/lib/oyunSonucu";
+import { oyunBitti, type SonucRaporu } from "@/lib/oyunSonucu";
 import { sfx, titre } from "@/lib/juice";
 
 // =============================================================
@@ -77,6 +77,19 @@ const SorterGame = () => {
   // girmesi gerekirdi (eslint haklı olarak uyardı) ve girince her hatada
   // effect yeniden kurulurdu. Ref bayat kapanış riskini de kaldırır.
   const tahtaHatasizRef = useRef(true);
+  /**
+   * ⚠️ REKOR BU OYUNDA "EN UZUN ZİNCİR".
+   *
+   * Kutu Boşalt'ın BİTİŞİ YOK (tahta boşalınca yenisi kuruluyor), o yüzden
+   * `useOyunSonu` kancası burada işlemez — kanca bir `bitti` bayrağının
+   * kenarını bekliyor. Kaydı tahta bitince ELDEN yazıyoruz. Bu aynı zamanda
+   * GÜNLÜK SERİYİ de besler: seriyi yalnız `oyunBitti` besliyor ve bu oyun
+   * onu hiç çağırmadığı için, normal modda Kutu Boşalt oynayan çocuğun
+   * serisi hiç ilerlemiyordu (`useOyunSonu` import edilmiş ama hiç
+   * çağrılmamıştı — ölü import).
+   */
+  const zincirRef = useRef(0);
+  const [rapor, setRapor] = useState<SonucRaporu | null>(null);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -116,7 +129,10 @@ const SorterGame = () => {
     sfx("bitis");
     playFeedback(true);
     // K-1: tahta hatasız bittiyse zincir uzar, yoksa kırılır.
-    setZincir((z) => (tahtaHatasizRef.current ? z + 1 : 0));
+    const yeniZincir = tahtaHatasizRef.current ? zincirRef.current + 1 : 0;
+    zincirRef.current = yeniZincir;
+    setZincir(yeniZincir);
+    setRapor(oyunBitti("sorter", yeniZincir, { yon: "yuksek", birim: "tahta" }));
     const t = setTimeout(() => {
       setBoard(buildBox(ask.ayriAdlar));
       setTarget(null);
@@ -133,7 +149,11 @@ const SorterGame = () => {
     return () => window.removeEventListener("games-lang-change", h);
   }, [ask.ayriAdlar]);
 
-  const reset = () => { setBoard(buildBox(ask.ayriAdlar)); setScore(0); setBusy(false); setTarget(null); setProgress(0); setLevel(1); };
+  const reset = () => {
+    setBoard(buildBox(ask.ayriAdlar)); setScore(0); setBusy(false); setTarget(null);
+    setProgress(0); setLevel(1);
+    zincirRef.current = 0; setZincir(0); setRapor(null); tahtaHatasizRef.current = true;
+  };
 
   // PC: 1-9 tuşlarıyla kutu seçilebilsin (boşalmış kutu atlanır).
   const pc = usePcMi();
@@ -273,6 +293,13 @@ const SorterGame = () => {
           <div className="rounded-3xl bg-card p-6 text-center shadow-card border-4 border-success/40 animate-bounce-in">
             <div className="text-6xl mb-2">🎉</div>
             <p className="text-xl font-extrabold">Kutu boşaldı!</p>
+            <p className="mt-1 text-sm font-bold text-muted-foreground">
+              🔥 {zincir} tahta üst üste
+              {rapor?.rekor && <span className="ml-1 text-warning">· 🏆 rekor!</span>}
+              {!rapor?.rekor && rapor?.oncekiEnIyi != null && (
+                <span className="ml-1">· rekorun {rapor.oncekiEnIyi}</span>
+              )}
+            </p>
             <button onClick={reset} className="mt-3 rounded-full bg-primary px-5 py-2 font-bold text-primary-foreground">Tekrar Oyna</button>
           </div>
         ) : (

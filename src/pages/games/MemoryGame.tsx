@@ -106,9 +106,17 @@ const MemoryGame = () => {
 
   const won = useMemo(() => cards.length > 0 && cards.every((c) => c.matched), [cards]);
   const ciftAdet = cards.length / 2;
-  // ⚠️ HAMLE REKORUNDA "AZ İYİ": yön `dusuk`, yoksa "en iyi 40 hamle" gibi
-  // ters bir rekor çıkıyor.
-  const rapor = useOyunSonu("memory", won, moves, { yon: "dusuk", birim: "hamle" });
+  /**
+   * ⚠️ REKOR **HAMLE DEĞİL TAHTA SAYISI** — ölçüldü, hamle rekoru bu oyunda
+   * ADALETSİZ: `sonrakiTur` her turda tahtayı bir çift büyütüyor (4 → 10) ve
+   * daha çok çift zorunlu olarak daha çok hamle demek. Yani 1. turun rekoru
+   * (4 çift, ~6 hamle) asla kırılamıyordu; çocuk 9 çiftlik tahtayı kusursuz
+   * bitirse bile kart ona "rekorun 6" diyordu — en iyi oynadığı turda
+   * başarısız hissettiriliyordu. Tahta sayısı ise boyuttan bağımsız
+   * karşılaştırılabilir ve oturum uzunluğunu ölçer. Tek tahtanın KALİTESİ
+   * zaten ⭐ ile gösteriliyor, o iş rekorun işi değil.
+   */
+  const rapor = useOyunSonu("memory", won, tur + 1, { yon: "yuksek", birim: "tahta" });
 
   const reset = () => {
     setTur(0);
@@ -228,9 +236,11 @@ const MemoryGame = () => {
             </div>
             <p className="text-lg font-extrabold">Hepsini buldun!</p>
             <p className="text-sm font-bold text-muted-foreground">
-              {moves} hamle
+              {moves} hamle · {tur + 1}. tahta
               {rapor?.rekor && <span className="ml-1 text-warning">· 🏆 rekor!</span>}
-              {!rapor?.rekor && rapor?.oncekiEnIyi != null && <span className="ml-1">· rekorun {rapor.oncekiEnIyi}</span>}
+              {!rapor?.rekor && rapor?.oncekiEnIyi != null && (
+                <span className="ml-1">· rekorun {rapor.oncekiEnIyi} tahta</span>
+              )}
             </p>
             <div className="mt-3 flex flex-col gap-2">
               <button onClick={sonrakiTur} className="rounded-full bg-primary px-5 py-3 font-extrabold text-primary-foreground shadow-card active:scale-95">
