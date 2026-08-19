@@ -545,7 +545,7 @@ const t5_sedde: ContentTopic = {
   id: "sedde",
   parent: P,
   title: "6. Şedde",
-  description: "Şeddeli okuyuş (ebbe, ibbi, übbü…)",
+  description: "Şeddeli okuyuş (ebbe, ibbe, übbe…)",
   emoji: "ﹽ",
   practiceMode: "visual",
   gridCols: 3,
@@ -562,10 +562,15 @@ const t5_sedde: ContentTopic = {
       const ikile = (x: string) => (base === "'" ? `${x}${base}` : `${x}${base}${base}`);
       const v = harekeVowels(l.thick);
       return HAREKE.map((h) => {
+        // ⚠️ SON HAREKE HEP ÜSTÜNDÜR (kullanıcı kararı, Lovable ile geldi):
+        // Diyanet Elifbâ dizisinde şeddeli harfin son harekesi değişmez,
+        // değişen ÖNÜNDEKİ elifin harekesidir → اَبَّ ebbe · اِبَّ ibbe ·
+        // اُبَّ übbe. Eskiden "ibbi/übbü" üretiliyordu ve ekrandaki son
+        // harekeyi de yanlış değiştiriyordu. Bekçisi: skills.test.ts.
         const sesMap: Record<string, string> = {
           a: `${ikile(v.a)}${v.a}`,
-          i: `${ikile(v.i)}${v.i}`,
-          u: `${ikile(v.u)}${v.u}`,
+          i: `${ikile(v.i)}${v.a}`,
+          u: `${ikile(v.u)}${v.a}`,
         };
         return {
           id: `l5-${pad2(l.n)}-${h.suf}`,
@@ -575,14 +580,14 @@ const t5_sedde: ContentTopic = {
           // Şeddeli hece TEK BAŞINA okunamaz: "بَّ" yazıp "ebbe" demek
           // olmuyor, şeddenin ikizlediği ilk sessizin bir önceki heceye
           // yaslanması gerekiyor. Cezm konusunda olduğu gibi harekeli elif
-          // ön eki konur → اَبَّ / اِبِّ / اُبُّ (ebbe / ibbi / übbü).
+          // ön eki konur → اَبَّ / اِبَّ / اُبَّ (ebbe / ibbe / übbe).
           // Ekstra kartlar (اِنَّ, رَبِّ…) da zaten bu biçimde.
           // ⚠️ NFC ile normalize: Unicode'un kanonik sırası HAREKEYİ şeddeden
           // ÖNCE ister ve Diyanet metni de öyle kodlanmış (الضَّٓالّٖينَ =
           // ض + fetha + şedde). Biz şeddeyi önce yazıyorduk; ekranda ikisi
           // PİKSEL PİKSEL aynı çiziliyor (ölçüldü) ama dizgiler eşit
           // olmadığı için karşılaştırma/arama sessizce tutmuyordu.
-          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}ّ${h.mark}`.normalize("NFC"),
+          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}َّ`.normalize("NFC"),
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
           section: bolum(l.n),
