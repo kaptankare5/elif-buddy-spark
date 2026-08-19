@@ -448,6 +448,37 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   Çocuk Latin harfi okuyamıyorsa mod ölçüm bile yapamaz (her soru rastgele
   işaretlenir, SRS bunu "bilmiyor" sanar).
 
+### Kalıcılık katmanı (`oyunSonucu.ts` · `siparis.ts` · `gorevler.ts` · `bolumYildiz.ts`)
+Ölçüldü (`tools/perf/yogunluk.mjs`): 15 oyunun 12'si oturumlar arasında HİÇBİR
+ŞEY kaydetmiyordu; öğrenme yoğunluğu 154 ↔ 1 soru/dk arasında değişiyordu.
+- ⚠️ **REKOR KENDİ REKORUDUR** — başka çocukla sıralama YOK. 5-8 yaşta
+  karşılaştırma yetkinlik hissini zedeliyor. `oyunBitti()` her oyun bitiminde
+  tek satırla çağrılır, **günlük seriyi de besler**: seri yalnız SRS cevabıyla
+  ilerliyordu, normal modda oyun oynayan çocuğun serisi hiç ilerlemiyordu.
+- ⚠️ **SKORUN YÖNÜ SAKLANIR** (`yuksek`/`dusuk`): Hafıza'da AZ hamle iyi,
+  ötekilerde ÇOK puan iyi. Tek alan ikisini tutamaz — "en iyi 40 hamle" çıkar.
+- ⚠️ İlk oyunda "rekor kırdın" YAZILMAZ; kıyaslanacak şey yokken bunu demek
+  sonraki gerçek rekoru değersizleştirir.
+- ⚠️ **SİPARİŞ KAPI DEĞİL BONUS** (`siparis.ts`, Üçlü Eşleştir + Üçlü Eşle).
+  O iki oyun eşleşmeyi `item.id` eşitliğiyle buluyordu: tek harf bilmeyen çocuk
+  ikisini de kusursuz oynayabiliyordu (çikolata kaplı brokoli). Sipariş ŞART
+  olsaydı iğne aramaya dönerdi (kullanıcı sorusu: "tek tane varsa 2 saat arar
+  mı"). Bu yüzden: her eşleşme yine sayılır · sipariş edilen harfin doğma
+  ağırlığı ×2.5 (match-3 türünün kendi çözümü) · 12 hamlede tutmazsa
+  KENDİLİĞİNDEN başka harfe döner · hedef küçük (2 tane).
+  Ağırlık daha yükseğe çekilmez: tahtayı tek harfle doldurmak üçlüleri
+  kendiliğinden oluşturur, düşünmek kalmaz.
+- ⚠️ **GÖREVLER KAÇIRMA CEZASIZ** (`gorevler.ts`, Koşusu): gün değişince
+  yenilenir, "kaybettin" hissi verilmez. Mesafe görevi oyun BİTİNCE işlenir —
+  `gorevIlerlet` localStorage'a yazıyor, saniyede 60 kez yazmak telefonu kilitler.
+- ⚠️ **YILDIZ PERFORMANSA BAKAR** (`bolumYildiz.ts`, Macera/Parti/Yarışı):
+  yoksa yine tek bit olur. Bölüm AÇILMASI dereceye bağlı DEĞİL (kullanıcı
+  şartı: sonuncu da olsa devam edebilmeli). Yıldız geriye gitmez — kazanılanı
+  kaybetme korkusu tekrar oynamayı engelliyor.
+- ⚠️ **UZAY SAVAŞI'NDA HEDEF EKRANDA OLMAK ZORUNDA**: ekranda hedef yokken bile
+  doğru harf yalnız %55 olasılıkla gönderiliyordu; çocuk "şın'ı vur" duyup şın'ı
+  hiç göremeden bekliyordu (ölçüm: ilk soru 22.9 sn).
+
 ### Oyun hissi — juice (`src/lib/juice.ts` + `src/lib/titresim.ts`)
 - ⚠️ **KULLANICI TESPİTİ: "koşu oyununda para toplarken ses çıkmıyor".**
   Ölçüldü: 15 oyunun 12'sinde HİÇ sfx yoktu, titreşim HİÇBİRİNDE yoktu.

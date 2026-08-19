@@ -34,6 +34,7 @@ import { gameMusic } from "@/lib/gameMusic";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { useGameMode } from "@/lib/gameMode";
 import { zorlukAyari } from "@/lib/zorluk";
+import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Heart, Volume2, ArrowLeft, ArrowRight, ArrowUp, Pause, Play } from "lucide-react";
@@ -1492,6 +1493,8 @@ const PlatformGame = () => {
   const [streak, setStreak] = useState(0);
   const zorluk = useRef(zorlukAyari());
   const [lives, setLives] = useState(zorluk.current.can);
+  const [kazanilanYildiz, setKazanilanYildiz] = useState(0);
+  const yildizlar = useYildizlar();
   const [paused, setPaused] = useState(true);
   const [started, setStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -2138,6 +2141,15 @@ const PlatformGame = () => {
         winT = 1.15;
         winBurst = 0;
         playFeedback(true);
+        // ⚠️ A-1 YILDIZ — PERFORMANSA bakar, tamamlamaya değil. Yoksa yine
+        // tek bit olur ve bitmiş bölüm ölü içerik kalır.
+        //   3 ⭐ hiç can kaybetmeden bitirdi
+        //   2 ⭐ en az bir can kaldı
+        //   1 ⭐ zar zor
+        const kalanCan = lives;
+        const y = kalanCan >= zorluk.current.can ? 3 : kalanCan >= 2 ? 2 : 1;
+        setYildiz("platform", lv, y);
+        setKazanilanYildiz(y);
         unlockLevel(lv + 1);
         setUnlocked(getUnlockedLevel());
       }
@@ -3035,6 +3047,12 @@ const PlatformGame = () => {
                     >
                       <span className="text-xl sm:text-2xl leading-none">{locked ? "🔒" : t.emoji}</span>
                       <span className={cn("text-[11px] font-extrabold mt-0.5", locked ? "text-muted-foreground" : "text-foreground")}>{lv}</span>
+                      {!locked && (
+                        <span className="mt-0.5 text-[9px] leading-none tracking-tighter" aria-label={`${yildizlar[`platform:${lv}`] ?? 0} yıldız`}>
+                          {"⭐".repeat(yildizlar[`platform:${lv}`] ?? 0)}
+                          <span className="opacity-25">{"⭐".repeat(3 - (yildizlar[`platform:${lv}`] ?? 0))}</span>
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -3062,7 +3080,12 @@ const PlatformGame = () => {
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/95">
               <div className="text-4xl mb-1">🕌</div>
               <div className="text-2xl font-extrabold text-success mb-1">Bölüm {level} Tamam!</div>
-              <div className="text-2xl mb-1">{"⭐".repeat(Math.max(1, Math.min(3, lives)))}</div>
+              {/* Kaydedilen yıldızla AYNI formül — ekranda 3 gösterip 2
+                  kaydetmek çocuğu yanıltır. */}
+              <div className="text-2xl mb-1 tracking-widest">
+                {"⭐".repeat(kazanilanYildiz || 1)}
+                <span className="opacity-25">{"⭐".repeat(3 - (kazanilanYildiz || 1))}</span>
+              </div>
               <div className="text-sm font-bold text-muted-foreground mb-2">Camiye ulaştın! Puan: {score}</div>
               {/* 🌟 nadir altın güvercin bulunduysa kutla */}
               {goldenRun > 0 && (

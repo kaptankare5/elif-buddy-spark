@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useSecenekTuslari, usePcMi } from "@/lib/klavye";
 import { rampa } from "@/lib/zorluk";
+import { useOyunSonu } from "@/lib/oyunSonucu";
+import { OyunSonuKarti } from "@/components/OyunSonuKarti";
 import { sfx, titre } from "@/lib/juice";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback } from "@/lib/audio";
@@ -22,6 +24,9 @@ interface Balloon {
   popped: boolean;
 }
 
+/** B-1: bir dalgada kaç doğru balon. Küçük tutulur — dalga bir nefes anıdır. */
+const DALGA_BOYU = 10;
+
 const COLORS = ["bg-topic-pink", "bg-topic-blue", "bg-topic-orange", "bg-topic-purple", "bg-success", "bg-warning"];
 
 const BalloonGame = () => {
@@ -32,6 +37,15 @@ const BalloonGame = () => {
   const [balloons, setBalloons] = useState<Balloon[]>([]);
   const [score, setScore] = useState(0);
   const [misses, setMisses] = useState(0);
+  // ⚠️ B-1 DALGA YAPISI: oyun hiç bitmiyordu — hedef yok, kayıp yok, kapanış
+  // yok. Çocuk oyunu BİTİRMİYOR, terk ediyor; terk edilen oyuna dönülmez.
+  // 10 balonluk dalgalar hem hedef verir hem "bir dalga daha / burada
+  // bırakabilirim" anını doğal olarak yaratır.
+  const [dalga, setDalga] = useState(1);
+  const [dalgaSkor, setDalgaSkor] = useState(0);
+  const [dalgaBitti, setDalgaBitti] = useState(false);
+  const [oyunBittiMi, setOyunBittiMi] = useState(false);
+  const rapor = useOyunSonu("balloon", oyunBittiMi, dalga - 1, { birim: "dalga" });
   const [flash, setFlash] = useState(false); // doğru cevapta ışık parlaması (normal mod kolaylık)
   /** Doğru cevap sayısı — rampa buna bakar (skor değil). */
   const dogruRef = useRef(0);
@@ -110,6 +124,8 @@ const BalloonGame = () => {
     if (correct) {
       setScore((s) => s + 1);
       dogruRef.current += 1;
+      const yeniDalgaSkor = dalgaSkor + 1;
+      setDalgaSkor(yeniDalgaSkor);
       setFlash(true); setTimeout(() => setFlash(false), 450); // ışık parlaması
       sfx("patlat");
       titre("basari");
@@ -117,6 +133,13 @@ const BalloonGame = () => {
       // ⚠️ Yeni tur, harfin kaydı BİTİNCE başlar (klasikte söz hemen çözülür,
       // eski 350 ms akış korunur).
       await ask.cevapSesi(target, true);
+      if (yeniDalgaSkor >= DALGA_BOYU) {
+        // Dalga bitti: kısa kutlama, sonra "devam / bırak" kararı çocuğun.
+        sfx("seri"); titre("basari");
+        setDalgaBitti(true);
+        setBalloons([]);
+        return;
+      }
       setTimeout(newRound, 350);
     } else {
       setMisses((m) => m + 1);
@@ -126,17 +149,59 @@ const BalloonGame = () => {
     }
   };
 
-  const reset = () => { setScore(0); setMisses(0); newRound(); };
+  const reset = () => {
+    setScore(0); setMisses(0); setDalga(1); setDalgaSkor(0);
+    setDalgaBitti(false); setOyunBittiMi(false); dogruRef.current = 0; newRound();
+  };
+
+  /** Sonraki dalga — biraz daha hızlı (rampa zaten doğru sayısına bağlı). */
+  const sonrakiDalga = () => {
+    setDalga((d) => d + 1);
+    setDalgaSkor(0);
+    setDalgaBitti(false);
+    newRound();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-info/20 to-background">
       <main className="container mx-auto max-w-xl px-4 pb-16">
         <PageHeader title="🎈 Balon Patlatma" backTo="/oyunlar" centered onReset={reset} />
 
+        {dalgaBitti && !oyunBittiMi && (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background/70 backdrop-blur-sm p-4">
+            <div className="w-full max-w-xs rounded-3xl border-4 border-success/50 bg-card p-6 text-center shadow-elegant animate-bounce-in">
+              <div className="text-5xl mb-1">🎉</div>
+              <div className="text-lg font-extrabold text-foreground">{dalga}. dalga bitti!</div>
+              <div className="mt-1 text-sm font-bold text-muted-foreground">
+                Toplam {score} balon · {misses} kaçtı
+              </div>
+              <button
+                onClick={sonrakiDalga}
+                className="mt-5 w-full rounded-2xl bg-primary px-4 py-4 text-lg font-extrabold text-primary-foreground shadow-card transition-bouncy active:scale-95"
+              >
+                ▶️ {dalga + 1}. dalga
+              </button>
+              <button
+                onClick={() => setOyunBittiMi(true)}
+                className="mt-2 w-full rounded-2xl border-2 border-border bg-muted/40 px-4 py-2.5 text-sm font-extrabold text-muted-foreground transition-bouncy active:scale-95"
+              >
+                Bitir
+              </button>
+            </div>
+          </div>
+        )}
+
+        {oyunBittiMi && (
+          <OyunSonuKarti
+            baslik="Balon bitti" skor={dalga - 1} birim="dalga" rapor={rapor}
+            onTekrar={reset} ek={<>{score} balon patlattın</>}
+          />
+        )}
+
         <div className="mb-3 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-success/30">
-            <div className="text-[10px] font-bold text-muted-foreground">Doğru</div>
-            <div className="text-xl font-extrabold text-success">{score}</div>
+            <div className="text-[10px] font-bold text-muted-foreground">{dalga}. dalga</div>
+            <div className="text-xl font-extrabold text-success tabular-nums">{dalgaSkor}/{DALGA_BOYU}</div>
           </div>
           <div className="rounded-xl bg-card p-2 shadow-soft border-2 border-destructive/30">
             <div className="text-[10px] font-bold text-muted-foreground">Yanlış</div>

@@ -49,6 +49,7 @@ import {
 } from "@/lib/askMode";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { zorlukAyari } from "@/lib/zorluk";
+import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
 import type { ContentItem } from "@/data/types";
 
 /** Mantıksal ilerleme (artan) → sahne koordinatı (-Z). Yukarıdaki eksen notu. */
@@ -306,6 +307,7 @@ const PartyGame = () => {
   const [phase, setPhase] = useState<Phase>("levels");
   const [level, setLevel] = useState(1);              // oynanan bölüm (1..10)
   const [unlocked, setUnlocked] = useState(() => getUnlockedLevel());
+  const yildizlar = useYildizlar();
   const [hud, setHud] = useState({ place: 1, pct: 0, correct: 0, wrong: 0 });
   const [power, setPower] = useState<PowerKind | null>(null);      // taşınan tek güç
   const [activePower, setActivePower] = useState<PowerKind | null>(null); // şu an etkin
@@ -1199,6 +1201,11 @@ const PartyGame = () => {
             // sonuncu da olsa parkuru tamamladıysa devam edebilmeli).
             unlockLevel(level + 1);
             setUnlocked(getUnlockedLevel());
+            // ⚠️ PA-1 DERECE KAYDI: bölümü bitirmek tek bit bilgiydi, sıyrılarak
+            // bitirmekle birinci bitirmek aynıydı. Yıldız DERECEYE bakar:
+            // 1. → 3⭐, 2-3. → 2⭐, gerisi 1⭐. Bölüm açılması yine dereceye
+            // BAĞLI DEĞİL (kullanıcı şartı: sonuncu da olsa devam edebilmeli).
+            setYildiz("party", level, r.finished === 1 ? 3 : r.finished <= 3 ? 2 : 1);
             setResult({ place: r.finished, correct: statsRef.current.correct, wrong: statsRef.current.wrong });
             setPhase("finish");
             playFeedback(r.finished <= 3);
@@ -1624,7 +1631,12 @@ const PartyGame = () => {
                   <div className="flex w-full items-center justify-between">
                     <span className="text-lg font-extrabold text-primary">{n}. Bölüm</span>
                     {!open ? <Lock className="h-4 w-4 text-muted-foreground" />
-                      : done ? <span className="text-lg">⭐</span> : null}
+                      : (yildizlar[`party:${n}`] ?? 0) > 0 ? (
+                        <span className="text-xs tracking-tighter" aria-label={`${yildizlar[`party:${n}`]} yıldız`}>
+                          {"⭐".repeat(yildizlar[`party:${n}`])}
+                          <span className="opacity-25">{"⭐".repeat(3 - yildizlar[`party:${n}`])}</span>
+                        </span>
+                      ) : done ? <span className="text-lg opacity-40">⭐</span> : null}
                   </div>
                   <span className="text-xs font-bold text-muted-foreground">{lv.name}</span>
                   <span className="text-[10px] font-bold text-muted-foreground">
@@ -1635,8 +1647,14 @@ const PartyGame = () => {
             })}
           </div>
 
-          <div className="mx-auto mt-3 w-full max-w-sm rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm font-extrabold text-primary">
-            🚧 Devamı gelecek — yeni bölümler yolda!
+          {/* ⚠️ D-3 — "devamı gelecek" KAPALI BİR KAPIYDI. Bitiren çocuğa
+              yapacak bir şey bırakmıyordu. Yerine mevcut içeriği yeniden
+              oynatan somut bir hedef: 30 yıldızın kaçını topladın. */}
+          <div className="mx-auto mt-3 w-full max-w-sm rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-center text-sm font-extrabold text-primary">
+            ⭐ {LEVELS.reduce((t, _l, i) => t + (yildizlar[`party:${i + 1}`] ?? 0), 0)} / {LEVELS.length * 3} yıldız
+            <div className="mt-0.5 text-[11px] font-bold text-muted-foreground">
+              Bölümü birinci bitir → 3 yıldız
+            </div>
           </div>
 
           <div className="mx-auto mt-3 grid w-full max-w-sm gap-1.5 text-left text-xs font-bold">
