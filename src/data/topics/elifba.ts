@@ -546,7 +546,7 @@ const t5_sedde: ContentTopic = {
           // ön eki konur → اَبَّ / اِبِّ / اُبُّ (ebbe / ibbi / übbü).
           // Ekstra kartlar (اِنَّ, رَبِّ…) da zaten bu biçimde.
           // ⚠️ NFC ile normalize: Unicode'un kanonik sırası HAREKEYİ şeddeden
-          // ÖNCE ister ve Diyanet metni de öyle kodlanmış (الضَّٓالّ۪ينَ =
+          // ÖNCE ister ve Diyanet metni de öyle kodlanmış (الضَّٓالّٖينَ =
           // ض + fetha + şedde). Biz şeddeyi önce yazıyorduk; ekranda ikisi
           // PİKSEL PİKSEL aynı çiziliyor (ölçüldü) ama dizgiler eşit
           // olmadığı için karşılaştırma/arama sessizce tutmuyordu.
@@ -585,25 +585,25 @@ const MED_EKSTRA: Array<[string, string, number]> = [
   ["وَا", "vâ", 3],   // 2.641
   ["اٰ", "â", 3],      // 2.244 — medli elif (Türk imlâsı: elif + hançer elif)
   ["هَا", "hâ", 3],   // 1.956
-  ["ف۪ي", "fî", 3],   // 1.794
+  ["فٖي", "fî", 3],   // 1.794
   ["لُو", "lû", 3],   // 1.563
-  ["ذ۪ي", "zî", 3],   // 1.470
+  ["ذٖي", "zî", 3],   // 1.470
   ["هُو", "hû", 3],   // 1.338
   ["يَا", "yâ", 3],   // 1.185
   ["رُو", "rû", 3],   // 1.184
   ["نُو", "nû", 3],   // 1.097
-  ["ه۪ي", "hî", 3],   // 1.091
+  ["هٖي", "hî", 3],   // 1.091
 ];
 
 // Med hecesinin gerçek hoca kaydını bul: med-{harfNo}-{hareke}.mp3.
 // YALNIZ "harf + hareke + uzatma harfi" biçimindeki 3 kod noktalı heceler
 // eşleşir; قَالَ/كَانَ gibi kelimelerin kaydı yok ve ilk hecesinin sesini
 // (kâ) kelimeye iliştirmek çocuğa yanlış öğretir — onlar sessiz kalır.
-// ⚠️ KÜÇÜK ESRE (۪) DE ESREDİR: med yâsının önündeki hareke mushafta küçük
-// yazılıyor (ب۪ي). Bu tabloya eklenmezse `medAudio` o heceyi tanımaz, 28 med
+// ⚠️ KÜÇÜK ESRE (ٖ) DE ESREDİR: med yâsının önündeki hareke mushafta küçük
+// yazılıyor (بٖي). Bu tabloya eklenmezse `medAudio` o heceyi tanımaz, 28 med
 // kartı SESSİZ kalır ve ses şartı yüzünden oyun havuzundan da düşer.
 const HARAKA_SUF: Record<string, "fetha" | "esre" | "otre"> = {
-  "َ": "fetha", "ِ": "esre", "ُ": "otre", "۪": "esre",
+  "َ": "fetha", "ِ": "esre", "ُ": "otre", "ٖ": "esre",
 };
 const MADD_HARFI = new Set(["ا", "ى", "ي", "و"]); // ا ى ي و
 const byIso = new Map(LETTERS.map((l) => [l.iso, l]));
@@ -626,11 +626,11 @@ const MED_FORMS: Array<{ suf: "fetha" | "esre" | "otre"; mark: string; harf: str
   // değişmedi.
   { suf: "fetha", mark: "َ", harf: "ا" },
   // ⚠️ AMA UZUN "î" FARKLI: mushafta med yâsının önündeki esre KÜÇÜK yazılır
-  // ve yâ noktalı kalır → ب۪ي. Kaynak Diyanet metni: الرَّح۪يمِ · ف۪ي ·
-  // اَلَّذ۪ي · الْعَالَم۪ينَ · قَد۪يرٌ. (Kullanıcı şartı: ders tabloları da
+  // ve yâ noktalı kalır → بٖي. Kaynak Diyanet metni: الرَّحٖيمِ · فٖي ·
+  // اَلَّذٖي · الْعَالَمٖينَ · قَدٖيرٌ. (Kullanıcı şartı: ders tabloları da
   // Diyanet/Hayrat mushafına göre.) Noktasız "ى" ise YALNIZ kelime sonunda
   // ve "â" okunurken kullanılır — وَتَعَالٰى.
-  { suf: "esre", mark: "۪", harf: "ي" },
+  { suf: "esre", mark: "ٖ", harf: "ي" },
   { suf: "otre", mark: "ُ", harf: "و" },
 ];
 
@@ -700,7 +700,7 @@ const t6_med: ContentTopic = {
 // ⚠️ İMLÂ **TÜRKİYE (DİYANET) MUSHAFINA** GÖRE — Medine/Suudi imlâsıyla
 // karıştırma (kullanıcı şartı). Üç fark bu kartların hepsini etkiliyor:
 //   1. KELİME BAŞINDA ELİF ÜSTÜNDE HEMZE ÇİZİLMEZ: أُ إِ أَ diye yazılmaz,
-//      düz elif + hareke yazılır (اُ اِ اَ) — اَنْعَمْتَ · اُو۫تُوا · الْاَبْتَرُ.
+//      düz elif + hareke yazılır (اُ اِ اَ) — اَنْعَمْتَ · اُو۟تُوا · الْاَبْتَرُ.
 //      ⚠️ AMA KELİME İÇİNDE/SONUNDA HEMZE ÇİZİLİR: اِقْرَأْ · فَأْتِنَا ·
 //      الْمَلَأُ · شَانِئَكَ · الْمُؤْمِنُونَ. Kuralı "hemze hiç yok" diye
 //      genelleştirmek de yanlış olur (bir kez yapıp geri alındı).
@@ -714,11 +714,16 @@ const t6_med: ContentTopic = {
 const ASAR: Array<[string, string]> = [
   ["اٰمَنَ", "âmene"],             // 2:285 — medd-i bedel (اٰ)
   ["مَالِكِ", "mâliki"],           // 1:4  — medd-i tabiî
-  ["يُرَٓاؤُ۫نَ", "yürâûne"],        // 4:142 — medd-i muttasıl
-  ["اُو۬لٰٓئِكَ", "ulâike"],          // 2:5  — medd-i muttasıl
-  ["الْمَلَأُ", "el-mele'ü"],       // 7:60 — kelime SONU hemze çizilir; MED YOK (kasr)
-  ["اٰبَٓاؤُ۬نَا", "âbâunâ"],         // 7:70 — medd-i bedel + muttasıl
-  ["الضَّٓالّ۪ينَ", "dâllîn"],        // 1:7  — medd-i lâzım (6 hareke)
+  ["يُرَٓاؤُ۟نَ", "yürâûne"],        // 4:142 — medd-i muttasıl
+  ["اُو۟لٰٓئِكَ", "ulâike"],          // 2:5  — medd-i muttasıl
+  // ⚠️ KART TEK BAŞINA DURUYOR: mushafta bu kelime cümle içinde geçtiği için
+  // vasl elifi harekesiz (`قَالَ الْمَلَأُ`), ama kart bir başlangıçtır —
+  // başlangıçta "ال" harekelidir (bkz. `اَلْحَمْدُ لِلّٰهِ`, `اَلشَّمْسُ`).
+  // Harekesiz elifle başlayan kart çocuğa "bu harf sessiz" demez, hiçbir şey
+  // demez (kullanıcı tespiti: "harekesiz harf gördün mü mushafta").
+  ["اَلْمَلَأُ", "el-mele'ü"],      // 7:60 — kelime SONU hemze çizilir; MED YOK (kasr)
+  ["اٰبَٓاؤُ۟نَا", "âbâunâ"],         // 7:70 — medd-i bedel + muttasıl
+  ["اَلضَّٓالّٖينَ", "dâllîn"],       // 1:7  — medd-i lâzım (6 hareke); kart başı "ال" harekeli
   ["حَٓاجُّوكَ", "hâccûke"],         // 3:20 — medd-i lâzım + şedde
 ];
 
@@ -819,12 +824,12 @@ const t9_zamir: ContentTopic = {
     { ar: "فَاِنَّ اللّٰهَ", sp: "feinnallâhe" },
     // ⚠️ ZAMİR HÂ'SININ İKİ YAZIMI AYRI: ötreli zamir mushafta SADE yazılır
     // (`لَهُ` — Araf 70 "وَحْدَهُ", İhlâs 4 "لَهُ"), ama esreli zamir UZUN
-    // okunduğu için küçük esre alır: `ه۪` (Bakara 285 "مِنْ رَبِّه۪ ·
-    // وَمَلٰٓئِكَتِه۪ · وَكُتُبِه۪"). Düz `بِهِ` yazımı "bihi" diye KISA okutur,
+    // okunduğu için küçük esre alır: `هٖ` (Bakara 285 "مِنْ رَبِّهٖ ·
+    // وَمَلٰٓئِكَتِهٖ · وَكُتُبِهٖ"). Düz `بِهِ` yazımı "bihi" diye KISA okutur,
     // oysa kartın okunuşu "bihî".
     { ar: "لَهُ", sp: "lehû" },
     { ar: "لَهُمْ", sp: "lehüm" },
-    { ar: "بِه۪", sp: "bihî" },
+    { ar: "بِهٖ", sp: "bihî" },
   ].map((it, i) => ({
     id: `l9-${pad2(i + 1)}`,
     audio: `/audio/elifba/zamir-${pad2(i + 1)}.mp3`,
@@ -852,7 +857,7 @@ const t10_elif_lam: ContentTopic = {
     { ar: "اَلشَّمْسُ", sp: "eş-şemsü" },
     { ar: "اَلرَّحْمٰنُ", sp: "er-Rahmân" },
     { ar: "اَلْحَمْدُ", sp: "el-hamdü" },
-    { ar: "وَيَسِّرْ ل۪ي", sp: "ve yessir lî" },   // Tâhâ 26 — mushafta ل۪ي
+    { ar: "وَيَسِّرْ لٖي", sp: "ve yessir lî" },   // Tâhâ 26 — mushafta لٖي
     { ar: "فَطَهِّرْ", sp: "fetahhir" },
     { ar: "وَاسْتَغْفِرْهُ", sp: "vestağfirhü" },
     { ar: "رَبِّ", sp: "Rabbi" },

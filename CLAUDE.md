@@ -85,15 +85,15 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
      Kullanıcı tespiti buydu: "uzatma var ama fethası yok" — eski `حَآ`
      yazımında fetha ile uzatma tek glife binip fetha kayboluyordu.
      Kelime başı "â" (medd-i bedel) ise elif + hançer elif: `اٰمَنَ`, `اٰ`.
-  4. **MED YÂSI: NOKTALI ي + KÜÇÜK ESRE** → `ب۪ي` (`بِى` de `بِي` de değil).
+  4. **MED YÂSI: NOKTALI ي + KÜÇÜK ESRE** → `بٖي` (`بِى` de `بِي` de değil).
      Noktasız `ى` yalnız kelime SONUNDA ve "â" okunurken (`وَتَعَالٰى`).
      Uzun **â** ve **û** mushafta zaten NORMAL harekeyle yazılır
      (`مَالِكِ` · `اَعُوذُ` · `يُولَدْ`), yalnız uzun **î** küçük esre alır
-     (`الرَّح۪يمِ` · `اَلَّذ۪ي` · `الْعَالَم۪ينَ`). İKİ İSTİSNA:
+     (`الرَّحٖيمِ` · `اَلَّذٖي` · `الْعَالَمٖينَ`). İKİ İSTİSNA:
      · Yâ kendi harekesini taşıyorsa ÜNSÜZDÜR, normal esre doğru: `اِيَّاكَ`.
      · ⚠️ **UZATMA DÜŞÜYORSA normal esre yazılır**: med harfi sâkinle
        karşılaşınca okunmaz. Felak 4 `فِي الْعُقَدِ` (fil-ukad) NORMAL esreli,
-       Nâs 6 `ف۪ي صُدُورِ` küçük esreli — aynı kelime, iki ayrı yazım.
+       Nâs 6 `فٖي صُدُورِ` küçük esreli — aynı kelime, iki ayrı yazım.
        Bekçi bu yüzden yâdan sonra BOŞLUK varsa karışmaz.
   5. **LAFZATULLAH HEP HANÇER ELİFLİ**: `اللّٰهُ` · `اللّٰهُمَّ` — düz
      `اللَّهُمَّ` yazımı Türk mushafında yok (Âl-i İmrân 26 ile doğrulandı).
@@ -107,13 +107,32 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   Ekstralar `ف۪ي ذ۪ي ه۪ي`). ⚠️ Bu değişiklik `HARAKA_SUF` tablosuna `۪` da
   eklemeyi ZORUNLU kılar: `medAudio` heceyi harekeden tanıyor, eklenmezse
   28 med kartı sessiz kalır ve ses şartı yüzünden oyun havuzundan düşer.
+  7. ⚠️ **ELMAS ÇİZEN İŞARETLERİ KULLANMA** — `۪` (U+06EA) · `۫` (U+06EB) ·
+     `۬` (U+06EC). Diyanet sayfalarından kopyalanan metin bunları taşıyor ve
+     adları küçük esreye/halkaya benziyor, AMA fontta (Amiri Quran ve
+     Scheherazade New'de ölçüldü) **içi boş bir ELMAS ◊** çiziyorlar.
+     Kullanıcı ekranda `الضَّٓالّ۪ينَ`in altında ◊ görüp bildirdi. Doğrusu:
+     uzun î → `ٖ` (U+0656 alt elif, küçük çizgi) · yazılıp okunmayan harf →
+     `۟` (U+06DF küçük yuvarlak sıfır, mushaftaki halka: `اُو۟لٰٓئِكَ`).
+  8. **KART TEK BAŞINAYSA `ال` HAREKELİDİR**: mushafta `قَالَ الْمَلَأُ`
+     (cümle içi, vasl elifi işaretsiz) ama kart bir başlangıç olduğu için
+     `اَلْمَلَأُ` · `اَلضَّٓالّٖينَ` yazılır — `اَلْحَمْدُ`, `اَلشَّمْسُ` ile aynı
+     kural. (Şemsî lâm ve lafzatullahın sâkin lâmı mushafta da işaretsizdir,
+     onlara dokunma.)
+  ⚠️ **FONT YIĞINI KUR'ANİ İŞARETLERE GÖRE SIRALANIR** (`src/index.css`):
+  ölçüldü — "Amiri" (Kur'an sürümü DEĞİL) küçük esre/sessiz-harf işaretlerini
+  taşımıyor, o fonta düşen kelimede işaret yerine kutu çıkıyor. Üstelik
+  `font-arabic-naskh` listesindeki "Scheherazade New" hiçbir yerden
+  YÜKLENMİYORDU (index.html'deki Google Fonts bağlantısında yoktu) — telefonda
+  kurulu olmadığı için sıra doğrudan Amiri'ye düşüyordu. Şimdi yükleniyor ve
+  Amiri her iki listede de EN SONA alındı.
   ⚠️ **KODLAMA DA MUSHAFLA AYNI OLMALI (NFC)**: Unicode kanonik sırası
   hareke → şedde; Diyanet metni öyle kodlanmış (`ض + fetha + şedde`). Şedde
   kartları ters sırada üretiliyordu (81 kart). Ekranda fark YOK — iki kodlama
   piksel piksel aynı çiziliyor (ölçüldü) — ama dizgiler eşit olmadığı için
   karşılaştırma/arama/tekrar-eleme sessizce tutmuyordu.
   Bekçi: `src/test/imla.test.ts` — ekrandaki BÜTÜN Arapça metni (konu
-  rozetleri, kartlar, ezber parçaları; 300+ dizgi) beş kurala + NFC'ye karşı
+  rozetleri, kartlar, ezber parçaları; 300+ dizgi) sekiz kurala + NFC'ye karşı
   tarar ve kural motorunun kendisini de test eder.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
   hareke okunuşları üretilir (kalın 7 harf a/ı/u; Râ karışık ra/ri/ru;

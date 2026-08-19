@@ -144,16 +144,25 @@
   .text-shadow-soft {
     text-shadow: 0 2px 4px hsl(0 0% 0% / 0.15);
   }
+  /* ⚠️ YEDEK SIRASI KUR'ANİ İŞARETLERE GÖRE. Ölçüldü: "Amiri" (Kur'an
+   * sürümü DEĞİL) küçük esre / med / sessiz-harf işaretlerini TAŞIMIYOR —
+   * o fonta düşen bir kelimede işaret yerine kutu çıkıyor. Bu yüzden Amiri
+   * listede Kur'an fontlarının ARDINDA durur; ondan önce işaretleri tam olan
+   * Scheherazade New gelir. */
   .font-arabic {
-    font-family: "Amiri Quran", "Amiri", "Scheherazade New", "Traditional Arabic", serif;
+    font-family: "Amiri Quran", "Scheherazade New", "Traditional Arabic", "Amiri", serif;
     font-feature-settings: "kern", "liga", "calt";
   }
   /* Diyanet Elifbâ'sındaki sade naskh görünümü — Ölçüm gibi ekranlarda
    * temel harf ile başta/ortada/sonda halleri tutarlı çizilsin diye
    * Scheherazade New öne alınır (Amiri Quran'ın Kur'ani süslemeleri
    * bu ekranlarda kafa karıştırıyor). */
+  /* ⚠️ Scheherazade New ARTIK GERÇEKTEN YÜKLENİYOR (index.html). Eskiden
+   * listede vardı ama hiçbir yerden indirilmiyordu: telefonda kurulu
+   * olmadığı için sıra "Amiri"ye düşüyor, o da Kur'ani işaretleri
+   * taşımadığı için ekrana kutu basıyordu. */
   .font-arabic-naskh {
-    font-family: "Scheherazade New", "Traditional Arabic", "Amiri", serif;
+    font-family: "Scheherazade New", "Amiri Quran", "Traditional Arabic", "Amiri", serif;
     font-feature-settings: "kern", "liga", "calt";
   }
   /* İslami 8 köşeli yıldız deseni — kurumsal dokunuş, çok hafif.
