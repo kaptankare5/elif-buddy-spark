@@ -18,6 +18,16 @@
  *   3. Noktasız `ى` yalnız hançer eliften sonra (`وَتَعَالٰى`); uzatma yâsı
  *      mushafta hep noktalı (`ف۪ي` · `بِي`).
  *   4. `ٓ` bir harfin üstüne doğrudan gelmez, HAREKENİN ardından gelir.
+ *   5. MED YÂSININ ÖNÜNDEKİ ESRE KÜÇÜKTÜR: `ب۪ي` (`بِي` değil) — الرَّح۪يمِ ·
+ *      ف۪ي · اَلَّذ۪ي · الْعَالَم۪ينَ. İKİ İSTİSNA var, ikisi de gerçek:
+ *      · Yâ KENDİ harekesini taşıyorsa med yâsı değil ÜNSÜZDÜR, normal esre
+ *        doğrudur: `اِيَّاكَ` · `وَجْهِيَ`.
+ *      · ⚠️ UZATMA DÜŞÜYORSA da normal esre yazılır. Med harfi sâkinle
+ *        karşılaşınca okunmaz: Felak 4 mushafta `فِي الْعُقَدِ` (fil-ukad)
+ *        diye NORMAL esreyle yazılı, ama Nâs 6 `ف۪ي صُدُورِ` küçük esreyle.
+ *        Aynı kelime, iki ayrı yazım — sebebi sonraki kelimenin sâkin
+ *        başlaması. Bu yüzden kural, yâdan sonra BOŞLUK varsa karışmaz:
+ *        sonraki kelimeyi bilmeden karar verilemez.
  */
 import { describe, it, expect } from "vitest";
 import { getAllTopics } from "@/data/subjects";
@@ -39,6 +49,13 @@ export function imlaHatalari(t: string): string[] {
       h.push("noktasız ى — uzatma yâsı noktalı olmalı");
     if (c === "ٓ" && !HAREKE.has(onceki))
       h.push("ٓ harekeden sonra gelmeli");
+    if (c === "ي" && onceki === "ِ") {
+      const sonraki = i + 1 < t.length ? t[i + 1] : "";
+      // Hareke → yâ ünsüzdür (اِيَّاكَ). Boşluk → uzatma düşmüş olabilir
+      // (فِي الْعُقَدِ). İkisi de kural dışı; bkz. yukarıdaki istisnalar.
+      if (!HAREKE.has(sonraki) && sonraki !== " ")
+        h.push("med yâsının esresi KÜÇÜK olmalı (ب۪ي)");
+    }
   }
   return h;
 }
@@ -80,10 +97,14 @@ describe("imlâ — Türkiye (Diyanet) mushafı", () => {
     expect(imlaHatalari("آمَنَ").length, "آ yakalanmalı").toBeGreaterThan(0);
     expect(imlaHatalari("أُولٰٓئِكَ").length, "kelime başı hemze yakalanmalı").toBeGreaterThan(0);
     expect(imlaHatalari("بِى").length, "noktasız ى yakalanmalı").toBeGreaterThan(0);
+    expect(imlaHatalari("بِي").length, "büyük esreli med yâsı yakalanmalı").toBeGreaterThan(0);
     // Doğru yazımlar temiz geçmeli:
     expect(imlaHatalari("اٰمَنَ")).toEqual([]);
     expect(imlaHatalari("حَٓاجُّوكَ")).toEqual([]);
     expect(imlaHatalari("الْمَلَأُ"), "kelime SONU hemze serbest").toEqual([]);
     expect(imlaHatalari("وَتَعَالٰى"), "hançer eliften sonra ى serbest").toEqual([]);
+    expect(imlaHatalari("ب۪ي"), "küçük esreli med yâsı doğru").toEqual([]);
+    expect(imlaHatalari("اِيَّاكَ"), "yâ ünsüzse normal esre doğru").toEqual([]);
+    expect(imlaHatalari("فِي الْعُقَدِ"), "uzatma düşüyorsa normal esre doğru").toEqual([]);
   });
 });

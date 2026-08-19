@@ -85,22 +85,28 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
      Kullanıcı tespiti buydu: "uzatma var ama fethası yok" — eski `حَآ`
      yazımında fetha ile uzatma tek glife binip fetha kayboluyordu.
      Kelime başı "â" (medd-i bedel) ise elif + hançer elif: `اٰمَنَ`, `اٰ`.
-  4. **MED YÂSI NOKTALI**: `بِي` (`بِى` değil). Noktasız `ى` yalnız kelime
-     SONUNDA ve "â" okunduğunda kullanılır (`وَتَعَالٰى`); uzatma yâsı
-     mushafta hep noktalı (`ف۪ي` · `اَلَّذ۪ي` · `الرَّح۪يمِ`).
+  4. **MED YÂSI: NOKTALI ي + KÜÇÜK ESRE** → `ب۪ي` (`بِى` de `بِي` de değil).
+     Noktasız `ى` yalnız kelime SONUNDA ve "â" okunurken (`وَتَعَالٰى`).
+     Uzun **â** ve **û** mushafta zaten NORMAL harekeyle yazılır
+     (`مَالِكِ` · `اَعُوذُ` · `يُولَدْ`), yalnız uzun **î** küçük esre alır
+     (`الرَّح۪يمِ` · `اَلَّذ۪ي` · `الْعَالَم۪ينَ`). İKİ İSTİSNA:
+     · Yâ kendi harekesini taşıyorsa ÜNSÜZDÜR, normal esre doğru: `اِيَّاكَ`.
+     · ⚠️ **UZATMA DÜŞÜYORSA normal esre yazılır**: med harfi sâkinle
+       karşılaşınca okunmaz. Felak 4 `فِي الْعُقَدِ` (fil-ukad) NORMAL esreli,
+       Nâs 6 `ف۪ي صُدُورِ` küçük esreli — aynı kelime, iki ayrı yazım.
+       Bekçi bu yüzden yâdan sonra BOŞLUK varsa karışmaz.
   5. **LAFZATULLAH HEP HANÇER ELİFLİ**: `اللّٰهُ` · `اللّٰهُمَّ` — düz
      `اللَّهُمَّ` yazımı Türk mushafında yok (Âl-i İmrân 26 ile doğrulandı).
   6. **ZAMİR HÂ'SININ İKİ HÂLİ AYRI**: ötreli zamir SADE yazılır (`لَهُ` —
      İhlâs 4, Aʿrâf 70 `وَحْدَهُ`), esreli zamir uzun okunduğu için küçük
      esre alır (`بِه۪` · `رَبِّه۪` · `وَكُتُبِه۪`). Düz `بِهِ` "bihi" diye
      KISA okutur.
-  ⚠️ **İKİ AYRI YAZIM DÜZENİ VAR, KARIŞTIRMA:**
-  · **Öğretme tabloları** (hareke · cezm · şedde · med · tenvin) TAM HAREKE
-    kullanır: `بَ بِ بُ` → `بَا بِي بُو`. Amaç çocuğa harekeyi göstermek;
-    oraya mushafın küçük işaretini (`ب۪ي`) koymak öğretilmemiş bir işaret
-    demek olur.
-  · **Gerçek Kur'an ibareleri** (âsar · zamir · elif-lâm · ezber sûreleri)
-    MUSHAF yazımıyla: küçük esre `۪`, hançer elif `ٰ`, med `ٓ`.
+  ⚠️ **ÖĞRETME TABLOLARI DA MUSHAF YAZIMIYLA** (kullanıcı şartı: "onlar dahil
+  her şey Diyanet/Hayrat Kur'an'ına göre"). Hareke/cezm/şedde/tenvin zaten
+  uyuyordu; med tablosunda yalnız uzun î değişti (`بِي` → `ب۪ي`, 28 kart +
+  Ekstralar `ف۪ي ذ۪ي ه۪ي`). ⚠️ Bu değişiklik `HARAKA_SUF` tablosuna `۪` da
+  eklemeyi ZORUNLU kılar: `medAudio` heceyi harekeden tanıyor, eklenmezse
+  28 med kartı sessiz kalır ve ses şartı yüzünden oyun havuzundan düşer.
   Bekçi: `src/test/imla.test.ts` — ekrandaki BÜTÜN Arapça metni (konu
   rozetleri, kartlar, ezber parçaları; 300+ dizgi) dört kurala karşı tarar
   ve kural motorunun kendisini de test eder.
