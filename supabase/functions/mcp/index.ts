@@ -15,7 +15,7 @@ var LETTERS = [
   { n: 3, name: "Te", iso: "\u062A", init: "\uFE97", med: "\uFE98", fin: "\uFE96", speech: "te", cons: "t", thick: "ince" },
   { n: 4, name: "Se", iso: "\u062B", init: "\uFE9B", med: "\uFE9C", fin: "\uFE9A", speech: "se", cons: "s", thick: "ince" },
   { n: 5, name: "Cim", iso: "\u062C", init: "\uFE9F", med: "\uFEA0", fin: "\uFE9E", speech: "cim", cons: "c", thick: "ince" },
-  { n: 6, name: "Ha", iso: "\u062D", init: "\uFEA3", med: "\uFEA4", fin: "\uFEA2", speech: "ha", cons: "h", thick: "ince" },
+  { n: 6, name: "Ha", iso: "\u062D", init: "\uFEA3", med: "\uFEA4", fin: "\uFEA2", speech: "ha", cons: "h", thick: "ra" },
   { n: 7, name: "H\u0131", iso: "\u062E", init: "\uFEA7", med: "\uFEA8", fin: "\uFEA6", speech: "h\u0131", cons: "h", thick: "kalin" },
   { n: 8, name: "Dal", iso: "\u062F", init: "\u062F", med: "\u0640\u062F", fin: "\u0640\u062F", speech: "dal", cons: "d", thick: "ince" },
   { n: 9, name: "Zel", iso: "\u0630", init: "\u0630", med: "\u0640\u0630", fin: "\u0640\u0630", speech: "zel", cons: "z", thick: "ince" },
@@ -27,10 +27,10 @@ var LETTERS = [
   { n: 15, name: "Dad", iso: "\u0636", init: "\uFEBF", med: "\uFEC0", fin: "\uFEBE", speech: "dad", cons: "d", thick: "kalin" },
   { n: 16, name: "T\u0131", iso: "\u0637", init: "\uFEC3", med: "\uFEC4", fin: "\uFEC2", speech: "t\u0131", cons: "t", thick: "kalin" },
   { n: 17, name: "Z\u0131", iso: "\u0638", init: "\uFEC7", med: "\uFEC8", fin: "\uFEC6", speech: "z\u0131", cons: "z", thick: "kalin" },
-  { n: 18, name: "Ayn", iso: "\u0639", init: "\uFECB", med: "\uFECC", fin: "\uFECA", speech: "ayn", cons: "", thick: "ince" },
+  { n: 18, name: "Ayn", iso: "\u0639", init: "\uFECB", med: "\uFECC", fin: "\uFECA", speech: "ayn", cons: "", thick: "ra" },
   { n: 19, name: "Gayn", iso: "\u063A", init: "\uFECF", med: "\uFED0", fin: "\uFECE", speech: "gay\u0131n", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe", iso: "\u0641", init: "\uFED3", med: "\uFED4", fin: "\uFED2", speech: "fe", cons: "f", thick: "ince" },
-  { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "g", thick: "kalin" },
+  { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "k", thick: "kalin" },
   { n: 22, name: "Kef", iso: "\u0643", init: "\uFEDB", med: "\uFEDC", fin: "\uFEDA", speech: "kef", cons: "k", thick: "ince" },
   { n: 23, name: "Lem", iso: "\u0644", init: "\uFEDF", med: "\uFEE0", fin: "\uFEDE", speech: "lem", cons: "l", thick: "ince" },
   { n: 24, name: "Mim", iso: "\u0645", init: "\uFEE3", med: "\uFEE4", fin: "\uFEE2", speech: "mim", cons: "m", thick: "ince" },
@@ -414,7 +414,7 @@ var t4_cezm = {
     ...LETTERS.filter((l) => l.n >= 2).flatMap((l) => {
       const cezmIdx = l.n - 1;
       const hasAudio = !CEZM_MISSING.has(l.n);
-      const base = l.cons;
+      const base = l.cons || (l.n === 18 ? "'" : "");
       const v = harekeVowels(l.thick);
       return [
         { v: "e", audio: `cezm-${pad2(cezmIdx)}-e.mp3`, sp: `${v.a}${base}` },
@@ -494,13 +494,14 @@ var t5_sedde = {
   items: [
     ...LETTERS.filter((l) => l.n >= 2).flatMap((l) => {
       const idx = l.n - 1;
-      const base = l.cons;
+      const base = l.cons || (l.n === 18 ? "'" : "");
+      const ikile = (x) => base === "'" ? `${x}${base}` : `${x}${base}${base}`;
       const v = harekeVowels(l.thick);
       return HAREKE.map((h) => {
         const sesMap = {
-          a: `${v.a}${base}${base}${v.a}`,
-          i: `${v.i}${base}${base}${v.a}`,
-          u: `${v.u}${base}${base}${v.a}`
+          a: `${ikile(v.a)}${v.a}`,
+          i: `${ikile(v.i)}${v.a}`,
+          u: `${ikile(v.u)}${v.a}`
         };
         return {
           id: `l5-${pad2(l.n)}-${h.suf}`,
@@ -517,7 +518,7 @@ var t5_sedde = {
           // ض + fetha + şedde). Biz şeddeyi önce yazıyorduk; ekranda ikisi
           // PİKSEL PİKSEL aynı çiziliyor (ölçüldü) ama dizgiler eşit
           // olmadığı için karşılaştırma/arama sessizce tutmuyordu.
-          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}\u0651\u064E`.normalize("NFC"),
+          emoji: `${SEDDE_ELIF_PRE[h.suf]}${l.iso}\u064E\u0651`.normalize("NFC"),
           translit: sesMap[h.vowel],
           audio: audioPath(`sedde-${pad2(idx)}-${h.suf}.mp3`),
           section: bolum(l.n),
