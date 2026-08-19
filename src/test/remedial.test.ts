@@ -89,7 +89,7 @@ describe("ne zaman telafi ÇIKAR ve hangi yöntem", () => {
     expect(r).toMatchObject({ itemId: AYN_MED, letter: 18, kind: "kuyruk" });
   });
 
-  it("Ayn'ı Gayn'la karıştırdı → aradaki tek fark NOKTA olduğu için nokta yöntemi", () => {
+  it("Ayn'ı Ğayn'la karıştırdı → aradaki tek fark NOKTA olduğu için nokta yöntemi", () => {
     heatUp(AYN_MED, GAYN_MED);
     expect(considerRemedy(AYN_MED, GAYN_MED)?.kind).toBe("nokta");
   });
