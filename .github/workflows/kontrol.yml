@@ -1,0 +1,46 @@
+# OTOMATİK KONTROL — her push'ta çalışır.
+#
+# ⚠️ NEDEN VAR: bekçi testler (imlâ, ses dosyaları, kalıcılık, zorluk kapsamı)
+# yalnız elle çalıştırılınca işe yarıyordu. Bu depoya Lovable de yazıyor;
+# oradan gelen bir değişiklik testleri çalıştırmadan main'e giriyordu. Yani
+# "bir daha bozulmasın" diye yazılan bekçiler, asıl bozulmanın geldiği yolda
+# hiç devreye girmiyordu. Artık her push'ta GitHub çalıştırır ve commit'in
+# yanına ✓ / ✗ koyar.
+name: Kontrol
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  kontrol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      # ⚠️ `npm ci` DEĞİL: package-lock.json package.json ile senkron değil
+      # (Lovable react-helmet-async'i lock'u güncellemeden eklemiş) ve `npm ci`
+      # bu durumda hata verip duruyor. Lock'u burada düzeltmek Lovable ile
+      # çakışma riski taşıdığı için kuruluma `npm install` deniyor.
+      - run: npm install --no-audit --no-fund
+
+      # ⚠️ KÖK tsconfig.json HİÇBİR ŞEYİ denetlemez ("files": [] + yalnız
+      # project reference) — sessizce boş geçer. Doğrusu tsconfig.app.json.
+      - name: TypeScript
+        run: npx tsc -p tsconfig.app.json --noEmit
+
+      # İmlâ bekçisi burada: yanlış yazılmış bir Arapça kart eklenirse
+      # (Medine imlâsı, kelime başı hemze, noktasız med yâsı, NFC dışı
+      # kodlama) bu adım kırmızı olur ve hangi kartın nesi bozuk yazar.
+      - name: Testler
+        run: npx vitest run
+
+      # eslint tabanı 38 sorun; iş bunun ÜSTÜNE çıkarsa uyarır (kırmızı
+      # yapmaz — mevcut 38'i temizlemek ayrı bir iş).
+      - name: Lint (bilgi amaçlı)
+        continue-on-error: true
+        run: npx eslint src/
