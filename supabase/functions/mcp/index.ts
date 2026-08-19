@@ -28,7 +28,7 @@ var LETTERS = [
   { n: 16, name: "T\u0131", iso: "\u0637", init: "\uFEC3", med: "\uFEC4", fin: "\uFEC2", speech: "t\u0131", cons: "t", thick: "kalin" },
   { n: 17, name: "Z\u0131", iso: "\u0638", init: "\uFEC7", med: "\uFEC8", fin: "\uFEC6", speech: "z\u0131", cons: "z", thick: "kalin" },
   { n: 18, name: "Ayn", iso: "\u0639", init: "\uFECB", med: "\uFECC", fin: "\uFECA", speech: "ayn", cons: "", thick: "ra" },
-  { n: 19, name: "Gayn", iso: "\u063A", init: "\uFECF", med: "\uFED0", fin: "\uFECE", speech: "gay\u0131n", cons: "g", thick: "kalin" },
+  { n: 19, name: "\u011Eayn", iso: "\u063A", init: "\uFECF", med: "\uFED0", fin: "\uFECE", speech: "gay\u0131n", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe", iso: "\u0641", init: "\uFED3", med: "\uFED4", fin: "\uFED2", speech: "fe", cons: "f", thick: "ince" },
   { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "k", thick: "kalin" },
   { n: 22, name: "Kef", iso: "\u0643", init: "\uFEDB", med: "\uFEDC", fin: "\uFEDA", speech: "kef", cons: "k", thick: "ince" },
@@ -204,11 +204,11 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // فَهُوَ
   [["Kaf", "u"], ["Te", "i"], ["Lem", "a"]],
   // قُتِلَ
-  [["Ra", "a"], ["Gayn", "i"], ["Be", "a"]],
+  [["Ra", "a"], ["\u011Eayn", "i"], ["Be", "a"]],
   // رَغِبَ
   [["Mim", "a"], ["Ra", "i"], ["Dad", "a"]],
   // مَرِضَ
-  [["Gayn", "u"], ["Fe", "i"], ["Ra", "a"]],
+  [["\u011Eayn", "u"], ["Fe", "i"], ["Ra", "a"]],
   // غُفِرَ
   [["Zel", "u"], ["Kef", "i"], ["Ra", "a"]],
   // ذُكِرَ

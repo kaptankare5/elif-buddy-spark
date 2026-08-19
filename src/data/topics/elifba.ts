@@ -43,7 +43,7 @@ const LETTERS: LetterDef[] = [
   { n: 16, name: "Tı",   iso: "ط", init: "ﻃ",  med: "ﻄ",  fin: "ﻂ",  speech: "tı",   cons: "t", thick: "kalin" },
   { n: 17, name: "Zı",   iso: "ظ", init: "ﻇ",  med: "ﻈ",  fin: "ﻆ",  speech: "zı",   cons: "z", thick: "kalin" },
   { n: 18, name: "Ayn",  iso: "ع", init: "ﻋ",  med: "ﻌ",  fin: "ﻊ",  speech: "ayn",  cons: "",  thick: "ra" },
-  { n: 19, name: "Gayn", iso: "غ", init: "ﻏ",  med: "ﻐ",  fin: "ﻎ",  speech: "gayın", cons: "g", thick: "kalin" },
+  { n: 19, name: "Ğayn", iso: "غ", init: "ﻏ",  med: "ﻐ",  fin: "ﻎ",  speech: "gayın", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe",   iso: "ف", init: "ﻓ",  med: "ﻔ",  fin: "ﻒ",  speech: "fe",   cons: "f", thick: "ince" },
   { n: 21, name: "Kaf",  iso: "ق", init: "ﻗ",  med: "ﻘ",  fin: "ﻖ",  speech: "kaf",  cons: "k", thick: "kalin" },
   { n: 22, name: "Kef",  iso: "ك", init: "ﻛ",  med: "ﻜ",  fin: "ﻚ",  speech: "kef",  cons: "k", thick: "ince" },
@@ -236,9 +236,9 @@ const HAREKE_ALISTIRMA_KELIMELERI: WordSpec[] = [
   [["Sad", "a"], ["Mim", "a"], ["Dal", "u"]],    // صَمَدُ
   [["Fe", "a"], ["He", "u"], ["Vev", "a"]],      // فَهُوَ
   [["Kaf", "u"], ["Te", "i"], ["Lem", "a"]],     // قُتِلَ
-  [["Ra", "a"], ["Gayn", "i"], ["Be", "a"]],     // رَغِبَ
+  [["Ra", "a"], ["Ğayn", "i"], ["Be", "a"]],     // رَغِبَ
   [["Mim", "a"], ["Ra", "i"], ["Dad", "a"]],     // مَرِضَ
-  [["Gayn", "u"], ["Fe", "i"], ["Ra", "a"]],     // غُفِرَ
+  [["Ğayn", "u"], ["Fe", "i"], ["Ra", "a"]],     // غُفِرَ
   [["Zel", "u"], ["Kef", "i"], ["Ra", "a"]],     // ذُكِرَ
   // sayfa 11
   [["Şin", "a"], ["Cim", "a"], ["Ra", "a"]],     // شَجَرَ

@@ -153,9 +153,9 @@ export const TAIL_RULES: TailRule[] = [
     zone: { dir: "alt", at: 0.45 },
   },
   {
-    n: 19, name: "Gayn", iso: "غ", init: "ﻏ",
+    n: 19, name: "Ğayn", iso: "غ", init: "ﻏ",
     tailName: "alt çanak", keepName: "baş",
-    say: "Gayn da aynı; üstünde noktası vardır.",
+    say: "Ğayn da aynı; üstünde noktası vardır.",
     zone: { dir: "alt", at: 0.62 },
   },
   {
@@ -282,12 +282,12 @@ export const DOT_GROUPS: DotGroup[] = [
   },
   {
     id: "ayn",
-    title: "Ayn · Gayn",
+    title: "Ayn · Ğayn",
     skeleton: "baş + çanak",
-    hint: "İkisi de aynı şekil. Üstünde bir nokta varsa Gayn, yoksa Ayn.",
+    hint: "İkisi de aynı şekil. Üstünde bir nokta varsa Ğayn, yoksa Ayn.",
     letters: [
       L(18, "Ayn", "ع", "ﻋ", "ﻌ", "ﻊ", 0, "yok"),
-      L(19, "Gayn", "غ", "ﻏ", "ﻐ", "ﻎ", 1, "ust"),
+      L(19, "Ğayn", "غ", "ﻏ", "ﻐ", "ﻎ", 1, "ust"),
     ],
   },
   {
