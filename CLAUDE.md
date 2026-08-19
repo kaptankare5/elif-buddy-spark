@@ -135,8 +135,22 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   rozetleri, kartlar, ezber parçaları; 300+ dizgi) sekiz kurala + NFC'ye karşı
   tarar ve kural motorunun kendisini de test eder.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
-  hareke okunuşları üretilir (kalın 7 harf a/ı/u; Râ karışık ra/ri/ru;
-  gerisi e/i/ü). Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
+  hareke okunuşları üretilir. Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
+  ⚠️ **ÜÇ KOVA VAR, İKİ DEĞİL** (`harekeVowels`):
+  · `kalin` خ ص ض ط ظ غ ق → **a / ı / u**
+  · `ra` **ر ح ع** → **a / i / u** (üstün-ötrede kalın, esrede ince)
+  · `ince` gerisi → **e / i / ü**
+  ⚠️ **ح ve ع sonradan `ra` kovasına alındı**: tecvidde müsta'liye değiller
+  ama Türkçe okuyuşta boğaz harfi oldukları için "e"ye inceltilmez —
+  `حَمْد` "hamd" · `الرَّحٖيم` "rahîm" · `عَلَيْهِمْ` "aleyhim" · `عِنْدَ` "inde".
+  Önce `ince` idiler, kartlar "he/hi/hü" ve "e/i/ü" diyordu; med tablosunu da
+  bozuyordu (`عَا` "ê" çıkıyordu, doğrusu "â").
+  ⚠️ **ق'ın `cons`'u "k", "g" DEĞİL**: Diyanet çeviri yazısı `قُلْ` "kul",
+  `قَالَ` "kâle" der. "g" iken hem yanlıştı hem de غ ile çakışıyordu
+  (ikisi de "ga" veriyordu — yazılı şıkta iki doğru cevap demek).
+  ⚠️ **SÂKİN AYN APOSTROFLU**: `اَعْ` = "a'" (düz "a" değil), `اَعَّ` = "a'a".
+  Ayn'ın Türkçe karşılığı olmadığı için cezimli hâli düz sesliye dönüyordu ve
+  yazılı şıkta elifle ayırt edilemiyordu. Apostrof ikilenmez ("a''a" değil).
 - **11 konu** (yeni müfredat); video'lu olanlar `topic.video`.
 
 ### ⚠️ BECERİ KATMANI (`src/lib/skills.ts`) — yeni müfredatın çekirdeği

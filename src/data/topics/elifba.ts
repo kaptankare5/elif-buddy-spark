@@ -30,7 +30,7 @@ const LETTERS: LetterDef[] = [
   { n: 3,  name: "Te",   iso: "ت", init: "ﺗ",  med: "ﺘ",  fin: "ﺖ",  speech: "te",   cons: "t", thick: "ince" },
   { n: 4,  name: "Se",   iso: "ث", init: "ﺛ",  med: "ﺜ",  fin: "ﺚ",  speech: "se",   cons: "s", thick: "ince" },
   { n: 5,  name: "Cim",  iso: "ج", init: "ﺟ",  med: "ﺠ",  fin: "ﺞ",  speech: "cim",  cons: "c", thick: "ince" },
-  { n: 6,  name: "Ha",   iso: "ح", init: "ﺣ",  med: "ﺤ",  fin: "ﺢ",  speech: "ha",   cons: "h", thick: "ince" },
+  { n: 6,  name: "Ha",   iso: "ح", init: "ﺣ",  med: "ﺤ",  fin: "ﺢ",  speech: "ha",   cons: "h", thick: "ra" },
   { n: 7,  name: "Hı",   iso: "خ", init: "ﺧ",  med: "ﺨ",  fin: "ﺦ",  speech: "hı",   cons: "h", thick: "kalin" },
   { n: 8,  name: "Dal",  iso: "د", init: "د",  med: "ـد", fin: "ـد", speech: "dal",  cons: "d", thick: "ince" },
   { n: 9,  name: "Zel",  iso: "ذ", init: "ذ",  med: "ـذ", fin: "ـذ", speech: "zel",  cons: "z", thick: "ince" },
@@ -42,10 +42,10 @@ const LETTERS: LetterDef[] = [
   { n: 15, name: "Dad",  iso: "ض", init: "ﺿ",  med: "ﻀ",  fin: "ﺾ",  speech: "dad",  cons: "d", thick: "kalin" },
   { n: 16, name: "Tı",   iso: "ط", init: "ﻃ",  med: "ﻄ",  fin: "ﻂ",  speech: "tı",   cons: "t", thick: "kalin" },
   { n: 17, name: "Zı",   iso: "ظ", init: "ﻇ",  med: "ﻈ",  fin: "ﻆ",  speech: "zı",   cons: "z", thick: "kalin" },
-  { n: 18, name: "Ayn",  iso: "ع", init: "ﻋ",  med: "ﻌ",  fin: "ﻊ",  speech: "ayn",  cons: "",  thick: "ince" },
+  { n: 18, name: "Ayn",  iso: "ع", init: "ﻋ",  med: "ﻌ",  fin: "ﻊ",  speech: "ayn",  cons: "",  thick: "ra" },
   { n: 19, name: "Gayn", iso: "غ", init: "ﻏ",  med: "ﻐ",  fin: "ﻎ",  speech: "gayın", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe",   iso: "ف", init: "ﻓ",  med: "ﻔ",  fin: "ﻒ",  speech: "fe",   cons: "f", thick: "ince" },
-  { n: 21, name: "Kaf",  iso: "ق", init: "ﻗ",  med: "ﻘ",  fin: "ﻖ",  speech: "kaf",  cons: "g", thick: "kalin" },
+  { n: 21, name: "Kaf",  iso: "ق", init: "ﻗ",  med: "ﻘ",  fin: "ﻖ",  speech: "kaf",  cons: "k", thick: "kalin" },
   { n: 22, name: "Kef",  iso: "ك", init: "ﻛ",  med: "ﻜ",  fin: "ﻚ",  speech: "kef",  cons: "k", thick: "ince" },
   { n: 23, name: "Lem",  iso: "ل", init: "ﻟ",  med: "ﻠ",  fin: "ﻞ",  speech: "lem",  cons: "l", thick: "ince" },
   { n: 24, name: "Mim",  iso: "م", init: "ﻣ",  med: "ﻤ",  fin: "ﻢ",  speech: "mim",  cons: "m", thick: "ince" },
@@ -55,8 +55,22 @@ const LETTERS: LetterDef[] = [
   { n: 28, name: "Ye",   iso: "ي", init: "ﻳ",  med: "ﻴ",  fin: "ﻲ",  speech: "ye",   cons: "y", thick: "ince" },
 ];
 
-// Harekeli okunuş için sesli harf seti: kalın harflerde a/ı/u, ince
-// harflerde e/i/ü; Râ üstün ve ötrede kalın, esrede ince okunur (ra, ri, ru).
+/**
+ * Harekeli okunuş için sesli harf seti.
+ *
+ * ⚠️ ÜÇ KOVA VAR, İKİ DEĞİL:
+ *  · `kalin` (خ ص ض ط ظ غ ق — hurûf-i müsta'liye): a / ı / u
+ *  · `ra`   (ر ح ع): üstün ve ötrede KALIN, esrede İNCE → a / i / u
+ *  · `ince` (gerisi): e / i / ü
+ *
+ * ⚠️ ح ve ع BU LİSTEYE SONRADAN ALINDI. Tecvidde müsta'liye değiller ama
+ * TÜRKÇE OKUYUŞTA kalın seslenirler — boğaz harfi oldukları için Türk okuyucu
+ * "e"ye inceltmez. Diyanet çeviri yazısı da böyle: حَمْد "hamd" · الرَّح۪يم
+ * "rahîm" · حُسْن "husn" · عَلَيْهِمْ "aleyhim" · عِنْدَ "inde" · الْعُقَد "ukad".
+ * Önce ikisi de `ince` idi ve kartlar "he/hi/hü", "e/i/ü" diyordu; bu hem
+ * yanlıştı hem de med tablosunu bozuyordu (عَا "ê" çıkıyordu, doğrusu "â").
+ * Kaynak: elifbâ kalın harf listesi ح خ ر ص ض ط ظ ع غ ق.
+ */
 function harekeVowels(thick: Thickness): { a: string; i: string; u: string } {
   if (thick === "kalin") return { a: "a", i: "ı", u: "u" };
   if (thick === "ra") return { a: "a", i: "i", u: "u" };
@@ -445,7 +459,19 @@ const t4_cezm: ContentTopic = {
       // (audio numarası = l.n - 1 ama Kef için hiç yok)
       const cezmIdx = l.n - 1;
       const hasAudio = !CEZM_MISSING.has(l.n);
-      const base = l.cons;
+      /**
+       * ⚠️ SÂKİN AYN APOSTROFLA YAZILIR: `اَعْ` = "a'" (düz "a" DEĞİL).
+       *
+       * Ayn'ın Türkçede karşılığı yok (`cons` boş), o yüzden cezimli hâli
+       * düz sesliye dönüyordu: اَعْ → "a". Bu iki şeyi bozuyor:
+       *  · Yazılı şıkta hece harfi GÖSTERMİYOR — "a" yazan şık aynı zamanda
+       *    elifin/hemzenin de okunuşu; çocuk hangi harf olduğunu ayırt edemez.
+       *  · Uygulamanın kendi elle yazılmış kartları zaten apostrof kullanıyor
+       *    (`يَعْ` = "ye'"), yani veri kendi içinde tutarsızdı.
+       * Diyanet çeviri yazısı da sâkin ayn/hemzeyi kesme işaretiyle gösterir:
+       * "ye'kul" · "el-mele'ü" · "mü'min". (Kullanıcı önerisi.)
+       */
+      const base = l.cons || (l.n === 18 ? "'" : "");
       const v = harekeVowels(l.thick);
       return [
         { v: "e", audio: `cezm-${pad2(cezmIdx)}-e.mp3`, sp: `${v.a}${base}` },
@@ -527,13 +553,19 @@ const t5_sedde: ContentTopic = {
     ...LETTERS.filter((l) => l.n >= 2).flatMap((l) => {
       // Sedde klasörü: 01=Be, 02=Te … 27=Ye  → idx = l.n - 1
       const idx = l.n - 1;
-      const base = l.cons;
+      // Şeddenin İLK yarısı sâkindir; ayn'da orası da apostrof ister
+      // (cezm konusundaki nota bak): اَعَّ → "a'a".
+      const base = l.cons || (l.n === 18 ? "'" : "");
+      // ⚠️ Ayn'da apostrof İKİLENMEZ: "a''a" değil "a'a". Şedde ikizlemeyi
+      // ünsüzü iki kez yazarak gösteriyor (ebbe), ama apostrof bir ünsüz
+      // değil "burada ayn var" işareti — iki tanesi okunmayı zorlaştırır.
+      const ikile = (x: string) => (base === "'" ? `${x}${base}` : `${x}${base}${base}`);
       const v = harekeVowels(l.thick);
       return HAREKE.map((h) => {
         const sesMap: Record<string, string> = {
-          a: `${v.a}${base}${base}${v.a}`,
-          i: `${v.i}${base}${base}${v.i}`,
-          u: `${v.u}${base}${base}${v.u}`,
+          a: `${ikile(v.a)}${v.a}`,
+          i: `${ikile(v.i)}${v.i}`,
+          u: `${ikile(v.u)}${v.u}`,
         };
         return {
           id: `l5-${pad2(l.n)}-${h.suf}`,
