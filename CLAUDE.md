@@ -136,6 +136,21 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   tarar ve kural motorunun kendisini de test eder.
 - 28 harf `LETTERS` tablosunda: `cons` (ünsüz) + `thick` (ince/kalin/ra) →
   hareke okunuşları üretilir. Adlar: Vev (Vav değil), Lem (Lam değil), Ye.
+  ⚠️ **HARF ADI, HOCANIN SÖYLEDİĞİ AD OLMAK ZORUNDA** — `docs/harf-adlari.md`.
+  ط "Tı" ve ظ "Zı" yazıyordu; kullanıcı kulakla yakaladı, `tools/ses/adlar.py`
+  ÖLÇTÜ: harf ADI kaydının (`basic-NN.mp3`) ünlü çekirdeği AYNI harfin
+  harekeli kayıtlarıyla kıyaslanınca ط→"a" (0.084 ↔ 0.213), ظ→"a"
+  (0.031 ↔ 0.167). Artık **Ta** ve **Za**. Yazı ile ses ayrı şey söylerse
+  soru ölçmek istediğini ölçmez (çocuk sesi duyup yazılı şıktan seçiyor).
+  Literatürde İKİ gelenek var: elifbâ cüzü "tı/zı", Arap alfabesi + DİA
+  "HARF" maddesi klasik adlarla "ṭâ'/ẓâ'" — hepsi "a" ile biter; kullanıcının
+  "kalınlar sonu a ile bitecek" kuralı ikincisine denk düşüyor.
+  ⚠️ **خ İSTİSNA: "Hı" KALIYOR.** Kayıt orada da "ha" diyor ama ح zaten "Ha";
+  iki harfe aynı adı yazmak yazılı şıkta sorunun İKİ doğru cevabı olması
+  demek. Bekçi: `harfAdlari.test.ts` (tablo kilitli + ad tekrarı yasak).
+  ⚠️ Ad `byName` ile ANAHTAR olarak kullanılıyor (hareke alıştırma kelimeleri,
+  `writingMnemonics.ts`) — adı değiştirirken oraları da güncelle, yoksa
+  kelime kartları sessizce üretilmez.
   ⚠️ **ÜÇ KOVA VAR, İKİ DEĞİL** (`harekeVowels`):
   · `kalin` خ ص ض ط ظ غ ق → **a / ı / u**
   · `ra` **ر ح ع** → **a / i / u** (üstün-ötrede kalın, esrede ince)

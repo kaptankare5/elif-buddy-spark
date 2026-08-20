@@ -15,7 +15,7 @@ import {
 
 // Ayn (18) kuyruklu, Be (2) nokta ailesi, Elif (1) değişmeyen 6'dan
 const AYN_MED = "l2-18-med", AYN_INIT = "l2-18-init", AYN_FIN = "l2-18-fin";
-const GAYN_MED = "l2-19-med";
+const ĞAYN_MED = "l2-19-med";
 const BE_INIT = "l2-02-init", NUN_INIT = "l2-25-init";
 const ELIF_FIN = "l2-01-fin", LEM_FIN = "l2-23-fin";
 
@@ -34,8 +34,8 @@ beforeEach(() => {
 
 describe("ne zaman telafi ÇIKMAZ", () => {
   it("tek şanssız hatada çıkmaz (ısrar şartı)", () => {
-    recordConfusionPick(AYN_MED, GAYN_MED);           // ısı 0.34 < 0.5
-    expect(considerRemedy(AYN_MED, GAYN_MED)).toBeNull();
+    recordConfusionPick(AYN_MED, ĞAYN_MED);           // ısı 0.34 < 0.5
+    expect(considerRemedy(AYN_MED, ĞAYN_MED)).toBeNull();
   });
 
   it("başta/ortada/sonda konusu dışındaki hatalarda çıkmaz", () => {
@@ -46,18 +46,18 @@ describe("ne zaman telafi ÇIKMAZ", () => {
   });
 
   it("aynı harf için arka arkaya çıkmaz (harf soğuması)", () => {
-    heatUp(AYN_MED, GAYN_MED);
-    const first = considerRemedy(AYN_MED, GAYN_MED);
+    heatUp(AYN_MED, ĞAYN_MED);
+    const first = considerRemedy(AYN_MED, ĞAYN_MED);
     expect(first).not.toBeNull();
     showRemedy(first!);
     // aynı harfin BAŞKA hâlinde bile hemen tekrar çıkmaz
-    heatUp(AYN_INIT, GAYN_MED);
-    expect(considerRemedy(AYN_INIT, GAYN_MED)).toBeNull();
+    heatUp(AYN_INIT, ĞAYN_MED);
+    expect(considerRemedy(AYN_INIT, ĞAYN_MED)).toBeNull();
   });
 
   it("farklı harf olsa da genel soğuma dolmadan çıkmaz", () => {
-    heatUp(AYN_MED, GAYN_MED);
-    showRemedy(considerRemedy(AYN_MED, GAYN_MED)!);
+    heatUp(AYN_MED, ĞAYN_MED);
+    showRemedy(considerRemedy(AYN_MED, ĞAYN_MED)!);
     heatUp(BE_INIT, NUN_INIT);
     expect(considerRemedy(BE_INIT, NUN_INIT)).toBeNull();
   });
@@ -66,7 +66,7 @@ describe("ne zaman telafi ÇIKMAZ", () => {
     vi.useFakeTimers();
     try {
       const pairs: [string, string][] = [
-        [AYN_MED, GAYN_MED], [BE_INIT, NUN_INIT], [ELIF_FIN, LEM_FIN], [AYN_FIN, GAYN_MED],
+        [AYN_MED, ĞAYN_MED], [BE_INIT, NUN_INIT], [ELIF_FIN, LEM_FIN], [AYN_FIN, ĞAYN_MED],
       ];
       let shown = 0;
       for (const [a, b] of pairs) {
@@ -89,9 +89,9 @@ describe("ne zaman telafi ÇIKAR ve hangi yöntem", () => {
     expect(r).toMatchObject({ itemId: AYN_MED, letter: 18, kind: "kuyruk" });
   });
 
-  it("Ayn'ı Gayn'la karıştırdı → aradaki tek fark NOKTA olduğu için nokta yöntemi", () => {
-    heatUp(AYN_MED, GAYN_MED);
-    expect(considerRemedy(AYN_MED, GAYN_MED)?.kind).toBe("nokta");
+  it("Ayn'ı Ğayn'la karıştırdı → aradaki tek fark NOKTA olduğu için nokta yöntemi", () => {
+    heatUp(AYN_MED, ĞAYN_MED);
+    expect(considerRemedy(AYN_MED, ĞAYN_MED)?.kind).toBe("nokta");
   });
 
   it("BAŞKA HARFLE karıştırdıysa → nokta yöntemi (ayırt edici işaret nokta)", () => {
@@ -131,10 +131,10 @@ describe("ne zaman telafi ÇIKAR ve hangi yöntem", () => {
   it("soğuma dolunca aynı harf için tekrar çıkar", () => {
     vi.useFakeTimers();
     try {
-      heatUp(AYN_MED, GAYN_MED);
-      showRemedy(considerRemedy(AYN_MED, GAYN_MED)!);
+      heatUp(AYN_MED, ĞAYN_MED);
+      showRemedy(considerRemedy(AYN_MED, ĞAYN_MED)!);
       vi.advanceTimersByTime(REMEDY_LIMITS.LETTER_COOLDOWN_MS + 1000);
-      expect(considerRemedy(AYN_MED, GAYN_MED)).not.toBeNull();
+      expect(considerRemedy(AYN_MED, ĞAYN_MED)).not.toBeNull();
     } finally {
       vi.useRealTimers();
     }
@@ -149,8 +149,8 @@ describe("oyun akışı: ortada değil, SONUNDA", () => {
     const h = (e: Event) => seen.push((e as CustomEvent).detail);
     window.addEventListener(REMEDY_EVENT, h);
     try {
-      heatUp(AYN_MED, GAYN_MED);
-      queueRemedy(considerRemedy(AYN_MED, GAYN_MED));
+      heatUp(AYN_MED, ĞAYN_MED);
+      queueRemedy(considerRemedy(AYN_MED, ĞAYN_MED));
       expect(hasQueuedRemedy()).toBe(true);
       expect(seen).toHaveLength(0);        // oyun sürerken hiçbir şey açılmaz
 
