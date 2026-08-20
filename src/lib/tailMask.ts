@@ -3,7 +3,7 @@
 // Hem SİL-ÇIKAR OYUNU (EraseGame) hem de KUYRUK SİLME ANİMASYONU (TailErase)
 // bu modülü kullanır. Daha önce animasyon her harf için AYNI sabit dikdörtgeni
 // kırmızıya boyuyordu; bu yüzden Cim ile Be'nin NOKTASI kutunun içinde kalıp
-// siliniyor, Sin/Şin/Kaf/Dad'ın kuyruk ucu kutunun dışında kalıp yeşil şerit
+// siliniyor, Sin/Şin/Gaf/Dad'ın kuyruk ucu kutunun dışında kalıp yeşil şerit
 // bırakıyor, Sad/Dad'ın başı fazla kesiliyor, Lem ise baştan aşağı kırmızı
 // görünüyordu. Maske artık gerçek glif pikselleri üzerinden hesaplanır.
 //

@@ -57,7 +57,7 @@ kontrolü: Cim → i, Sin → i, Şin → i, Mim → i, Nun → ü, Elif → i. 
   Diyanet Elif-Ba'nın adı olan “Hı” kalıyor; ayrım literatürde de zaten
   *hırıltılı ha* (خ) ↔ *boğaz hası* (ح) diye anlatılıyor.
 - Kalan 25 ad zaten hem literatüre hem kayda uyuyordu: Elif, Be, Te, Se, Cim,
-  Ha, Dal, Zel, Ra, Ze, Sin, Şin, Sad, Dad, Ayn, Ğayn, Fe, Kaf, Kef, Lem, Mim,
+  Ha, Dal, Zel, Ra, Ze, Sin, Şin, Sad, Dad, Ayn, Ğayn, Fe, Gaf, Kef, Lem, Mim,
   Nun, Vev, He, Ye.
 
 Bekçi: `src/test/harfAdlari.test.ts` (ad tablosu kilitli, ad tekrarı yasak,

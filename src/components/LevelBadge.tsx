@@ -1,7 +1,9 @@
-// Seviye rozeti — yalnız TEST MODUNDA (1234) görünür. Kartın köşesinde o
+// Seviye rozeti — yalnız DEBUG anahtarı açıkken görünür (Ayarlar → Test
+// Paneli → "Debug göstergeleri"). ⚠️ Kilit anahtarından AYRI: konuları
+// açmadan da rozetleri görebilirsin. Kartın köşesinde o
 // öğenin SRS seviyesini (YENİ / L1-L4) gösterir → seviye sistemini ve
 // uyarlanır zorluğu elle doğrulamak için. Kapalıyken hiçbir şey render etmez.
-import { useTestUnlock } from "@/lib/testUnlock";
+import { useDebugMode } from "@/lib/testUnlock";
 import { getTopicSrs } from "@/data/srs";
 import { findTopicOfItem } from "@/data/subjects";
 import { cn } from "@/lib/utils";
@@ -10,7 +12,7 @@ import { cn } from "@/lib/utils";
 const LVL_COLOR = ["#94a3b8", "#ef4444", "#f59e0b", "#eab308", "#22c55e", "#f0b429"];
 
 export function LevelBadge({ itemId, topicId, className }: { itemId: string; topicId?: string; className?: string }) {
-  const [active] = useTestUnlock();
+  const [active] = useDebugMode();
   if (!active) return null;
   const tid = topicId ?? findTopicOfItem(itemId)?.topicId;
   if (!tid) return null;

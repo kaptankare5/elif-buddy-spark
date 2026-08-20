@@ -265,7 +265,7 @@ function mesafe(a: string, b: string): number {
  * ⚠️ Kullanıcının yakaladığı açık: şıklar "Be" ve "Zanahoria" gibi çok farklıysa
  * çocuk kelimeyi OKUMADAN, ilk harfe bakıp seçer — kısayol öğrenir, harfi
  * öğrenmez. Çözüm, adı hedefe benzeyen çeldirici koymak: "Sin" ↔ "Şin",
- * "Sad" ↔ "Dad", "Ta" ↔ "Te", "Za" ↔ "Ze", "Kef" ↔ "Kaf". O zaman çocuk
+ * "Sad" ↔ "Dad", "Ta" ↔ "Te", "Za" ↔ "Ze", "Kef" ↔ "Gaf". O zaman çocuk
  * kelimenin TAMAMINI okumak zorunda kalır.
  *
  * ⚠️ UYDURMA AD KULLANILMAZ. Kullanıcının örneğinde ("bear" için sahte "beal")

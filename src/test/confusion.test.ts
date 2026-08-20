@@ -121,7 +121,7 @@ describe("seçim: çeldirici ve ardışıklık", () => {
       const w = pickDistractors(yazilislar, target, 3).map((x) => x.id);
       expect(w).not.toContain("l2-20-init");
       expect(w).not.toContain("l2-20-fin");
-      // yine de karışan HARFLER geliyor (Kaf — Fe ile aynı öbekte)
+      // yine de karışan HARFLER geliyor (Gaf — Fe ile aynı öbekte)
       expect(w.some((id) => id.startsWith("l2-21-"))).toBe(true);
     }
   });

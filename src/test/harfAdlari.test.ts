@@ -23,17 +23,17 @@ import { getAllTopics } from "@/data/subjects";
 const ADLAR = [
   "Elif", "Be", "Te", "Se", "Cim", "Ha", "Hı", "Dal", "Zel", "Ra",
   "Ze", "Sin", "Şin", "Sad", "Dad", "Ta", "Za", "Ayn", "Ğayn", "Fe",
-  "Kaf", "Kef", "Lem", "Mim", "Nun", "Vev", "He", "Ye",
+  "Gaf", "Kef", "Lem", "Mim", "Nun", "Vev", "He", "Ye",
 ];
 
 /**
  * Kalın/râ kovasındaki harfin adı "a" ünlüsünü taşır — hoca da öyle söylüyor.
- * (Ölçüt SON HARF değil SON ÜNLÜ: "Sad" · "Kaf" · "Ğayn" da bu kurala uyar.)
+ * (Ölçüt SON HARF değil SON ÜNLÜ: "Sad" · "Gaf" · "Ğayn" da bu kurala uyar.)
  * ⚠️ TEK İSTİSNA خ: kaydı "ha" diyor ama ح zaten "Ha". İkisine aynı adı
  * yazmak sorunun İKİ doğru cevabı olması demek (yazılı şıkta ayırt edilemez),
  * o yüzden ekranda Diyanet Elifbâ'nın adı olan "Hı" kalıyor.
  */
-const KALIN_ADLAR = ["Ha", "Ra", "Sad", "Dad", "Ta", "Za", "Ayn", "Ğayn", "Kaf"];
+const KALIN_ADLAR = ["Ha", "Ra", "Sad", "Dad", "Ta", "Za", "Ayn", "Ğayn", "Gaf"];
 
 /** Bir adın SON ünlüsü — "Sad" → a, "Hı" → ı, "Kef" → e. */
 const sonUnlu = (s: string) =>

@@ -316,8 +316,16 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   kalır. `isTopicCompleted` de aynı iki şarta bakar.
   Test/Flashcard/oyun havuzu (`gamePool`) YALNIZ açık öğeleri sorar
   (`getUnlockedItemsOf` / `getUnlockedItemIdSet`).
-- Konu kilidi: konudaki tüm öğeler L3+ → sonraki konu. Ayarlar'da test
-  kilidi: kod **1234** her şeyi açar (`src/lib/testUnlock.ts`).
+- Konu kilidi: konudaki tüm öğeler L3+ → sonraki konu.
+- ⚠️ **TEST PANELİNDE İKİ AYRI ANAHTAR VAR** (`src/lib/testUnlock.ts`,
+  Ayarlar → Test Paneli): kod **1234** yalnız PANELİ açar, hiçbir şeyi
+  açmaz. İçinde bağımsız iki anahtar: **🔓 tüm konuları aç** (unlock.ts +
+  Macera/Parti/Yarış bölüm sayıları) ve **🐞 debug göstergeleri**
+  (`LevelBadge`, `DebugHud`, Macera blok seviyesi). Eskiden tek düğmeydi;
+  kullanıcı şartı: "tüm konuları açınca normal oyuncu gibi test edemiyorum"
+  — HUD'ı açmak isteyen veli kilitleri de açmış oluyordu. Getter'lar PANELE
+  de bakar (paneli kapatmak ikisini birden etkisiz kılar) ve eski tek
+  anahtarlı cihazlar için göç var. Bekçi: `testPaneli.test.ts`.
 - Soru kaynağı `src/lib/questionSource.ts` (Topic testi): retry / bakım /
   frontier önceliği. Yanlış harf en fazla **BİR kez** tekrar sorulur (eskiden
   sınırsızdı → çocuk aynı harfte kilitlenip bakım kanalına hiç sıra
