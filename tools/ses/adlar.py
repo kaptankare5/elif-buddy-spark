@@ -42,7 +42,7 @@ LETTERS = [
     (9, "Zel", "ince"), (10, "Ra", "ra"), (11, "Ze", "ince"), (12, "Sin", "ince"),
     (13, "Şin", "ince"), (14, "Sad", "kalin"), (15, "Dad", "kalin"), (16, "Ta", "kalin"),
     (17, "Za", "kalin"), (18, "Ayn", "ra"), (19, "Ğayn", "kalin"), (20, "Fe", "ince"),
-    (21, "Kaf", "kalin"), (22, "Kef", "ince"), (23, "Lem", "ince"), (24, "Mim", "ince"),
+    (21, "Gaf", "kalin"), (22, "Kef", "ince"), (23, "Lem", "ince"), (24, "Mim", "ince"),
     (25, "Nun", "ince"), (26, "Vev", "ince"), (27, "He", "ince"), (28, "Ye", "ince"),
 ]
 # Referans kümesinde o ünlü YOK — sahte uyuşmazlık beklenir (bkz. başlık).
