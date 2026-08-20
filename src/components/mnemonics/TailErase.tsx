@@ -2,7 +2,7 @@
 //
 // Eskiden sahnede her harf için AYNI sabit kırmızı dikdörtgen vardı. O kutu
 // harfin gerçek kuyruğuyla örtüşmediği için: Cim ile Be'nin NOKTASI kutunun
-// içinde kalıp siliniyor, Sin/Şin/Kaf/Dad'ın kuyruk ucu kutunun dışında kalıp
+// içinde kalıp siliniyor, Sin/Şin/Gaf/Dad'ın kuyruk ucu kutunun dışında kalıp
 // yeşil şerit bırakıyor, Sad/Dad'ın başı fazla kesiliyor, Lem baştan aşağı
 // kırmızı görünüyordu. Artık sahne bir KANVAS: kırmızı bölge, oyunla birebir
 // aynı piksel maskesinden geliyor (src/lib/tailMask.ts) — nokta asla silinmez,

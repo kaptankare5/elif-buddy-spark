@@ -165,9 +165,9 @@ export const TAIL_RULES: TailRule[] = [
     zone: { dir: "sol", at: 0.6 },
   },
   {
-    n: 21, name: "Kaf", iso: "ق", init: "ﻗ",
+    n: 21, name: "Gaf", iso: "ق", init: "ﻗ",
     tailName: "derin çanak", keepName: "halka",
-    say: "Kaf'ın derin çanağını sil — halkası kalır. (Fe'den farkı: 2 nokta!)",
+    say: "Gaf'ın derin çanağını sil — halkası kalır. (Fe'den farkı: 2 nokta!)",
     zone: { dir: "alt", at: 0.66 },
   },
   {
@@ -292,14 +292,14 @@ export const DOT_GROUPS: DotGroup[] = [
   },
   {
     id: "fe",
-    title: "Fe · Kaf",
+    title: "Fe · Gaf",
     skeleton: "halka",
-    hint: "Başta ikisi de aynı halka. Bir nokta varsa Fe, iki nokta varsa Kaf.",
+    hint: "Başta ikisi de aynı halka. Bir nokta varsa Fe, iki nokta varsa Gaf.",
     letters: [
       L(20, "Fe", "ف", "ﻓ", "ﻔ", "ﻒ", 1, "ust"),
-      L(21, "Kaf", "ق", "ﻗ", "ﻘ", "ﻖ", 2, "ust"),
+      L(21, "Gaf", "ق", "ﻗ", "ﻘ", "ﻖ", 2, "ust"),
     ],
-    caveat: "Yalın ve sonda hâllerinde Kaf'ın çanağı Fe'ninkinden daha derindir. Başta ve ortada ise yalnız nokta sayısı ayırır.",
+    caveat: "Yalın ve sonda hâllerinde Gaf'ın çanağı Fe'ninkinden daha derindir. Başta ve ortada ise yalnız nokta sayısı ayırır.",
   },
   {
     id: "dal",
