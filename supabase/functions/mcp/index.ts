@@ -30,7 +30,7 @@ var LETTERS = [
   { n: 18, name: "Ayn", iso: "\u0639", init: "\uFECB", med: "\uFECC", fin: "\uFECA", speech: "ayn", cons: "", thick: "ra" },
   { n: 19, name: "\u011Eayn", iso: "\u063A", init: "\uFECF", med: "\uFED0", fin: "\uFECE", speech: "gay\u0131n", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe", iso: "\u0641", init: "\uFED3", med: "\uFED4", fin: "\uFED2", speech: "fe", cons: "f", thick: "ince" },
-  { n: 21, name: "Kaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "k", thick: "kalin" },
+  { n: 21, name: "Gaf", iso: "\u0642", init: "\uFED7", med: "\uFED8", fin: "\uFED6", speech: "kaf", cons: "k", thick: "kalin" },
   { n: 22, name: "Kef", iso: "\u0643", init: "\uFEDB", med: "\uFEDC", fin: "\uFEDA", speech: "kef", cons: "k", thick: "ince" },
   { n: 23, name: "Lem", iso: "\u0644", init: "\uFEDF", med: "\uFEE0", fin: "\uFEDE", speech: "lem", cons: "l", thick: "ince" },
   { n: 24, name: "Mim", iso: "\u0645", init: "\uFEE3", med: "\uFEE4", fin: "\uFEE2", speech: "mim", cons: "m", thick: "ince" },
@@ -160,11 +160,11 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // sayfa 10
   [["Dad", "a"], ["Ra", "a"], ["Be", "a"]],
   // ضَرَبَ
-  [["Kaf", "a"], ["Ra", "a"], ["Elif", "a"]],
+  [["Gaf", "a"], ["Ra", "a"], ["Elif", "a"]],
   // قَرَاَ
   [["Ra", "a"], ["Cim", "a"], ["Ayn", "a"]],
   // رَجَعَ
-  [["Ra", "a"], ["Ze", "a"], ["Kaf", "a"]],
+  [["Ra", "a"], ["Ze", "a"], ["Gaf", "a"]],
   // رَزَقَ
   [["Sad", "a"], ["Be", "a"], ["Ra", "a"]],
   // صَبَرَ
@@ -180,11 +180,11 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // سَمِعَ
   [["Ayn", "a"], ["Mim", "i"], ["Lem", "a"]],
   // عَمِلَ
-  [["Sad", "a"], ["Ayn", "i"], ["Kaf", "a"]],
+  [["Sad", "a"], ["Ayn", "i"], ["Gaf", "a"]],
   // صَعِقَ
   [["Sad", "a"], ["Ayn", "i"], ["Dal", "a"]],
   // صَعِدَ
-  [["Ta", "a"], ["Fe", "i"], ["Kaf", "a"]],
+  [["Ta", "a"], ["Fe", "i"], ["Gaf", "a"]],
   // طَفِقَ
   [["Nun", "a"], ["Dad", "i"], ["Cim", "a"]],
   // نَضِجَ
@@ -194,7 +194,7 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // ثُلُثُ
   [["Kef", "u"], ["Te", "u"], ["Be", "u"]],
   // كُتُبُ
-  [["H\u0131", "u"], ["Lem", "u"], ["Kaf", "u"]],
+  [["H\u0131", "u"], ["Lem", "u"], ["Gaf", "u"]],
   // خُلُقُ
   [["Ra", "u"], ["Sin", "u"], ["Lem", "u"]],
   // رُسُلُ
@@ -202,7 +202,7 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // صَمَدُ
   [["Fe", "a"], ["He", "u"], ["Vev", "a"]],
   // فَهُوَ
-  [["Kaf", "u"], ["Te", "i"], ["Lem", "a"]],
+  [["Gaf", "u"], ["Te", "i"], ["Lem", "a"]],
   // قُتِلَ
   [["Ra", "a"], ["\u011Eayn", "i"], ["Be", "a"]],
   // رَغِبَ
@@ -233,9 +233,9 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // حَسُنَ
   [["Lem", "a"], ["Ayn", "i"], ["Be", "a"]],
   // لَعِبَ
-  [["Sad", "a"], ["Dal", "a"], ["Kaf", "a"]],
+  [["Sad", "a"], ["Dal", "a"], ["Gaf", "a"]],
   // صَدَقَ
-  [["Ayn", "u"], ["Nun", "u"], ["Kaf", "u"]],
+  [["Ayn", "u"], ["Nun", "u"], ["Gaf", "u"]],
   // عُنُقُ
   [["Vev", "a"], ["Sad", "a"], ["Fe", "a"]],
   // وَصَفَ
@@ -249,7 +249,7 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // نَكَصَ
   [["Fe", "a"], ["Ze", "i"], ["Ayn", "a"]],
   // فَزِعَ
-  [["Ra", "u"], ["Ze", "i"], ["Kaf", "a"]],
+  [["Ra", "u"], ["Ze", "i"], ["Gaf", "a"]],
   // رُزِقَ
   [["Be", "a"], ["Ra", "a"], ["Ze", "a"]],
   // بَرَزَ
@@ -265,7 +265,7 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // بَطَنَ
   [["Sin", "a"], ["H\u0131", "i"], ["Ra", "a"]],
   // سَخِرَ
-  [["Ra", "a"], ["He", "i"], ["Kaf", "a"]]
+  [["Ra", "a"], ["He", "i"], ["Gaf", "a"]]
   // رَهِقَ
 ];
 var NON_CONNECT = /* @__PURE__ */ new Set(["Elif", "Dal", "Zel", "Ra", "Ze", "Vev"]);

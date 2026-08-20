@@ -45,7 +45,7 @@ const LETTERS: LetterDef[] = [
   { n: 18, name: "Ayn",  iso: "ع", init: "ﻋ",  med: "ﻌ",  fin: "ﻊ",  speech: "ayn",  cons: "",  thick: "ra" },
   { n: 19, name: "Ğayn", iso: "غ", init: "ﻏ",  med: "ﻐ",  fin: "ﻎ",  speech: "gayın", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe",   iso: "ف", init: "ﻓ",  med: "ﻔ",  fin: "ﻒ",  speech: "fe",   cons: "f", thick: "ince" },
-  { n: 21, name: "Kaf",  iso: "ق", init: "ﻗ",  med: "ﻘ",  fin: "ﻖ",  speech: "kaf",  cons: "k", thick: "kalin" },
+  { n: 21, name: "Gaf",  iso: "ق", init: "ﻗ",  med: "ﻘ",  fin: "ﻖ",  speech: "kaf",  cons: "k", thick: "kalin" },
   { n: 22, name: "Kef",  iso: "ك", init: "ﻛ",  med: "ﻜ",  fin: "ﻚ",  speech: "kef",  cons: "k", thick: "ince" },
   { n: 23, name: "Lem",  iso: "ل", init: "ﻟ",  med: "ﻠ",  fin: "ﻞ",  speech: "lem",  cons: "l", thick: "ince" },
   { n: 24, name: "Mim",  iso: "م", init: "ﻣ",  med: "ﻤ",  fin: "ﻢ",  speech: "mim",  cons: "m", thick: "ince" },
@@ -214,9 +214,9 @@ type WordSpec = [string, HV][];
 const HAREKE_ALISTIRMA_KELIMELERI: WordSpec[] = [
   // sayfa 10
   [["Dad", "a"], ["Ra", "a"], ["Be", "a"]],      // ضَرَبَ
-  [["Kaf", "a"], ["Ra", "a"], ["Elif", "a"]],    // قَرَاَ
+  [["Gaf", "a"], ["Ra", "a"], ["Elif", "a"]],    // قَرَاَ
   [["Ra", "a"], ["Cim", "a"], ["Ayn", "a"]],     // رَجَعَ
-  [["Ra", "a"], ["Ze", "a"], ["Kaf", "a"]],      // رَزَقَ
+  [["Ra", "a"], ["Ze", "a"], ["Gaf", "a"]],      // رَزَقَ
   [["Sad", "a"], ["Be", "a"], ["Ra", "a"]],      // صَبَرَ
   [["Ra", "a"], ["Fe", "a"], ["Ayn", "a"]],      // رَفَعَ
   [["Ye", "a"], ["Dal", "a"], ["Kef", "a"]],     // يَدَكَ
@@ -224,18 +224,18 @@ const HAREKE_ALISTIRMA_KELIMELERI: WordSpec[] = [
   [["Ha", "a"], ["Mim", "i"], ["Dal", "a"]],     // حَمِدَ
   [["Sin", "a"], ["Mim", "i"], ["Ayn", "a"]],    // سَمِعَ
   [["Ayn", "a"], ["Mim", "i"], ["Lem", "a"]],    // عَمِلَ
-  [["Sad", "a"], ["Ayn", "i"], ["Kaf", "a"]],    // صَعِقَ
+  [["Sad", "a"], ["Ayn", "i"], ["Gaf", "a"]],    // صَعِقَ
   [["Sad", "a"], ["Ayn", "i"], ["Dal", "a"]],    // صَعِدَ
-  [["Ta", "a"], ["Fe", "i"], ["Kaf", "a"]],      // طَفِقَ
+  [["Ta", "a"], ["Fe", "i"], ["Gaf", "a"]],      // طَفِقَ
   [["Nun", "a"], ["Dad", "i"], ["Cim", "a"]],    // نَضِجَ
   [["Fe", "a"], ["Ra", "i"], ["Ha", "a"]],       // فَرِحَ
   [["Se", "u"], ["Lem", "u"], ["Se", "u"]],      // ثُلُثُ
   [["Kef", "u"], ["Te", "u"], ["Be", "u"]],      // كُتُبُ
-  [["Hı", "u"], ["Lem", "u"], ["Kaf", "u"]],     // خُلُقُ
+  [["Hı", "u"], ["Lem", "u"], ["Gaf", "u"]],     // خُلُقُ
   [["Ra", "u"], ["Sin", "u"], ["Lem", "u"]],     // رُسُلُ
   [["Sad", "a"], ["Mim", "a"], ["Dal", "u"]],    // صَمَدُ
   [["Fe", "a"], ["He", "u"], ["Vev", "a"]],      // فَهُوَ
-  [["Kaf", "u"], ["Te", "i"], ["Lem", "a"]],     // قُتِلَ
+  [["Gaf", "u"], ["Te", "i"], ["Lem", "a"]],     // قُتِلَ
   [["Ra", "a"], ["Ğayn", "i"], ["Be", "a"]],     // رَغِبَ
   [["Mim", "a"], ["Ra", "i"], ["Dad", "a"]],     // مَرِضَ
   [["Ğayn", "u"], ["Fe", "i"], ["Ra", "a"]],     // غُفِرَ
@@ -251,15 +251,15 @@ const HAREKE_ALISTIRMA_KELIMELERI: WordSpec[] = [
   [["Ra", "a"], ["Kef", "i"], ["Be", "a"]],      // رَكِبَ
   [["Ha", "a"], ["Sin", "u"], ["Nun", "a"]],     // حَسُنَ
   [["Lem", "a"], ["Ayn", "i"], ["Be", "a"]],     // لَعِبَ
-  [["Sad", "a"], ["Dal", "a"], ["Kaf", "a"]],    // صَدَقَ
-  [["Ayn", "u"], ["Nun", "u"], ["Kaf", "u"]],    // عُنُقُ
+  [["Sad", "a"], ["Dal", "a"], ["Gaf", "a"]],    // صَدَقَ
+  [["Ayn", "u"], ["Nun", "u"], ["Gaf", "u"]],    // عُنُقُ
   [["Vev", "a"], ["Sad", "a"], ["Fe", "a"]],     // وَصَفَ
   [["Vev", "a"], ["Sin", "i"], ["Ayn", "a"]],    // وَسِعَ
   [["Dal", "a"], ["Hı", "a"], ["Lem", "a"]],     // دَخَلَ
   [["Sin", "a"], ["Ra", "i"], ["Ayn", "a"]],     // سَرِعَ
   [["Nun", "a"], ["Kef", "a"], ["Sad", "a"]],    // نَكَصَ
   [["Fe", "a"], ["Ze", "i"], ["Ayn", "a"]],      // فَزِعَ
-  [["Ra", "u"], ["Ze", "i"], ["Kaf", "a"]],      // رُزِقَ
+  [["Ra", "u"], ["Ze", "i"], ["Gaf", "a"]],      // رُزِقَ
   [["Be", "a"], ["Ra", "a"], ["Ze", "a"]],       // بَرَزَ
   [["Ra", "u"], ["Be", "u"], ["Ayn", "u"]],      // رُبُعُ
   [["Kef", "a"], ["Ra", "i"], ["He", "a"]],      // كَرِهَ
@@ -267,7 +267,7 @@ const HAREKE_ALISTIRMA_KELIMELERI: WordSpec[] = [
   [["Ha", "a"], ["Sin", "i"], ["Be", "a"]],      // حَسِبَ
   [["Be", "a"], ["Ta", "a"], ["Nun", "a"]],      // بَطَنَ
   [["Sin", "a"], ["Hı", "i"], ["Ra", "a"]],      // سَخِرَ
-  [["Ra", "a"], ["He", "i"], ["Kaf", "a"]],      // رَهِقَ
+  [["Ra", "a"], ["He", "i"], ["Gaf", "a"]],      // رَهِقَ
 ];
 
 // Sonrasına bağlanmayan harfler: bir sonraki harf başta/müstakil formunu alır.
