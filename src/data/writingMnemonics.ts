@@ -272,12 +272,12 @@ export const DOT_GROUPS: DotGroup[] = [
   },
   {
     id: "ti",
-    title: "Tı · Zı",
+    title: "Ta · Za",
     skeleton: "halka + dik çizgi",
-    hint: "İkisi de aynı. Üstünde bir nokta varsa Zı, yoksa Tı.",
+    hint: "İkisi de aynı. Üstünde bir nokta varsa Za, yoksa Ta.",
     letters: [
-      L(16, "Tı", "ط", "ﻃ", "ﻄ", "ﻂ", 0, "yok"),
-      L(17, "Zı", "ظ", "ﻇ", "ﻈ", "ﻆ", 1, "ust"),
+      L(16, "Ta", "ط", "ﻃ", "ﻄ", "ﻂ", 0, "yok"),
+      L(17, "Za", "ظ", "ﻇ", "ﻈ", "ﻆ", 1, "ust"),
     ],
   },
   {

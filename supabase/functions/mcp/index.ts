@@ -25,8 +25,8 @@ var LETTERS = [
   { n: 13, name: "\u015Ein", iso: "\u0634", init: "\uFEB7", med: "\uFEB8", fin: "\uFEB6", speech: "\u015Fin", cons: "\u015F", thick: "ince" },
   { n: 14, name: "Sad", iso: "\u0635", init: "\uFEBB", med: "\uFEBC", fin: "\uFEBA", speech: "sad", cons: "s", thick: "kalin" },
   { n: 15, name: "Dad", iso: "\u0636", init: "\uFEBF", med: "\uFEC0", fin: "\uFEBE", speech: "dad", cons: "d", thick: "kalin" },
-  { n: 16, name: "T\u0131", iso: "\u0637", init: "\uFEC3", med: "\uFEC4", fin: "\uFEC2", speech: "t\u0131", cons: "t", thick: "kalin" },
-  { n: 17, name: "Z\u0131", iso: "\u0638", init: "\uFEC7", med: "\uFEC8", fin: "\uFEC6", speech: "z\u0131", cons: "z", thick: "kalin" },
+  { n: 16, name: "Ta", iso: "\u0637", init: "\uFEC3", med: "\uFEC4", fin: "\uFEC2", speech: "ta", cons: "t", thick: "kalin" },
+  { n: 17, name: "Za", iso: "\u0638", init: "\uFEC7", med: "\uFEC8", fin: "\uFEC6", speech: "za", cons: "z", thick: "kalin" },
   { n: 18, name: "Ayn", iso: "\u0639", init: "\uFECB", med: "\uFECC", fin: "\uFECA", speech: "ayn", cons: "", thick: "ra" },
   { n: 19, name: "\u011Eayn", iso: "\u063A", init: "\uFECF", med: "\uFED0", fin: "\uFECE", speech: "gay\u0131n", cons: "g", thick: "kalin" },
   { n: 20, name: "Fe", iso: "\u0641", init: "\uFED3", med: "\uFED4", fin: "\uFED2", speech: "fe", cons: "f", thick: "ince" },
@@ -172,7 +172,7 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // رَفَعَ
   [["Ye", "a"], ["Dal", "a"], ["Kef", "a"]],
   // يَدَكَ
-  [["Z\u0131", "a"], ["He", "a"], ["Ra", "a"]],
+  [["Za", "a"], ["He", "a"], ["Ra", "a"]],
   // ظَهَرَ
   [["Ha", "a"], ["Mim", "i"], ["Dal", "a"]],
   // حَمِدَ
@@ -184,7 +184,7 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // صَعِقَ
   [["Sad", "a"], ["Ayn", "i"], ["Dal", "a"]],
   // صَعِدَ
-  [["T\u0131", "a"], ["Fe", "i"], ["Kaf", "a"]],
+  [["Ta", "a"], ["Fe", "i"], ["Kaf", "a"]],
   // طَفِقَ
   [["Nun", "a"], ["Dad", "i"], ["Cim", "a"]],
   // نَضِجَ
@@ -219,13 +219,13 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // سُبُلَ
   [["Kef", "a"], ["Zel", "i"], ["Be", "a"]],
   // كَذِبَ
-  [["H\u0131", "a"], ["T\u0131", "i"], ["Ra", "a"]],
+  [["H\u0131", "a"], ["Ta", "i"], ["Ra", "a"]],
   // خَطِرَ
   [["Te", "a"], ["Be", "i"], ["Ayn", "a"]],
   // تَبِعَ
   [["Kef", "a"], ["Sin", "a"], ["Be", "a"]],
   // كَسَبَ
-  [["T\u0131", "u"], ["Be", "i"], ["Ayn", "a"]],
+  [["Ta", "u"], ["Be", "i"], ["Ayn", "a"]],
   // طُبِعَ
   [["Ra", "a"], ["Kef", "i"], ["Be", "a"]],
   // رَكِبَ
@@ -261,7 +261,7 @@ var HAREKE_ALISTIRMA_KELIMELERI = [
   // لَعَنَ
   [["Ha", "a"], ["Sin", "i"], ["Be", "a"]],
   // حَسِبَ
-  [["Be", "a"], ["T\u0131", "a"], ["Nun", "a"]],
+  [["Be", "a"], ["Ta", "a"], ["Nun", "a"]],
   // بَطَنَ
   [["Sin", "a"], ["H\u0131", "i"], ["Ra", "a"]],
   // سَخِرَ
