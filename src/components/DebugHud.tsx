@@ -1,4 +1,6 @@
-// 🐞 Debug HUD — yalnız TEST MODUNDA (Ayarlar'da 1234) görünür.
+// 🐞 Debug HUD — yalnız DEBUG anahtarı açıkken görünür (Ayarlar → Test
+// Paneli → "Debug göstergeleri"). ⚠️ "Tüm konuları aç" anahtarından AYRI:
+// kilitleri normal oyuncudaki gibi bırakıp yalnız HUD'ı açabilirsin.
 //
 // Amaç: gizli sistemleri ELLE doğrulamak. Cevap verdikçe canlı güncellenir;
 // test/flashcard/oyunlar dahil her sayfada görünür. Gösterdikleri:
@@ -18,7 +20,7 @@
 //   3 doğru ayrımda ısı düşer. "ok" sütunu ayrım sayacıdır.
 // - Seri (affedici) + bugünkü öğrenilen/pratik sayısı (veli paneli verisi).
 import { useEffect, useState } from "react";
-import { useTestUnlock } from "@/lib/testUnlock";
+import { useDebugMode } from "@/lib/testUnlock";
 import {
   getAdaptiveDebug, getLastPickInfo, getIntroGateInfo, getTopicSrs, getLastAnswerInfo,
   isDue, isGraduated, MASTERY,
@@ -145,7 +147,7 @@ function hudAcikYaz(v: boolean) {
 }
 
 export function DebugHud() {
-  const [active] = useTestUnlock();
+  const [active] = useDebugMode();
   const [open, setOpenRaw] = useState(hudAcikMi);
   const setOpen = (v: boolean) => { hudAcikYaz(v); setOpenRaw(v); };
   const [adaptive, setAdaptive] = useState<AdaptiveDebug>(() => getAdaptiveDebug());

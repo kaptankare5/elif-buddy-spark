@@ -19,7 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { clearLocalProgress, hydrateSrsFromCloud } from "@/data/srs";
 import { ConfirmDestructive } from "@/components/ConfirmDestructive";
 import { toast } from "sonner";
-import { useTestUnlock, tryUnlockWithCode } from "@/lib/testUnlock";
+import { useTestUnlock, useDebugMode, useTestPanel, tryUnlockWithCode, closeTestPanel } from "@/lib/testUnlock";
 import { KeyRound, Users, Ruler } from "lucide-react";
 import { useStudents, addStudent, removeStudent, switchStudent } from "@/lib/students";
 
@@ -47,6 +47,8 @@ const Settings = () => {
   const [confirmDeviceDel, setConfirmDeviceDel] = useState(false);
   const [deviceScope, setDeviceScope] = useState<"active" | "guest" | "all">(session ? "active" : "guest");
   const [testUnlock, setTestUnlock] = useTestUnlock();
+  const [debugMode, setDebugMode] = useDebugMode();
+  const testPanel = useTestPanel();
   // Serbest Oyun kilidi: havuz yalnız GÖRÜLMÜŞ harflerden kurulduğu için
   // yeterince harf tanınmadan oyun 4 şık bile kuramaz.
   const seenCount = freePlaySeenCount();
@@ -67,7 +69,7 @@ const Settings = () => {
 
   const submitUnlockCode = () => {
     if (tryUnlockWithCode(unlockCode)) {
-      toast.success("Test modu açıldı: kilitli tüm konular açık.");
+      toast.success("Test paneli açıldı — hangi anahtarı istediğini seç.");
       setUnlockCode("");
     } else {
       toast.error("Kod yanlış.");
@@ -412,23 +414,49 @@ const Settings = () => {
             )}
           </div>
 
-          {/* Test kilidi */}
+          {/* Test paneli — ⚠️ KİLİT ve DEBUG AYRI ANAHTARLAR (kullanıcı şartı):
+              ikisi birlikteyken HUD'ı açmak isteyen veli bütün konuları da
+              açmış oluyor ve uygulamayı normal oyuncu gibi test edemiyordu. */}
           <div className="rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">
             <div className="flex items-center gap-3 mb-3">
               <KeyRound className="h-7 w-7 text-primary" />
               <div className="flex-1">
-                <h3 className="text-base font-extrabold text-foreground">Test Kilidi</h3>
-                <p className="text-xs text-muted-foreground">Kod gir, kilitli tüm konular açılsın</p>
+                <h3 className="text-base font-extrabold text-foreground">Test Paneli</h3>
+                <p className="text-xs text-muted-foreground">
+                  {testPanel
+                    ? "İki ayrı anahtar — istediğini aç, ötekini kapalı bırak"
+                    : "Kod gir, test anahtarları görünsün"}
+                </p>
               </div>
             </div>
-            {testUnlock ? (
-              <div className="flex items-center justify-between rounded-xl bg-success/15 border-2 border-success/40 px-3 py-2">
-                <span className="text-xs font-extrabold text-success">✓ Test modu aktif — kilitli konular açık</span>
+            {testPanel ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3 rounded-xl border-2 border-border/60 bg-background px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-extrabold text-foreground">🔓 Tüm konuları aç</div>
+                    <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
+                      Kilitli konular, bölümler ve oyun bölümleri açılır.
+                      <b> Kapalı bırakırsan normal oyuncu gibi test edersin</b> —
+                      kilitler ve bölüm açılışları yerinde durur.
+                    </p>
+                  </div>
+                  <Switch checked={testUnlock} onCheckedChange={setTestUnlock} aria-label="Tüm konuları aç" />
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-xl border-2 border-border/60 bg-background px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-extrabold text-foreground">🐞 Debug göstergeleri</div>
+                    <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
+                      Kartlarda seviye rozeti (YENİ / L1-L5), köşede Debug HUD,
+                      Macera'da blok seviyesi. İlerlemeye ve kilitlere DOKUNMAZ.
+                    </p>
+                  </div>
+                  <Switch checked={debugMode} onCheckedChange={setDebugMode} aria-label="Debug göstergeleri" />
+                </div>
                 <button
-                  onClick={() => setTestUnlock(false)}
-                  className="text-[11px] font-extrabold text-destructive underline"
+                  onClick={() => { closeTestPanel(); toast.success("Test paneli kapatıldı."); }}
+                  className="w-full rounded-xl border-2 border-destructive/40 px-3 py-2 text-[11px] font-extrabold text-destructive active:scale-95"
                 >
-                  Kapat
+                  Test panelini tamamen kapat
                 </button>
               </div>
             ) : (

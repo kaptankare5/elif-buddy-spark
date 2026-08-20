@@ -31,7 +31,7 @@ import { okunurAd } from "@/lib/askMode";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
 import { gameMusic } from "@/lib/gameMusic";
-import { isTestUnlockActive } from "@/lib/testUnlock";
+import { isTestUnlockActive, isDebugActive } from "@/lib/testUnlock";
 import { useGameMode } from "@/lib/gameMode";
 import { zorlukAyari } from "@/lib/zorluk";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
@@ -2603,7 +2603,7 @@ const PlatformGame = () => {
     // --- çizim ---
     const draw = () => {
       const g = ctx;
-      const testActive = isTestUnlockActive(); // test modunda blok seviyesi göster
+      const testActive = isDebugActive(); // debug açıkken blok seviyesi göster
       g.setTransform(dpr * kScale, 0, 0, dpr * kScale, 0, 0);
       const grad = g.createLinearGradient(0, 0, 0, VH);
       grad.addColorStop(0, theme.skyTop);
