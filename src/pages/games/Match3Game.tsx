@@ -3,6 +3,7 @@ import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { useSarsinti } from "@/lib/gameFeel";
 import { gamePool, pickCluster, pickWrongs, shuffle } from "./_shared";
 import { tahtaBoyu } from "@/lib/zorluk";
 import { agirlikliSec, siparisAc, siparisIsle, type Siparis } from "@/lib/siparis";
@@ -166,6 +167,14 @@ const Match3Game = () => {
   const [moveCount, setMoveCount] = useState(0);
   const [quiz, setQuiz] = useState<{ target: ContentItem; options: ContentItem[] } | null>(null);
   const [siparis, setSiparis] = useState<Siparis | null>(() => { const s0 = siparisAc(types); aktifSiparis = s0; return s0; });
+  const { sinif: sarsSinif, sars } = useSarsinti();
+  /**
+   * ⚠️ ZİNCİR SES KATMANINDA VARDI, GÖZDE YOKTU: art arda patlayan gruplarda
+   * perde yükseliyordu ama ekranda hiçbir şey "zincir kuruyorum" demiyordu.
+   * Match-3 türünün asıl hazzı bu — rozet zincirle büyür, 3. halkadan sonra
+   * tahta da sarsılır. Zincir bir sonraki hamlede sıfırlanır.
+   */
+  const [zincir, setZincir] = useState(0);
   const [siparisParla, setSiparisParla] = useState(false);
   // M-2 HAMLE BÜTÇESİ: her hamlenin bedeli olsun. Bitince oyun kapanır.
   const [kalanHamle, setKalanHamle] = useState(HAMLE_BUTCESI);
@@ -234,6 +243,10 @@ const Match3Game = () => {
         }
         sfx("patlat", { seri: cascadeIndex * 2 });
         titre(cascadeIndex > 0 ? "orta" : "hafif");
+        if (cascadeIndex > 0) {
+          setZincir(cascadeIndex + 1);
+          if (cascadeIndex >= 2) sars();   // derin zincir tahtayı sarsar
+        }
         setScore((s) => s + group.length);
         // bu grubu null'a çevir
         cur = cur.map((row, r) => row.map((cell, c) => (
@@ -284,6 +297,7 @@ const Match3Game = () => {
       setBusy(false);
       return;
     }
+    setZincir(0);   // yeni hamle → zincir sayacı sıfırdan
     await resolve(swapped);
 
     // Hamle sayacı + ekran taraması: ≥3 farklı 3'lenebilir tür varsa sınav aç
@@ -347,7 +361,21 @@ const Match3Game = () => {
           <OyunSonuKarti skor={score} birim="eşleşme" rapor={rapor} onTekrar={reset} />
         )}
 
-        <div className="relative rounded-3xl bg-gradient-to-br from-topic-pink/30 to-warning/20 border-8 border-topic-pink/60 shadow-card p-2">
+        <div className={cn(
+          "relative rounded-3xl bg-gradient-to-br from-topic-pink/30 to-warning/20 border-8 border-topic-pink/60 shadow-card p-2",
+          sarsSinif,
+        )}>
+          {/* ZİNCİR ROZETİ — büyüdükçe büyür. Sayı yalnız bilgi değil ÖDÜL:
+              çocuk "kazara oldu" ile "zincir kurdum"u ancak böyle ayırır. */}
+          {zincir > 1 && (
+            <div
+              key={zincir}
+              className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 animate-juice-pop rounded-full bg-warning px-4 py-1 font-extrabold text-warning-foreground shadow-elegant"
+              style={{ fontSize: `${Math.min(1.9, 0.95 + zincir * 0.18)}rem` }}
+            >
+              ⛓️ ZİNCİR ×{zincir}
+            </div>
+          )}
           <div
             className="grid gap-1.5"
             style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}

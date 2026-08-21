@@ -41,6 +41,7 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { zorlukAyari } from "@/lib/zorluk";
+import { createSarsinti } from "@/lib/gameFeel";
 import { oyunBitti, useOyunKayitlari } from "@/lib/oyunSonucu";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
 import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture, blockedTexture } from "./_letterTexture";
@@ -361,6 +362,10 @@ const KartGame = () => {
     scene.fog = new THREE.Fog(skyBot.getHex(), 220, 620);
 
     const camera = new THREE.PerspectiveCamera(62, 1, 0.5, 1400);
+    // Travma tabanlı sarsıntı (gameFeel.ts): muza basınca ve turbo alınca
+    // kamera "canlı" olsun. ⚠️ Genlik dünya biriminde ve KÜÇÜK — kart
+    // yarışında büyük sarsıntı virajı okunmaz yapıyor.
+    const sarsinti = createSarsinti(0.55, 0.014);
 
     const disposables: { dispose(): void }[] = [];
     const keep = <T extends THREE.BufferGeometry | THREE.Material | THREE.Texture>(x: T): T => {
@@ -1227,7 +1232,11 @@ const KartGame = () => {
       r.spinT = SPIN_TIME;
       r.v *= 0.35;
       r.turboT = 0;
-      if (r.isPlayer) { playSfx("stomp"); showFlash("🍌 Kaydın!", false); }
+      if (r.isPlayer) {
+        playSfx("stomp");
+        showFlash("🍌 Kaydın!", false);
+        sarsinti.ekle(0.8);   // savrulma GÖRÜLSÜN, yalnız yazıyla anlatılmasın
+      }
     };
 
     /** Viraj hız limiti: eğrilik arttıkça düşer (yanal ivme sınırı). */
@@ -1444,6 +1453,7 @@ const KartGame = () => {
             if (k === "turbo") {
               player.turboT = TURBO_TIME;
               player.v = Math.max(player.v, BASE_MAX);
+              sarsinti.ekle(0.3);   // turbo "tekmesi" — hızlanma hissedilsin
               playSfx("dove");
               showFlash("🍄 TURBO!", true);
             } else if (k === "star") {
@@ -1501,6 +1511,7 @@ const KartGame = () => {
             // "doğru kapıya giderse 2-3 saniye hız kazanabilir" + rastgele güç
             player.turboT = TURBO_TIME;
             player.v = Math.max(player.v, BASE_MAX);
+            sarsinti.ekle(0.3);   // doğru kapı da tekme atsın
             const k = randomPower();
             powerRef.current = k;
             setPower(k);
@@ -1679,8 +1690,18 @@ const KartGame = () => {
         if (r.isPlayer) continue;
         r.group.visible = r.group.position.distanceTo(camera.position) > 5;
       }
-      // hız hissi: FOV turboyla açılır
-      const wantFov = 62 + (player.turboT > 0 || player.starT > 0 ? 10 : 0) + player.v * 0.12;
+      // ⚠️ SARSINTI TAKİPTEN SONRA: `camera.position.lerp` hedefe çekiyor,
+      // sarsıntıyı ondan önce yazarsak bir sonraki karede yumuşatma onu geri
+      // emiyor ve ekranda hiçbir şey görünmüyor.
+      sarsinti.guncelle(dt);
+      const sO = sarsinti.ofset();
+      camera.position.x += sO.x;
+      camera.position.y += sO.y;
+      camera.rotation.z += sO.rot;
+
+      // hız hissi: FOV turboyla açılır, çarpma anında kısa süre BÜZÜLÜR
+      const wantFov = 62 + (player.turboT > 0 || player.starT > 0 ? 10 : 0)
+        + player.v * 0.12 - sarsinti.travma * 7;
       camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 4);
       camera.updateProjectionMatrix();
 

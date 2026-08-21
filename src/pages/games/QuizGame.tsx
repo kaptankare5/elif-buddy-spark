@@ -109,9 +109,24 @@ const QuizGame = () => {
               </div>
             )}
           </div>
-          <div className="rounded-2xl bg-card p-3 text-center shadow-card border-2 border-info/30">
+          {/* ⚠️ SÜRE BASKISI GÖRÜNMÜYORDU: 60 sn de 5 sn de aynı sakin mavi
+              sayıydı, oyunun tek gerilim kaynağı hiç hissedilmiyordu. Son
+              10 saniyede sayaç kızarır ve HER SANİYE bir kez atar (`key`
+              değiştiği için animasyon yeniden başlar). */}
+          <div className={cn(
+            "rounded-2xl bg-card p-3 text-center shadow-card border-2 transition-bouncy",
+            time <= 10 ? "border-destructive/70 scale-105" : "border-info/30",
+          )}>
             <div className="text-xs text-muted-foreground font-bold">Süre</div>
-            <div className="text-2xl font-extrabold text-info">⏱ {time}s</div>
+            <div
+              key={time <= 10 ? time : "sakin"}
+              className={cn(
+                "text-2xl font-extrabold tabular-nums",
+                time <= 10 ? "text-destructive animate-juice-pop" : "text-info",
+              )}
+            >
+              ⏱ {time}s
+            </div>
           </div>
         </div>
 

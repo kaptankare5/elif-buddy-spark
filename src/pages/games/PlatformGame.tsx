@@ -32,6 +32,7 @@ import { useRemedyOnGameOver } from "@/lib/remedial";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
 import { gameMusic } from "@/lib/gameMusic";
 import { isTestUnlockActive, isDebugActive } from "@/lib/testUnlock";
+import { createSarsinti, createHitstop, ezilmeUzama, damp, HIS } from "@/lib/gameFeel";
 import { useGameMode } from "@/lib/gameMode";
 import { zorlukAyari } from "@/lib/zorluk";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
@@ -55,6 +56,17 @@ const FLYER_SPEED = 70;
 const DT_MAX = 0.05;          // sekme arkaplandan dönünce ışınlanmayı önler
 const PW = 26, PH = 36;       // oyuncu çarpışma kutusu
 const COYOTE = 0.1, JUMP_BUFFER = 0.12;
+// ⚠️ ZIPLAMA ARTIK SİMETRİK DEĞİL (Mario/Celeste ölçüsü, bkz. gameFeel.ts):
+// çıkışta normal yerçekimi, TEPEDE azaltılmış (asılı kalma — havada nişan
+// almayı kolaylaştırır), İNİŞTE 2×. Simetrik zıplama "uçuyor" gibiydi.
+// ⚠️ BÖLÜM TASARIMI BOZULUYOR MU? ÖLÇÜLDÜ (`tools/perf/zipla.mjs`):
+//   tepe 113.3 → 116.9 px (+%3.2)  · havada 0.692 → 0.737 sn (+%6.6)
+//   yatay atlama 173 → 184 px (+%6.6) · TEPEDE asılı kalma 0.138 → 0.250 sn
+// Üçü de BÜYÜDÜ, yani hiçbir blok ulaşılmaz, hiçbir uçurum geçilmez olmuyor
+// — her şey biraz kolaylaşıyor. (Elle hesap "havada kalma kısalır" demişti;
+// yanlıştı, apex çarpanı inişin İLK bölümünü de yavaşlatıyor. Sayılar
+// simülasyondan.) Tepkisellik apex'ten SONRAKİ 2× inişten geliyor.
+const APEX_ESIK = HIS.APEX_ESIK, APEX_CARPAN = HIS.APEX_CARPAN, DUSUS_CARPANI = HIS.DUSUS_CARPANI;
 const GHOST_TIME = 2.0;       // hasar sonrası dokunulmazlık
 const BLOCK = 54;             // harf bloğu kenarı
 const COIN_R = 13;
@@ -1372,6 +1384,7 @@ function drawPlayerChar(
   g: CanvasRenderingContext2D,
   x: number, y: number, facing: 1 | -1, anim: number,
   grounded: boolean, ghostT: number, nurT: number, time: number,
+  sx = 1, sy = 1,
 ) {
   // Nur halesi — altın ışık (dokunulan canavarlar güvercine dönüşür)
   if (nurT > 0) {
@@ -1396,7 +1409,9 @@ function drawPlayerChar(
   if (ghostT > 0 && Math.floor(time * 12) % 2 === 0) return; // hayalet yanıp söner
   g.save();
   g.translate(x + PW / 2, y + PH);
-  g.scale(facing, 1);
+  // ⚠️ ÖLÇEK AYAKTAN uygulanır (translate zaten y+PH'de): tepeden ölçeklersek
+  // ezilen karakter zemine gömülür, uzayan karakter havada asılı kalır.
+  g.scale(facing * sx, sy);
   const swing = grounded ? Math.sin(anim * 13) * 5 : 0;
   // sırt çantası (arkada)
   g.fillStyle = "#22c55e";
@@ -1606,7 +1621,15 @@ const PlatformGame = () => {
       x: 80, y: GROUND_Y - PH, vy: 0, grounded: true, facing: 1 as 1 | -1,
       coyote: 0, jumpBuf: 0, ghostT: 0, camX: 0, safeX: 80, anim: 0, time: 0,
       nurT: 0, magT: 0, x2T: 0, shootCd: 0,
+      // GÖRSEL HİS: inişten bu yana geçen süre (ezilme), kameranın gittiği
+      // yöne doğru kayması (bakış payı).
+      landT: 99, camLook: 0,
     };
+    // Travma tabanlı sarsıntı + donma karesi (gameFeel.ts).
+    // ⚠️ Genlik KÜÇÜK: 7px. Çocuk oyununda büyük sarsıntı yazıyı okunmaz
+    // yapıyor ve mide bulandırıyor.
+    const sarsinti = createSarsinti(7, 0.006);
+    const hitstop = createHitstop();
     const w: World = {
       solids: [{ x: -240, y: GROUND_Y, w: 1040, oneWay: false }],
       monsters: [], springs: [], trios: [], coins: [], pops: [], shots: [], boss: null, cliffs: [],
@@ -2042,6 +2065,10 @@ const PlatformGame = () => {
       setStreak(0);
       s.ghostT = GHOST_TIME;
       s.vy = -320;
+      // ⚠️ ÖNCE DUR, SONRA SARS (Vlambeer): 70 ms'lik donma beyne "bu
+      // ÖNEMLİYDİ" diyor; sarsıntı tek başına fark edilmiyor.
+      hitstop.vur();
+      sarsinti.ekle(0.85);
       loseLife();
     };
 
@@ -2225,6 +2252,10 @@ const PlatformGame = () => {
           if (sh.x > m.x && sh.x < m.x + mw2 && sh.y > m.y && sh.y < m.y + mh2) {
             m.freedT = FREED_DUR;
             playSfx("dove");
+            // Vuruş ANI okunsun: 45 ms donma + minik kamera tekmesi. Şiddet
+            // yok — canavar güvercine dönüşüyor; donma "oldu bu" diyor.
+            hitstop.vur(0.045);
+            sarsinti.ekle(0.3);
             score += 5 * (s.x2T > 0 ? 2 : 1);
             setScore(score);
             spawnSparkles(m.x + mw2 / 2, m.y + mh2 / 2);
@@ -2337,7 +2368,9 @@ const PlatformGame = () => {
       // dikey fizik + tek yönlü iniş (platformlara alttan geçilir)
       const prevFeet = s.y + PH;
       const fallV = s.vy;
-      s.vy = Math.min(s.vy + GRAVITY * dt, MAX_FALL);
+      // asimetrik yerçekimi: tepe → hafif, iniş → sert (yukarıdaki nota bak)
+      const gK = Math.abs(s.vy) < APEX_ESIK ? APEX_CARPAN : s.vy > 0 ? DUSUS_CARPANI : 1;
+      s.vy = Math.min(s.vy + GRAVITY * gK * dt, MAX_FALL);
       s.y += s.vy * dt;
       s.grounded = false;
       const wasStand = standSolid;
@@ -2356,8 +2389,17 @@ const PlatformGame = () => {
       }
       if (s.grounded) {
         s.coyote = COYOTE;
-        if (!wasStand && fallV > 560) spawnDust(s.x + PW / 2, s.y + PH);
+        if (!wasStand) {
+          // ⚠️ İNİŞ ARTIK GÖRÜLÜYOR: eskiden yalnız çok hızlı düşüşte (>560)
+          // toz çıkıyordu, normal zıplamanın inişi hiç geri bildirim
+          // vermiyordu. Artık her inişte karakter EZİLİP yaylanıyor; toz ve
+          // sarsıntı sertlikle ölçekleniyor.
+          s.landT = 0;
+          if (fallV > 260) spawnDust(s.x + PW / 2, s.y + PH);
+          if (fallV > 620) sarsinti.ekle(Math.min(0.34, (fallV - 620) / 1400 + 0.14));
+        }
       }
+      s.landT += dt;
       if (s.ghostT > 0) s.ghostT = Math.max(0, s.ghostT - dt);
 
       // zıplama yayları
@@ -2484,6 +2526,8 @@ const PlatformGame = () => {
             // NUR: canavar güvercine dönüşüp özgürce uçar — kimse zarar görmez
             m.freedT = FREED_DUR;
             playSfx("dove");
+            hitstop.vur(0.045);
+            sarsinti.ekle(0.3);
             // 🌟 Nadir ALTIN güvercin (%3): kozmetik sürpriz + bonus puan.
             // "Acaba bugün çıkar mı?" merakı — kazanma şartı yine doğru oyun.
             m.golden = Math.random() < 0.03;
@@ -2587,6 +2631,11 @@ const PlatformGame = () => {
       // kamera + temizlik (dünya baştan üretildi — akış üretimi yok)
       const camMax = bonusActive ? bonusX + 830 - view.w : mosqueX + 300 - view.w;
       s.camX = Math.max(s.camX, Math.min(s.x - view.w * 0.38, camMax));
+      // ⚠️ KAMERA GİTTİĞİN YÖNE BAKAR (Game Feel'in "kamera bakış payı"):
+      // kamera oyuncuya kilitliyken önündeki tehlike geç görünüyor. Pay
+      // YUMUŞATILARAK uygulanır (damp) — anında zıplarsa kamera sarsılır.
+      // ⚠️ Yalnız ÇİZİMDE kullanılır; s.camX mantığı (mandal + sınır) bozulmaz.
+      s.camLook = damp(s.camLook, mv * 30, 3.2, dt);
       cleanT -= dt;
       if (cleanT <= 0 && !bonusActive) {
         // bonus bahçedeyken temizlik yapılmaz — dönüş noktası korunur
@@ -2617,8 +2666,13 @@ const PlatformGame = () => {
       drawHills(g, s.camX, view.w, theme);
 
       g.save();
-      g.translate(-s.camX, 0);
-      const l = s.camX - 70, r = s.camX + view.w + 70;
+      // ⚠️ SARSINTI VE BAKIŞ PAYI YALNIZ ÇİZİMDE: dünya koordinatları
+      // (çarpışma, üretim, temizlik) s.camX ile kalır — sarsılan kamera
+      // çarpışmayı kaydırırsa oyun adaletsiz olur.
+      const sO = sarsinti.ofset();
+      g.translate(-(s.camX + s.camLook) + sO.x, sO.y);
+      // Ayıklama payı bakış payını (±30) ve sarsıntıyı kapsayacak kadar geniş.
+      const l = s.camX - 130, r = s.camX + view.w + 130;
 
       // YERALTI KATMANI: zemin çizgisinin altı her yerde koyu kaya — çukur ve
       // uçurumlar gökyüzünü/tepe yarım dairelerini değil mağara karanlığını
@@ -2756,7 +2810,9 @@ const PlatformGame = () => {
         if (sh.x < l - 30 || sh.x > r + 30) continue;
         drawNurShot(g, sh, s.time);
       }
-      drawPlayerChar(g, s.x, s.y, s.facing, s.anim, s.grounded, s.ghostT, s.nurT, s.time);
+      // EZİLME-UZAMA: yükselirken uzar, inişte kısa süre ezilip yaylanır.
+      const es = ezilmeUzama(s.vy, MAX_FALL * 0.7, s.landT);
+      drawPlayerChar(g, s.x, s.y, s.facing, s.anim, s.grounded, s.ghostT, s.nurT, s.time, es.sx, es.sy);
 
       for (const p of w.pops) {
         g.globalAlpha = Math.max(0, 1 - p.t / p.life);
@@ -2796,7 +2852,12 @@ const PlatformGame = () => {
       const dt = Math.min(Math.max((now - last) / 1000, 0), DT_MAX);
       last = now;
       const c = controls.current;
-      if (!c.paused && !c.over) step(dt);
+      // ⚠️ SIRA ÖNEMLİ: sarsıntı GERÇEK dt ile ilerler, oyun adımı SÜZÜLMÜŞ
+      // dt ile. Donma sırasında sarsıntı da donarsa etki tamamen kaybolur —
+      // ekran "kilitlendi" gibi görünür.
+      sarsinti.guncelle(dt);
+      const oyunDt = hitstop.suz(dt);
+      if (!c.paused && !c.over && oyunDt > 0) step(oyunDt);
       draw();
     };
     raf = requestAnimationFrame(frame);

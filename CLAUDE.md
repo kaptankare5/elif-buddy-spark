@@ -649,6 +649,52 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   `juice-pop`) — **transform ile**, `top/left` ile değil (yeniden yerleşim
   tetikleyip zaten kasan cihazda kareyi düşürüyor).
 
+### Görsel oyun hissi (`src/lib/gameFeel.ts`)
+`juice.ts` KULAĞA ve ELE hitap eder (ses + titreşim); `gameFeel.ts` GÖZE.
+⚠️ Ölçüldü: ses katmanı 15 oyunun hepsindeydi ama görsel taraf boştu —
+`SARSINTI_SINIFI` dışa aktarılmıştı ve HİÇBİR oyun kullanmıyordu (ölü kod).
+Kaynaklar: Swink *Game Feel*, Vlambeer *Art of Screenshake*, Jonasson & Purho
+*Juice it or lose it*, Eiserloh *Juicing Your Cameras*.
+- ⚠️ **SARSINTI TRAVMANIN KARESİYLE** (`createSarsinti`): `sarsıntı = travma²`.
+  Doğrusal olsaydı küçük olaylar (iniş) gözü tırmalar, sert olaylar (çarpma)
+  yeterince ayrışmazdı; kare alınca ikisi TEK sayıyla ayarlanıyor. Gürültü
+  rastgele değil farklı frekanslı SİNÜS karışımı (rastgele sayı her karede
+  zıpladığı için "kar gürültüsü" gibi görünüyordu).
+- ⚠️ **SARSINTI OYUN ALANINA, SAYFAYA DEĞİL** ve genlik KÜÇÜK (2B'de 7px):
+  çocukta bütün sayfayı sarsmak yazıyı okunmaz yapıyor, mide bulandırıyor.
+- ⚠️ **DONMA KARESİ 60-80 ms** (`createHitstop`, Vlambeer): vuruş anında oyun
+  durur — bu minik sürtünme "bu ÖNEMLİYDİ" diyor. Çocukta üst sınır 0.1 sn
+  (uzun donmayı "takıldı" sanıyor). ⚠️ **SIRA**: `sarsinti.guncelle(gerçekDt)`
+  ÖNCE, `step(hitstop.suz(dt))` SONRA — donmada sarsıntı da donarsa ekran
+  "kilitlendi" gibi görünür ve etki tamamen kaybolur.
+- ⚠️ **3B'de SARSINTI TAKİPTEN SONRA EKLENİR**: kamera `lerp`/`damp` ile
+  hedefe çekiliyor; sarsıntıyı önce yazarsan bir sonraki karede yumuşatma
+  onu geri emiyor ve ekranda hiçbir şey görünmüyor.
+- ⚠️ **CSS ANİMASYONU AYNI SINIFLA YENİDEN TETİKLENMEZ** — `data-` özniteliği
+  değiştirmek de yetmez. `key` değiştirilir (Yılan'ın başı, Uçan Kuş'un
+  çırpışı, Uzay Savaşı'nın namlu parlaması böyle çalışıyor).
+- ⚠️ **MACERA'DA ZIPLAMA ARTIK ASİMETRİK** (Mario/Celeste): çıkışta normal,
+  TEPEDE 0.55× (asılı kalma), İNİŞTE 2×. Sekmeli zaman (0.1 sn) ve tampon
+  (0.12 sn) zaten vardı. ⚠️ Bölüm tasarımı bozulmasın diye ÖLÇÜLDÜ
+  (`tools/perf/zipla.mjs`): tepe 113.3→116.9 px, havada 0.692→0.737 sn,
+  yatay atlama 173→184 px, tepede asılı kalma 0.138→0.250 sn — ÜÇÜ DE
+  BÜYÜDÜ, hiçbir blok ulaşılmaz olmuyor. (Elle hesap "havada kalma kısalır"
+  demişti, YANLIŞTI: apex çarpanı inişin ilk bölümünü de yavaşlatıyor.)
+- ⚠️ **EZİLME-UZAMA HACMİ KORUR** (`ezilmeUzama`, sx·sy ≈ 1) ve ölçek AYAKTAN
+  uygulanır — tepeden ölçeklenen karakter zemine gömülüyor.
+- ⚠️ **HIZ HİSSİ GÖRÜNTÜDEN GELİR**: Koşusu 13→24 birime hızlanıyordu ama
+  kamera hep aynı açıyla bakıyordu. Artık görüş açısı (FOV) hızla açılıyor
+  (64°→73°), çarpmada travmayla BÜZÜLÜYOR. Partisi ve Yarışı'nda da aynı.
+  ⚠️ 9°'den fazlası küçük ekranda harfleri kenara itip okunmaz yapıyor.
+  ⚠️ Koşusu'nda kamera şeridi %22 takip eder: hiç etmezse "dünya kaydı" gibi,
+  tam ederse hangi rayda olduğun okunmuyor.
+- Her oyunun mekanizması ayrı (tür tür seçildi): Macera ezilme+donma+sarsıntı,
+  3B'ler FOV+sarsıntı, Uçan Kuş çırpış ezilmesi, Uzay Savaşı namlu parlaması +
+  geri tepme, Balon gerçek patlama halkası, Match3 zincir rozeti, Hafıza
+  eşleşme "pop"u / ıska sarsıntısı, Kutu Boşalt küçülerek patlayan kutu,
+  Yapboz oturan parça, Quiz son 10 saniyede atan sayaç.
+  Bekçi: `gameFeelKapsam.test.ts` (ÇAĞRI arar, import değil).
+
 ### Zorluk ve klavye (`src/lib/zorluk.ts` + `src/lib/klavye.ts`)
 - ⚠️ **OYUNLAR SABİT HIZDA GİTMEZ** (kullanıcı tespiti: "hep aynı hızda
   geliyorlar, tek düze"). `rampa(dogruSayisi)` başlangıç hızından tavana

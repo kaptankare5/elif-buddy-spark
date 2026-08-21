@@ -119,4 +119,7 @@ export type { Titresim } from "@/lib/titresim";
  * ⚠️ Sarsıntı OYUN ALANINA uygulanır, `body`'ye değil: bütün sayfayı
  * sarsmak yazıyı okunmaz yapıyor ve mide bulandırıyor (kullanıcı çocuk).
  */
-export const SARSINTI_SINIFI = "animate-juice-shake";
+// ⚠️ TEK KAYNAK: görsel taraf `gameFeel.ts`'e taşındı (travma modeli, donma
+// karesi, ezilme-uzama, parçacıklar). Burası yalnız geriye dönük yeniden
+// dışa aktarım — eskiden burada tanımlıydı ve HİÇBİR oyun kullanmıyordu.
+export { SARSINTI_SINIFI, useSarsinti, createSarsinti, createHitstop } from "@/lib/gameFeel";

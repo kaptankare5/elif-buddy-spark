@@ -49,6 +49,7 @@ import {
 } from "@/lib/askMode";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { zorlukAyari } from "@/lib/zorluk";
+import { createSarsinti, clamp } from "@/lib/gameFeel";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
 import type { ContentItem } from "@/data/types";
 
@@ -61,6 +62,11 @@ const BASE_SPEED = 11.5;       // birim/sn
 const BOOST_SPEED = 17;
 const MUD_SPEED = 4.6;
 const HIT_SPEED = 3.2;         // çekiç yedikten sonraki toparlanma hızı
+// ⚠️ HIZ HİSSİ GÖRÜNTÜDEN GELİR: roket (17 birim/sn) ile normal koşu (11.5)
+// arasındaki fark sayıda %48 ama ekranda neredeyse görünmüyordu. Görüş
+// açısını hızla genişletmek beyne "hızlandım" dedirtiyor (yarış oyunlarının
+// klasik çözümü); çarpınca ters yönde kısa bir büzülme vuruşu taşıyor.
+const FOV_TABAN = 64, FOV_BOOST = 9, FOV_DARBE = 8;
 const STEER = 8.5;             // yana hız
 const GRAVITY = 30;
 // Zıplama artık gerçek bir kaçış aracı: normal zıplama da "süper" yükseklikte
@@ -269,6 +275,7 @@ interface Racer {
   mudT: number;
   netT: number;
   hitT: number;           // takla süresi
+  spEfektif: number;      // o karedeki gerçek hız (kamera görüş açısı için)
   /**
    * ⚠️ TAKLA SONRASI DOKUNULMAZLIK — kısır döngü kırıcı.
    *
@@ -395,7 +402,9 @@ const PartyGame = () => {
     scene.fog = new THREE.Fog(0x9ad9ff, 110, 260);
 
     // Dikey ekran → geniş dikey FOV: ileriyi de yolun genişliğini de görsün
-    const camera = new THREE.PerspectiveCamera(64, 1, 0.1, 400);
+    const camera = new THREE.PerspectiveCamera(FOV_TABAN, 1, 0.1, 400);
+    // Travma tabanlı sarsıntı — genlik dünya biriminde, küçük tutuldu.
+    const sarsinti = createSarsinti(0.5, 0.012);
     scene.add(new THREE.HemisphereLight(0xffffff, 0xbfe3ff, 1.15));
     const sun = new THREE.DirectionalLight(0xffffff, 0.85);
     sun.position.set(-14, 30, 12);
@@ -839,7 +848,7 @@ const PartyGame = () => {
       scene.add(group);
       return {
         id, name, isPlayer, z: 0, x: homeX, y: 0, vy: 0,
-        boostT: 0, mudT: 0, netT: 0, hitT: 0, graceT: 0, shieldT: 0, glowT: 0,
+        boostT: 0, mudT: 0, netT: 0, hitT: 0, graceT: 0, shieldT: 0, glowT: 0, spEfektif: BASE_SPEED,
         // Bot becerisi YALNIZ engelden kaçmadır (kapı seçimi rastgele —
         // kullanıcı şartı). Zorlukta botlar daha az takılır.
         dodge: isPlayer ? 1 : Math.min(1, (def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0])) * zorlukAyari().baslangic),
@@ -937,7 +946,14 @@ const PartyGame = () => {
       r.vy = 5.5;
       r.y = Math.max(r.y, 0.1);
       r.boostT = 0;
-      if (r.isPlayer) { playSfx("stomp"); showFlash("💫 Takla attın!", false); }
+      if (r.isPlayer) {
+        playSfx("stomp");
+        showFlash("💫 Takla attın!", false);
+        // ⚠️ ÖNCE DUR, SONRA SARS (Vlambeer): takla zaten 1 sn sürüyor, bu
+        // yüzden burada DONMA yok — sarsıntı + görüş açısı darbesi vuruşun
+        // ağırlığını taşıyor. Travma karesiyle sönümlenir (gameFeel.ts).
+        sarsinti.ekle(0.9);
+      }
     };
 
     /**
@@ -1157,6 +1173,7 @@ const PartyGame = () => {
         if (r.boostT > 0) sp = BOOST_SPEED;
         if (r.mudT > 0 || r.netT > 0) sp = MUD_SPEED;
         if (r.hitT > 0) sp = HIT_SPEED;
+        r.spEfektif = sp;   // kamera görüş açısı buna bakar
         r.z += sp * dt;
         r.hop += dt * (r.boostT > 0 ? 17 : 11);
 
@@ -1314,6 +1331,21 @@ const PartyGame = () => {
       camera.position.z += (wz(player.z - 17.5) - camera.position.z) * Math.min(1, dt * 8);
       // Biraz aşağı bakış: yol kadrajı doldursun, ekranın yarısı boş gök olmasın
       camera.lookAt(player.x * 0.3, 0.6 + player.y * 0.25, wz(player.z + 13));
+      // ⚠️ SARSINTI TAKİPTEN SONRA EKLENİR: takip `camera.position`'ı hedefe
+      // çekiyor, sarsıntıyı ondan önce yazarsak bir sonraki karede yumuşatma
+      // onu geri emiyor ve hiçbir şey görünmüyor.
+      sarsinti.guncelle(dt);
+      const sO = sarsinti.ofset();
+      camera.position.x += sO.x;
+      camera.position.y += sO.y;
+      camera.rotation.z += sO.rot;
+      // Hıza bağlı görüş açısı: roket açar, çamur/takla kapatır, çarpma büzer.
+      const hizK = clamp((player.spEfektif - BASE_SPEED) / (BOOST_SPEED - BASE_SPEED), 0, 1);
+      const hedefFov = FOV_TABAN + FOV_BOOST * hizK - sarsinti.travma * FOV_DARBE;
+      if (Math.abs(camera.fov - hedefFov) > 0.01) {
+        camera.fov += (hedefFov - camera.fov) * Math.min(1, dt * 6);
+        camera.updateProjectionMatrix();
+      }
 
       // dekor: balonlar süzülür, taç döner, oyuncunun oku zıplar
       const tNow = performance.now() * 0.001;

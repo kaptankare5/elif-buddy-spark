@@ -41,6 +41,13 @@ const OBST_Z = -78;        // engel sırasının doğduğu yerel z
 const DESPAWN_Z = 16;
 const BASE_SPEED = 13;
 const MAX_SPEED = 24;
+// Görüş açısı: durunca 64°, tam hızda 73°. 9°'lik aralık ölçülü — daha
+// fazlası küçük ekranda harfleri kenara itip okunmaz yapıyor.
+const FOV_TABAN = 64, FOV_ARALIK = 9;
+// FOV ölçeğinin doyduğu hız — zorluk kademesi tavanı değiştirse de
+// görüntü aynı yerde doysun (Kolay'da da hızlanma hissedilsin).
+const SPEED_MAX_FOV = MAX_SPEED;
+
 // Tavan hıza kaç DOĞRU cevapta ulaşılsın (skor değil — bkz. hız rampası).
 const SPEED_FULL = 40;
 const DT_MAX = 0.05;       // sekme arkaplandan dönünce ışınlanmayı önler
@@ -744,17 +751,50 @@ function Director({ sim, entsRef, worldRef, gateActive, onSpawnGate, onSpawnRow,
   const gateCool = useRef(1.0);
   const nextObsD = useRef(26);
   const jetCoin = useRef(0.4);
+  /**
+   * ⚠️ HIZ HİSSİ GÖRÜNTÜDEN GELİR, SAYIDAN DEĞİL. Oyun 13 → 40 birime
+   * hızlanıyor ama kamera hep aynı açıyla bakıyordu; çocuk hızlandığını
+   * ancak nesneler yanından geçerken anlıyordu. Yarış oyunlarının klasik
+   * çözümü: hız arttıkça GÖRÜŞ AÇISINI (FOV) genişlet — ekranın kenarları
+   * savrulur, beyin "hızlanıyorum" der. Çarpınca ters yönde kısa bir darbe
+   * (içeri büzülme) vuruşun ağırlığını taşır.
+   */
+  const fovRef = useRef(FOV_TABAN);
   const cleanupT = useRef(0.5);
-  const { camera } = useThree();
+  // ⚠️ PerspectiveCamera olarak daraltılıyor: R3F'in `camera` tipi ortografik
+  // de olabiliyor, `fov` orada yok. Sahne perspektif kamerayla kuruluyor.
+  const camera = useThree((st) => st.camera) as THREE.PerspectiveCamera;
 
   useFrame((st, dRaw) => {
     const s = sim.current;
     const d = Math.min(dRaw, DT_MAX);
 
     // kamera — şeritler genişlediği için biraz geride ve yukarıda durur
-    const shakeX = s.shake > 0 ? Math.sin(st.clock.elapsedTime * 45) * 0.16 * (s.shake / 0.5) : 0;
-    camera.position.set(shakeX, 4.7 + s.y * 0.3, 8.6);
-    camera.lookAt(0, 1.5 + s.y * 0.25, -10);
+    // ⚠️ SARSINTI TRAVMANIN KARESİYLE (Eiserloh): doğrusal sönümde küçük
+    // olaylar gözü tırmalıyor, kare alınca hafif olay görünmez, sert olay
+    // patlıyor — ikisi tek sayıyla ayarlanıyor.
+    const tr = s.shake > 0 ? Math.min(1, s.shake / 0.5) : 0;
+    const shakeX = tr * tr * 0.34 * Math.sin(st.clock.elapsedTime * 47);
+    const shakeY = tr * tr * 0.22 * Math.sin(st.clock.elapsedTime * 61 + 1.3);
+    // ⚠️ KAMERA ŞERİDİ KISMEN TAKİP EDER (%22): hiç takip etmezse şerit
+    // değiştirmek "dünya kaydı" gibi görünüyordu, tam takip ederse şeritler
+    // birbirine karışıp hangi rayda olduğun okunmuyor.
+    camera.position.set(shakeX + s.x * 0.22, 4.7 + s.y * 0.3 + shakeY, 8.6);
+    camera.lookAt(s.x * 0.1, 1.5 + s.y * 0.25, -10);
+    // yana kayarken hafif yatış — hareketin ağırlığı hissedilsin
+    camera.rotation.z = (LANE_X[s.lane] - s.x) * 0.035 + tr * tr * 0.03;
+    // Hıza bağlı görüş açısı + çarpma darbesi.
+    // ⚠️ DARBE AYRI BİR SAYAÇ DEĞİL, `s.shake`ten TÜRETİLİR: sarsıntı üç ayrı
+    // yerden (tren, engel, yanlış kapı) tetikleniyor ve ikisi Scene'in
+    // DIŞINDA. Tek kaynağa bağlamak hem senkron tutuyor hem "sarsılan her
+    // olayda darbe de var" garantisi veriyor.
+    const hizK = clamp01((s.speed - BASE_SPEED) / (SPEED_MAX_FOV - BASE_SPEED));
+    const hedefFov = FOV_TABAN + FOV_ARALIK * hizK - tr * 7;
+    fovRef.current += (hedefFov - fovRef.current) * Math.min(1, d * 6);
+    if (Math.abs(camera.fov - fovRef.current) > 0.01) {
+      camera.fov = fovRef.current;
+      camera.updateProjectionMatrix();
+    }
     if (!s.running) return;
 
     // zamanlayıcılar
@@ -1177,7 +1217,7 @@ const SubwayGame = () => {
       titre("hata");
       setStreak(0);
       setScore((sc) => Math.max(0, sc - 5));
-      s.shake = 0.5;
+      s.shake = 0.5;   // sarsıntı + görüş açısı darbesi (Scene türetiyor)
       // Yanlış cevaplanan harf, moddan bağımsız olarak tekrar sorulsun.
       enqueueRetryItem(gate.target!);
       showBanner(`Doğrusu: ${gate.target!.translit || gate.target!.label}`, "bad", 1800);

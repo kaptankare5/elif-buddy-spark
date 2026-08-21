@@ -36,6 +36,7 @@ import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer,
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
+import { useSarsinti } from "@/lib/gameFeel";
 import { Heart, Volume2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { sfx, titre } from "@/lib/juice";
 import { useOyunSonu } from "@/lib/oyunSonucu";
@@ -94,11 +95,21 @@ const RunnerGame = () => {
   // Arka arkaya doğru — juice sesi her seferinde tizleşir (Mario para kuralı).
   const vurusSeri = useRef(0);
   const [shipX, setShipX] = useState(50);
+  /**
+   * ⚠️ ATIŞIN KENDİSİ GÖRÜNMÜYORDU: mermi bir anda beliriyordu, gemi hiç
+   * tepki vermiyordu. Vlambeer'in listesindeki ilk iki madde tam olarak bu —
+   * NAMLU PARLAMASI (atışın çıktığı yer bir kare parlar) ve GERİ TEPME
+   * (gemi bir an geriye çöker). İkisi de oyunun kurallarını değiştirmez.
+   */
+  const [ates, setAtes] = useState(0);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [bullets, setBullets] = useState<Bullet[]>([]);
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [roundItems, setRoundItems] = useState<ContentItem[]>([]);
   const [score, setScore] = useState(0);
+  // ⚠️ SARSINTI OYUN ALANINA, SAYFAYA DEĞİL (gameFeel.ts): skor ve kalpler
+  // okunur kalsın; çocukta bütün sayfayı sarsmak mide bulandırıyor.
+  const { sinif: sarsSinif, sars } = useSarsinti();
   const [combo, setCombo] = useState(0);
   // ⚠️ RAMPA SKORA DEĞİL DOĞRU SAYISINA bağlanır: skor seri bonusuyla
   // şişiyor, çocuk birkaç doğruda tavana çıkardı (Koşusu'nda bu ders alındı).
@@ -157,6 +168,7 @@ const RunnerGame = () => {
     if (roundLockRef.current) return;
     roundLockRef.current = true;
     sfx("carp");
+    sars();
     playFeedback(false);
     setCombo(0);
     flashFx("bad");
@@ -169,7 +181,7 @@ const RunnerGame = () => {
       setTimeout(() => { void nextRound(); }, 400);
       return nl;
     });
-  }, [nextRound, isSuper]);
+  }, [nextRound, isSuper, sars]);
 
   const startGame = useCallback(() => {
     if (!pausedRef.current) return;
@@ -185,6 +197,7 @@ const RunnerGame = () => {
     if (now - lastShotRef.current < 220) return;
     lastShotRef.current = now;
     sfx("ates");
+    setAtes((n) => n + 1);
     setBullets((b) => [...b, { uid: UID++, x: shipXRef.current, y: SHIP_TOP - SHIP_H / 2 }]);
   }, [gameOver, startGame]);
 
@@ -444,7 +457,10 @@ const RunnerGame = () => {
 
         <div
           ref={alanRef}
-          className="relative w-full overflow-hidden rounded-2xl shadow-card border-4 border-indigo-500/60 select-none touch-none"
+          className={cn(
+            "relative w-full overflow-hidden rounded-2xl shadow-card border-4 border-indigo-500/60 select-none touch-none",
+            sarsSinif,
+          )}
           style={{ aspectRatio: "5 / 6", maxHeight: "60vh", margin: "0 auto",
             background: "radial-gradient(ellipse at top, hsl(250 60% 25%), hsl(240 70% 8%) 75%)",
             contain: "layout paint size" }}
@@ -477,13 +493,43 @@ const RunnerGame = () => {
                 transform: "translate3d(-50%, -50%, 0)", willChange: "top" }} />
           ))}
 
+          {/* NAMLU PARLAMASI — geminin burnunda bir karelik ışık.
+              `key` her atışta değişiyor: aynı sınıfı tekrar vermek CSS
+              animasyonunu yeniden başlatmaz. */}
+          <div
+            key={`fl-${ates}`}
+            className="pointer-events-none absolute rounded-full ates-parla"
+            style={{
+              left: `${shipX}%`, top: `${SHIP_TOP - SHIP_H / 2}%`,
+              width: "26px", height: "26px", zIndex: 49,
+              transform: "translate3d(-50%, -50%, 0)",
+              background: "radial-gradient(circle, rgba(255,255,220,0.95) 0%, rgba(255,214,80,0.7) 45%, rgba(255,180,40,0) 72%)",
+            }}
+          />
           <div className="absolute"
             style={{ left: `${shipX}%`, top: `${SHIP_TOP}%`, transform: "translate3d(-50%, -50%, 0)",
               width: `${SHIP_W}%`, aspectRatio: "1 / 1", zIndex: 50,
               filter: "drop-shadow(0 6px 14px rgba(80,200,255,0.65))",
               willChange: "left" }}>
-            <ShipSvg />
+            {/* GERİ TEPME: gemi atışta bir an geri çöküp yerine yaylanır.
+                Ayrı katman — dış div'in konum transformuyla çakışmasın. */}
+            <span key={`rc-${ates}`} className="block ates-tep">
+              <ShipSvg />
+            </span>
           </div>
+          <style>{`
+            @keyframes ates-parla {
+              0%   { opacity: 0.95; transform: translate3d(-50%,-50%,0) scale(0.5); }
+              100% { opacity: 0;    transform: translate3d(-50%,-50%,0) scale(1.5); }
+            }
+            .ates-parla { animation: ates-parla 0.13s ease-out both; }
+            @keyframes ates-tep {
+              0%   { transform: translateY(0)   scale(1, 1); }
+              25%  { transform: translateY(4px) scale(1.06, 0.9); }
+              100% { transform: translateY(0)   scale(1, 1); }
+            }
+            .ates-tep { animation: ates-tep 0.16s cubic-bezier(0.34,1.56,0.64,1); }
+          `}</style>
 
           {pops.map((p) => (
             <div key={p.id}

@@ -9,6 +9,7 @@ import { useAskLayer } from "./_askUI";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer, showHintFor } from "@/lib/gameProgress";
+import { useSarsinti } from "@/lib/gameFeel";
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
@@ -73,6 +74,13 @@ const FlappyGame = () => {
   const zorluk = useRef(zorlukAyari());
   const [lives, setLives] = useState(zorluk.current.can);
   const [gameOver, setGameOver] = useState(false);
+  // ⚠️ SARSINTI OYUN ALANINA, SAYFAYA DEĞİL: skor ve kalp göstergesi
+  // okunur kalsın (bkz. gameFeel.ts). Çarpma ve yanlış harf tetikler.
+  const { sinif: sarsSinif, sars } = useSarsinti();
+  // Kanat çırpışında kuş bir an SIKIŞIR (ezilme-uzama): hareketin
+  // başlangıcı görünür olsun — Flappy'de dönüş açısı zaten var ama
+  // çırpışın kendisi hiç geri bildirim vermiyordu.
+  const [carp, setCarp] = useState(0);
   const rapor = useOyunSonu("flappy", gameOver, score, { birim: "puan" });
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
@@ -109,6 +117,7 @@ const FlappyGame = () => {
     }
     sfx("zipla");
     setVel(FLAP);
+    setCarp((n) => n + 1);   // çırpış ezilmesi (aşağıdaki animasyon anahtarı)
   }, [gameOver, paused, target]);
 
   // Klavye / boşluk
@@ -141,7 +150,7 @@ const FlappyGame = () => {
       const nv = velRef.current + GRAVITY;
       const ny = yRef.current + nv;
       if (ny > H - 4) {
-        sfx("carp"); titre("sert"); setGameOver(true); playFeedback(false); return true;
+        sfx("carp"); titre("sert"); sars(); setGameOver(true); playFeedback(false); return true;
       }
       if (ny < 0) { setBirdY(0); setVel(0); }
       else { setBirdY(ny); setVel(nv); }
@@ -319,7 +328,7 @@ const FlappyGame = () => {
     };
     rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafId);
-  }, [gameOver, paused, pickTarget]);
+  }, [gameOver, paused, pickTarget, sars]);
 
   const reset = () => {
     zorluk.current = zorlukAyari();
@@ -369,7 +378,10 @@ const FlappyGame = () => {
 
         <div
           onPointerDown={(e) => { e.preventDefault(); flap(); }}
-          className="relative w-full overflow-hidden rounded-3xl shadow-elegant border-[6px] border-sky-300/70 select-none touch-none"
+          className={cn(
+            "relative w-full overflow-hidden rounded-3xl shadow-elegant border-[6px] border-sky-300/70 select-none touch-none",
+            sarsSinif,
+          )}
           style={{
             aspectRatio: "5 / 6", maxHeight: "60vh", margin: "0 auto", contain: "layout paint size",
             // Gerçek bir gökyüzü: üstte doygun mavi, ufka doğru açılır.
@@ -415,6 +427,15 @@ const FlappyGame = () => {
           <style>{`
             @keyframes kus-bulut { from { transform: translateX(0); } to { transform: translateX(calc(-100vw - 140px)); } }
             @keyframes kus-zemin { from { background-position-x: 0; } to { background-position-x: -20px; } }
+            /* Çırpış ezilmesi: önce dikey UZAR (yukarı itiş), sonra hafif
+               ezilip yerine oturur. Hacim korunur (sx*sy≈1), yoksa kuş
+               şişip sönüyor gibi görünür. */
+            @keyframes kus-carp {
+              0%   { transform: scale(0.86, 1.18); }
+              55%  { transform: scale(1.07, 0.95); }
+              100% { transform: scale(1, 1); }
+            }
+            .kus-carp { display: inline-block; animation: kus-carp 0.22s cubic-bezier(0.34,1.56,0.64,1); }
           `}</style>
 
           {/* Bird */}
@@ -425,11 +446,18 @@ const FlappyGame = () => {
               top: `${birdY}%`,
               width: `${HIT_R * 2}%`,
               height: `${HIT_R * 2}%`,
+              // ⚠️ DÖNÜŞ + EZİLME BİRLİKTE: dönüş hızdan gelir (Flappy'nin
+              // imza hareketi), ezilme ise çırpışın KENDİSİNİ gösterir —
+              // `carp` her çırpışta artıyor, `key` animasyonu yeniden
+              // başlatıyor (CSS animasyonu aynı sınıfla tekrar tetiklenmez).
               transform: `translate3d(-50%, -50%, 0) scaleX(-1) rotate(${Math.max(-30, Math.min(60, -vel * 8))}deg)`,
               willChange: "transform, top",
             }}
           >
-            🐤
+            {/* ⚠️ AYRI KATMAN: ezilme dış div'in dönüş transformuna yazılamaz
+                (ikisi çakışır). `key` her çırpışta değişiyor → CSS animasyonu
+                yeniden başlıyor; aynı sınıfı tekrar vermek tetiklemez. */}
+            <span key={carp} className="kus-carp">🐤</span>
           </div>
 
           {/* Letters */}
