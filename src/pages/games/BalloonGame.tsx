@@ -7,6 +7,7 @@ import { sfx, titre } from "@/lib/juice";
 import { PageHeader } from "@/components/PageHeader";
 import { playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { useSarsinti } from "@/lib/gameFeel";
 import { Volume2, Eye } from "lucide-react";
 import { gamePool } from "./_shared";
 import { useAskLayer } from "./_askUI";
@@ -36,6 +37,9 @@ const BalloonGame = () => {
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [balloons, setBalloons] = useState<Balloon[]>([]);
   const [score, setScore] = useState(0);
+  // ⚠️ SARSINTI OYUN ALANINA, SAYFAYA DEĞİL (gameFeel.ts): skor ve kalpler
+  // okunur kalsın; çocukta bütün sayfayı sarsmak mide bulandırıyor.
+  const { sinif: sarsSinif, sars } = useSarsinti();
   const [misses, setMisses] = useState(0);
   // ⚠️ B-1 DALGA YAPISI: oyun hiç bitmiyordu — hedef yok, kayıp yok, kapanış
   // yok. Çocuk oyunu BİTİRMİYOR, terk ediyor; terk edilen oyuna dönülmez.
@@ -145,6 +149,7 @@ const BalloonGame = () => {
       setMisses((m) => m + 1);
       sfx("carp");
       titre("hata");
+      sars();
       await playFeedback(false);
     }
   };
@@ -234,7 +239,17 @@ const BalloonGame = () => {
           )}
         </div>
 
-        <div className="relative bg-gradient-to-b from-info/10 to-info/30 rounded-3xl shadow-card border-4 border-info/30 overflow-hidden" style={{ height: "60vh" }}>
+        <div className={cn(
+          "relative bg-gradient-to-b from-info/10 to-info/30 rounded-3xl shadow-card border-4 border-info/30 overflow-hidden",
+          sarsSinif,
+        )} style={{ height: "60vh" }}>
+          <style>{`
+            @keyframes balon-patla {
+              0%   { width: 10px; height: 10px; opacity: 0.9; }
+              100% { width: 96px; height: 96px; opacity: 0; }
+            }
+            .balon-patla { animation: balon-patla 0.34s ease-out both; }
+          `}</style>
           {/* Doğru cevap ışık parlaması (normal modda kolaylık hissi) */}
           {flash && (
             <div className="pointer-events-none absolute inset-0 z-10 animate-fade-in"
@@ -250,8 +265,13 @@ const BalloonGame = () => {
                 onClick={() => pop(b)}
                 disabled={b.popped}
                 className={cn(
-                  "absolute -translate-x-1/2 transition-opacity",
-                  b.popped && "opacity-0 pointer-events-none",
+                  // ⚠️ BALON "PATLAMIYORDU", SÖNÜYORDU: oyunun adı Balon
+                  // Patlatma ama tıklanan balon sadece `opacity-0`'a
+                  // gidiyordu — türün TEK haz anı geri bildirimsizdi.
+                  // Artık önce ŞİŞİP sonra kayboluyor (patlama okunuyor) ve
+                  // arkasında kısa bir parça halkası kalıyor.
+                  "absolute -translate-x-1/2 transition-all duration-200 ease-out",
+                  b.popped && "opacity-0 scale-150 pointer-events-none",
                 )}
                 style={{ left: `${b.x}%`, bottom: `${b.y}%` }}
               >
@@ -270,6 +290,13 @@ const BalloonGame = () => {
                     {ask.sik(b.item)}
                   </span>
                 </div>
+                {/* patlama halkası — balonun bıraktığı iz */}
+                {b.popped && (
+                  <span
+                    key={`pt-${b.uid}`}
+                    className="balon-patla pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white/80"
+                  />
+                )}
                 <div className="w-px h-4 bg-foreground/40 mx-auto" />
               </button>
             );

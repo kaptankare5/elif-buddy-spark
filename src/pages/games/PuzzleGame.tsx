@@ -48,6 +48,7 @@ const PuzzleGame = () => {
   const [tiles, setTiles] = useState<number[]>([]);
   const [first, setFirst] = useState<number | null>(null);
   const [solved, setSolved] = useState(false);
+  const [oturan, setOturan] = useState<number[]>([]);
   const [score, setScore] = useState(0);
 
   /**
@@ -85,6 +86,16 @@ const PuzzleGame = () => {
     sfx("patlat");
     setTiles(next);
     setFirst(null);
+
+    // ⚠️ DOĞRU YERE OTURAN PARÇA GÖRÜNSÜN: yapbozun tek geri bildirimi
+    // "bitti" idi; aradaki her doğru hamle sessizdi. Artık yeni yerine oturan
+    // parça bir kez "pop" yapıyor — ilerleme hamle hamle okunuyor.
+    const yeniDogru: number[] = [];
+    for (const idx of [first, i]) if (next[idx] === idx && tiles[idx] !== idx) yeniDogru.push(idx);
+    if (yeniDogru.length) {
+      setOturan(yeniDogru);
+      setTimeout(() => setOturan([]), 340);
+    }
 
     if (next.every((v, idx) => v === idx)) {
       setSolved(true);
@@ -143,6 +154,7 @@ const PuzzleGame = () => {
                       ? "border-success"
                       : "border-border/40",
                     "bg-gradient-to-br from-card to-muted/50",
+                    oturan.includes(idx) && "animate-juice-pop border-success ring-4 ring-success/50",
                   )}
                   aria-label={`Parça ${idx + 1}`}
                 >

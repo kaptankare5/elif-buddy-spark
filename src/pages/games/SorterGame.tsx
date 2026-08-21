@@ -3,6 +3,7 @@ import { useSecenekTuslari, usePcMi } from "@/lib/klavye";
 import { PageHeader } from "@/components/PageHeader";
 import { playItem, playFeedback } from "@/lib/audio";
 import { cn } from "@/lib/utils";
+import { useSarsinti } from "@/lib/gameFeel";
 import { gamePool, getGameLang, pickCluster, shuffle } from "./_shared";
 import { useAskLayer } from "./_askUI";
 import { recordLetterMastery } from "@/data/srs";
@@ -91,6 +92,9 @@ const SorterGame = () => {
    * çağrılmamıştı — ölü import).
    */
   const [tahta, setTahta] = useState(0);
+  // Yanlış kutuda tahta sarsılır (kutunun kendi kırmızı "pop"u zaten var;
+  // sarsıntı hatayı ÇEVREYE de yayıyor — Vlambeer: vuruş okunmalı).
+  const { sinif: sarsSinif, sars } = useSarsinti();
   const tahtaRef = useRef(0);
   const [rapor, setRapor] = useState<SonucRaporu | null>(null);
   const [score, setScore] = useState(0);
@@ -209,6 +213,7 @@ const SorterGame = () => {
       recordGameAnswer(target, false, { chosenId: c.item.id });
       sfx("carp");
       titre("hata");
+      sars();
       await playFeedback(false);
       setBoard((b) => ({ ...b, cells: b.cells.map((x) => x.uid === c.uid ? { ...x, wrong: true } : x) }));
       setTimeout(() => {
@@ -317,7 +322,11 @@ const SorterGame = () => {
                     className={cn(
                       "relative aspect-square rounded-2xl flex items-center justify-center shadow-soft border-4 transition-bouncy",
                       ask.yazili ? "text-base px-1" : "text-4xl",
-                      c.cleared ? "opacity-0 pointer-events-none" :
+                      // ⚠️ BOŞALAN KUTU ARTIK KÜÇÜLEREK PATLIYOR: eskiden
+                      // `opacity-0` ile bir anda yok oluyordu — oyunun
+                      // AMACI olan an (kutuyu boşaltmak) hiç kutlanmıyordu.
+                      // `transition-bouncy` zaten yukarıda, ölçek onunla akıyor.
+                      c.cleared ? "scale-0 opacity-0 pointer-events-none" :
                         c.wrong ? "bg-destructive/30 border-destructive animate-pop" :
                           highlight ? "bg-warning/30 border-warning ring-4 ring-warning/60 animate-pulse" :
                             "bg-card border-primary/20 hover:-translate-y-1 active:scale-95",

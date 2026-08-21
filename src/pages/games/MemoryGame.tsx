@@ -68,6 +68,15 @@ const MemoryGame = () => {
   const isSuper = mode === "super";
   const [tur, setTur] = useState(0);
   const [cards, setCards] = useState<Card[]>(() => buildBoard(ciftSayisi(0)));
+  /**
+   * ⚠️ EŞLEŞME BİR OLAYDI AMA GÖRÜNMÜYORDU: tutturulan çift sessizce
+   * `opacity-60`'a düşüyordu — oyunun EN İYİ anı en sönük geri bildirimi
+   * alıyordu. Artık çift bir kez "pop" yapıyor. Iska ise SARSILIYOR ama
+   * hafifçe: burada ıska konumu unutmaktır, harfi bilmemek değil (ses
+   * katmanında da aynı ilke: `titre("hafif")`, "hata" değil).
+   */
+  const [popUid, setPopUid] = useState<string[]>([]);
+  const [sarsUid, setSarsUid] = useState<string[]>([]);
   const [first, setFirst] = useState<Card | null>(null);
   const [busy, setBusy] = useState(false);
   const [moves, setMoves] = useState(0);
@@ -178,6 +187,8 @@ const MemoryGame = () => {
       sfx("topla", { seri: eslesmeSeri.current++ });
       titre("basari");
       setCards((cs) => cs.map((x) => x.item.id === c.item.id ? { ...x, matched: true, flipped: true } : x));
+      setPopUid([first.uid, c.uid]);
+      setTimeout(() => setPopUid([]), 340);
       await sesCal(c.item);
       setFirst(null); setBusy(false);
       if (!isSuper) {
@@ -190,6 +201,8 @@ const MemoryGame = () => {
                         // harfi bilmemek değil — sert geri bildirim yanlış ders verir.
       // Yanlış eşleşmede doğru harfin sesi yine de duyulsun (öğretici an);
       // ses↔resim modunda ikinci kart glifse onun kaydını çalıyoruz.
+      setSarsUid([first.uid, c.uid]);
+      setTimeout(() => setSarsUid([]), 320);
       await sesCal(c.item);
       setCards((cs) => cs.map((x) => (x.uid === first.uid || x.uid === c.uid) ? { ...x, flipped: false } : x));
       setFirst(null); setBusy(false);
@@ -281,6 +294,8 @@ const MemoryGame = () => {
                 c.matched ? "bg-success/20 border-success/50 opacity-60" :
                   c.flipped ? "bg-card border-primary/40 animate-pop" :
                     "bg-primary border-primary text-primary-foreground hover:-translate-y-1",
+                popUid.includes(c.uid) && "animate-juice-pop",
+                sarsUid.includes(c.uid) && "animate-juice-shake",
               )}
             >
               {(c.flipped || c.matched)

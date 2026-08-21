@@ -13,6 +13,7 @@ import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer,
 import { useGameMode } from "@/lib/gameMode";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
+import { useSarsinti } from "@/lib/gameFeel";
 import { Volume2, Eye } from "lucide-react";
 import { useOyunSonu } from "@/lib/oyunSonucu";
 import { OyunSonuKarti } from "@/components/OyunSonuKarti";
@@ -75,6 +76,9 @@ const SnakeGame = () => {
   const [quiz, setQuiz] = useState<QuizState | null>(null);
   const [eaten, setEaten] = useState(0);
   const [score, setScore] = useState(0);
+  // ⚠️ SARSINTI OYUN ALANINA, SAYFAYA DEĞİL (gameFeel.ts): skor ve kalpler
+  // okunur kalsın; çocukta bütün sayfayı sarsmak mide bulandırıyor.
+  const { sinif: sarsSinif, sars } = useSarsinti();
   // Rampa DOĞRU sayısına bağlı (yem yemek değil, sınavı geçmek hızlandırır).
   const [dogru, setDogru] = useState(0);
   const [gameOver, setGameOver] = useState(false);
@@ -98,6 +102,12 @@ const SnakeGame = () => {
   const askRef = useRef(ask); askRef.current = ask;
   // Arka arkaya yenen doğru harfler serisi — ses her seferinde tizleşir.
   const yemeSeri = useRef(0);
+  /**
+   * ⚠️ YEME ANI SESSİZ BİR BÜYÜMEYDİ: yılan bir kare uzuyordu, o kadar.
+   * Oyunun ÖDÜL anıydı ve hiç kutlanmıyordu. Artık baş bir kez "pop"
+   * yapıyor (`yeme` her yemede artıyor, `key` animasyonu yeniden başlatıyor).
+   */
+  const [yeme, setYeme] = useState(0);
 
   const startQuiz = useCallback((occupied: Cell[]) => {
     const pool = gamePool();
@@ -184,13 +194,13 @@ const SnakeGame = () => {
         const next: Cell = { x: head.x + d.x, y: head.y + d.y };
         if (next.x < 0 || next.x >= COLS || next.y < 0 || next.y >= ROWS) {
           setGameOver(true);
-          sfx("carp"); titre("sert"); yemeSeri.current = 0;
+          sfx("carp"); titre("sert"); sars(); yemeSeri.current = 0;
           playFeedback(false);
           return prev;
         }
         if (prev.some((c) => c.x === next.x && c.y === next.y)) {
           setGameOver(true);
-          sfx("carp"); titre("sert"); yemeSeri.current = 0;
+          sfx("carp"); titre("sert"); sars(); yemeSeri.current = 0;
           playFeedback(false);
           return prev;
         }
@@ -216,6 +226,7 @@ const SnakeGame = () => {
               setScore((s) => s + 5);
               setDogru((d) => d + 1);
               sfx("topla", { seri: yemeSeri.current++ });
+              setYeme((n) => n + 1);
               playFeedback(true);
               // Kayıt bitmeden yeni soru sorulmasın (yazılı modda).
               const bitince = askRef.current.cevapSesi(quiz.target, true);
@@ -264,7 +275,7 @@ const SnakeGame = () => {
     return () => clearInterval(id);
     // `dogru` bağımlılıkta: doğru cevap sayısı artınca interval YENİDEN kurulur
     // ve yılan hızlanır. setInterval süresi kurulduktan sonra değiştirilemez.
-  }, [gameOver, paused, food, quiz, eaten, newFood, startQuiz, isSuper, dogru]);
+  }, [gameOver, paused, food, quiz, eaten, newFood, startQuiz, isSuper, dogru, sars]);
 
   const reset = () => {
     const initial = [{ x: 5, y: 9 }, { x: 4, y: 9 }, { x: 3, y: 9 }];
@@ -362,7 +373,10 @@ const SnakeGame = () => {
         <div
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
-          className="relative rounded-3xl shadow-elegant border-[6px] border-success/60 overflow-hidden mx-auto select-none touch-none"
+          className={cn(
+            "relative rounded-3xl shadow-elegant border-[6px] border-success/60 overflow-hidden mx-auto select-none touch-none",
+            sarsSinif,
+          )}
           style={{
             aspectRatio: `${COLS} / ${ROWS}`,
             width: "100%",
@@ -388,12 +402,18 @@ const SnakeGame = () => {
             const rotate = d.x === 1 ? 0 : d.x === -1 ? 180 : d.y === -1 ? -90 : 90;
             return (
               <div
-                key={i}
+                // ⚠️ BAŞIN ANAHTARI YEMEYLE DEĞİŞİR: CSS animasyonu aynı
+                // düğümde aynı sınıfla YENİDEN BAŞLAMAZ; `data-` özniteliğini
+                // değiştirmek de tetiklemiyor. Anahtar değişince baş yeniden
+                // takılıyor ve nabız her yemede çalışıyor (tek düğüm, ucuz).
+                key={isHead ? `h${yeme}` : i}
                 className={cn(
                   "absolute flex items-center justify-center",
                   isHead
                     ? "bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-[35%] shadow-lg ring-2 ring-emerald-700/30 z-10"
-                    : "bg-gradient-to-br from-emerald-300 to-emerald-500 rounded-[40%] shadow-sm"
+                    : "bg-gradient-to-br from-emerald-300 to-emerald-500 rounded-[40%] shadow-sm",
+                  // yeme=0 iken çalmasın: oyun açılışında sebepsiz nabız atıyordu
+                  isHead && yeme > 0 && "yilan-bas",
                 )}
                 style={{
                   left: `${(c.x / COLS) * 100}%`, top: `${(c.y / ROWS) * 100}%`,
@@ -414,6 +434,17 @@ const SnakeGame = () => {
               </div>
             );
           })}
+          <style>{`
+            /* Yeme "pop"u: baş bir an şişip yerine oturur. Yılanın kendi
+               dönüş transformu dış div'de olduğu için ölçek AYRI katmanda
+               (::after değil, kendi transform'u ile çakışmasın diye
+               animasyon yalnız scale kullanır ve rotate korunur). */
+            @keyframes yilan-yedi {
+              0%   { box-shadow: 0 0 0 0 rgba(250,204,21,0.85); }
+              100% { box-shadow: 0 0 0 14px rgba(250,204,21,0); }
+            }
+            .yilan-bas { animation: yilan-yedi 0.34s ease-out; }
+          `}</style>
           {food && (
             <div
               className="absolute flex items-center justify-center animate-bounce-in"

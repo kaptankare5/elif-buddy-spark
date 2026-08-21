@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { EmojiView } from "@/components/EmojiView";
 import { PageHeader } from "@/components/PageHeader";
 import { cn } from "@/lib/utils";
+import { useSarsinti } from "@/lib/gameFeel";
 import { gamePool, getGameLang, pickCluster } from "./_shared";
 import { tahtaBoyu } from "@/lib/zorluk";
 import { siparisAc, siparisIsle, type Siparis } from "@/lib/siparis";
@@ -66,6 +67,9 @@ const TripleMatchGame = () => {
   const [tray, setTray] = useState<(BoxItem | null)[]>(() => Array(TRAY_SIZE).fill(null));
   const [floatText, setFloatText] = useState<string | null>(null);
   const [status, setStatus] = useState<"playing" | "won" | "lost">("playing");
+  // ⚠️ SARSINTI OYUN ALANINA, SAYFAYA DEĞİL (gameFeel.ts): skor ve kalpler
+  // okunur kalsın; çocukta bütün sayfayı sarsmak mide bulandırıyor.
+  const { sinif: sarsSinif, sars } = useSarsinti();
   const [matches, setMatches] = useState(0);
   const [hintId, setHintId] = useState<number | null>(null);
   // T-1 SİPARİŞ: eşleşme şekle bakıyordu, harf bilmek gerekmiyordu. Sipariş
@@ -195,7 +199,7 @@ const TripleMatchGame = () => {
     setBox(newBox);
 
     if (newTray.every((s) => s !== null)) {
-      setTimeout(() => { setStatus("lost"); sfx("carp"); titre("hata"); playFeedback(false); }, 300);
+      setTimeout(() => { setStatus("lost"); sfx("carp"); titre("hata"); sars(); playFeedback(false); }, 300);
     }
   };
 
@@ -237,7 +241,10 @@ const TripleMatchGame = () => {
           {isEn ? "Tap items — collect 3 of a kind!" : "Tıkla — 3 aynısını topla!"}
         </p>
 
-        <div className="relative w-full aspect-square rounded-3xl bg-gradient-to-br from-topic-blue/30 to-primary/10 border-8 border-topic-blue/60 shadow-card overflow-hidden">
+        <div className={cn(
+          "relative w-full aspect-square rounded-3xl bg-gradient-to-br from-topic-blue/30 to-primary/10 border-8 border-topic-blue/60 shadow-card overflow-hidden",
+          sarsSinif,
+        )}>
           {box.map((b) => (
             <button
               key={b.id}

@@ -8,6 +8,7 @@ import { useRemedyOnGameOver } from "@/lib/remedial";
 import { pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
+import { useSarsinti } from "@/lib/gameFeel";
 import { rampa, zorlukAyari } from "@/lib/zorluk";
 import { Heart, Volume2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { sfx, titre } from "@/lib/juice";
@@ -41,6 +42,9 @@ const LaneRunnerGame = () => {
   const [objs, setObjs] = useState<Obj[]>([]);
   const [target, setTarget] = useState<ContentItem | null>(null);
   const [score, setScore] = useState(0);
+  // ⚠️ SARSINTI OYUN ALANINA, SAYFAYA DEĞİL (gameFeel.ts): skor ve kalpler
+  // okunur kalsın; çocukta bütün sayfayı sarsmak mide bulandırıyor.
+  const { sinif: sarsSinif, sars } = useSarsinti();
   const [combo, setCombo] = useState(0);
   const zorluk = useRef(zorlukAyari());
   const [lives, setLives] = useState(zorluk.current.can);
@@ -180,7 +184,7 @@ const LaneRunnerGame = () => {
         if (hitWrong) {
           recordGameAnswer(targetRef.current!, false, { chosenId: hitWrong.item.id });
           comboRef.current = 0;
-          sfx("carp"); titre("hata");
+          sfx("carp"); titre("hata"); sars();
           playFeedback(false); setCombo(0);
           addPop(hitWrong.lane, "✗", false);
           flashFx("bad");
@@ -196,7 +200,7 @@ const LaneRunnerGame = () => {
       });
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [gameOver, paused, pickTarget]);
+  }, [gameOver, paused, pickTarget, sars]);
 
   const reset = () => {
     setLane(0); setObjs([]); setScore(0); setCombo(0);
@@ -274,7 +278,10 @@ const LaneRunnerGame = () => {
         </div>
 
         <div
-          className="relative w-full overflow-hidden rounded-2xl shadow-card border-4 border-indigo-400/50 select-none touch-none"
+          className={cn(
+            "relative w-full overflow-hidden rounded-2xl shadow-card border-4 border-indigo-400/50 select-none touch-none",
+            sarsSinif,
+          )}
           style={{ aspectRatio: "4 / 5", maxHeight: "62vh", margin: "0 auto", perspective: "700px", perspectiveOrigin: "50% 30%" }}
         >
           {/* Gökyüzü */}
