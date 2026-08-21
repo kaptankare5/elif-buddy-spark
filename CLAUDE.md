@@ -695,6 +695,39 @@ Kaynaklar: Swink *Game Feel*, Vlambeer *Art of Screenshake*, Jonasson & Purho
   Yapboz oturan parça, Quiz son 10 saniyede atan sayaç.
   Bekçi: `gameFeelKapsam.test.ts` (ÇAĞRI arar, import değil).
 
+### Mobil his katmanı (Capacitor hedefli) — `docs/game-feel.md`
+Her oyunun hangi oyuna benzediği, o türün imza teknikleri ve neyin BİLEREK
+alınmadığı orada yazılı (Mario'nun kayganlığı, MK'nin drift kademeleri…).
+- ⚠️ **`click` PARMAĞIN KALKMASINI BEKLER.** Ölçüm: oyun dosyalarında 69
+  `onClick`'e karşı 19 `onPointerDown`; dokunmayla oynanan oyunların hiçbirinde
+  `pointerdown` yoktu. İki kademeli çözüm: cevap SAYILMAYAN dokunuşlar
+  (Hafıza kartı, Match3/Üçlü taşı, Yapboz parçası) → `onPointerDown`; cevap
+  SAYILANLAR (balon, kutu, quiz şıkkı) → commit `click`te KALIR (kaydırırken
+  kazara cevap verilmesin) ama `active:` basılma tepkisi eklendi — `:active`
+  parmak değdiği an tetiklenir, JS beklemez. Bekçi: `mobilHis.test.ts`.
+- ⚠️ **iOS'TA TİTREŞİM HİÇ ÇALIŞMIYORDU**: `navigator.vibrate` iOS Safari ve
+  WebView'de YOK — bütün dokunsal katman iPhone'da sessizce kayboluyordu.
+  `titresim.ts` artık katmanlı: (1) `window.Capacitor.Plugins.Haptics`
+  (impact LIGHT/MEDIUM/HEAVY + notification SUCCESS/ERROR), (2) yoksa
+  `navigator.vibrate`, (3) o da yoksa sessiz. ⚠️ **npm bağımlılığı YOK** —
+  `purchases.ts` ile aynı köprü deseni; paket kurulu değilken 2. katmana
+  düşer. Çağrı `void`: haptik sözünü beklemek kareye native köprü gecikmesi
+  bindirir.
+- ⚠️ **`prefers-reduced-motion` SAYGI GÖRÜR** (`hareketKatsayisi()`, 0.25):
+  benzetim baş dönmesi insanların üçte birine kadarını etkiliyor ve FOV
+  oynaması bilinen tetikleyici (Xbox erişilebilirlik kılavuzu). Travma
+  sarsıntısı, üç 3B oyunun FOV'u ve DOM sarsıntısı kısılır — SIFIRLANMAZ,
+  yoksa oyun "tepki vermiyor" hissi veriyor. Önbellek testte
+  `__resetHareket()` ile atılır.
+- Tür imzası olarak eklenenler: Yılan kareler ARASINDA kayar (ızgara yalnız
+  mantık; `transform` geçişi, süre TIK SÜRESİYLE aynı kaynaktan), Match3'te
+  düşen taşlar ALTTAN yukarı KADEMELİ gecikmeyle iner, Uzay Savaşı'nda namlu
+  parlaması + geri tepme, Uçan Kuş'ta çırpış ezilmesi + "+1" izi, Balon
+  şişerek patlar (eskiden `opacity-0`), Kutu Boşalt küçülerek patlar, Yapboz
+  oturan parçayı poplar, Quiz son 5 sn'de saniyede bir TIK sesi çalar
+  (Kahoot'un geri sayım müziğinin müziksiz karşılığı), Parti'de çarpma anında
+  ezilme (Fall Guys: "paçavralığı kaybedersen mizahı kaybedersin").
+
 ### Zorluk ve klavye (`src/lib/zorluk.ts` + `src/lib/klavye.ts`)
 - ⚠️ **OYUNLAR SABİT HIZDA GİTMEZ** (kullanıcı tespiti: "hep aynı hızda
   geliyorlar, tek düze"). `rampa(dogruSayisi)` başlangıç hızından tavana

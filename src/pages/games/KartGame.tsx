@@ -41,7 +41,7 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { zorlukAyari } from "@/lib/zorluk";
-import { createSarsinti } from "@/lib/gameFeel";
+import { createSarsinti, hareketKatsayisi } from "@/lib/gameFeel";
 import { oyunBitti, useOyunKayitlari } from "@/lib/oyunSonucu";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
 import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture, blockedTexture } from "./_letterTexture";
@@ -1700,8 +1700,10 @@ const KartGame = () => {
       camera.rotation.z += sO.rot;
 
       // hız hissi: FOV turboyla açılır, çarpma anında kısa süre BÜZÜLÜR
-      const wantFov = 62 + (player.turboT > 0 || player.starT > 0 ? 10 : 0)
-        + player.v * 0.12 - sarsinti.travma * 7;
+      // FOV oynaması hareket azaltmada kısılır (baş dönmesi tetikleyicisi).
+      const hK = hareketKatsayisi();
+      const wantFov = 62 + ((player.turboT > 0 || player.starT > 0 ? 10 : 0)
+        + player.v * 0.12 - sarsinti.travma * 7) * hK;
       camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 4);
       camera.updateProjectionMatrix();
 

@@ -81,6 +81,13 @@ const FlappyGame = () => {
   // başlangıcı görünür olsun — Flappy'de dönüş açısı zaten var ama
   // çırpışın kendisi hiç geri bildirim vermiyordu.
   const [carp, setCarp] = useState(0);
+  /**
+   * ⚠️ PUAN KAZANMAK GÖRÜNMÜYORDU: skor yukarıdaki sayaçta sessizce
+   * artıyordu, oysa çocuğun gözü KUŞTA. Vlambeer'in listesindeki
+   * "kalıcılık" maddesi — olayın izi olayın olduğu YERDE kalmalı.
+   * Kuşun yanında bir "+1" yükselip söner.
+   */
+  const [puanPop, setPuanPop] = useState(0);
   const rapor = useOyunSonu("flappy", gameOver, score, { birim: "puan" });
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
   useRemedyOnGameOver(gameOver);
@@ -259,6 +266,7 @@ const FlappyGame = () => {
           sfx("topla", { seri: yutmaSeri.current++ });
           playFeedback(true);
           setScore((s) => s + 1);
+          setPuanPop((n) => n + 1);
           next = next.filter((l) => {
             if (l.missed) return true;
             const dx = l.x - BIRD_X, dy = l.y - by;
@@ -436,6 +444,13 @@ const FlappyGame = () => {
               100% { transform: scale(1, 1); }
             }
             .kus-carp { display: inline-block; animation: kus-carp 0.22s cubic-bezier(0.34,1.56,0.64,1); }
+            /* Puan izi: olayın olduğu yerde yükselip söner. */
+            @keyframes kus-puan {
+              0%   { transform: translateY(0) scale(0.7); opacity: 0; }
+              25%  { transform: translateY(-8px) scale(1.15); opacity: 1; }
+              100% { transform: translateY(-34px) scale(1); opacity: 0; }
+            }
+            .kus-puan { animation: kus-puan 0.75s ease-out both; }
           `}</style>
 
           {/* Bird */}
@@ -458,6 +473,14 @@ const FlappyGame = () => {
                 (ikisi çakışır). `key` her çırpışta değişiyor → CSS animasyonu
                 yeniden başlıyor; aynı sınıfı tekrar vermek tetiklemez. */}
             <span key={carp} className="kus-carp">🐤</span>
+            {puanPop > 0 && (
+              <span
+                key={`p${puanPop}`}
+                className="kus-puan pointer-events-none absolute left-full top-0 whitespace-nowrap text-lg font-extrabold text-success drop-shadow"
+              >
+                +1
+              </span>
+            )}
           </div>
 
           {/* Letters */}

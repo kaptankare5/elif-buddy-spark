@@ -145,9 +145,15 @@ const PuzzleGame = () => {
               return (
                 <button
                   key={idx}
-                  onClick={() => tap(idx)}
+                  // ⚠️ DOKUNMA TEPKİSİ `pointerdown`'DA: `click` parmağın
+                  // KALKMASINI bekliyor — yani geri bildirim çocuğun parmağını
+                  // kaldırmasına kadar gecikiyor. Bu dokunuşun BİR CEVAP
+                  // OLMADIĞI oyunlarda (kart çevirme, taş seçme, parça takası)
+                  // basma anında tepki vermek doğru; yanlışlıkla dokunmanın
+                  // SRS bedeli yok. (Cevap sayılan yerler `click`te kaldı.)
+                  onPointerDown={() => tap(idx)}
                   className={cn(
-                    "relative overflow-hidden rounded-lg border-2 transition-bouncy",
+                    "relative overflow-hidden rounded-lg border-2 transition-bouncy active:scale-95",
                     first === idx
                       ? "border-primary scale-95 ring-4 ring-primary/40"
                       : solved && correct

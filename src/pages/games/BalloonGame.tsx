@@ -279,7 +279,10 @@ const BalloonGame = () => {
                   <span className="absolute left-1 top-1 rounded bg-white/85 px-1 text-[10px] font-extrabold text-foreground/70">{i + 1}</span>
                 )}
                 <div className={cn(
-                  "flex items-center justify-center shadow-card",
+                  // ⚠️ BASILMA TEPKİSİ: `:active` parmak DEĞDİĞİ an tetiklenir
+                  // (JS yok, gecikme yok). Cevap yine parmak kalkınca
+                  // sayılır ama çocuk basar basmaz balonun sıkıştığını görür.
+                  "flex items-center justify-center shadow-card transition-transform active:scale-90",
                   // Yazılı modda balon yerine GENİŞ TABELA: "Be (başta)" gibi bir ad
                   // 64 piksellik baloncuğa sığmıyor, taşıp okunmaz oluyordu.
                   ask.yazili ? "w-28 h-16 rounded-2xl px-1" : "w-16 h-20 rounded-[50%]",

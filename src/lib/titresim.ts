@@ -32,13 +32,53 @@ export function setTitresimAcik(acik: boolean) {
 export const TITRESIM_EVENT = EVENT;
 
 /**
- * ⚠️ SESSİZCE DÜŞER: iOS Safari'de `navigator.vibrate` YOK, masaüstü
- * tarayıcıların çoğunda da yok. Varlığı denetlenir; try/catch şart —
- * kullanıcı etkileşimi olmadan çağrılırsa bazı tarayıcılar istisna atıyor.
+ * ⚠️ **iOS'TA `navigator.vibrate` HİÇ YOK** — ölçüldü: Safari ve iOS WebView
+ * bu API'yi hiç uygulamıyor, yani uygulamanın bütün dokunsal geri bildirimi
+ * iPhone'da SESSİZCE KAYBOLUYORDU. Android tarayıcıda çalışıyor ama oradaki
+ * `vibrate` de kaba bir titreşim motoru sürücüsü: şiddet ayarı yok.
+ *
+ * Çözüm KATMANLI (uygulama Capacitor ile mağazaya çıkacak):
+ *   1. Capacitor + Haptics eklentisi varsa → Taptic Engine / Android
+ *      HapticFeedback. iOS'ta gerçek "tık" hissi, ikisinde de şiddet ayrımı.
+ *   2. Yoksa (tarayıcı) → `navigator.vibrate` desenleri (bugünkü davranış).
+ *   3. O da yoksa → sessizce hiçbir şey.
+ *
+ * ⚠️ NPM BAĞIMLILIĞI YOK: eklenti native tarafta kayıtlıysa Capacitor onu
+ * `window.Capacitor.Plugins.Haptics` altında yayımlıyor. `purchases.ts` ve
+ * `CapacitorBackHandler` ile aynı desen — paket kurulu değilken kod sessizce
+ * 2. katmana düşüyor, derleme de bozulmuyor.
+ * ⚠️ ÇAĞRI `void`: Haptics sözü (promise) döndürüyor, oyun döngüsü onu
+ * BEKLEMEMELİ — beklerse kare süresine native köprü gecikmesi biniyor.
  */
+type HapticsBridge = {
+  impact?: (o: { style: string }) => Promise<void>;
+  notification?: (o: { type: string }) => Promise<void>;
+  vibrate?: (o: { duration: number }) => Promise<void>;
+};
+
+/** Titreşim türü → Capacitor Haptics çağrısı. */
+const HAPTIC: Record<Titresim, (h: HapticsBridge) => void> = {
+  hafif:  (h) => void h.impact?.({ style: "LIGHT" }),
+  orta:   (h) => void h.impact?.({ style: "MEDIUM" }),
+  sert:   (h) => void h.impact?.({ style: "HEAVY" }),
+  basari: (h) => void h.notification?.({ type: "SUCCESS" }),
+  hata:   (h) => void h.notification?.({ type: "ERROR" }),
+};
+
+function haptics(): HapticsBridge | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    Capacitor?: { isNativePlatform?: () => boolean; Plugins?: { Haptics?: HapticsBridge } };
+  };
+  if (!w.Capacitor?.isNativePlatform?.()) return null;
+  return w.Capacitor.Plugins?.Haptics ?? null;
+}
+
 export function titre(tur: Titresim = "hafif") {
   if (!titresimAcik()) return;
   try {
+    const h = haptics();
+    if (h) { HAPTIC[tur](h); return; }
     const n = navigator as Navigator & { vibrate?: (p: number | number[]) => boolean };
     n.vibrate?.(DESEN[tur]);
   } catch { /* desteklenmiyorsa sessizce geç */ }

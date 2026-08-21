@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSecenekTuslari, usePcMi } from "@/lib/klavye";
 import { PageHeader } from "@/components/PageHeader";
-import { playFeedback } from "@/lib/audio";
+import { playFeedback, tone } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 import { Volume2, Eye, Sprout } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -41,8 +41,20 @@ const QuizGame = () => {
   const questionStartRef = useRef<number>(Date.now());
   const teaseRef = useRef(gardenTease()); // yüksek notada bitiş — sabit tek cümle
 
+  /**
+   * ⚠️ SON SANİYELERDE TIK SESİ. Bu türün (Kahoot ve akrabaları) gerilimi
+   * büyük ölçüde geri sayım MÜZİĞİNDEN geliyor — bu uygulamada müzik YOK
+   * (audio.ts kuralı). Karşılığı tek atımlık bir bildirim tonu: son 5
+   * saniyede saniyede bir "tık", her saniye biraz daha tiz. Melodi değil,
+   * saat sesi. ⚠️ Ses AÇILIŞTA çalmaz (time === sure) ve süre bitince
+   * susar — "bitti" sesiyle çakışmasın.
+   */
   useEffect(() => {
-    const t = setInterval(() => setTime((s) => Math.max(0, s - 1)), 1000);
+    const t = setInterval(() => setTime((s) => {
+      const yeni = Math.max(0, s - 1);
+      if (yeni > 0 && yeni <= 5) tone(680 + (5 - yeni) * 90, 0.06, "sine", 0, 0.10);
+      return yeni;
+    }), 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -179,6 +191,8 @@ const QuizGame = () => {
                 return (
                   <button key={opt.id} onClick={() => choose(opt)}
                     className={cn(
+                    // basılma tepkisi: dokunma anında, JS beklemeden
+                    "transition-transform active:scale-95",
                       "relative aspect-square rounded-3xl flex items-center justify-center shadow-card border-4 transition-bouncy bg-card border-primary/20 hover:-translate-y-1",
                       isCorrect && "bg-success border-success animate-pop",
                       isWrong && "bg-destructive border-destructive animate-shake",
