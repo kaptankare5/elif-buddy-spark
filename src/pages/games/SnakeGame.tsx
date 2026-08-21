@@ -81,6 +81,12 @@ const SnakeGame = () => {
   const { sinif: sarsSinif, sars } = useSarsinti();
   // Rampa DOĞRU sayısına bağlı (yem yemek değil, sınavı geçmek hızlandırır).
   const [dogru, setDogru] = useState(0);
+  /**
+   * ⚠️ TIK SÜRESİ TEK KAYNAKTAN: hem `setInterval` hem gövdenin kayma
+   * geçişi buna bakar. İkisi ayrı hesaplanırsa yılan ya duraklıyor ya
+   * lastik gibi geriliyor — hız rampası ilerledikçe fark büyüyor.
+   */
+  const tikSuresi = Math.max(TICK_MIN_MS, Math.round(TICK_MS / rampa(dogru)));
   const [gameOver, setGameOver] = useState(false);
   const rapor = useOyunSonu("snake", gameOver, score, { birim: "puan" });
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
@@ -271,11 +277,11 @@ const SnakeGame = () => {
         if (!grew) newSnake.pop();
         return newSnake;
       });
-    }, Math.max(TICK_MIN_MS, Math.round(TICK_MS / rampa(dogru))));
+    }, tikSuresi);
     return () => clearInterval(id);
     // `dogru` bağımlılıkta: doğru cevap sayısı artınca interval YENİDEN kurulur
     // ve yılan hızlanır. setInterval süresi kurulduktan sonra değiştirilemez.
-  }, [gameOver, paused, food, quiz, eaten, newFood, startQuiz, isSuper, dogru, sars]);
+  }, [gameOver, paused, food, quiz, eaten, newFood, startQuiz, isSuper, dogru, sars, tikSuresi]);
 
   const reset = () => {
     const initial = [{ x: 5, y: 9 }, { x: 4, y: 9 }, { x: 3, y: 9 }];
@@ -402,25 +408,40 @@ const SnakeGame = () => {
             const rotate = d.x === 1 ? 0 : d.x === -1 ? 180 : d.y === -1 ? -90 : 90;
             return (
               <div
-                // ⚠️ BAŞIN ANAHTARI YEMEYLE DEĞİŞİR: CSS animasyonu aynı
-                // düğümde aynı sınıfla YENİDEN BAŞLAMAZ; `data-` özniteliğini
-                // değiştirmek de tetiklemiyor. Anahtar değişince baş yeniden
-                // takılıyor ve nabız her yemede çalışıyor (tek düğüm, ucuz).
-                key={isHead ? `h${yeme}` : i}
+                key={i}
                 className={cn(
-                  "absolute flex items-center justify-center",
+                  "absolute left-0 top-0 flex items-center justify-center yilan-parca",
                   isHead
                     ? "bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-[35%] shadow-lg ring-2 ring-emerald-700/30 z-10"
                     : "bg-gradient-to-br from-emerald-300 to-emerald-500 rounded-[40%] shadow-sm",
-                  // yeme=0 iken çalmasın: oyun açılışında sebepsiz nabız atıyordu
-                  isHead && yeme > 0 && "yilan-bas",
                 )}
                 style={{
-                  left: `${(c.x / COLS) * 100}%`, top: `${(c.y / ROWS) * 100}%`,
                   width: cellSize("w"), height: cellSize("h"),
-                  transform: isHead ? `rotate(${rotate}deg)` : undefined,
+                  /**
+                   * ⚠️ YILAN ARTIK KAYIYOR, IŞINLANMIYOR. Eskiden `left/top`
+                   * yüzdesi her tıkta bir kare zıplıyordu — modern Snake
+                   * yeniden yapımlarının hepsinde gövde kareler ARASINDA
+                   * yumuşatılır (lerp), ızgara yalnız mantıktır.
+                   * ⚠️ `translate` ile, `left/top` ile DEĞİL: yüzdesel
+                   * translate elemanın KENDİ kutusuna göre çalışıyor ve bir
+                   * hücre tam bir kutu — yani `x*100%` doğrudan hücre
+                   * numarası. Üstelik yalnız derleme katmanında çalışır,
+                   * `left/top` her karede yeniden yerleşim tetikliyordu.
+                   * ⚠️ Süre TIK SÜRESİYLE AYNI ve `linear`: kısa olursa
+                   * yılan durup zıplıyor, uzun olursa bir sonraki tıkın
+                   * gerisinde kalıp lastik gibi geriliyor.
+                   */
+                  transform: `translate3d(${c.x * 100}%, ${c.y * 100}%, 0)`
+                    + (isHead ? ` rotate(${rotate}deg)` : ""),
+                  transitionDuration: `${tikSuresi}ms`,
                 }}
               >
+                {/* Yeme nabzı AYRI KATMANDA: gövdenin kayma geçişini
+                    bozmasın diye halka kendi anahtarıyla yeniden takılıyor
+                    (aynı düğümde aynı sınıf animasyonu tetiklemiyor). */}
+                {isHead && yeme > 0 && (
+                  <span key={`n${yeme}`} className="yilan-nabiz pointer-events-none absolute inset-0 rounded-[35%]" />
+                )}
                 {isHead && (
                   <div className="flex items-center gap-[15%] text-[8px] leading-none">
                     <span className="h-[28%] w-[28%] rounded-full bg-white relative">
@@ -443,7 +464,9 @@ const SnakeGame = () => {
               0%   { box-shadow: 0 0 0 0 rgba(250,204,21,0.85); }
               100% { box-shadow: 0 0 0 14px rgba(250,204,21,0); }
             }
-            .yilan-bas { animation: yilan-yedi 0.34s ease-out; }
+            /* Gövde kayması — yalnız transform, derleme katmanında. */
+            .yilan-parca { transition-property: transform; transition-timing-function: linear; }
+            .yilan-nabiz { animation: yilan-yedi 0.34s ease-out; }
           `}</style>
           {food && (
             <div

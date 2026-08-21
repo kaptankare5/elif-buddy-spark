@@ -20,6 +20,7 @@ import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
 import { zorlukAyari } from "@/lib/zorluk";
+import { hareketKatsayisi } from "@/lib/gameFeel";
 import { sfx, titre } from "@/lib/juice";
 import { gorevIlerlet, useGorevler, gorevMetni } from "@/lib/gorevler";
 import type { ContentItem } from "@/data/types";
@@ -774,22 +775,26 @@ function Director({ sim, entsRef, worldRef, gateActive, onSpawnGate, onSpawnRow,
     // olaylar gözü tırmalıyor, kare alınca hafif olay görünmez, sert olay
     // patlıyor — ikisi tek sayıyla ayarlanıyor.
     const tr = s.shake > 0 ? Math.min(1, s.shake / 0.5) : 0;
-    const shakeX = tr * tr * 0.34 * Math.sin(st.clock.elapsedTime * 47);
-    const shakeY = tr * tr * 0.22 * Math.sin(st.clock.elapsedTime * 61 + 1.3);
+    const trK = tr * tr * hareketKatsayisi();   // hareket azaltmada kısılır
+    const shakeX = trK * 0.34 * Math.sin(st.clock.elapsedTime * 47);
+    const shakeY = trK * 0.22 * Math.sin(st.clock.elapsedTime * 61 + 1.3);
     // ⚠️ KAMERA ŞERİDİ KISMEN TAKİP EDER (%22): hiç takip etmezse şerit
     // değiştirmek "dünya kaydı" gibi görünüyordu, tam takip ederse şeritler
     // birbirine karışıp hangi rayda olduğun okunmuyor.
     camera.position.set(shakeX + s.x * 0.22, 4.7 + s.y * 0.3 + shakeY, 8.6);
     camera.lookAt(s.x * 0.1, 1.5 + s.y * 0.25, -10);
     // yana kayarken hafif yatış — hareketin ağırlığı hissedilsin
-    camera.rotation.z = (LANE_X[s.lane] - s.x) * 0.035 + tr * tr * 0.03;
+    camera.rotation.z = (LANE_X[s.lane] - s.x) * 0.035 + trK * 0.03;
     // Hıza bağlı görüş açısı + çarpma darbesi.
     // ⚠️ DARBE AYRI BİR SAYAÇ DEĞİL, `s.shake`ten TÜRETİLİR: sarsıntı üç ayrı
     // yerden (tren, engel, yanlış kapı) tetikleniyor ve ikisi Scene'in
     // DIŞINDA. Tek kaynağa bağlamak hem senkron tutuyor hem "sarsılan her
     // olayda darbe de var" garantisi veriyor.
     const hizK = clamp01((s.speed - BASE_SPEED) / (SPEED_MAX_FOV - BASE_SPEED));
-    const hedefFov = FOV_TABAN + FOV_ARALIK * hizK - tr * 7;
+    // ⚠️ FOV oynaması baş dönmesinin bilinen tetikleyicisi (Xbox erişilebilirlik
+    // kılavuzu FOV ayarını doğrudan sayıyor) — hareket azaltmada kısılır.
+    const hK = hareketKatsayisi();
+    const hedefFov = FOV_TABAN + (FOV_ARALIK * hizK - tr * 7) * hK;
     fovRef.current += (hedefFov - fovRef.current) * Math.min(1, d * 6);
     if (Math.abs(camera.fov - fovRef.current) > 0.01) {
       camera.fov = fovRef.current;

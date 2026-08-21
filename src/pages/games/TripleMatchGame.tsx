@@ -248,7 +248,13 @@ const TripleMatchGame = () => {
           {box.map((b) => (
             <button
               key={b.id}
-              onClick={() => tap(b)}
+              // ⚠️ DOKUNMA TEPKİSİ `pointerdown`'DA: `click` parmağın
+              // KALKMASINI bekliyor — yani geri bildirim çocuğun parmağını
+              // kaldırmasına kadar gecikiyor. Bu dokunuşun BİR CEVAP
+              // OLMADIĞI oyunlarda (kart çevirme, taş seçme, parça takası)
+              // basma anında tepki vermek doğru; yanlışlıkla dokunmanın
+              // SRS bedeli yok. (Cevap sayılan yerler `click`te kaldı.)
+              onPointerDown={() => tap(b)}
               className={cn(
                 // Kutu büyütüldü + font küçültüldü; sığdırmayı EmojiView'ın
                 // `fit`'i yapar. overflow-hidden YOK: kırpma, derin kuyruklu

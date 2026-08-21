@@ -49,7 +49,7 @@ import {
 } from "@/lib/askMode";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { zorlukAyari } from "@/lib/zorluk";
-import { createSarsinti, clamp } from "@/lib/gameFeel";
+import { createSarsinti, clamp, hareketKatsayisi } from "@/lib/gameFeel";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
 import type { ContentItem } from "@/data/types";
 
@@ -1190,10 +1190,22 @@ const PartyGame = () => {
           r.arms[0].rotation.x = -2.2; r.arms[1].rotation.x = -2.2;
           r.legs[0].rotation.x = 1.4; r.legs[1].rotation.x = 1.4;
           r.group.rotation.z = Math.sin(spin) * 0.25;
+          /**
+           * ⚠️ ÇARPMA ANI EZİLİR — bu türün bütün mizahı burada.
+           * Fall Guys ekibinin kendi ifadesi: "karakterin paçavralığını
+           * kaybedersen mizahı kaybedersin." Takla zaten dönüyordu ama
+           * çarpışmanın İLK ANI (ezilme) yoktu, karakter sert bir cisim
+           * gibi dönüyordu. İlk 0.16 sn geniş+basık, sonra yerine yaylanır;
+           * hacim korunur (sx·sy≈1), yoksa şişip sönüyor gibi görünüyor.
+           */
+          const ezT = HIT_TIME - r.hitT;
+          const ez = ezT < 0.16 ? 0.3 * (1 - ezT / 0.16) : 0;
+          r.body.scale.set(1 + ez, 1 - ez, 1 + ez);
         } else if (r.y > 0.05) {
           // havada: kollar yukarı, bacaklar toplanmış (zıplama pozu)
           r.group.rotation.z = 0;
           r.body.rotation.set(0, 0, 0);
+          r.body.scale.set(1, 1, 1);   // takladan çıkınca ezilme sıfırlanır
           r.arms[0].rotation.x = -2.4; r.arms[1].rotation.x = -2.4;
           r.legs[0].rotation.x = 0.7; r.legs[1].rotation.x = -0.4;
           r.body.position.y = 1.25;
@@ -1201,6 +1213,7 @@ const PartyGame = () => {
           // koşu: kollar ve bacaklar ZIT fazda sallanır, gövde hafif sekip eğilir
           r.group.rotation.z = 0;
           r.body.rotation.x = 0;
+          r.body.scale.set(1, 1, 1);   // takladan çıkınca ezilme sıfırlanır
           r.body.rotation.z = swing * 0.08;
           r.body.position.y = 1.25 + Math.abs(swing) * 0.09;
           r.legs[0].rotation.x = swing * 0.85;
@@ -1341,7 +1354,9 @@ const PartyGame = () => {
       camera.rotation.z += sO.rot;
       // Hıza bağlı görüş açısı: roket açar, çamur/takla kapatır, çarpma büzer.
       const hizK = clamp((player.spEfektif - BASE_SPEED) / (BOOST_SPEED - BASE_SPEED), 0, 1);
-      const hedefFov = FOV_TABAN + FOV_BOOST * hizK - sarsinti.travma * FOV_DARBE;
+      // FOV oynaması hareket azaltmada kısılır (baş dönmesi tetikleyicisi).
+      const hK = hareketKatsayisi();
+      const hedefFov = FOV_TABAN + (FOV_BOOST * hizK - sarsinti.travma * FOV_DARBE) * hK;
       if (Math.abs(camera.fov - hedefFov) > 0.01) {
         camera.fov += (hedefFov - camera.fov) * Math.min(1, dt * 6);
         camera.updateProjectionMatrix();

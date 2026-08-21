@@ -50,6 +50,32 @@ export const HIS = {
 
 // ------------------------------------------------------------ yumuşatma
 
+/**
+ * ⚠️ **HAREKET DUYARLILIĞI (`prefers-reduced-motion`)** — sarsıntı, görüş
+ * açısı oynaması ve ekran titremesi benzetim baş dönmesinin (simülasyon
+ * hastalığı) bilinen tetikleyicileri; insanların üçte birine kadarını
+ * etkiliyor ve bu bir ÇOCUK uygulaması. Kullanıcı (ya da veli) cihaz
+ * ayarlarından "hareketi azalt" dediyse görsel his katmanı KISILIR:
+ * geri bildirim kaybolmaz ama genliği dörtte bire iner.
+ *
+ * ⚠️ Değer önbelleğe ALINMAZ ama medya sorgusu her karede okunmaz — sorgu
+ * nesnesi bir kez kurulur, `matches` alanı canlıdır (ayar değişince kendi
+ * kendine güncellenir).
+ */
+let _azSorgu: MediaQueryList | null = null;
+/**
+ * Yalnız test içindir: sorgu nesnesi bir kez kurulup önbelleğe alınıyor
+ * (gerçek tarayıcıda `matches` CANLI, ayar değişince kendi güncelliyor) —
+ * testte `window.matchMedia` taklit edilince önbellek eskimiş kalıyor.
+ * `srs.ts`'teki `__resetSelectorState` ile aynı desen.
+ */
+export function __resetHareket() { _azSorgu = null; }
+export function hareketKatsayisi(): number {
+  if (typeof window === "undefined" || !window.matchMedia) return 1;
+  if (!_azSorgu) _azSorgu = window.matchMedia("(prefers-reduced-motion: reduce)");
+  return _azSorgu.matches ? 0.25 : 1;
+}
+
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /**
@@ -106,7 +132,7 @@ export function createSarsinti(maks = 10, maksRot = 0.02): Sarsinti {
     },
     ofset() {
       if (travma <= 0) return { x: 0, y: 0, rot: 0 };
-      const s = travma * travma;                 // ⚠️ kare — modelin özü
+      const s = travma * travma * hareketKatsayisi();   // ⚠️ kare — modelin özü
       // Gürültü olarak farklı frekanslı sinüsler: rastgele sayı her karede
       // zıpladığı için titreşim "kar gürültüsü" gibi görünüyor, sinüs
       // karışımı gerçek bir sarsıntı gibi salınıyor.
@@ -307,6 +333,9 @@ export function useSarsinti(): { sinif: string; sars: () => void } {
   const [aktif, setAktif] = useState(false);
   const zaman = useRef<number | null>(null);
   const sars = useCallback(() => {
+    // Hareket azaltma isteniyorsa DOM sarsıntısı hiç oynatılmaz (CSS
+    // animasyonunun genliğini kısmak mümkün değil — ya var ya yok).
+    if (hareketKatsayisi() < 1) return;
     if (zaman.current) window.clearTimeout(zaman.current);
     setAktif(false);
     requestAnimationFrame(() => setAktif(true));

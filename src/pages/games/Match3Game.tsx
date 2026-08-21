@@ -175,6 +175,15 @@ const Match3Game = () => {
    * tahta da sarsılır. Zincir bir sonraki hamlede sıfırlanır.
    */
   const [zincir, setZincir] = useState(0);
+  /**
+   * ⚠️ TAŞLAR DÜŞMÜYORDU, YERİNDE BELİRİYORDU: `applyGravity` diziyi
+   * yeniden diziyordu ama ekranda hiçbir hareket yoktu — patlamadan sonra
+   * tahta bir anda BAŞKA bir tahtaya dönüşüyordu. Match-3'ün yarısı bu
+   * düşüş; üstelik hepsini AYNI ANDA düşürmek de sarsak görünüyor,
+   * satır satır KADEMELİ gecikme şart (türün bilinen çözümü).
+   * Anahtar = hücre id'si, değer = gecikme (ms).
+   */
+  const [dusen, setDusen] = useState<Map<number, number>>(new Map());
   const [siparisParla, setSiparisParla] = useState(false);
   // M-2 HAMLE BÜTÇESİ: her hamlenin bedeli olsun. Bitince oyun kapanır.
   const [kalanHamle, setKalanHamle] = useState(HAMLE_BUTCESI);
@@ -260,9 +269,22 @@ const Match3Game = () => {
 
       cascadeIndex++;
       // tüm gruplar patladıktan sonra yerçekimi
+      const onceki = cur;
       cur = applyGravity(cur, types);
+      // Yeri DEĞİŞEN her hücre düşme animasyonu alır; gecikme ALTTAN
+      // yukarı artar (aşağıdaki taş önce oturur — gerçek yerçekimi sırası).
+      const yeniDusen = new Map<number, number>();
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (onceki[r][c].id !== cur[r][c].id) {
+            yeniDusen.set(cur[r][c].id, (ROWS - 1 - r) * 28);
+          }
+        }
+      }
+      setDusen(yeniDusen);
       setGrid(cur);
       await new Promise((res) => setTimeout(res, 300));
+      setDusen(new Map());
     }
   };
 
@@ -376,6 +398,17 @@ const Match3Game = () => {
               ⛓️ ZİNCİR ×{zincir}
             </div>
           )}
+          <style>{`
+            /* Düşüş: taş üstten gelir, hedefi hafifçe aşıp oturur (aşımlı
+               yumuşatma — "juice"in klasik eğrisi). Sadece transform ve
+               opacity: derleme katmanında kalır, yerleşim tetiklemez. */
+            @keyframes m3-dus {
+              0%   { transform: translateY(-140%); opacity: 0; }
+              70%  { transform: translateY(6%);    opacity: 1; }
+              100% { transform: translateY(0);     opacity: 1; }
+            }
+            .m3-dus { animation: m3-dus 0.28s cubic-bezier(0.33, 1, 0.68, 1) both; }
+          `}</style>
           <div
             className="grid gap-1.5"
             style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}
@@ -386,15 +419,23 @@ const Match3Game = () => {
               return (
                 <button
                   key={cell.id}
-                  onClick={() => tap(r, c)}
+                  // ⚠️ DOKUNMA TEPKİSİ `pointerdown`'DA: `click` parmağın
+                  // KALKMASINI bekliyor — yani geri bildirim çocuğun parmağını
+                  // kaldırmasına kadar gecikiyor. Bu dokunuşun BİR CEVAP
+                  // OLMADIĞI oyunlarda (kart çevirme, taş seçme, parça takası)
+                  // basma anında tepki vermek doğru; yanlışlıkla dokunmanın
+                  // SRS bedeli yok. (Cevap sayılan yerler `click`te kaldı.)
+                  onPointerDown={() => tap(r, c)}
                   disabled={busy || !cell.item}
                   className={cn(
                     "aspect-square rounded-xl flex items-center justify-center text-3xl shadow-soft border-2 transition-bouncy",
+                    dusen.has(cell.id) && "m3-dus",
                     !cell.item ? "bg-transparent border-transparent" :
                       isHi ? "bg-warning/60 border-warning scale-125 animate-pulse ring-4 ring-warning" :
                       isSel ? "bg-primary/30 border-primary scale-110 animate-pop" :
                         "bg-card border-primary/20 active:scale-95"
                   )}
+                  style={dusen.has(cell.id) ? { animationDelay: `${dusen.get(cell.id)}ms` } : undefined}
                 >
                   {cell.item && <EmojiView value={cell.item.emoji} />}
                 </button>

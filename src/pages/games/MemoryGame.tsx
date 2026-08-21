@@ -288,9 +288,15 @@ const MemoryGame = () => {
           {cards.map((c) => (
             <button
               key={c.uid}
-              onClick={() => flip(c)}
+              // ⚠️ DOKUNMA TEPKİSİ `pointerdown`'DA: `click` parmağın
+              // KALKMASINI bekliyor — yani geri bildirim çocuğun parmağını
+              // kaldırmasına kadar gecikiyor. Bu dokunuşun BİR CEVAP
+              // OLMADIĞI oyunlarda (kart çevirme, taş seçme, parça takası)
+              // basma anında tepki vermek doğru; yanlışlıkla dokunmanın
+              // SRS bedeli yok. (Cevap sayılan yerler `click`te kaldı.)
+              onPointerDown={() => flip(c)}
               className={cn(
-                "aspect-square rounded-2xl flex items-center justify-center text-3xl font-extrabold shadow-card border-4 transition-bouncy",
+                "aspect-square rounded-2xl flex items-center justify-center text-3xl font-extrabold shadow-card border-4 transition-bouncy active:scale-95",
                 c.matched ? "bg-success/20 border-success/50 opacity-60" :
                   c.flipped ? "bg-card border-primary/40 animate-pop" :
                     "bg-primary border-primary text-primary-foreground hover:-translate-y-1",
