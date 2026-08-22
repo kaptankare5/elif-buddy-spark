@@ -33,7 +33,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
-import { Volume2, Eye, Maximize2, Lock } from "lucide-react";
+import { Volume2, Eye, Maximize2, Lock, X, Pause, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { glifKaydirmaEm } from "@/lib/glifOlcu";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
@@ -354,6 +354,16 @@ const PartyGame = () => {
     usePower: false,
     running: false,
   });
+  /**
+   * ⚠️ YARIŞIN ORTASINDA DURAKLATMA VE ÇIKIŞ YOKTU (kullanıcı istedi):
+   * çocuk parkura girdikten sonra ne ara verebiliyor ne oyunlara dönebiliyordu
+   * — tek çıkış bitişi beklemekti. Yarışı'nda çıkış düğmesi zaten aynı
+   * gerekçeyle eklenmişti.
+   * ⚠️ Duraklatma `ctrl.running` ile: döngü zaten `if (running) step(dt)`
+   * diyor, çizim devam ediyor. Yani sahne DONUYOR ama görünür kalıyor —
+   * çocuk nerede kaldığını görsün; kararan ekran "oyun bitti" gibi duruyor.
+   */
+  const [duraklat, setDuraklat] = useState(false);
   const powerRef = useRef<PowerKind | null>(null);
   const statsRef = useRef({ correct: 0, wrong: 0 });
   const flashK = useRef(0);
@@ -1497,6 +1507,15 @@ const PartyGame = () => {
     navigate("/oyunlar");
   };
 
+  /** Duraklat/devam — yalnız yarış sürerken anlamlı. */
+  const duraklatDegistir = (dur: boolean) => {
+    ctrlRef.current.running = !dur;
+    // Sürükleme bırakılmış say: duraklatınca parmak kalktı sayılmazsa
+    // devam edince karakter aniden kenara fırlıyor.
+    if (dur) { ctrlRef.current.dragX = null; ctrlRef.current.dir = 0; }
+    setDuraklat(dur);
+  };
+
   const PLACE_TXT = ["", "🏆 BİRİNCİ!", "🥈 İkinci!", "🥉 Üçüncü!", "4. oldun", "5. oldun", "6. oldun"];
 
   return (
@@ -1507,6 +1526,22 @@ const PartyGame = () => {
 
           {/* üst HUD */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-2">
+            {/* Çıkış + duraklat: parkurun ortasında çocuk hem ara verebilsin
+                hem oyunlara dönebilsin. */}
+            <button
+              onClick={exit}
+              aria-label="Oyunlara dön"
+              className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-muted-foreground shadow-card backdrop-blur active:scale-90"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <button
+              onClick={() => duraklatDegistir(true)}
+              aria-label="Duraklat"
+              className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-muted-foreground shadow-card backdrop-blur active:scale-90"
+            >
+              <Pause className="h-6 w-6" />
+            </button>
             <div className="rounded-2xl bg-white/85 px-3 py-1.5 text-center shadow-card backdrop-blur">
               <div className="text-[10px] font-bold text-muted-foreground">B{level} · Sıra</div>
               <div className="text-xl font-extrabold text-primary">{hud.place}.</div>
@@ -1525,6 +1560,33 @@ const PartyGame = () => {
               <div className="text-lg leading-tight">{power ? POWERS[power].emoji : "—"}</div>
             </div>
           </div>
+
+          {/* DURAKLATMA PERDESİ — sahne DONAR ama görünür kalır (döngü
+              çizmeye devam ediyor, yalnız `step` duruyor). Kararan ekran
+              çocukta "oyun bitti" hissi veriyor; burada nerede kaldığını
+              görüyor. */}
+          {duraklat && (
+            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-black/45 backdrop-blur-sm">
+              <div className="rounded-3xl bg-card px-8 py-6 text-center shadow-elegant border-4 border-primary/40">
+                <div className="text-4xl mb-1">⏸</div>
+                <div className="text-lg font-extrabold text-foreground mb-4">Ara verdin</div>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => duraklatDegistir(false)}
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 font-extrabold text-primary-foreground shadow-card active:scale-95"
+                  >
+                    <Play className="h-5 w-5" /> Devam et
+                  </button>
+                  <button
+                    onClick={exit}
+                    className="flex items-center justify-center gap-2 rounded-2xl border-2 border-border px-6 py-3 font-extrabold text-muted-foreground active:scale-95"
+                  >
+                    <X className="h-5 w-5" /> Oyunlara dön
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ⚠️ Yeni modlarda "dinle" bandı YOK: sesi çalmak adı söylemek =
               cevabı vermek. Şimşekte yerine glifi tekrar gösteren düğme var. */}

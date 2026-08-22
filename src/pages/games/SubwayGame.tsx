@@ -1612,33 +1612,44 @@ const SubwayGame = () => {
             </div>
           )}
 
-          {/* başlangıç — ilk açılışta tam talimat */}
-          {/* S-1 GÖREV ŞERİDİ — başlamadan önce görünür: sonsuz koşuya yön verir. */}
-          {paused && !started && !gameOver && gorevler.length > 0 && (
-            <div className="absolute inset-x-3 top-3 z-20 rounded-2xl border-2 border-warning/50 bg-background/90 p-2.5 backdrop-blur-sm">
-              <div className="mb-1 text-[11px] font-extrabold text-warning">🎯 BUGÜNÜN GÖREVLERİ</div>
-              <div className="flex flex-col gap-1">
-                {gorevler.map((g) => (
-                  <div key={g.tur} className="flex items-center justify-between gap-2 text-[11px] font-bold">
-                    <span className={cn(g.bitti && "text-success line-through")}>{gorevMetni(g)}</span>
-                    <span className={cn("tabular-nums", g.bitti ? "text-success" : "text-muted-foreground")}>
-                      {g.bitti ? "✓" : `${g.ilerleme}/${g.hedef}`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
+          {/* Başlangıç perdesi — görev şeridi ve talimat TEK pencerede.
+              ⚠️ İKİSİ AYRI KATMANDAYDI VE ÜST ÜSTE BİNİYORDU: görev şeridi
+              `z-20`, başlangıç perdesi `z-30` + `bg-background/85` idi; perde
+              şeridin ÜSTÜNE %85 opak beyaz bir sis çekiyor ve "BUGÜNÜN
+              GÖREVLERİ" okunmaz hâle geliyordu (kullanıcı bildirdi, ekran
+              görüntüsüyle doğrulandı — `tools/perf/ekran.mjs`).
+              ⚠️ Şerit MUTLAK konumla perdenin içine de konmamalı: oyun alanı
+              4/5 en-boy oranında ve telefonda ~515px; şerit ~120px, ortalanan
+              talimat ~250px — mutlak konumda dar ekranda çakışıyorlar. Bu
+              yüzden şerit AKIŞTA en üstte, talimat KALAN yerde ortalanıyor. */}
           {paused && !started && !gameOver && (
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/85">
-              <div className="text-5xl mb-2">🚄</div>
-              <div className="text-xl font-extrabold text-info mb-1">Hazır mısın?</div>
-              <div className="text-sm font-bold text-muted-foreground text-center px-6 leading-relaxed">
-                Sesi dinle, doğru harfin panosundan geç!<br />
-                ⬅➡ şerit • ⬆ zıpla • ⬇ kay<br />
-                Trenlerin üstünde koşabilirsin 🚋<br />
-                <span className="text-info">Başlamak için dokun</span>
+            <div className="absolute inset-0 z-30 flex flex-col bg-background/85 p-3">
+              {/* S-1 GÖREV ŞERİDİ — sonsuz koşuya yön verir. Arka planı OPAK
+                  (`bg-card`): perdenin saydamlığı üstüne binmesin. */}
+              {gorevler.length > 0 && (
+                <div className="shrink-0 rounded-2xl border-2 border-warning/60 bg-card p-2.5 shadow-card">
+                  <div className="mb-1 text-[11px] font-extrabold text-warning">🎯 BUGÜNÜN GÖREVLERİ</div>
+                  <div className="flex flex-col gap-1">
+                    {gorevler.map((g) => (
+                      <div key={g.tur} className="flex items-center justify-between gap-2 text-[11px] font-bold">
+                        <span className={cn(g.bitti ? "text-success line-through" : "text-foreground")}>{gorevMetni(g)}</span>
+                        <span className={cn("tabular-nums", g.bitti ? "text-success" : "text-muted-foreground")}>
+                          {g.bitti ? "✓" : `${g.ilerleme}/${g.hedef}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
+                <div className="text-5xl mb-2">🚄</div>
+                <div className="text-xl font-extrabold text-info mb-1">Hazır mısın?</div>
+                <div className="text-sm font-bold text-muted-foreground text-center px-3 leading-relaxed">
+                  Sesi dinle, doğru harfin panosundan geç!<br />
+                  ⬅➡ şerit • ⬆ zıpla • ⬇ kay<br />
+                  Trenlerin üstünde koşabilirsin 🚋<br />
+                  <span className="text-info">Başlamak için dokun</span>
+                </div>
               </div>
             </div>
           )}

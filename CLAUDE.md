@@ -395,6 +395,16 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   kuyruğa alınır, `useRemedyOnGameOver` (ölünce/süre bitince) ya da
   Game.tsx unmount'ta (bitişi olmayan oyunlar) açılır.
 
+### Sayfa kaydırma kilidi (`src/hooks/useLockBodyScroll.ts`)
+- ⚠️ **SAYAÇLI OLMAK ZORUNDA.** Kanca ÜÇ yerden çağrılıyor ve iç içe geçiyor:
+  `Game.tsx` (rota sarmalayıcısı) + `PartyGame` + `KartGame`. Her çağrı kendi
+  "önceki değer"ini saklayınca (deneyle bulundu, `kaydirmaKilidi.test.tsx`):
+  içteki prev="" saklayıp kilidi kurar, dıştaki prev="hidden" saklar; içteki
+  tek başına kapanınca kilit OYUN SÜRERKEN çözülür, dıştaki kapanınca
+  "hidden" geri yazılıp **kilit TAKILI KALIR**. Kullanıcı bildirdi:
+  "oyundan geriye bastım, oyunlar ekranı yukarı aşağı gitmiyordu; sayfayı
+  yenileyince düzeldi". İlk giren kurar, SON çıkan geri yükler.
+
 ### Oyun modları (`src/lib/gameMode.ts`)
 - Varsayılan **süper** ("super"); kullanıcı Ayarlar'dan normale döner.
 - Süper: her oyun cevabı SRS'e sayılır; ipucu halkası yalnız L1'de.
