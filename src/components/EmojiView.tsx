@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { glifKaydirmaEm } from "@/lib/glifOlcu";
 
 // Renders an emoji or a special "badge" emoji marker.
 // Supported markers:
@@ -44,6 +45,23 @@ export function EmojiView({ value, className, fit }: { value?: string; className
   if (!value) return null;
 
   if (ARABIC_RE.test(value)) {
+    /**
+     * ⚠️ MÜREKKEP ORTALAMASI (bkz. `glifOlcu.ts`). `leading` satır kutusunu
+     * büyütür ama mürekkebi ORTALAMAZ; Arapçada mürekkebin taban çizgisine
+     * göre dağılımı harften harfe uçurum kadar değişiyor.
+     *
+     * ⚠️ ÖLÇÜLDÜ (`tools/perf/glifKutu.mjs`, gerçek Amiri Quran, Uzay
+     * Savaşı'nın 56px dairesi + 34px punto): mürekkebin merkezi dairenin
+     * merkezinden **9.8 px'e kadar AŞAĞIDA** kalıyordu ve **37 glifin
+     * 17'si diskin dışına taşıyordu** (en derin 15.3 px) — kullanıcı
+     * "ayın, ha gibi harflerin alt kısımları beyaz yuvarlağın dışına
+     * çıkıyor" diye bildirdi. Mürekkep ortalanınca taşma 0.
+     *
+     * ⚠️ Ölçüt DAİRE, kutu değil: ilk ölçümüm mürekkebi kutunun sınırlarıyla
+     * kıyaslayıp "taşma yok" demişti. Daire alta doğru daralıyor, geniş bir
+     * çanak kutunun içinde ama diskin dışında kalabiliyor.
+     */
+    const kaydirma = glifKaydirmaEm(value);
     return (
       <span
         dir="rtl"
@@ -55,7 +73,10 @@ export function EmojiView({ value, className, fit }: { value?: string; className
           fit ? "leading-[1.7] max-w-full whitespace-nowrap" : "leading-[1.6]",
           className,
         )}
-        style={fit ? { fontSize: `${fitScale(value)}em` } : undefined}
+        style={{
+          ...(fit ? { fontSize: `${fitScale(value)}em` } : null),
+          transform: `translateY(${kaydirma.toFixed(4)}em)`,
+        }}
       >
         {value}
       </span>

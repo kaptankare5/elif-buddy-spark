@@ -366,7 +366,7 @@ const LaneRunnerGame = () => {
                   <div className="absolute inset-0 -m-2 rounded-full border-4 border-warning/90 animate-pulse" />
                 )}
                 <span className={cn(
-                  o.isTarget && "animate-float",
+                  o.isTarget && "animate-float-az",
                   ask.yazili && "block whitespace-nowrap rounded-xl border-2 border-white/70 bg-indigo-900/90 px-3 py-1.5 text-white",
                 )}>
                   {ask.sik(o.item)}

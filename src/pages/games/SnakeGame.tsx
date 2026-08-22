@@ -22,6 +22,16 @@ const COLS = 14;
 const ROWS = 18;
 /** Yazılı modda bir kelime şeridinin kaç ızgara karesi kapladığı. */
 const AD_GENISLIK = 5;
+/**
+ * ⚠️ İŞARETLER HÜCREDEN BÜYÜK ÇİZİLİR — çarpışma yine tek hücre.
+ * Harfin okunması için tek yol buydu (hücre telefonda ~27px). Taşma
+ * güvenli: yem ve sınav şıkları birbirinden en az 4 kare uzağa yerleşiyor
+ * (`randCell` minDist), üst üste binemezler.
+ * `GLIF_ORAN` hücre boyunun kaçı kadar punto — 1.05 daire içinde taşmadan
+ * en büyük okunabilir değer (Arapça glifin mürekkebi kutusundan küçük).
+ */
+const ISARET_BUYUTME = 1.5;
+const GLIF_ORAN = 1.05;
 // ⚠️ TABAN adım süresi — gerçek süre RAMPA ile KISALIR. Eskiden sabitti:
 // yılan baştan sona 3.85 hamle/sn ile gidiyordu, oyun hiç zorlaşmıyordu.
 const TICK_MS = 260;
@@ -87,6 +97,27 @@ const SnakeGame = () => {
    * lastik gibi geriliyor — hız rampası ilerledikçe fark büyüyor.
    */
   const tikSuresi = Math.max(TICK_MIN_MS, Math.round(TICK_MS / rampa(dogru)));
+  /**
+   * ⚠️ HARFLER ÇOK KÜÇÜKTÜ (kullanıcı bildirdi). Sebep: punto SABİTTİ
+   * (`text-base` = 16px) ama tahta ekrana göre esniyor. Ölçüldü: 14 sütunlu
+   * tahta telefonda ~376px, yani hücre ~27px — glif hücrenin ancak %60'ı
+   * kadardı ve Arapça glifin mürekkebi zaten kutusundan küçük.
+   * ⚠️ Punto YÜZDEYLE verilemez: `font-size: %` ana öğenin PUNTOSUNA göre
+   * çalışır, kutu genişliğine göre değil. O yüzden hücre boyu ÖLÇÜLÜP
+   * piksel olarak bağlanıyor (Uzay Savaşı'ndaki `alanOlcu` ile aynı ilke).
+   */
+  const tahtaRef = useRef<HTMLDivElement>(null);
+  const [kare, setKare] = useState(24);
+  useEffect(() => {
+    const el = tahtaRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const w = el.clientWidth;
+      if (w > 0) setKare(w / COLS);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const [gameOver, setGameOver] = useState(false);
   const rapor = useOyunSonu("snake", gameOver, score, { birim: "puan" });
   // Oyun bitince (öldü) bekleyen telafi açılır — oyunun ortasında asla.
@@ -377,6 +408,7 @@ const SnakeGame = () => {
         </div>
 
         <div
+          ref={tahtaRef}
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
           className={cn(
@@ -469,28 +501,45 @@ const SnakeGame = () => {
             .yilan-nabiz { animation: yilan-yedi 0.34s ease-out; }
           `}</style>
           {food && (
+            /**
+             * ⚠️ YEM KUTUSU HÜCREDEN BÜYÜK ÇİZİLİR (1.5×) ama ÇARPIŞMA yine
+             * tek hücre. Harfi okunur yapmanın tek yolu buydu: hücre ~27px,
+             * içine sığan glif küçük kalıyor. Taşma güvenli — yem tek kare ve
+             * sınav şıkları ondan en az 4 kare uzağa yerleşiyor (`randCell`
+             * minDist), yani üst üste binme olamaz.
+             */
             <div
               className="absolute flex items-center justify-center animate-bounce-in"
               style={{
-                left: `${(food.pos.x / COLS) * 100}%`, top: `${(food.pos.y / ROWS) * 100}%`,
-                width: cellSize("w"), height: cellSize("h"),
+                left: `${((food.pos.x + 0.5) / COLS) * 100}%`,
+                top: `${((food.pos.y + 0.5) / ROWS) * 100}%`,
+                width: kare * ISARET_BUYUTME, height: kare * ISARET_BUYUTME,
+                transform: "translate(-50%, -50%)",
               }}
             >
-              <div className="h-[90%] w-[90%] rounded-full bg-gradient-to-br from-warning to-orange-500 shadow-lg ring-2 ring-white/60 flex items-center justify-center animate-pulse">
-                <span className="text-base font-black text-white drop-shadow"><EmojiView value={food.item.emoji} /></span>
+              <div className="h-full w-full rounded-full bg-gradient-to-br from-warning to-orange-500 shadow-lg ring-2 ring-white/60 flex items-center justify-center animate-pulse">
+                <span
+                  className="font-black text-white drop-shadow"
+                  style={{ fontSize: kare * GLIF_ORAN, lineHeight: 1.15 }}
+                >
+                  <EmojiView value={food.item.emoji} />
+                </span>
               </div>
             </div>
           )}
           {quiz && quiz.options.map((opt, i) => {
             const isCorrect = opt.item.id === quiz.target.id;
-            const kare = ask.yazili ? AD_GENISLIK : 1;
+            const kareSayisi = ask.yazili ? AD_GENISLIK : 1;
             return (
               <div
                 key={i}
                 className="absolute flex items-center justify-center animate-bounce-in"
                 style={{
-                  left: `${(opt.pos.x / COLS) * 100}%`, top: `${(opt.pos.y / ROWS) * 100}%`,
-                  width: `${(kare / COLS) * 100}%`, height: cellSize("h"),
+                  left: `${((opt.pos.x + kareSayisi / 2) / COLS) * 100}%`,
+                  top: `${((opt.pos.y + 0.5) / ROWS) * 100}%`,
+                  width: kare * kareSayisi * (ask.yazili ? 1.06 : ISARET_BUYUTME),
+                  height: kare * ISARET_BUYUTME,
+                  transform: "translate(-50%, -50%)",
                 }}
               >
                 <div className={cn(
@@ -501,10 +550,20 @@ const SnakeGame = () => {
                     ? "bg-gradient-to-br from-yellow-300 to-warning ring-yellow-200 animate-pulse"
                     : "bg-gradient-to-br from-sky-300 to-info ring-white/60"
                 )}>
-                  <span className={cn(
-                    "font-black text-white drop-shadow",
-                    ask.yazili ? "truncate text-[11px] leading-none" : "text-base",
-                  )}>
+                  {/* ⚠️ PUNTO ÖLÇÜLEN HÜCREYE BAĞLI, sabit değil. Yazılı
+                      modda şerit AD_GENISLIK kare geniş; punto hem hücreye
+                      hem ADIN UZUNLUĞUNA göre sınırlanır ("Peltek Se" gibi
+                      uzun ad taşmasın), taban 11px. */}
+                  <span
+                    className={cn("font-black text-white drop-shadow", ask.yazili && "truncate")}
+                    style={{
+                      fontSize: ask.yazili
+                        ? Math.max(11, Math.min(kare * 0.72,
+                            (kare * AD_GENISLIK * 0.92) / Math.max(3, String(ask.sik(opt.item)).length) / 0.56))
+                        : kare * GLIF_ORAN,
+                      lineHeight: 1.15,
+                    }}
+                  >
                     {ask.sik(opt.item)}
                   </span>
                 </div>

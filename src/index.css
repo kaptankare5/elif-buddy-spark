@@ -213,6 +213,14 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
 }
+/* ⚠️ DAİRE İÇİNDEKİ GLİF İÇİN KISA SALINIM. `float-y` 12px oynuyor; 56px'lik
+   bir dairede bu yarıçapın %21'i demek ve ölçümde (tools/perf/glifKutu.mjs)
+   37 glifin 25'ini uçta diskin dışına çıkarıyordu. 4px canlılığı korur,
+   taşırmaz. */
+@keyframes float-y-az {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
 @keyframes confetti {
   0% { transform: translateY(0) rotate(0); opacity: 1; }
   100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
@@ -315,6 +323,7 @@
 .animate-shake { animation: shake 0.45s ease-in-out; }
 .animate-wiggle { animation: wiggle 0.6s ease-in-out infinite; }
 .animate-float { animation: float-y 3s ease-in-out infinite; }
+.animate-float-az { animation: float-y-az 3s ease-in-out infinite; }
 .animate-bounce-in { animation: bounce-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .animate-star-burst { animation: star-burst 0.8s ease-out forwards; }
 .animate-ground { animation: ground-scroll 0.6s linear infinite; }
