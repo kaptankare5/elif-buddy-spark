@@ -404,7 +404,12 @@ const PartyGame = () => {
     // Dikey ekran → geniş dikey FOV: ileriyi de yolun genişliğini de görsün
     const camera = new THREE.PerspectiveCamera(FOV_TABAN, 1, 0.1, 400);
     // Travma tabanlı sarsıntı — genlik dünya biriminde, küçük tutuldu.
-    const sarsinti = createSarsinti(0.5, 0.012);
+    // ⚠️ DÖNME BİLEŞENİ 0: ufuk eğilmesi (roll) en güçlü vestibüler
+    // çakışma ekseni — araştırma, roll eklenince bulantının belirgin
+    // arttığını söylüyor ve kullanıcı Koşusu'nda tam olarak bunu
+    // bildirdi ("kameranın oynaması gözü yoruyor"). Çarpma sarsıntısının
+    // GÖRÜLEN kısmı zaten kayma; dönme az katkı, çok maliyet.
+    const sarsinti = createSarsinti(0.5, 0);
     scene.add(new THREE.HemisphereLight(0xffffff, 0xbfe3ff, 1.15));
     const sun = new THREE.DirectionalLight(0xffffff, 0.85);
     sun.position.set(-14, 30, 12);

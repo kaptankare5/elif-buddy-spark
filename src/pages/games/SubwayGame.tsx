@@ -36,6 +36,22 @@ import { OyunSonuKarti } from "@/components/OyunSonuKarti";
 const OLD_LANE_GAP = 2.3;
 const LANE_GAP = 3.3;
 const LANE_X = [-LANE_GAP, 0, LANE_GAP] as const;
+
+/**
+ * HIZ ÇİZGİLERİ — kamerayı OYNATMADAN hız hissi vermenin klasik yolu.
+ * ⚠️ Yalnız KENARLARDA (sol %0-16, sağ %84-100): oyun alanının ortasında
+ * trenler, harf panoları ve karakter var; oraya çizgi koymak soruyu
+ * okunmaz yapar. Çizgiler DOM katmanında ve saf CSS — 3B sahneye tek bir
+ * çizim çağrısı bile eklemiyor (WebView'de kare bütçesi dar).
+ * Konumlar sabit bir tohumla üretilmiş; her render'da rastgelelik olsaydı
+ * çizgiler yerinden zıplardı.
+ */
+const HIZ_CIZGILERI = [
+  { x: 3, h: 26, d: 0.0, s: 0.55 }, { x: 8, h: 18, d: 0.28, s: 0.42 },
+  { x: 13, h: 32, d: 0.14, s: 0.62 }, { x: 6, h: 22, d: 0.46, s: 0.5 },
+  { x: 87, h: 30, d: 0.08, s: 0.58 }, { x: 92, h: 20, d: 0.36, s: 0.45 },
+  { x: 97, h: 26, d: 0.2, s: 0.52 }, { x: 90, h: 16, d: 0.52, s: 0.4 },
+] as const;
 const WSCALE = LANE_GAP / OLD_LANE_GAP;
 const GATE_Z = -70;        // pano dalgasının doğduğu yerel z
 const OBST_Z = -78;        // engel sırasının doğduğu yerel z
@@ -381,7 +397,25 @@ function Player({ sim }: { sim: React.MutableRefObject<Sim> }) {
     const running = s.running && s.grounded && s.jetT <= 0 && s.slideT <= 0;
     const bob = running ? Math.abs(Math.sin(t * 9)) * 0.09 : 0;
     g.current.position.set(s.x, s.y + bob, 0);
-    g.current.rotation.z = (LANE_X[s.lane] - s.x) * -0.09;
+    /**
+     * ⚠️ ŞERİT DEĞİŞİMİNİN AĞIRLIĞI ARTIK KARAKTERDE (kamera sabitlendi,
+     * yukarıdaki kamera notuna bak). Üç kanal birlikte çalışıyor:
+     *  · YATIŞ (roll): koşucu viraja yatar gibi eğilir — eskisinin ~2.5 katı.
+     *    Kamera yatmıyor, KARAKTER yatıyor: ufuk düz kaldığı için göz
+     *    yorulmuyor ama hareket okunuyor.
+     *  · DÖNÜŞ (yaw): gövde gittiği yöne hafifçe döner; sırf yatmak
+     *    "devriliyor" gibi duruyordu, dönüşle birlikte "kayıyor" oluyor.
+     *  · ESNEME: yanal hız arttıkça gövde hareket yönünde hafifçe uzar
+     *    (hacim korunur) — klasik hareket lekesi (motion smear) hilesi,
+     *    hızın kendisini görünür kılar.
+     * `kalan` = hedef şeride kalan mesafe; sıfıra yaklaşınca üçü de söner.
+     */
+    const kalan = LANE_X[s.lane] - s.x;
+    const yanal = Math.max(-1, Math.min(1, kalan / LANE_GAP));
+    g.current.rotation.z = yanal * -0.22;
+    g.current.rotation.y = yanal * 0.30;
+    const esne = Math.abs(yanal) * 0.16;
+    g.current.scale.set(1 + esne, 1 - esne * 0.5, 1);
     g.current.rotation.x = s.jetT > 0 ? -0.25 : !s.grounded ? -0.12 : 0;
     // kayma: squash
     const squash = s.slideT > 0 ? 0.52 : 1;
@@ -778,13 +812,28 @@ function Director({ sim, entsRef, worldRef, gateActive, onSpawnGate, onSpawnRow,
     const trK = tr * tr * hareketKatsayisi();   // hareket azaltmada kısılır
     const shakeX = trK * 0.34 * Math.sin(st.clock.elapsedTime * 47);
     const shakeY = trK * 0.22 * Math.sin(st.clock.elapsedTime * 61 + 1.3);
-    // ⚠️ KAMERA ŞERİDİ KISMEN TAKİP EDER (%22): hiç takip etmezse şerit
-    // değiştirmek "dünya kaydı" gibi görünüyordu, tam takip ederse şeritler
-    // birbirine karışıp hangi rayda olduğun okunmuyor.
-    camera.position.set(shakeX + s.x * 0.22, 4.7 + s.y * 0.3 + shakeY, 8.6);
-    camera.lookAt(s.x * 0.1, 1.5 + s.y * 0.25, -10);
-    // yana kayarken hafif yatış — hareketin ağırlığı hissedilsin
-    camera.rotation.z = (LANE_X[s.lane] - s.x) * 0.035 + trK * 0.03;
+    /**
+     * ⚠️ **KAMERA ŞERİDİ TAKİP ETMEZ VE ASLA YATMAZ** (kullanıcı tespiti:
+     * "sağa sola giderken kameranın oynaması gözü çok yoruyor").
+     *
+     * Bir dönem kamera oyuncunun x'ini %22 takip ediyor ve şerit değişiminde
+     * hafifçe yatıyordu (`rotation.z`). İkisi de yanlıştı:
+     *  · Göz, sahnedeki SABİT bir referansa tutunarak hareketi çözüyor.
+     *    Kamera sürekli sağa-sola kayınca o referans kayboluyor ve gözün her
+     *    şerit değişiminde yeniden odaklanması gerekiyor — yorgunluk buradan.
+     *  · UFUK EĞİLMESİ (roll) en güçlü vestibüler çakışma eksenidir:
+     *    araştırma, sensör çakışmasının simüle edilen hareketin
+     *    KARMAŞIKLIĞIYLA arttığını, roll'ün eklenmesinin bulantıyı belirgin
+     *    biçimde artırdığını söylüyor. Ufuk düz kalmalı.
+     *
+     * Şerit değişiminin ağırlığı artık KARAKTERİN kendi yatışı, esnemesi ve
+     * "vuuş" sesiyle veriliyor (aşağıda, Player); hız hissi de görüş açısı +
+     * hız çizgileriyle. Kamera yalnız ÇARPMADA sarsılıyor — o an gerçek bir
+     * olay olduğu için beklenen bir hareket, kullanıcı da onu beğendi.
+     */
+    camera.position.set(shakeX, 4.7 + s.y * 0.3 + shakeY, 8.6);
+    camera.lookAt(0, 1.5 + s.y * 0.25, -10);
+    camera.rotation.z = 0;   // ufuk DÜZ — yatış yok
     // Hıza bağlı görüş açısı + çarpma darbesi.
     // ⚠️ DARBE AYRI BİR SAYAÇ DEĞİL, `s.shake`ten TÜRETİLİR: sarsıntı üç ayrı
     // yerden (tren, engel, yanlış kapı) tetikleniyor ve ikisi Scene'in
@@ -1002,6 +1051,8 @@ const SubwayGame = () => {
   const [question, setQuestion] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ text: string; tone: "good" | "bad" | "power" } | null>(null);
   const [pu, setPu] = useState<{ jet: number; x2: number; mag: number }>({ jet: 0, x2: 0, mag: 0 });
+  /** Hız çizgisi katmanı — şeffaflığı doğrudan DOM'a yazılır (bkz. aralık). */
+  const hizRef = useRef<HTMLDivElement>(null);
   const [fontTick, setFontTick] = useState(0);
   const [flash, setFlash] = useState(false); // normal modda doğru cevapta ışık
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1046,6 +1097,17 @@ const SubwayGame = () => {
         if (prev.jet === s.jetT && prev.x2 === s.x2T && prev.mag === s.magT) return prev;
         return { jet: s.jetT, x2: s.x2T, mag: s.magT };
       });
+      /**
+       * ⚠️ HIZ ÇİZGİLERİ REACT DURUMU DEĞİL: şeffaflık doğrudan DOM'a
+       * yazılıyor. Hız her karede değişiyor; state'e bağlamak saniyede
+       * 60 render demek olurdu. 200 ms çözünürlük yeterli — hız zaten
+       * yavaş değişen bir büyüklük (rampa doğru cevaba bağlı).
+       */
+      const el = hizRef.current;
+      if (el) {
+        const k = Math.max(0, Math.min(1, (s.speed - BASE_SPEED) / (SPEED_MAX_FOV - BASE_SPEED)));
+        el.style.opacity = String(s.running ? k * 0.5 * hareketKatsayisi() : 0);
+      }
     }, 200);
     return () => clearInterval(id);
   }, []);
@@ -1273,20 +1335,31 @@ const SubwayGame = () => {
 
   // --- kontroller ---
 
+  /**
+   * ⚠️ HAREKETLERİN SESİ YOKTU: şerit değiştirmek, zıplamak ve kaymak —
+   * oyunun ÜÇ temel eylemi — hiçbir geri bildirim vermiyordu. Kamera artık
+   * yana oynamadığı için bu boşluk daha da görünür oldu; hareketin ağırlığı
+   * kısmen KULAKTAN gelmeli. Üçü de tek atımlık, kısa ton (müzik değil).
+   * ⚠️ Şerit değişimi TİTREŞMEZ (`titresim: false`): saniyede birkaç kez
+   * yapılan bir hareket; her seferinde titremek rahatsız edici ve pil yakıcı
+   * (juice.ts'teki "sık yapılan hareket titremez" kuralı).
+   */
   const move = useCallback((dir: -1 | 1) => {
     const s = sim.current;
     if (!s.running) return;
-    s.lane = Math.max(0, Math.min(2, s.lane + dir));
+    const yeni = Math.max(0, Math.min(2, s.lane + dir));
+    if (yeni !== s.lane) sfx("kaydir", { titresim: false });
+    s.lane = yeni;
   }, []);
   const jump = useCallback(() => {
     const s = sim.current;
     if (!s.running || s.jetT > 0) return;
-    if (s.grounded) { s.vy = JUMP_V; s.grounded = false; s.slideT = 0; }
+    if (s.grounded) { s.vy = JUMP_V; s.grounded = false; s.slideT = 0; sfx("zipla"); }
   }, []);
   const slide = useCallback(() => {
     const s = sim.current;
     if (!s.running || s.jetT > 0) return;
-    if (s.grounded) s.slideT = SLIDE_TIME;
+    if (s.grounded) { s.slideT = SLIDE_TIME; sfx("kaydir", { titresim: false }); }
   }, []);
   const replay = useCallback(() => {
     const gate = entsRef.current.find((e) => e.kind === "gate" && !e.resolution);
@@ -1464,6 +1537,36 @@ const SubwayGame = () => {
               onTimersEnd={onTimersEnd}
             />
           </Canvas>
+
+          {/* ⚠️ HIZ ÇİZGİLERİ — kamera sabit olduğu için hız hissi buradan
+              geliyor. Şeffaflık HIZLA ölçekleniyor (aşağıdaki aralıkta
+              güncelleniyor); hareket azaltma isteğinde tamamen sönüyor. */}
+          <div ref={hizRef} className="pointer-events-none absolute inset-0 z-10 overflow-hidden" style={{ opacity: 0 }}>
+            {HIZ_CIZGILERI.map((c, i) => (
+              <span
+                key={i}
+                className="hiz-cizgi"
+                style={{
+                  left: `${c.x}%`, height: `${c.h}%`,
+                  animationDelay: `${c.d}s`, animationDuration: `${c.s}s`,
+                }}
+              />
+            ))}
+          </div>
+          <style>{`
+            @keyframes hiz-ak {
+              0%   { transform: translateY(-140%); opacity: 0; }
+              15%  { opacity: 1; }
+              85%  { opacity: 1; }
+              100% { transform: translateY(360%); opacity: 0; }
+            }
+            .hiz-cizgi {
+              position: absolute; top: 0; width: 3px; border-radius: 9999px;
+              background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.9), rgba(255,255,255,0));
+              animation-name: hiz-ak; animation-timing-function: linear;
+              animation-iteration-count: infinite; will-change: transform;
+            }
+          `}</style>
 
           {/* normal modda doğru cevap ışığı */}
           {flash && (

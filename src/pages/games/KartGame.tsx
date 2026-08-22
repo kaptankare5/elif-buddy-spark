@@ -365,7 +365,12 @@ const KartGame = () => {
     // Travma tabanlı sarsıntı (gameFeel.ts): muza basınca ve turbo alınca
     // kamera "canlı" olsun. ⚠️ Genlik dünya biriminde ve KÜÇÜK — kart
     // yarışında büyük sarsıntı virajı okunmaz yapıyor.
-    const sarsinti = createSarsinti(0.55, 0.014);
+    // ⚠️ DÖNME BİLEŞENİ 0: ufuk eğilmesi (roll) en güçlü vestibüler
+    // çakışma ekseni — araştırma, roll eklenince bulantının belirgin
+    // arttığını söylüyor ve kullanıcı Koşusu'nda tam olarak bunu
+    // bildirdi ("kameranın oynaması gözü yoruyor"). Çarpma sarsıntısının
+    // GÖRÜLEN kısmı zaten kayma; dönme az katkı, çok maliyet.
+    const sarsinti = createSarsinti(0.55, 0);
 
     const disposables: { dispose(): void }[] = [];
     const keep = <T extends THREE.BufferGeometry | THREE.Material | THREE.Texture>(x: T): T => {

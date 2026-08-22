@@ -686,8 +686,17 @@ Kaynaklar: Swink *Game Feel*, Vlambeer *Art of Screenshake*, Jonasson & Purho
   kamera hep aynı açıyla bakıyordu. Artık görüş açısı (FOV) hızla açılıyor
   (64°→73°), çarpmada travmayla BÜZÜLÜYOR. Partisi ve Yarışı'nda da aynı.
   ⚠️ 9°'den fazlası küçük ekranda harfleri kenara itip okunmaz yapıyor.
-  ⚠️ Koşusu'nda kamera şeridi %22 takip eder: hiç etmezse "dünya kaydı" gibi,
-  tam ederse hangi rayda olduğun okunmuyor.
+  ⚠️ **KOŞUSU'NDA KAMERA YANAL TAKİP ETMEZ ve ASLA YATMAZ** (kullanıcı
+  tespiti: "sağa sola giderken kameranın oynaması gözü çok yoruyor"). İki
+  sebep: (1) göz hareketi sahnedeki SABİT referansa tutunarak çözüyor, kamera
+  kayınca o referans kayboluyor; (2) ufuk eğilmesi (roll) en güçlü vestibüler
+  çakışma ekseni — çakışma, simüle edilen hareketin karmaşıklığıyla artıyor.
+  Yerine: karakterin kendi yatışı + gövde dönüşü + yanal esnemesi, kenar HIZ
+  ÇİZGİLERİ (saf CSS/DOM, 3B sahneye çizim çağrısı eklemez, yalnız kenarlarda
+  — ortada trenler ve harf panoları var), şerit/zıplama/kayma sesleri.
+  Kalan tek kamera hareketi ÇARPMA sarsıntısı (kullanıcı onu beğendi) ve
+  onun da DÖNME bileşeni Partisi/Yarışı dahil sıfırlandı.
+  Bekçi: `gameFeelKapsam.test.ts` → "kamera konforu".
 - Her oyunun mekanizması ayrı (tür tür seçildi): Macera ezilme+donma+sarsıntı,
   3B'ler FOV+sarsıntı, Uçan Kuş çırpış ezilmesi, Uzay Savaşı namlu parlaması +
   geri tepme, Balon gerçek patlama halkası, Match3 zincir rozeti, Hafıza

@@ -96,14 +96,53 @@ Tür analizlerinin ortak tespiti: bu türde **her şey tepkisellik ve ritim**;
 
 | teknik | durum |
 |---|---|
-| şerit geçişi yumuşatma + yatış | ✅ zaten vardı (`rotation.z`) |
 | **hıza bağlı görüş açısı (FOV)** | ✅ 64° → 73° |
 | çarpmada FOV büzülmesi | ✅ travmadan türetiliyor |
-| travma tabanlı kamera sarsıntısı | ✅ (eskiden düz sinüstü) |
-| kameranın şeridi kısmen takibi | ✅ %22 |
+| travma tabanlı kamera sarsıntısı (yalnız ÇARPMADA) | ✅ |
+| **kenar hız çizgileri** | ✅ |
+| karakterin yatışı + dönüşü + esnemesi | ✅ |
+| şerit değişimi / zıplama / kayma sesi | ✅ |
+| kameranın şeridi takibi | ❌ **KALDIRILDI** |
+| kamera yatışı (roll) | ❌ **KALDIRILDI** |
 
-⚠️ %22 ölçülü bir sayı: hiç takip etmezse şerit değiştirmek "dünya kaydı" gibi
-görünüyor, tam takip ederse hangi rayda olduğun okunmuyor.
+### ⚠️ Kamera oyuncuyu YANAL TAKİP ETMEZ ve ASLA YATMAZ
+
+Bir dönem kamera oyuncunun x'ini %22 takip ediyor ve şerit değişiminde hafifçe
+yatıyordu. Kullanıcı tespiti: *"sağa sola giderken kameranın sağa sola oynaması
+gözü çok yoruyor."* İkisi de ayrı ayrı yanlıştı:
+
+- **Sabit referansın kaybı.** Göz, hareketi sahnedeki durağan bir referansa
+  tutunarak çözüyor; kaynakların ortak tavsiyesi "beynin, kamera ne kadar
+  savrulursa savrulsun HAREKET ETMEYEN bir referans noktasına ihtiyacı var".
+  Kamera sürekli kayınca o referans yok oluyor ve göz her şerit değişiminde
+  yeniden odaklanıyor.
+- **Ufuk eğilmesi (roll) en pahalı eksen.** Eksen çalışmaları, sensör
+  çakışmasının simüle edilen hareketin KARMAŞIKLIĞIYLA arttığını, pitch'e roll
+  eklenmesinin bulantıyı belirgin biçimde büyüttüğünü gösteriyor.
+
+**Yerine ne kondu** (hepsi kamerayı oynatmadan):
+
+1. **Karakterin kendi yatışı** — koşucu viraja yatar gibi eğilir (eskisinin
+   ~2.5 katı). Ufuk düz kaldığı için göz yorulmuyor, hareket yine okunuyor.
+2. **Gövde dönüşü (yaw)** — sırf yatmak "devriliyor" gibi duruyordu; dönüşle
+   birlikte "kayıyor" oluyor.
+3. **Yanal esneme** — yanal hız arttıkça gövde hareket yönünde uzuyor (hacim
+   korunur): klasik hareket lekesi hilesi.
+4. **Kenar hız çizgileri** — hız hissinin kamerasız klasik çözümü. ⚠️ Yalnız
+   sol %0-16 ve sağ %84-100'de: ortada trenler ve harf panoları var, oraya
+   çizgi koymak soruyu okunmaz yapar. Saf CSS + DOM katmanı — 3B sahneye tek
+   çizim çağrısı bile eklemiyor. Şeffaflık hızla ölçekleniyor ve `setInterval`
+   ile DOM'a doğrudan yazılıyor (state'e bağlamak saniyede 60 render olurdu).
+5. **Hareketin sesi** — şerit değişimi, zıplama ve kayma sessizdi; oyunun üç
+   temel eylemi hiçbir geri bildirim vermiyordu. ⚠️ Şerit değişimi TİTREŞMEZ
+   (saniyede birkaç kez yapılan hareket).
+
+**Kalan tek kamera hareketi ÇARPMA sarsıntısı** — kullanıcı onu beğendi
+("çarpınca ekran değiştirmesi güzel") ve gerçek bir olaya bağlı, sürekli
+değil. Onun bile **dönme bileşeni sıfırlandı** (Partisi ve Yarışı'nda da):
+sarsıntının görülen kısmı kaymadır, dönme az katkı çok maliyet.
+
+Bekçi: `gameFeelKapsam.test.ts` → "kamera konforu".
 
 ---
 
