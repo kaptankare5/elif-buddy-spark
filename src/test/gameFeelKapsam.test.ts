@@ -222,3 +222,57 @@ describe("gameFeel — yardımcılar", () => {
     expect(p.liste.length, "ömrü dolan parçacık kalmamalı").toBe(0);
   });
 });
+
+/**
+ * KAMERA KONFORU — ufuk düz kalmalı, kamera oyuncuyu YANAL takip etmemeli.
+ *
+ * ⚠️ NEDEN TEST: Koşusu'nda kamera bir dönem oyuncunun x'ini %22 takip
+ * ediyor ve şerit değişiminde yatıyordu. Kullanıcı bildirdi: "sağa sola
+ * giderken kameranın oynaması gözü çok yoruyor". İki ayrı hata vardı:
+ *  · Göz sahnedeki SABİT referansa tutunuyor; kamera sürekli kayınca o
+ *    referans kayboluyor ve her şerit değişiminde yeniden odaklanmak
+ *    gerekiyor.
+ *  · UFUK EĞİLMESİ (roll) en güçlü vestibüler çakışma ekseni; sensör
+ *    çakışması simüle edilen hareketin karmaşıklığıyla artıyor.
+ * Şerit hissi artık KARAKTERİN yatışı/esnemesi ve sesiyle, hız hissi de
+ * görüş açısı + kenar hız çizgileriyle veriliyor. Çarpma sarsıntısı KALDI
+ * (kullanıcı onu beğendi) ama onun da dönme bileşeni sıfır.
+ */
+describe("kamera konforu", () => {
+  const subway = readFileSync(join(DIZIN, "SubwayGame.tsx"), "utf8");
+
+  it("Koşusu'nda ufuk DÜZ — kamera yatışı yok", () => {
+    expect(/camera\.rotation\.z\s*=\s*0\s*;/.test(subway),
+      "camera.rotation.z açıkça 0 olmalı (ufuk eğilmemeli)").toBe(true);
+    // Şerit konumuna bağlı bir yatış geri gelmemeli: BÜTÜN atamaların sağ
+    // tarafı tam olarak "0" olmalı (`\s*` boş eşleşebildiği için "sıfır
+    // olmayan karakter" araması yanlış pozitif veriyordu).
+    const atamalar = [...subway.matchAll(/camera\.rotation\.z\s*\+?=\s*([^;]+);/g)]
+      .map((m) => m[1].trim());
+    expect(atamalar, "kamera yatışı yeniden eklenmiş").toEqual(["0"]);
+  });
+
+  it("Koşusu'nda kamera oyuncuyu YANAL takip etmiyor", () => {
+    const kurulum = subway.match(/camera\.position\.set\(([^)]*)\)/);
+    expect(kurulum, "camera.position.set bulunamadı").not.toBeNull();
+    const xArg = kurulum![1].split(",")[0];
+    expect(/s\.x/.test(xArg), `kamera x'i oyuncuya bağlanmış: ${xArg}`).toBe(false);
+    const bakis = subway.match(/camera\.lookAt\(([^)]*)\)/);
+    expect(/s\.x/.test(bakis?.[1] ?? ""), "kamera bakışı oyuncuya bağlanmış").toBe(false);
+  });
+
+  /** Şerit hissi kaybolmasın: karakterin kendi yatışı ve esnemesi ŞART. */
+  it("şerit değişimi karakterde okunuyor (yatış + esneme)", () => {
+    expect(/g\.current\.rotation\.z\s*=/.test(subway), "karakter yatışı yok").toBe(true);
+    expect(/g\.current\.scale\.set/.test(subway), "karakter esnemesi yok").toBe(true);
+  });
+
+  /** 3B oyunlarda sarsıntının DÖNME bileşeni kapalı olmalı. */
+  it.each(["PartyGame.tsx", "KartGame.tsx"])("%s sarsıntısında dönme yok", (dosya) => {
+    const kaynak = readFileSync(join(DIZIN, dosya), "utf8");
+    const m = kaynak.match(/createSarsinti\(([^)]*)\)/);
+    expect(m, "createSarsinti bulunamadı").not.toBeNull();
+    const rot = (m![1].split(",")[1] ?? "0").trim();
+    expect(rot, `${dosya}: sarsıntının dönme bileşeni 0 olmalı`).toBe("0");
+  });
+});
