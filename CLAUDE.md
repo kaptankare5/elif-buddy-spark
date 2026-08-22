@@ -487,6 +487,22 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   çok az üstte olsun" dedi, `YUKARI_PAY`). Kaydırma `em` cinsinden döner,
   punto değişse de çalışır; font yüklenince önbellek bir kez atılır (yedek
   fontla ölçüm yanlış çıkar).
+- ⚠️ **MÜREKKEP ORTALAMASI ARTIK `EmojiView`'İN İÇİNDE.** `glifOlcu.ts` vardı
+  ama ortak bileşen kullanmıyordu; her oyun tek tek uygulamak zorundaydı ve
+  çoğu unutulmuştu. Kullanıcı iki kez aynı hatayı bildirdi ("uzay oyununda
+  ayın, ha gibi harflerin alt kısımları beyaz yuvarlağın dışına çıkıyor").
+  ⚠️ ÖLÇÜM `tools/perf/glifKutu.mjs` — gerçek Amiri Quran gömülü, EKRAN
+  GÖRÜNTÜSÜNDEN piksel sayımı: 56px dairede 34px puntoda 37 glifin **19'u**
+  diskin dışına taşıyordu (en derin 9.6 px). Ortalama → 7, punto 30 → **2**
+  (yalnız ötre işareti 3 px değiyor). Uzay Savaşı puntosu 34 → 30.
+  ⚠️ **ÖLÇÜT DAİRE, KUTU DEĞİL**: ilk ölçümüm mürekkebi kutunun sınırlarıyla
+  kıyaslayıp "taşma yok" demişti — daire alta doğru daralıyor, geniş bir
+  çanak kutunun içinde ama diskin DIŞINDA kalabiliyor. Sayı ile görüntü
+  çelişince görüntü haklı; araç piksel saymaya çevrildi.
+  ⚠️ **DAİRE İÇİNDEKİ GLİF 12px SALINAMAZ**: `animate-float` 56px dairede
+  yarıçapın %21'i kadar oynuyor ve glifleri uçta dışarı çıkarıyordu.
+  Kutu içindeki glifler `animate-float-az` (4px) kullanır.
+  Bekçi: `glifOrtalama.test.ts`.
 - ⚠️ **TABELA GLİFİ KIRPILMAMALI.** `leading-[1.35]` + dar `py` ile 33
   glifin 11'i kutunun dışına taşıyordu (ölçüldü): ج ح خ tabanın 12px altına,
   kesreli بِ 9px. Arapça glif taban çizgisinin altına (nokta/kesre) ve
@@ -522,6 +538,13 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   Boşalt, Koşusu, **Yılan** (yazılı moda sonradan açıldığında atlanmıştı).
   `celdiriciler`in YEDEK yolu da ad-tekil olmalı — aday yetmiyorsa
   ŞIK AZ OLSUN, bozuk soru sorma.
+  ⚠️ **YILAN'DA PUNTO ÖLÇÜLEN HÜCREYE BAĞLI**: sabit `text-base` (16px) idi
+  ama tahta ekrana göre esniyor — 14 sütunlu tahta telefonda ~376px, hücre
+  ~27px, yani glif hücrenin ancak %60'ı kadardı ("harfler çok küçük").
+  Punto YÜZDEYLE verilemez (`font-size: %` ana öğenin PUNTOSUNA göre çalışır),
+  o yüzden hücre ResizeObserver ile ÖLÇÜLÜP piksel olarak bağlanıyor.
+  Yem ve sınav şıkları hücreden **1.5× büyük** çizilir — çarpışma yine tek
+  hücre; taşma güvenli çünkü şıklar birbirinden en az 4 kare uzağa yerleşiyor.
   ⚠️ **Yılan'da ad tek ızgara karesine sığmaz**: yazılı şık, anchor
   karesinden başlayan `AD_GENISLIK` (5) karelik bir ŞERİTtir; yılan şeridin
   herhangi bir karesinden yiyebilir ve anchor sağ kenara sıkışmaz.

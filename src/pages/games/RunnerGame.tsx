@@ -478,10 +478,20 @@ const RunnerGame = () => {
               style={{ left: `${e.x}%`, top: `${e.y}%`, transform: "translate3d(-50%, -50%, 0)",
                 width: `${ask.yazili ? YAZILI_EN_PX : ENEMY_PX}px`,
                 height: `${ask.yazili ? YAZILI_BOY_PX : ENEMY_PX}px`,
-                fontSize: ask.yazili ? "15px" : "34px", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
+                /**
+                 * ⚠️ KLASİK PUNTO 34 → 30. Ölçüldü (`tools/perf/glifKutu.mjs`,
+                 * gerçek Amiri Quran, 56px daire, ekran görüntüsünden piksel
+                 * sayımı): 34px'te 37 glifin 19'u dairenin DIŞINA taşıyordu,
+                 * en derin 9.6 px. Kullanıcı bildirdi: "ayın, ha gibi
+                 * harflerin alt kısımları beyaz yuvarlağın dışına çıkıyor".
+                 * Mürekkep ortalaması (EmojiView) taşmayı 7'ye indiriyor;
+                 * punto 30 ile ALTTAN taşma tamamen bitiyor (kalan iki glifte
+                 * yalnız ötre işareti üstten 3 px değiyor).
+                 */
+                fontSize: ask.yazili ? "15px" : "30px", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
                 willChange: "top", zIndex: e.isTarget ? 20 : 5 }}>
               {e.isTarget && showHintFor(e.item) && (<div className={cn("absolute -inset-1 border-4 border-warning animate-pulse", ask.yazili ? "rounded-2xl" : "rounded-full")} />)}
-              <span className={cn(!ask.yazili && "animate-float", ask.yazili && "text-indigo-950")}>
+              <span className={cn(!ask.yazili && "animate-float-az", ask.yazili && "text-indigo-950")}>
                 {ask.sik(e.item)}
               </span>
             </div>
