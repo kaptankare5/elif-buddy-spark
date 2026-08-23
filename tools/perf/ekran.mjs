@@ -48,7 +48,29 @@ for (const t of tiklamalar) {
 // --sonBekle: tıklamalardan SONRA beklenecek süre (oyun ilerlesin diye).
 const sonBekle = process.argv.includes("--sonBekle")
   ? Number(process.argv[process.argv.indexOf("--sonBekle") + 1]) : 0;
+// --tus Ad : kareler boyunca BASILI tutulacak tuş (oyunu istenen yere
+// sürmek için — akan bir oyunda doğru anı beklemek şansa kalıyor).
+const tus = process.argv.includes("--tus")
+  ? process.argv[process.argv.indexOf("--tus") + 1] : null;
+if (tus) await page.keyboard.down(tus);
+
 if (sonBekle) await page.waitForTimeout(sonBekle);
+
+// --kare N --aralik ms : tek oturumda N kare çek (aranan an bir defada
+// yakalanamıyorsa; oyunlar akış hâlinde, doğru anı beklemek yerine tara).
+const kareSayisi = process.argv.includes("--kare")
+  ? Number(process.argv[process.argv.indexOf("--kare") + 1]) : 1;
+const aralik = process.argv.includes("--aralik")
+  ? Number(process.argv[process.argv.indexOf("--aralik") + 1]) : 600;
+if (kareSayisi > 1) {
+  for (let i = 0; i < kareSayisi; i++) {
+    await page.screenshot({ path: cikti.replace(/\.png$/, `-${i}.png`) });
+    if (i < kareSayisi - 1) await page.waitForTimeout(aralik);
+  }
+  console.log(`kaydedildi: ${kareSayisi} kare → ${cikti.replace(/\.png$/, "-N.png")}`);
+  await b.close();
+  process.exit(0);
+}
 await page.screenshot({ path: cikti });
 console.log("kaydedildi:", cikti);
 await b.close();
