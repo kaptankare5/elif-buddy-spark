@@ -51,3 +51,35 @@ deniyor (şişiyor); Macera'daki 0 botun platform atlayamamasından (oyunun değ
 ⚠ **İLK SORUYA KADAR GEÇEN SÜRE de ölçülür** — bu, "ilk 90 saniyede eğlenceye
 ulaş" kuralının öğrenme karşılığı. Uzay Savaşı 22.9 sn, Yapboz 43.5 sn,
 Üçlü Eşleştir 49.6 sn: çocuk yarım dakikadan uzun süre hiç harf duymuyor.
+
+## Tekerlek ölçümü (`teker.mjs`)
+
+Yarışı'nda "ön tekerlekler havadaymış gibi" bildirimi göz kararıyla
+çözülemezdi: **iki ayrı kusur aynı görüntüyü** veriyordu ve payları ancak
+sayıyla ayrıldı. Araç, oyunun düğüm hiyerarşisini three.js ile birebir kurup
+tekerleğin aksını ve en alt noktasını ölçer.
+
+```
+drift 1.00
+  ESKİ  aks eğimi: en çok 35.5° · ortalama 16.4°  | yerden açıklık 0.373 (yarıçapın %60'ı)
+  YENİ  aks eğimi: en çok  0.0°                   | yerden açıklık 0.000
+```
+
+- **Gövde eğimi tekerleği de yatırıyordu.** Gerçek araçta gövde süspansiyon
+  üzerinde yatar, lastik yerde kalır → eğim artık `shell` düğümünde,
+  tekerlekler `body`nin doğrudan çocuğu.
+- **Yuvarlanma (X) ile direksiyon (Y) aynı Euler'deydi.** three.js "XYZ"
+  sırasında matris Rx·Ry olur; direksiyon ekseni, sürekli büyüyen yuvarlanma
+  açısıyla devriliyordu (Unity forumlarındaki klasik "ön teker gimbal"
+  sorunu). Artık göbek (Y) ve tekerlek (X) AYRI düğüm.
+
+Araç ayrıca Ackermann farkını (iç teker dıştan daha çok döner) ve göbek
+deseninin **strobe sınırını** yazdırır: `n` kollu göbek karede π/n'den fazla
+dönerse tekerlek geriye dönüyormuş gibi görünür (wagon-wheel etkisi), bu
+yüzden görsel açısal hız `π/(n·dt)` ile kelepçelenir.
+
+## Kırpma (`kirp.mjs`)
+
+`node tools/perf/kirp.mjs kaynak.png cikti.png X Y EN BOY [ZOOM]` — telefon
+ölçüsünde çekilen karede tekerlek göbeği gibi küçük ayrıntılar birkaç piksel
+kalıyor; "düzeldi mi" sorusu göz kararına düşmesin diye bölgeyi büyütür.

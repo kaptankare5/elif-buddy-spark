@@ -401,3 +401,81 @@ describe("geri sayım (Parti)", () => {
       "çıkışta sayım perdesi açık kalıyor").toBe(true);
   });
 });
+
+/**
+ * ⚠️ KULLANICI TESPİTİ (Yarışı): "aracın ön tekerleri çok kötü, sağa sola
+ * gidince sanki ön tekerler havadaymış gibi." İKİ AYRI KUSUR aynı görüntüyü
+ * veriyordu; payları `tools/perf/teker.mjs` ile ölçüldü (tam savrulmada):
+ *   · aks yataydan **35.5°** kalkıyordu  · tekerlek yerden **0.373 birim**
+ *     (kendi yarıçapının %60'ı) havadaydı.
+ * Sebepler ve çözümleri aşağıdaki testlerde kilitli.
+ */
+describe("tekerlek (Yarışı)", () => {
+  const kart = readFileSync(join(DIZIN, "KartGame.tsx"), "utf8");
+
+  /**
+   * Gerçek araçta gövde SÜSPANSİYON ÜZERİNDE yatar, lastik yerde kalır.
+   * Eğim tekerleğe de uygulanınca dış teker havaya kalkıyordu.
+   */
+  it("gövde eğimi kabukta — tekerlekler yatmıyor", () => {
+    expect(/r\.shell\.rotation\.z\s*=/.test(kart), "eğim `shell` düğümüne uygulanmıyor").toBe(true);
+    expect(/r\.body\.rotation\.z\s*=/.test(kart),
+      "eğim hâlâ `body`de — tekerlekler de yatar, dış teker havaya kalkar").toBe(false);
+    expect(/body\.add\(hub\)/.test(kart), "göbek gövdeye eklenmiyor").toBe(true);
+    expect(/shell\.add\(hub\)/.test(kart), "göbek KABUĞA eklenmiş — eğimi miras alır").toBe(false);
+  });
+
+  /**
+   * three.js "XYZ" Euler sırasında matris Rx·Ry olur: yuvarlanma açısı
+   * sürekli büyüdüğü için direksiyon EKSENİ onunla birlikte devriliyordu
+   * (Unity forumlarındaki klasik "ön teker gimbal" sorunu). Çözüm: göbek
+   * yalnız Y, çocuğu olan tekerlek yalnız X döner.
+   */
+  it("direksiyon (Y) ve yuvarlanma (X) AYRI düğümde", () => {
+    expect(/r\.hubs\[0\]\.rotation\.y/.test(kart) && /r\.hubs\[1\]\.rotation\.y/.test(kart),
+      "direksiyon göbeğe uygulanmıyor").toBe(true);
+    expect(/r\.wheels\[\d\]\.rotation\.y/.test(kart),
+      "direksiyon hâlâ yuvarlanan düğümde — eksen yuvarlanmayla devrilir").toBe(false);
+    expect(/r\.wheels\[i\]\.rotation\.x/.test(kart), "yuvarlanma ayrı düğümde değil").toBe(true);
+  });
+
+  /** İç tekerlek daha küçük yayı çizer → dıştan DAHA ÇOK döner. */
+  it("Ackermann: iç tekerlek dıştan fazla dönüyor", () => {
+    expect(/Math\.atan\(WHEELBASE \/ Math\.max/.test(kart), "iç teker açısı hesaplanmıyor").toBe(true);
+    expect(/Math\.atan\(WHEELBASE \/ \(R \+ TRACK_W/.test(kart), "dış teker açısı hesaplanmıyor").toBe(true);
+  });
+
+  /**
+   * Uzun virajda `drift` sıfırdır (çocuk tuşa basmıyor, pist dönüyor) ama
+   * araç dönüyor: tekerlek dümdüz kalırsa "çalışmıyor" görünür. Bisiklet
+   * modeli δ = atan(L·κ) bu payı verir ve dt gerektirmez.
+   */
+  it("pistin kavisi de tekerleğe yansıyor", () => {
+    expect(/Math\.atan\(WHEELBASE \* kavis/.test(kart), "kavis payı yok").toBe(true);
+  });
+
+  /**
+   * ⚠️ Yuvarlanma kare süresine bağlı olmalı: sabit `* 0.016` yazılırsa
+   * 120 Hz telefonda tekerlek iki kat hızlı döner. Ayrıca görsel açısal hız
+   * π/(kol·dt) ile kelepçelenir — üstünde zamansal örtüşme başlar ve
+   * tekerlek GERİYE dönüyormuş gibi görünür (wagon-wheel etkisi).
+   */
+  it("yuvarlanma kare hızından bağımsız ve strobe kelepçeli", () => {
+    expect(/rotation\.x -= spin \* 0\.016/.test(kart), "sabit kare süresi varsayılıyor").toBe(false);
+    expect(/Math\.PI \/ \(HUB_SPOKES \* dt\)/.test(kart), "strobe kelepçesi yok").toBe(true);
+    expect(/Math\.min\(r\.v \/ yaricap, spinCap\) \* dt/.test(kart),
+      "yuvarlanma dt ile çarpılmıyor").toBe(true);
+  });
+
+  /**
+   * Lastik de göbek de düz silindir = dönme eksenine göre TAM SİMETRİK:
+   * desen olmadan yuvarlanma ekranda hiç görünmüyordu (kod döndürüyor, göz
+   * hiçbir şey görmüyor). Doku PAYLAŞILIR — çizim çağrısı artmaz (ölçüldü:
+   * 185 çizim / 47.9k üçgen, değişmedi).
+   */
+  it("jantta desen var (yoksa dönüş görünmez)", () => {
+    expect(/hubTexture\(HUB_SPOKES\)/.test(kart), "jant dokusu kullanılmıyor").toBe(true);
+    const dok = readFileSync(join(DIZIN, "_letterTexture.ts"), "utf8");
+    expect(/export function hubTexture/.test(dok), "hubTexture yok").toBe(true);
+  });
+});

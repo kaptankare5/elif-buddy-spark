@@ -41,10 +41,10 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { zorlukAyari } from "@/lib/zorluk";
-import { createSarsinti, hareketKatsayisi } from "@/lib/gameFeel";
+import { clamp, createSarsinti, hareketKatsayisi } from "@/lib/gameFeel";
 import { oyunBitti, useOyunKayitlari } from "@/lib/oyunSonucu";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
-import { letterTexture, nameTexture, emojiTexture, faceTexture, wordTexture, blockedTexture } from "./_letterTexture";
+import { letterTexture, nameTexture, emojiTexture, faceTexture, hubTexture, wordTexture, blockedTexture } from "./_letterTexture";
 import { getAskMode, okunurAd, pickNameWrongs, getFlashMs, FLASH_CUE_MS, FLASH_SIK, USTTE_SIK, yaziliSik, type AskMode } from "@/lib/askMode";
 import type { ContentItem } from "@/data/types";
 
@@ -83,6 +83,38 @@ const SPIN_TIME = 0.9;         // muza değince savrulma
 const HOP_V = 18;
 const HOP_BOOST = 1.4;         // inişte verilen kısa hız
 const GRAVITY = 30;
+
+// ---------------- TEKERLEK GÖRSELİ ----------------
+// ⚠️ ÖLÇÜLDÜ (`tools/perf/teker.mjs`): eski kurulumda ön tekerlek tam
+// savrulmada aksını yataydan **35.5°** kaldırıyor ve yerden **0.373 birim**
+// (kendi yarıçapının %60'ı) yükseliyordu — kullanıcı bunu "sanki ön tekerler
+// havadaymış gibi" diye bildirdi. İki ayrı kusur aynı görüntüyü veriyordu:
+//  (1) GÖVDE EĞİMİ tekerleği de yatırıyordu. Gerçek araçta gövde süspansiyon
+//      üzerinde yatar, tekerlek YERDE KALIR — bu yüzden eğim artık `shell`
+//      düğümüne uygulanır, tekerlekler `body`nin doğrudan çocuğudur.
+//  (2) Yuvarlanma (X) ile direksiyon (Y) AYNI Euler'deydi. three.js "XYZ"
+//      sırasında matris Rx·Ry olur: direksiyon ekseni, sürekli büyüyen
+//      yuvarlanma açısıyla birlikte devriliyordu (Unity forumlarındaki
+//      klasik "ön teker gimbal" sorunu). Artık AYRI düğümler: göbek (hub)
+//      yalnız direksiyonu, çocuğu olan tekerlek yalnız yuvarlanmayı döndürür.
+// [yanal, ileri, ölçek] — İLK İKİSİ ÖN (direksiyona çevrilenler); ön = +Z,
+// yerel +X = SOL (lookAt yerel +Z'yi ileri çevirdiği için).
+const WHEEL_SPEC = [
+  [-1.25, 1.25, 1], [1.25, 1.25, 1], [-1.3, -1.35, 1.14], [1.3, -1.35, 1.14],
+] as const;
+const WHEEL_R = 0.62;          // CylinderGeometry yarıçapı (ölçekle çarpılır)
+const WHEELBASE = 2.6;         // ön-arka aks arası (1.25 + 1.35)
+const TRACK_W = 2.5;           // ön tekerlekler arası (1.25 × 2)
+// Direksiyon kilidi ≈30°: gerçek binek araçta 30-40°, kartlarda ~25°.
+const MAX_LOCK = 0.52;
+// Girdi payı: çocuk sağa basınca tekerlek GÖRÜNÜR biçimde sağa dönsün.
+// Kavis payı ise fiziksel: bisiklet modeli δ = atan(L·κ).
+const STEER_INPUT = 0.42;
+const STEER_LOOK = 4;          // kavis ölçümünde ileri bakış (birim)
+// Göbek deseninin dönme simetrisi. Tekerleğin görsel açısal hızı
+// π/(HUB_SPOKES·dt) ile sınırlanır: üstüne çıkınca zamansal örtüşme başlar
+// ve tekerlek GERİYE dönüyormuş gibi görünür (wagon-wheel etkisi).
+const HUB_SPOKES = 3;
 
 // Soru kapısının sesi kapıdan kaç birim önce çalsın. Kart hızlı (27 b/sn):
 // 260 birim ≈ 9-10 sn. Çocuk dinleyip düşünüp şeridine yerleşebilsin.
@@ -237,9 +269,13 @@ interface Racer {
   homeU: number;
   gateChoice: number | null;
   finished: number | null;
+  steer: number;          // ön tekerlek açısı (rad, yumuşatılmış; + = sola)
   group: THREE.Group;
   body: THREE.Group;
-  wheels: THREE.Object3D[];
+  shell: THREE.Group;     // gövde kabuğu — EĞİM burada, tekerlekler yatmaz
+  hubs: THREE.Object3D[]; // teker göbeği: YALNIZ direksiyon (Y)
+  wheels: THREE.Object3D[]; // göbeğin çocuğu: YALNIZ yuvarlanma (X)
+  steerWheel: THREE.Object3D | null;  // sürücünün elindeki direksiyon
   bodyMat: THREE.MeshStandardMaterial;
   aura: THREE.Mesh | null;
 }
@@ -994,7 +1030,16 @@ const KartGame = () => {
     const wheelRingGeo = keep(new THREE.TorusGeometry(0.26, 0.06, 8, 16));
 
     const tyreMat = keep(new THREE.MeshStandardMaterial({ color: 0x2b2724, roughness: 0.92 }));
-    const rimMat = keep(new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.35, metalness: 0.6 }));
+    // ⚠️ JANT DOKUSU: lastik de göbek de düz silindir, yani dönme eksenine
+    // göre TAM SİMETRİK — desen olmadan yuvarlanma animasyonu ekranda hiç
+    // görünmüyordu (kod her karede döndürüyor, göz hiçbir şey görmüyor).
+    // Doku PAYLAŞILIR, çizim çağrısı artmaz.
+    const rimMat = keep(new THREE.MeshStandardMaterial({
+      // ⚠️ METALNESS DÜŞÜK: jant yandan baktığı için güneşi değil, yalnız
+      // gökyüzü (hemisphere) ışığını alıyor. Metalness diffuse albedoyu
+      // kısıyor, 0.35'te göbek mavi-yeşil ve koyu çıkıyordu (ölçüldü).
+      color: 0xffffff, map: hubTexture(HUB_SPOKES), roughness: 0.5, metalness: 0.08,
+    }));
     const darkMat = keep(new THREE.MeshStandardMaterial({ color: 0x4b5563, roughness: 0.6, metalness: 0.25 }));
     const skinMat = keep(new THREE.MeshStandardMaterial({ color: 0xffdcb4, roughness: 0.85 }));
     const faceMat = keep(new THREE.MeshBasicMaterial({ map: faceTexture(), transparent: true }));
@@ -1002,6 +1047,12 @@ const KartGame = () => {
     const makeRacer = (id: number, name: string, color: number, isPlayer: boolean, homeU: number): Racer => {
       const group = new THREE.Group();
       const body = new THREE.Group();
+      // ⚠️ KABUK AYRI DÜĞÜM: gövde eğimi (drift) YALNIZ buna uygulanır.
+      // Tekerlekler `body`nin doğrudan çocuğu kalır ki araç yatarken onlar
+      // yerde kalsın — gerçek araçta da gövde süspansiyon üzerinde yatar,
+      // lastik yere basmaya devam eder.
+      const shell = new THREE.Group();
+      body.add(shell);
       const bodyMat = keep(new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.35 }));
 
       // ⚠️ MODELİN ÖNÜ +Z'DİR. `Object3D.lookAt` kamera OLMAYAN nesnelerde
@@ -1010,26 +1061,26 @@ const KartGame = () => {
       const chassis = new THREE.Mesh(chassisGeo, bodyMat);
       chassis.position.y = 0.75;
       chassis.castShadow = true;
-      body.add(chassis);
+      shell.add(chassis);
       // yuvarlak burun (kapsül, yatık) — köşeli kutu yerine
       const nose = new THREE.Mesh(noseGeo, bodyMat);
       nose.rotation.x = Math.PI / 2;
       nose.scale.set(1, 1, 0.55);
       nose.position.set(0, 0.66, 1.75);
-      body.add(nose);
+      shell.add(nose);
       // Koltuk sürücünün ARKASINDA ince bir sırtlık. Küre olarak gövdenin
       // üstüne konduğunda sürücüyü tamamen yutuyordu.
       const seat = new THREE.Mesh(seatGeo, darkMat);
       seat.scale.set(0.95, 0.95, 0.42);
       seat.position.set(0, 1.32, -0.95);
-      body.add(seat);
+      shell.add(seat);
       const spoiler = new THREE.Mesh(spoilerGeo, bodyMat);
       spoiler.position.set(0, 1.55, -1.85);
-      body.add(spoiler);
+      shell.add(spoiler);
       for (const sx of [-0.85, 0.85]) {
         const leg = new THREE.Mesh(spoilerLegGeo, darkMat);
         leg.position.set(sx, 1.22, -1.85);
-        body.add(leg);
+        shell.add(leg);
       }
       // ---- SÜRÜCÜ (yuvarlak, sevimli; yüz ileriye = +Z bakar) ----
       const driver = new THREE.Group();
@@ -1091,11 +1142,18 @@ const KartGame = () => {
       pom.scale.setScalar(0.85);
       pom.position.set(0, 1.12, 0);
       driver.add(pom);
-      body.add(driver);
+      shell.add(driver);
 
-      // İlk iki eleman ÖN tekerlek (direksiyona çevrilenler) — ön artık +Z.
+      // ⚠️ İKİ KATLI TEKERLEK: göbek (hub) YALNIZ direksiyonu (Y), çocuğu olan
+      // tekerlek YALNIZ yuvarlanmayı (X) döndürür. Tek düğümde toplanınca
+      // three.js "XYZ" Euler sırası matrisi Rx·Ry yapıyor, yani direksiyon
+      // ekseni sürekli büyüyen yuvarlanma açısıyla devriliyordu.
+      // İlk iki eleman ÖN tekerlek (direksiyona çevrilenler) — ön = +Z.
+      const hubs: THREE.Object3D[] = [];
       const wheels: THREE.Object3D[] = [];
-      for (const [wx, wz, ws] of [[-1.25, 1.25, 1], [1.25, 1.25, 1], [-1.3, -1.35, 1.14], [1.3, -1.35, 1.14]] as const) {
+      for (const [wx, wz, ws] of WHEEL_SPEC) {
+        const hub = new THREE.Group();
+        hub.position.set(wx, WHEEL_R * ws, wz);
         const w = new THREE.Group();
         const tyre = new THREE.Mesh(wheelGeo, tyreMat);
         tyre.rotation.z = Math.PI / 2;
@@ -1103,9 +1161,11 @@ const KartGame = () => {
         tyre.castShadow = true;
         const rim = new THREE.Mesh(rimGeo, rimMat);
         rim.rotation.z = Math.PI / 2;
+        rim.scale.set(ws, 1, ws);
         w.add(tyre, rim);
-        w.position.set(wx, 0.62 * ws, wz);
-        body.add(w);
+        hub.add(w);
+        body.add(hub);          // ⚠️ kabuğun DEĞİL gövdenin çocuğu
+        hubs.push(hub);
         wheels.push(w);
       }
 
@@ -1143,12 +1203,12 @@ const KartGame = () => {
       scene.add(group);
       return {
         id, name, isPlayer, s: 0, u: homeU, y: 0, vy: 0, v: 0, lap: 1,
-        turboT: 0, starT: 0, mudT: 0, spinT: 0, glowT: 0, drift: 0,
+        turboT: 0, starT: 0, mudT: 0, spinT: 0, glowT: 0, drift: 0, steer: 0,
         // ⚠️ Bot becerisi = İDEAL ÇİZGİDE KALMA (viraj alma), kapı seçimi
         // değil. Zorlukta botlar virajı daha iyi alır, yarış sıkışır.
         skill: isPlayer ? 1 : Math.min(1, (def.botSkill[0] + Math.random() * (def.botSkill[1] - def.botSkill[0])) * zorlukAyari().baslangic),
         targetU: homeU, homeU, gateChoice: null, finished: null,
-        group, body, wheels, bodyMat, aura,
+        group, body, shell, hubs, wheels, steerWheel: wheelRing, bodyMat, aura,
       };
     };
 
@@ -1253,6 +1313,9 @@ const KartGame = () => {
 
     const wpos = new THREE.Vector3();
     const wnext = new THREE.Vector3();
+    // kavis ölçümü için iki ek örnek (tekerlek açısı — bisiklet modeli)
+    const wcA = new THREE.Vector3();
+    const wcB = new THREE.Vector3();
     const camPos = new THREE.Vector3();
     const camLook = new THREE.Vector3();
 
@@ -1262,19 +1325,77 @@ const KartGame = () => {
      * yalnız step() içinde kalınca yarış başlamadan önce bütün araçlar
      * sahnenin merkezinde üst üste duruyordu.
      */
-    const placeRacers = () => {
+    const placeRacers = (dt = 0) => {
+      // Görsel açısal hız tavanı: bir karede göbek deseninin yarım
+      // simetri adımından fazla dönerse tekerlek geriye dönüyormuş gibi
+      // görünür (zamansal örtüşme). dt'ye bağlı, yani 30 fps'lik cihazda
+      // kendiliğinden daha sıkı.
+      const spinCap = dt > 0 ? Math.PI / (HUB_SPOKES * dt) : 0;
       for (const r of racers) {
         worldAt(r.s, r.u, wpos);
         r.group.position.set(wpos.x, wpos.y + r.y, wpos.z);
         worldAt(r.s + 4, r.u + r.drift * 2.2, wnext);
         r.group.lookAt(wnext.x, wnext.y + r.y, wnext.z);
-        // drift eğimi + savrulma dönüşü
-        r.body.rotation.z = -r.drift * 0.22;
+        // drift eğimi KABUKTA (tekerlek yerde kalsın), savrulma GÖVDEDE
+        // (araç bütünüyle döner).
+        r.shell.rotation.z = -r.drift * 0.22;
         r.body.rotation.y = r.spinT > 0 ? (SPIN_TIME - r.spinT) * 14 : 0;
-        const spin = r.v * 0.9;
-        for (const w of r.wheels) w.rotation.x -= spin * 0.016;
-        // ön tekerlekleri direksiyona çevir
-        r.wheels[0].rotation.y = r.wheels[1].rotation.y = -r.drift * 0.4;
+
+        /**
+         * ⚠️ ÖN TEKERLEK AÇISI İKİ KAYNAĞIN TOPLAMI:
+         *  (a) SÜRÜŞ GİRDİSİ (`drift`, yumuşatılmış yanal hız) — çocuk sağa
+         *      basınca tekerlek görünür biçimde sağa döner. Arcade payı.
+         *  (b) PİSTİN KAVİSİ — bisiklet modeli: δ = atan(L·κ). Bu olmadan
+         *      uzun virajda tekerlek DÜMDÜZ kalıyor, oysa araç dönüyor;
+         *      çocuk "tekerlekler çalışmıyor" diye görüyor. κ, pist boyunca
+         *      iki kirişin arasındaki açıdan ölçülür (dt gerektirmez, geri
+         *      sayımda da doğru çalışır).
+         * Yerel +X = SOL olduğu için sağa dönüş NEGATİF açıdır.
+         */
+        worldAt(r.s + STEER_LOOK, r.u, wcA);
+        worldAt(r.s + STEER_LOOK * 2, r.u, wcB);
+        let h0x = wcA.x - wpos.x, h0z = wcA.z - wpos.z;
+        let h1x = wcB.x - wcA.x, h1z = wcB.z - wcA.z;
+        const n0 = Math.hypot(h0x, h0z) || 1, n1 = Math.hypot(h1x, h1z) || 1;
+        h0x /= n0; h0z /= n0; h1x /= n1; h1z /= n1;
+        const kavis = Math.atan2(h0z * h1x - h0x * h1z, h0x * h1x + h0z * h1z);
+        const hedef = clamp(
+          -r.drift * STEER_INPUT + Math.atan(WHEELBASE * kavis / STEER_LOOK),
+          -MAX_LOCK, MAX_LOCK,
+        );
+        // dt yoksa (geri sayım) doğrudan otur; yarışta yumuşat.
+        r.steer += (hedef - r.steer) * (dt > 0 ? Math.min(1, dt * 12) : 1);
+
+        /**
+         * ⚠️ ACKERMANN: iç tekerlek daha KÜÇÜK yarıçaplı yayı çizdiği için
+         * dıştakinden DAHA ÇOK döner (cot δ_dış = cot δ_iç + iz/dingil).
+         * Kartın izi 2.5, dingil mesafesi 2.6 — oran ~0.96, yani fark
+         * gözle görülür (17° ortalamada iç 20°, dış 15°).
+         */
+        const d = Math.abs(r.steer);
+        let ic = d, dis = d;
+        if (d > 0.02) {
+          const R = WHEELBASE / Math.tan(d);
+          ic = Math.atan(WHEELBASE / Math.max(0.4, R - TRACK_W / 2));
+          dis = Math.atan(WHEELBASE / (R + TRACK_W / 2));
+        }
+        const sgn = Math.sign(r.steer);
+        // hubs[0] yerel −X'te = SAĞ teker. Sağa dönerken (sgn<0) iç odur.
+        r.hubs[0].rotation.y = sgn * (sgn < 0 ? ic : dis);
+        r.hubs[1].rotation.y = sgn * (sgn < 0 ? dis : ic);
+        // Sürücünün elindeki direksiyon da döner (kart direksiyonu ~1:1'e
+        // yakındır; 2.2 çarpanı okunur ama abartısız).
+        if (r.steerWheel) r.steerWheel.rotation.z = -r.steer * 2.2;
+
+        // Yuvarlanma: ω = v / yarıçap (arka tekerlek daha büyük → daha yavaş
+        // döner). `+` yön ileri: +X aksı etrafında pozitif dönüş tepedeki
+        // noktayı +Z'ye, yani ileri taşır.
+        if (dt > 0) {
+          for (let i = 0; i < r.wheels.length; i++) {
+            const yaricap = WHEEL_R * WHEEL_SPEC[i][2];
+            r.wheels[i].rotation.x += Math.min(r.v / yaricap, spinCap) * dt;
+          }
+        }
       }
     };
     camera.position.copy(worldAt(-12, 0, camPos)).setY(7);
@@ -1602,7 +1723,7 @@ const KartGame = () => {
         setPrompt(null);
       }
 
-      placeRacers();
+      placeRacers(dt);
 
       // --- drift kıvılcımları (oyuncu) ---
       if (Math.abs(player.drift) > 0.55 && player.y < 0.3) {
