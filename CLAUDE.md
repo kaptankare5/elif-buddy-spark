@@ -887,6 +887,12 @@ alınmadığı orada yazılı (Mario'nun kayganlığı, MK'nin drift kademeleri�
   (`ghostT`); iki durum aynı işareti verirse ayırt edilemez.
   ⚠️ Malzemelerin `transparent`ı MOUNT'ta açılır — çalışma anında değiştirmek
   three.js'te shader'ı yeniden derletir, tam da gücün bittiği anda kare düşer.
+  ⚠️ **EKRANDA YÖN TUŞU YOK** (kullanıcı şartı: "en alttaki renkli yön
+  tuşlarını kaldır"). Bütün hareketler oyun alanının KENDİSİNDEN yapılıyor:
+  kaydırma (sağa/sola şerit · yukarı zıpla · aşağı kay) ve kısa dokunuş
+  (sol/sağ üçte bir şerit, ORTA soruyu tekrar dinletir), masaüstünde ok
+  tuşları/WASD. Hiçbir işlem yalnız tuşlara bağlı değildi, o yüzden
+  kaldırmak bir yeteneği götürmedi. Geri koyma.
 - "Elifbâ Partisi" (`PartyGame.tsx`, id "party"): **Fall Guys tarzı 3B engel
   parkuru**, 5 botla yarış, tam ekran + dikey + mobil kontroller. R3F DEĞİL,
   **düz three.js** (her karede ~40 hareketli gövde; React ağacına bağlamak
