@@ -1538,12 +1538,19 @@ const PlatformGame = () => {
   // 🎵 Ambiyans müziği aç/kapa (kalıcı tercih)
   const [musicMuted, setMusicMuted] = useState(() => gameMusic.isMuted());
 
-  // Müzik: oyun gerçekten akarken çalar; duraklama/bitiş/ayrılışta susar.
+  /**
+   * Müzik: oyun gerçekten akarken çalar; duraklama/bitiş/ayrılışta susar.
+   * ⚠️ VARSAYILAN KAPALI (kullanıcı kararı — dinî hassasiyet). `start()`
+   * sessizken erken dönüyor, bu yüzden `musicMuted` de BAĞIMLILIK: oyunun
+   * ortasında müziği açan çocuk/veli için bu efektin yeniden çalışması ve
+   * `start()`'ı bu kez gerçekten yapması gerekiyor. Eskiden ses grafiği
+   * zaten dönüyordu (kazanç 0), açmak yalnız kazancı 1'e çekiyordu.
+   */
   useEffect(() => {
-    if (started && !paused && !gameOver && !won) gameMusic.start(level);
+    if (started && !paused && !gameOver && !won && !musicMuted) gameMusic.start(level);
     else gameMusic.stop();
     return () => gameMusic.stop();
-  }, [started, paused, gameOver, won, level]);
+  }, [started, paused, gameOver, won, level, musicMuted]);
 
   useEffect(() => {
     controls.current.paused = paused || gameOver || won;

@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 404 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 409 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -697,6 +697,19 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   `playItem`/`playSpeech` (gerçek hoca kayıtları) ASLA kısılmaz — oyunların
   sorusu SESLE sorulur, onları susturmak oyunu oynanamaz yapar.
   Bekçi: `sesAyari.test.ts` (sahte AudioContext ile osilatör sayar).
+- ⚠️ **TEK MELODİK KATMAN: `gameMusic.ts` — VARSAYILAN KAPALI.** Macera'da
+  pentatonik bir ambiyans çalıyordu ve varsayılan AÇIKTI, yani "müzik yok"
+  kuralının dışında kalmış tek yerdi. Kullanıcı kararı (dinî hassasiyet:
+  "elifbâ harfiyle müzik iyi olmayabilir, kutsal olduğunu düşünenler var"):
+  **kod ve düğme kalsın, varsayılan kapalı olsun**. Anahtarın üç hâli var,
+  göç kendiliğinden doğru: yok → sessiz (yeni varsayılan) · "1" → sessiz
+  (eskiden bilerek kapatanlar) · "0" → çalar (bu sürümden sonra bilerek
+  açanlar). ⚠️ Sessizken `start()` erken döner — AudioContext bile açılmaz;
+  eskiden grafik kurulup kazanç 0'a çekiliyordu, yani kimsenin duymadığı iş
+  sürekli dönüyordu. Bu yüzden Macera'daki efektin bağımlılıklarına
+  `musicMuted` EKLENDİ: oyun ortasında açan için `start()` yeniden
+  çağrılmalı. Ayrıca Ayarlar'daki ses anahtarı kapalıysa müzik de çalmaz.
+  Bekçi: `sesAyari.test.ts` → "oyun müziği (Macera)".
 - ⚠️ **SÜREKLİ SES KATMANI** (`motorDongusu` / `gurultuDongusu`, `SurekliSes`):
   uygulamada HİÇ YOKTU — 15 oyunun sesi de "olay oldu → çıt" biçimindeydi.
   Oysa hız türlerinin ses kimliği DURUM sesidir: motor, lastik, zemin,

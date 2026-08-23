@@ -110,3 +110,50 @@ describe("ses efektleri anahtarı", () => {
     expect(/sfxAcik\(\)/.test(govde("playSpeech")), "playSpeech susturuluyor").toBe(false);
   });
 });
+
+/**
+ * ⚠️ OYUN MÜZİĞİ VARSAYILAN **KAPALI** (kullanıcı kararı, dinî hassasiyet:
+ * "elifbâ harfiyle müzik iyi olmayabilir, kutsal olduğunu düşünenler var").
+ * `gameMusic` uygulamanın tek MELODİK katmanıydı ve Macera'da varsayılan
+ * AÇIK çalıyordu — yani "müzik yok" kuralının dışında kalmış tek yer.
+ * Kod ve düğme duruyor; müzik ancak bilerek açılırsa çalıyor.
+ */
+describe("oyun müziği (Macera)", () => {
+  beforeEach(() => { OSC = 0; localStorage.removeItem("elifba-game-music-muted-v1"); });
+
+  it("hiç dokunulmamışsa SESSİZ", async () => {
+    const { gameMusic } = await import("@/lib/gameMusic");
+    expect(gameMusic.isMuted(), "müzik varsayılan olarak açık geliyor").toBe(true);
+  });
+
+  it("eskiden bilerek kapatanın kararı korunuyor", async () => {
+    const { gameMusic } = await import("@/lib/gameMusic");
+    localStorage.setItem("elifba-game-music-muted-v1", "1");
+    expect(gameMusic.isMuted()).toBe(true);
+  });
+
+  it("bilerek açılırsa çalıyor", async () => {
+    const { gameMusic } = await import("@/lib/gameMusic");
+    localStorage.setItem("elifba-game-music-muted-v1", "0");
+    expect(gameMusic.isMuted()).toBe(false);
+  });
+
+  /** Sessizken AudioContext bile açılmamalı — duyulmayan iş boşa dönmesin. */
+  it("sessizken start() hiçbir ses üretmiyor", async () => {
+    const { gameMusic } = await import("@/lib/gameMusic");
+    sesAyari(true);
+    gameMusic.start(1);
+    expect(OSC, "sessizken osilatör açıldı").toBe(0);
+    gameMusic.stop();
+  });
+
+  /** Ayarlar'dan ses tamamen kapatıldıysa müzik de çalmaz. */
+  it("ses efektleri kapalıyken müzik de çalmıyor", async () => {
+    const { gameMusic } = await import("@/lib/gameMusic");
+    localStorage.setItem("elifba-game-music-muted-v1", "0");
+    sesAyari(false);
+    gameMusic.start(1);
+    expect(OSC).toBe(0);
+    gameMusic.stop();
+  });
+});
