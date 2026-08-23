@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 391 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 396 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -867,6 +867,26 @@ alınmadığı orada yazılı (Mario'nun kayganlığı, MK'nin drift kademeleri�
   harfler canvas dokusuyla (troika değil), pano dokusu ölçüp sığdırır
   (derin çanaklı harfler kesilmez), fog'dan muaf. Tasarım:
   `docs/tren-sorfu-tasarim.md`. rAF arka planda kısılır — DT_MAX kelepçesi var.
+  ⚠️ **GÜÇ SÜRESİ RAKAMLA DEĞİL AZALAN BARLA** (`GUCLER`, sol alt köşe):
+  eskiden sağ üstte "🚀 4s" yazıyordu — 5-8 yaşta rakam okumak ayrı bir iş,
+  üstelik çocuk koşarken köşedeki iki karakteri okuyup saniyeye çeviremiyor.
+  Doluluk = kalan süre, okuma gerektirmez. **Tek bar yeter**: `onGate` yeni
+  gücü yalnız üçü de bitmişken veriyor, aynı anda en fazla bir güç etkin.
+  ⚠️ Barın genişliği CSS geçişiyle yumuşatılır: HUD 200 ms'de bir güncelleniyor
+  (kasıtlı — her karede React render etmemek için), geçiş olmadan çubuk
+  saniyede 5 kez ZIPLAYARAK kısalıyor.
+  ⚠️ **GÜÇ BİTMEDEN KARAKTER "NEFES ALIR"** (`nefesSaydamligi`, gameFeel.ts —
+  ortak katmanda, Parti/Yarışı da kullanabilsin diye). Kullanıcı şartı:
+  "bara bakmasa bile anlasın". Koşu oyununda göz YOLDA olmak zorunda; köşedeki
+  çubuğu izlemek engel kaçırmak demek, o yüzden uyarı çocuğun zaten baktığı
+  yerde de veriliyor. Son `GUC_UYARI` (1.6 sn) boyunca saydamlık kosinüsle
+  **4 kez** 1 → 0.35 → 1 gider (ölçüldü: 2.82 sn'de başlıyor, dipler 0.38 ·
+  0.37 · 0.35 · 0.35, tam bitişte 1.00). ⚠️ İki ucu da 1 olmalı — bitişte
+  yarı saydam kalırsa çocuk gücün sürdüğünü sanır. ⚠️ SERT yanıp sönme
+  DEĞİL: sert `visible` yanıp sönmesi bu oyunda zaten "hasar aldım"
+  (`ghostT`); iki durum aynı işareti verirse ayırt edilemez.
+  ⚠️ Malzemelerin `transparent`ı MOUNT'ta açılır — çalışma anında değiştirmek
+  three.js'te shader'ı yeniden derletir, tam da gücün bittiği anda kare düşer.
 - "Elifbâ Partisi" (`PartyGame.tsx`, id "party"): **Fall Guys tarzı 3B engel
   parkuru**, 5 botla yarış, tam ekran + dikey + mobil kontroller. R3F DEĞİL,
   **düz three.js** (her karede ~40 hareketli gövde; React ağacına bağlamak

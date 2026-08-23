@@ -20,7 +20,7 @@ import { recordLetterMastery } from "@/data/srs";
 import { enqueueRetryItem, getGameItemLevel, pickNextGameItem, recordGameAnswer } from "@/lib/gameProgress";
 import { useGameMode } from "@/lib/gameMode";
 import { zorlukAyari } from "@/lib/zorluk";
-import { hareketKatsayisi } from "@/lib/gameFeel";
+import { hareketKatsayisi, GUC_UYARI, nefesSaydamligi } from "@/lib/gameFeel";
 import { sfx, titre } from "@/lib/juice";
 import { gorevIlerlet, useGorevler, gorevMetni } from "@/lib/gorevler";
 import type { ContentItem } from "@/data/types";
@@ -77,6 +77,28 @@ const GHOST_TIME = 1.4;    // tökezleme sonrası hayalet süresi
 const JET_TIME = 4.5;
 const X2_TIME = 12;
 const MAG_TIME = 10;
+
+/**
+ * GÜÇ SÜRESİ GÖSTERGESİ.
+ *
+ * ⚠️ SAYIYLA DEĞİL BARLA: eskiden sağ üstte "🚀 4s" yazıyordu. Bu oyunun
+ * kitlesi 5-8 yaş — rakam okumak ayrı bir iş, üstelik çocuk koşarken
+ * ekranın köşesindeki iki karakteri okuyup saniyeye çeviremiyor. Azalan
+ * bir çubuk okumayı hiç gerektirmez: doluluk = kalan süre.
+ *
+ * ⚠️ TEK BAR YETİYOR: `onGate` yeni gücü YALNIZ üçü de bitmişken veriyor
+ * (`s.jetT <= 0 && s.x2T <= 0 && s.magT <= 0`), yani aynı anda en fazla bir
+ * güç etkin. İkinci bir bar hiç dolmayacak bir yer kaplardı.
+ */
+const GUCLER = {
+  jet: { ikon: "🚀", sure: JET_TIME, renk: "#38bdf8" },
+  x2: { ikon: "⭐", sure: X2_TIME, renk: "#c084fc" },
+  mag: { ikon: "🧲", sure: MAG_TIME, renk: "#fbbf24" },
+} as const;
+
+// Uyarı penceresi ve "nefes" eğrisi ORTAK katmanda (`gameFeel.ts`): aynı
+// desen Partisi/Yarışı'nın süreli güçlerinde de kullanılabilsin, ve saf
+// işlev olduğu için birim testi yazılabilsin.
 const BOARD_W = 2.9;       // harf panosu genişliği (büyük ve okunur)
 const BOARD_H = 3.6;       // pano yüksekliği — genişlikten belirgin daha büyük
 const BOARD_GAP = 0.15;    // panonun alt kenarı ile zemin/tren üstü arası boşluk
@@ -388,6 +410,22 @@ function Player({ sim }: { sim: React.MutableRefObject<Sim> }) {
   const flameL = useRef<THREE.Mesh>(null!);
   const flameR = useRef<THREE.Mesh>(null!);
   const shadow = useRef<THREE.Mesh>(null!);
+  const saydam = useRef(1);
+
+  /**
+   * ⚠️ `transparent` BİR KEZ, mount'ta açılır — çalışma anında değiştirmek
+   * three.js'te malzemenin shader'ını yeniden derletir; tam da gücün bittiği
+   * anda, yani ekranda en çok şey olurken kare düşürür. Opaklık 1'de kalan
+   * saydam bir malzeme opak gibi görünür (derinlik yazımı açık), maliyeti
+   * yalnız saydam geçişte çizilmesidir — karakter tek parça olduğu için
+   * sıralama sorunu çıkarmaz.
+   */
+  useEffect(() => {
+    g.current?.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+      if (m && !Array.isArray(m)) { m.transparent = true; m.needsUpdate = true; }
+    });
+  }, []);
 
   useFrame((st, dRaw) => {
     const s = sim.current;
@@ -420,8 +458,23 @@ function Player({ sim }: { sim: React.MutableRefObject<Sim> }) {
     // kayma: squash
     const squash = s.slideT > 0 ? 0.52 : 1;
     body.current.scale.y += (squash - body.current.scale.y) * Math.min(1, d * 14);
-    // hayalet: yanıp sönme
+    // hayalet: yanıp sönme (SERT — "hasar aldım")
     g.current.visible = s.ghostT > 0 ? Math.floor(t * 12) % 2 === 0 : true;
+    /**
+     * ⚠️ GÜÇ BİTMEK ÜZERE: karakter nefes alır gibi yarı saydamlaşır.
+     * Hayaletin sert yanıp sönmesinden AYRI bir işaret — biri hasarı, öteki
+     * bitmek üzere olan gücü anlatır; ikisi aynı görünürse çocuk hangisi
+     * olduğunu bilemez. Uyarı karakterin üstünde çünkü koşarken göz YOLDA:
+     * köşedeki barı izlemek engel kaçırmak demek.
+     */
+    const hedefSaydam = nefesSaydamligi(s.jetT);
+    if (Math.abs(hedefSaydam - saydam.current) > 0.004) {
+      saydam.current = hedefSaydam;
+      g.current.traverse((o) => {
+        const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+        if (m && !Array.isArray(m)) m.opacity = hedefSaydam;
+      });
+    }
     // koşu animasyonu
     const swing = !s.grounded ? 0.55 : Math.sin(t * 12) * 0.8 * (running ? 1 : 0.1);
     legL.current.rotation.x = !s.grounded ? -0.5 : swing;
@@ -1566,6 +1619,12 @@ const SubwayGame = () => {
               animation-name: hiz-ak; animation-timing-function: linear;
               animation-iteration-count: infinite; will-change: transform;
             }
+            /* Güç bitmek üzere: bar KARAKTERLE AYNI tempoda nefes alır
+               (GUC_UYARI / NEFES_SAYISI = 1.6 / 4 = 0.4 sn bir çevrim).
+               İki kanal aynı ritimde olunca çocuk ikisini tek olay olarak
+               okuyor; farklı tempolar iki ayrı uyarı gibi duruyordu. */
+            @keyframes guc-nefes { 0%,100% { opacity: 1 } 50% { opacity: .4 } }
+            .guc-nefes { animation: guc-nefes .4s linear infinite; }
           `}</style>
 
           {/* normal modda doğru cevap ışığı */}
@@ -1574,18 +1633,40 @@ const SubwayGame = () => {
                  style={{ background: "radial-gradient(circle at 50% 55%, hsl(var(--success)/0.5), transparent 62%)" }} />
           )}
 
-          {/* güç rozetleri */}
-          <div className="pointer-events-none absolute top-2 right-2 z-20 flex flex-col gap-1 items-end">
-            {pu.jet > 0 && (
-              <span className="rounded-full bg-info/90 px-2.5 py-0.5 text-[11px] font-extrabold text-white shadow-soft">🚀 {Math.ceil(pu.jet)}s</span>
-            )}
-            {pu.x2 > 0 && (
-              <span className="rounded-full bg-primary/90 px-2.5 py-0.5 text-[11px] font-extrabold text-white shadow-soft">⭐2X {Math.ceil(pu.x2)}s</span>
-            )}
-            {pu.mag > 0 && (
-              <span className="rounded-full bg-warning/90 px-2.5 py-0.5 text-[11px] font-extrabold text-white shadow-soft">🧲 {Math.ceil(pu.mag)}s</span>
-            )}
-          </div>
+          {/* GÜÇ SÜRESİ BARI — yukarıdaki `GUCLER` notuna bak: rakam değil,
+              AZALAN ÇUBUK. Sol altta duruyor: sağ üst skor/kalp, üst orta
+              soru bandı, orta ise yolun kendisi; sol alt köşe boş ve gözün
+              yola dönerken geçtiği yer.
+              ⚠️ GENİŞLİK GEÇİŞLE YUMUŞATILIR: HUD 200 ms'de bir güncelleniyor
+              (kasıtlı — her karede React render etmemek için, bkz. hız
+              çizgileri notu). Geçiş olmadan çubuk saniyede 5 kez ZIPLAYARAK
+              kısalır; 220 ms'lik doğrusal geçiş aradaki kareleri tarayıcıya
+              doldurtuyor ve akıp gidiyormuş gibi görünüyor. */}
+          {(() => {
+            const etkin = pu.jet > 0 ? "jet" : pu.x2 > 0 ? "x2" : pu.mag > 0 ? "mag" : null;
+            if (!etkin) return null;
+            const kalan = etkin === "jet" ? pu.jet : etkin === "x2" ? pu.x2 : pu.mag;
+            const bilgi = GUCLER[etkin];
+            const oran = Math.max(0, Math.min(1, kalan / bilgi.sure));
+            return (
+              <div
+                className={cn(
+                  "pointer-events-none absolute bottom-2 left-2 z-20 flex items-center gap-1.5",
+                  "rounded-full bg-black/35 px-2 py-1 backdrop-blur-sm",
+                  // Son saniyelerde bar da karakterle AYNI tempoda nefes alır.
+                  kalan <= GUC_UYARI && "guc-nefes",
+                )}
+              >
+                <span className="text-sm leading-none">{bilgi.ikon}</span>
+                <div className="h-2.5 w-20 overflow-hidden rounded-full bg-white/25">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${oran * 100}%`, background: bilgi.renk, transition: "width 220ms linear" }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
 
           {/* duraklat */}
           {!paused && !gameOver && (
