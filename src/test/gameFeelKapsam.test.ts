@@ -25,6 +25,7 @@ import { join } from "node:path";
 import {
   createSarsinti, createHitstop, ezilmeUzama, createZiplamaYardimi,
   createParcaciklar, damp, easeOutBack, HIS, INIS_SURE,
+  nefesSaydamligi, GUC_UYARI, NEFES_SAYISI, NEFES_EN_AZ,
 } from "@/lib/gameFeel";
 
 const DIZIN = join(process.cwd(), "src/pages/games");
@@ -477,5 +478,67 @@ describe("tekerlek (Yarışı)", () => {
     expect(/hubTexture\(HUB_SPOKES\)/.test(kart), "jant dokusu kullanılmıyor").toBe(true);
     const dok = readFileSync(join(DIZIN, "_letterTexture.ts"), "utf8");
     expect(/export function hubTexture/.test(dok), "hubTexture yok").toBe(true);
+  });
+});
+
+/**
+ * ⚠️ KULLANICI ŞARTI (Koşusu): "jetpack için bir bar olsun, içindeki azalsın,
+ * bitince özellik de bitsin — oyuncu ne kadar süre kaldığını anlasın" ve
+ * "bitmeye yakın karakter yarı görünmez olup normale gelsin, 3-4 defa nefes
+ * alır gibi; bara bakmasa bile anlar."
+ *
+ * İkinci şart birincinin süsü değil TAMAMLAYICISI: koşu oyununda göz YOLDA
+ * olmak zorunda, köşedeki çubuğu izlemek engel kaçırmak demek. Uyarı bu
+ * yüzden oyuncunun zaten baktığı yerde — karakterin üstünde — de veriliyor.
+ */
+describe("süresi dolan güç uyarısı", () => {
+  it("uyarı penceresi dışında karakter tam görünür", () => {
+    expect(nefesSaydamligi(GUC_UYARI + 0.01)).toBe(1);
+    expect(nefesSaydamligi(99)).toBe(1);
+    // Güç bitince de 1: yarı saydam kalırsa çocuk hâlâ özel olduğunu sanır.
+    expect(nefesSaydamligi(0)).toBe(1);
+  });
+
+  it("pencerenin iki ucu da TAM GÖRÜNÜR (uyarı sıçrayarak başlamaz)", () => {
+    expect(nefesSaydamligi(GUC_UYARI)).toBeCloseTo(1, 5);
+    expect(nefesSaydamligi(0.0001)).toBeCloseTo(1, 3);
+  });
+
+  it("en saydam hâl YARI görünmez (yok olmaz)", () => {
+    let enAz = 1;
+    for (let i = 0; i <= 400; i++) enAz = Math.min(enAz, nefesSaydamligi((i / 400) * GUC_UYARI));
+    expect(enAz).toBeCloseTo(NEFES_EN_AZ, 2);
+    // ⚠️ TAMAMEN kaybolmamalı: koşarken karakteri göremeyen çocuk şerit
+    // değiştiremez. "Yarı görünmez" istendi, görünmez değil.
+    expect(enAz).toBeGreaterThan(0.25);
+  });
+
+  /** "3-4 defa nefes alır gibi" — eğri tam NEFES_SAYISI çevrim yapmalı. */
+  it("pencerede tam NEFES_SAYISI kez sönüp açılıyor", () => {
+    const N = 4000;
+    let dip = 0;
+    let onceki = nefesSaydamligi(GUC_UYARI);
+    let iniyor = false;
+    for (let i = 1; i <= N; i++) {
+      const v = nefesSaydamligi(GUC_UYARI * (1 - i / N));
+      if (v < onceki) iniyor = true;
+      else if (iniyor && v > onceki) { dip++; iniyor = false; }
+      onceki = v;
+    }
+    expect(dip, "nefes sayısı tutmuyor").toBe(NEFES_SAYISI);
+  });
+
+  it("Koşusu güç barı ve nefes bağlı", () => {
+    const sub = readFileSync(join(DIZIN, "SubwayGame.tsx"), "utf8");
+    expect(/nefesSaydamligi\(s\.jetT\)/.test(sub), "karakter nefes almıyor").toBe(true);
+    // ⚠️ Malzeme saydamlığı MOUNT'ta açılmalı: çalışma anında `transparent`
+    // değiştirmek shader'ı yeniden derletir ve tam gücün bittiği anda
+    // kare düşürür.
+    expect(/m\.transparent = true; m\.needsUpdate = true;/.test(sub),
+      "`transparent` mount'ta açılmıyor").toBe(true);
+    // Bar: rakam değil azalan çubuk, ve genişliği geçişle yumuşatılıyor
+    // (HUD 200 ms'de bir güncelleniyor, geçişsiz çubuk zıplayarak kısalır).
+    expect(/transition: "width \d+ms linear"/.test(sub), "bar geçişi yok").toBe(true);
+    expect(/Math\.ceil\(pu\.jet\)/.test(sub), "eski saniye rozeti duruyor").toBe(false);
   });
 });

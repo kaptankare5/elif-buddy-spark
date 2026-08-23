@@ -191,6 +191,36 @@ export function createHitstop(): Hitstop {
  * @param inisT   inişten bu yana geçen süre (sn) — 0..INIS_SURE arası ezer
  */
 export const INIS_SURE = 0.14;
+/**
+ * SÜRESİ DOLMAK ÜZERE OLAN GÜÇ — "nefes alan" saydamlık.
+ *
+ * ⚠️ SÜRE GÖSTERGESİ TEK BAŞINA YETMEZ: aksiyon oyununda göz OYUN ALANINDA
+ * olmak zorunda; köşedeki bir çubuğu izlemek engel kaçırmak demek. Gücün
+ * biteceği, oyuncunun ZATEN BAKTIĞI yerde — karakterin kendisinde — de
+ * söylenmeli. Bar ikincil kanal olarak kalır.
+ *
+ * ⚠️ SERT YANIP SÖNME DEĞİL, YUMUŞAK NEFES: sert `visible` yanıp sönmesi bu
+ * uygulamada "hasar aldım / dokunulmazım" demek (Koşusu'nda `ghostT`).
+ * Gücün bitişi ondan AYRI okunmalı, yoksa iki farklı durum aynı işareti
+ * verir ve çocuk hangisi olduğunu bilemez. Kosinüs eğrisi "sönüyor" hissi
+ * verir, "bozuldu" değil.
+ *
+ * Eğri tam `NEFES_SAYISI` çevrim yapar ve İKİ UCU DA 1'dir: uyarı tam
+ * görünürken başlar, tam görünürken biter — güç bitişte yarı saydam
+ * kalırsa çocuk karakterin hâlâ özel olduğunu sanır.
+ */
+export const GUC_UYARI = 1.6;     // sn — gücün son bu kadarında uyarı
+export const NEFES_SAYISI = 4;    // pencerede kaç kez sönüp açılsın
+export const NEFES_EN_AZ = 0.35;  // en saydam hâl ("yarı görünmez")
+
+/** Uyarı penceresindeki saydamlık (1 = tam görünür). Pencere dışında 1. */
+export function nefesSaydamligi(kalan: number, pencere = GUC_UYARI): number {
+  if (kalan <= 0 || kalan > pencere) return 1;
+  const u = 1 - kalan / pencere;                          // 0 → 1
+  const faz = Math.cos(u * NEFES_SAYISI * Math.PI * 2);
+  return NEFES_EN_AZ + (1 - NEFES_EN_AZ) * (0.5 + 0.5 * faz);
+}
+
 export function ezilmeUzama(vy: number, maksVy: number, inisT = 99): { sx: number; sy: number } {
   if (inisT < INIS_SURE) {
     // İniş ezilmesi: önce çök, sonra yaylanarak geri gel (aşımlı).
