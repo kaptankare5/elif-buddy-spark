@@ -306,6 +306,63 @@ export function tone(freq: number, dur: number, type: OscillatorType, startOffse
   osc.stop(t0 + dur + 0.02);
 }
 
+/**
+ * SÜZÜLMÜŞ GÜRÜLTÜ PATLAMASI — `tone` yalnız osilatör üretiyor, oysa doğadaki
+ * seslerin çoğu (çamur, toz, su, rüzgâr) PERİYODİK DEĞİL: gürültüdür.
+ * Çamura basma sesi de bir "vızıltı" değil, kesme frekansı hızla süpürülen
+ * geniş bantlı gürültüdür — emme/bırakma hareketi filtrenin süpürmesinde.
+ *
+ * ⚠️ HAZIR SES DOSYASI KULLANILMADI: (1) bu sandbox'tan freesound/pixabay/
+ * opengameart'ın hiçbirine erişilemiyor, (2) uygulamanın BÜTÜN oyun sesleri
+ * WebAudio ile üretiliyor — tek bir mp3 hem paket boyutu hem lisans/atıf
+ * yükü getirirdi. Çamur sesi zaten sentezle çok iyi çıkıyor.
+ *
+ * ⚠️ Gürültü tamponu BİR KEZ üretilip önbelleğe alınır: her adımda 0.4 sn'lik
+ * rastgele dizi doldurmak telefonda kareyi düşürür.
+ */
+let _gurultuBuf: AudioBuffer | null = null;
+function gurultuTamponu(ctx: AudioContext): AudioBuffer {
+  if (_gurultuBuf && _gurultuBuf.sampleRate === ctx.sampleRate) return _gurultuBuf;
+  const n = Math.floor(ctx.sampleRate * 0.5);
+  const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  _gurultuBuf = buf;
+  return buf;
+}
+
+export function gurultu(o: {
+  /** Süre (sn). */
+  dur: number;
+  /** Filtre kesme frekansı: başlangıç → tepe → bitiş (Hz). */
+  bas: number; tepe: number; son: number;
+  gain?: number;
+  /** Rezonans — yüksek Q "ıslak/boğuk" bir renk verir. */
+  q?: number;
+  startOffset?: number;
+}) {
+  const ctx = getCtx();
+  if (!ctx) return;
+  const t0 = ctx.currentTime + (o.startOffset ?? 0);
+  const src = ctx.createBufferSource();
+  src.buffer = gurultuTamponu(ctx);
+  src.loop = true;
+  const f = ctx.createBiquadFilter();
+  f.type = "lowpass";
+  f.Q.value = o.q ?? 6;
+  f.frequency.setValueAtTime(o.bas, t0);
+  f.frequency.exponentialRampToValueAtTime(Math.max(40, o.tepe), t0 + o.dur * 0.35);
+  f.frequency.exponentialRampToValueAtTime(Math.max(40, o.son), t0 + o.dur);
+  const g = ctx.createGain();
+  const gain = o.gain ?? 0.14;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dur);
+  src.connect(f).connect(g).connect(ctx.destination);
+  src.start(t0);
+  src.stop(t0 + o.dur + 0.02);
+}
+
 // Doğru-cevap melodileri — monotonluğu kırmak için varyasyon (1000. dinleyişte
 // de taze kalsın). Hepsi kısa/majör/parlak; rastgele seçilir. Nadiren (%8)
 // "özel" arpej çalar — değişken sürpriz, ama HER doğru cevap yine ödüllenir.

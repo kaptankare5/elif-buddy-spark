@@ -29,7 +29,7 @@ describe("juice kapsamı", () => {
 });
 
 describe("juice sesleri", () => {
-  const TURLER: JuiceSfx[] = ["topla", "guc", "zipla", "carp", "patlat", "kaydir", "ates", "seri", "bitis"];
+  const TURLER: JuiceSfx[] = ["topla", "guc", "zipla", "carp", "patlat", "kaydir", "ates", "seri", "camur", "bitis"];
 
   it("hiçbir tür istisna atmıyor (WebAudio yokken de)", () => {
     // jsdom'da AudioContext yok — sesler sessizce düşmeli, oyunu kırmamalı.

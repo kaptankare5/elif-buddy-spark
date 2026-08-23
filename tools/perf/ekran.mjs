@@ -45,6 +45,10 @@ for (const t of tiklamalar) {
     await page.waitForTimeout(1800);
   } catch { console.log(`tıklanamadı: ${t}`); }
 }
+// --sonBekle: tıklamalardan SONRA beklenecek süre (oyun ilerlesin diye).
+const sonBekle = process.argv.includes("--sonBekle")
+  ? Number(process.argv[process.argv.indexOf("--sonBekle") + 1]) : 0;
+if (sonBekle) await page.waitForTimeout(sonBekle);
 await page.screenshot({ path: cikti });
 console.log("kaydedildi:", cikti);
 await b.close();

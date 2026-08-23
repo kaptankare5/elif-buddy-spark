@@ -41,6 +41,7 @@ import { createAdaptiveResolution } from "./_perf";
 import { pickNextGameItem, recordGameAnswer, getGameItemLevel } from "@/lib/gameProgress";
 import { useRemedyOnGameOver } from "@/lib/remedial";
 import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
+import { sfx } from "@/lib/juice";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { letterTexture, nameTexture, wordTexture } from "./_letterTexture";
@@ -79,6 +80,10 @@ const PEND_CLEAR = 4.2;        // sarkaç topunun üstü
 const ROLLER_CLEAR = 2.4;      // silindirin üstü
 const BOOST_TIME = 3.5;
 const MUD_TIME = 1.8;
+/** Yerdeki çamur izi kaç saniyede söner. */
+const IZ_OMRU = 2.6;
+/** Çamurdan ÇIKTIKTAN sonra kaç adım daha iz bırakılır (ayaktaki çamur). */
+const IZ_ADIM = 5;
 const NET_TIME = 2.2;
 const HIT_TIME = 1.0;          // takla süresi
 /** Takladan sonra hiçbir engelin çarpmadığı süre (sn) — bkz. Racer.graceT. */
@@ -499,6 +504,95 @@ const PartyGame = () => {
     const matRoll = track(new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
     const matPost = track(new THREE.MeshLambertMaterial({ color: 0x94a3b8 }));
     const matMud = track(new THREE.MeshLambertMaterial({ color: 0x8b5e3c, transparent: true, opacity: 0.92 }));
+
+    /**
+     * ÇAMUR İZİ VE SIÇRAMA HAVUZU — "çamura bastığı belli olsun".
+     *
+     * ⚠️ İki ayrı şey: (1) ayak basınca havaya sıçrayan damlalar, (2) yerde
+     * KALAN ayak izi. İkincisi asıl anlatan: çamurdan çıktıktan sonra birkaç
+     * adım daha iz bırakınca "ayağıma çamur bulaştı" okunuyor — çamurun
+     * içindeyken zaten yavaşlıyor, asıl bilgi ORADAN ÇIKTIKTAN SONRA gerekli.
+     * ⚠️ HAVUZ: her adımda mesh yaratıp atmak WebView'de çöp toplayıcıyı
+     * tetikliyor. Sabit sayıda nesne dönüşümlü kullanılır, `visible` ile
+     * açılıp kapanır.
+     * ⚠️ `depthWrite: false` + küçük y ötelemesi: iz zemine YAPIŞIK duracak
+     * ama z-fighting yapmayacak.
+     */
+    const IZ_SAYISI = 14, SICRAMA_SAYISI = 18;
+    const izGeo = track(new THREE.CircleGeometry(0.42, 10));
+    const izMat = track(new THREE.MeshBasicMaterial({
+      color: 0x4a2d18, transparent: true, opacity: 0.82, depthWrite: false,
+    }));
+    type Iz = { mesh: THREE.Mesh; t: number };
+    const izler: Iz[] = [];
+    for (let i = 0; i < IZ_SAYISI; i++) {
+      const m = new THREE.Mesh(izGeo, izMat.clone());
+      m.rotation.x = -Math.PI / 2;
+      m.visible = false;
+      scene.add(m);
+      izler.push({ mesh: m, t: 0 });
+    }
+    let izSira = 0;
+
+    const sicramaGeo = track(new THREE.SphereGeometry(0.13, 6, 5));
+    const sicramaMat = track(new THREE.MeshLambertMaterial({ color: 0x6b4423 }));
+    type Sicrama = { mesh: THREE.Mesh; vx: number; vy: number; vz: number; t: number };
+    const sicramalar: Sicrama[] = [];
+    for (let i = 0; i < SICRAMA_SAYISI; i++) {
+      const m = new THREE.Mesh(sicramaGeo, sicramaMat);
+      m.visible = false;
+      scene.add(m);
+      sicramalar.push({ mesh: m, vx: 0, vy: 0, vz: 0, t: 0 });
+    }
+    let sicramaSira = 0;
+    /**
+     * Adım tespiti: `hop` koşu animasyonunun fazı; `sin(hop)` her π'de bir
+     * işaret değiştiriyor, yani her π bir AYAK BASIŞI. Faz numarasının
+     * değiştiği kareyi yakalayıp iz basıyoruz — böylece ses ve iz koşu
+     * animasyonuyla senkron oluyor, sabit bir zamanlayıcıyla değil.
+     */
+    let sonAdim = 0;
+    /** Çamurdan çıktıktan sonra kaç adım daha iz kalacak. */
+    let camurluAdim = 0;
+
+    /** Bir ayak izi bas + birkaç damla sıçrat. */
+    const camurAdimi = (x: number, z: number, yan: number) => {
+      const iz = izler[izSira++ % IZ_SAYISI];
+      iz.t = 0;
+      iz.mesh.position.set(x + yan * 0.3, 0.045, wz(z));
+      iz.mesh.scale.setScalar(0.8 + Math.random() * 0.4);
+      iz.mesh.visible = true;
+      for (let i = 0; i < 3; i++) {
+        const sp = sicramalar[sicramaSira++ % SICRAMA_SAYISI];
+        sp.t = 0;
+        sp.mesh.position.set(x + yan * 0.3, 0.2, wz(z));
+        sp.mesh.visible = true;
+        const a = Math.random() * Math.PI * 2;
+        sp.vx = Math.cos(a) * (1.2 + Math.random() * 1.6);
+        sp.vz = Math.sin(a) * (1.2 + Math.random() * 1.6);
+        sp.vy = 2.2 + Math.random() * 2.2;
+      }
+    };
+
+    /** İz ve damlaları yaşlandır — her karede bir kez. */
+    const camurGuncelle = (dt: number) => {
+      for (const iz of izler) {
+        if (!iz.mesh.visible) continue;
+        iz.t += dt;
+        const k = 1 - iz.t / IZ_OMRU;
+        if (k <= 0) { iz.mesh.visible = false; continue; }
+        (iz.mesh.material as THREE.MeshBasicMaterial).opacity = 0.82 * k;
+      }
+      for (const sp of sicramalar) {
+        if (!sp.mesh.visible) continue;
+        sp.t += dt;
+        sp.vy -= 11 * dt;
+        sp.mesh.position.x += sp.vx * dt;
+        sp.mesh.position.y += sp.vy * dt;
+        sp.mesh.position.z += sp.vz * dt;
+        if (sp.mesh.position.y <= 0.06 || sp.t > 1.2) sp.mesh.visible = false;
+      }
+    };
 
     const addHammer = (z: number, x: number, sp: number, t0: number) => {
       // Direk SABİTTİR — pivotun çocuğu olursa çekiçle birlikte döner ve
@@ -1033,6 +1127,7 @@ const PartyGame = () => {
 
     // ---------- adım ----------
     const step = (dt: number) => {
+      camurGuncelle(dt);   // yerdeki izler solar, damlalar düşer
       // engelleri döndür
       for (const o of obsRef.current) {
         if (o.kind === "mud") continue;
@@ -1193,6 +1288,29 @@ const PartyGame = () => {
         r.hop += dt * (r.boostT > 0 ? 17 : 11);
 
         collide(r, dt);
+
+        /**
+         * ⚠️ ÇAMUR YALNIZ OYUNCU İÇİN İZ/SES BIRAKIR: 5 bot da bırakırsa hem
+         * ekran çamur içinde kalıyor hem havuz anında tükeniyor; üstelik
+         * bilgi çocuğun KENDİ ayağıyla ilgili.
+         * ⚠️ Zıplarken iz basılmaz (`y` yerde olmalı) — havada ayak yere
+         * değmiyor.
+         */
+        if (r.isPlayer) {
+          if (r.mudT > 0) camurluAdim = IZ_ADIM;
+          const adim = Math.floor(r.hop / Math.PI);
+          if (adim !== sonAdim) {
+            const yan = adim % 2 === 0 ? 1 : -1;      // sağ/sol ayak
+            sonAdim = adim;
+            if (camurluAdim > 0 && r.y < 0.25 && r.hitT <= 0) {
+              camurluAdim--;
+              camurAdimi(r.x, r.z, yan);
+              // Ses YALNIZ çamurun İÇİNDEYKEN: dışarıdaki izler ayakta kalan
+              // çamurdur, orada şlop sesi çıkmaz — yalnız iz kalır.
+              if (r.mudT > 0) sfx("camur");
+            }
+          }
+        }
 
         // --- karakter animasyonu ---
         r.group.position.set(r.x, r.y, wz(r.z));
