@@ -363,6 +363,60 @@ export function gurultu(o: {
   src.stop(t0 + o.dur + 0.02);
 }
 
+/**
+ * MOTOR SESİ — perdesi KAYAN testere dalgası + rezonanslı süzgeç.
+ *
+ * ⚠️ `tone` yetmez: sabit perdeli bir osilatör "düdük" verir, motor ise
+ * perdesi SÜREKLİ değişen ve harmonik açısından zengin bir sestir. Testere
+ * dalgası bütün harmonikleri taşır, perdeyi takip eden alçak geçiren süzgeç
+ * de onu "boru içinden" duyuluyormuş gibi yuvarlar.
+ *
+ * ⚠️ İKİ OSİLATÖR, HAFİF DETONE: tek osilatör elektronik/steril çıkıyor.
+ * Aralarındaki birkaç Hz'lik fark vuru (beating) üretiyor — kart motorunun
+ * o "hırıltılı" dokusu buradan geliyor.
+ *
+ * ⚠️ HAZIR MP3 YOK: uygulamanın bütün oyun sesleri WebAudio ile üretiliyor
+ * (`gurultu`daki gerekçenin aynısı — paket boyutu + lisans yükü, üstelik bu
+ * ortamdan ses bankalarının hiçbirine erişilemiyor).
+ */
+export function motor(o: {
+  /** Süre (sn). */
+  dur: number;
+  /** Perde: başlangıç → bitiş (Hz). Yükselirse gaz, düşerse gaz kesme. */
+  bas: number; son: number;
+  gain?: number;
+  /** Süzgeç rezonansı — yüksek Q daha "borulu/hırıltılı". */
+  q?: number;
+  startOffset?: number;
+}) {
+  const ctx = getCtx();
+  if (!ctx) return;
+  const t0 = ctx.currentTime + (o.startOffset ?? 0);
+  const gain = o.gain ?? 0.09;
+  const f = ctx.createBiquadFilter();
+  f.type = "lowpass";
+  f.Q.value = o.q ?? 4;
+  // Süzgeç perdeyi TAKİP eder (sabit kesme frekansı gaz açılırken sesi
+  // boğuyor): temel frekansın ~5 katı, harmonikler geçsin ama tizlenmesin.
+  f.frequency.setValueAtTime(Math.max(80, o.bas * 5), t0);
+  f.frequency.exponentialRampToValueAtTime(Math.max(80, o.son * 5), t0 + o.dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + Math.min(0.05, o.dur * 0.2));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dur);
+  f.connect(g).connect(ctx.destination);
+  for (const detune of [0, 7]) {
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.detune.value = detune;
+    osc.frequency.setValueAtTime(o.bas, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.son), t0 + o.dur);
+    osc.connect(f);
+    osc.start(t0);
+    osc.stop(t0 + o.dur + 0.02);
+  }
+}
+
 // Doğru-cevap melodileri — monotonluğu kırmak için varyasyon (1000. dinleyişte
 // de taze kalsın). Hepsi kısa/majör/parlak; rastgele seçilir. Nadiren (%8)
 // "özel" arpej çalar — değişken sürpriz, ama HER doğru cevap yine ödüllenir.

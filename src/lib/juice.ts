@@ -10,7 +10,7 @@
 //
 // ⚠️ SES ÜRETİMİ audio.ts'teki `tone`'dan gelir. Burada ikinci bir
 // AudioContext açmak mobil tarayıcıda ses kilidini (autoplay unlock) bozar.
-import { tone, gurultu } from "@/lib/audio";
+import { tone, gurultu, motor } from "@/lib/audio";
 import { titre, type Titresim } from "@/lib/titresim";
 
 export type JuiceSfx =
@@ -23,6 +23,8 @@ export type JuiceSfx =
   | "ates"     // atış (Uzay Savaşı)
   | "seri"     // seri kilometre taşı (5, 10, 15…)
   | "camur"    // çamura basma — ıslak "şlop"
+  | "sayim"    // yarış geri sayımı: 3-2-1 (hepsi AYNI perde)
+  | "start"    // yarış başlangıcı: tiz uzun düdük + motor kalkışı
   | "bitis";   // bölüm/oyun bitişi
 
 /**
@@ -50,6 +52,8 @@ const VARSAYILAN_TITRESIM: Partial<Record<JuiceSfx, Titresim>> = {
   carp: "sert",
   patlat: "hafif",
   seri: "basari",
+  sayim: "hafif",
+  start: "basari",
   bitis: "basari",
   // ⚠️ Çamur TİTREMEZ: çamurun içinde her adımda çalıyor (saniyede ~2-3 kez).
   // "Sık yapılan hareket titremez" kuralı — yukarıdaki nota bak.
@@ -112,6 +116,36 @@ export function sfx(kind: JuiceSfx, opts?: { seri?: number; titresim?: Titresim 
       tone(150 * r, 0.07, "sine", 0.05, 0.05);
       break;
     }
+    /**
+     * ⚠️ YARIŞ BAŞLANGICI İKİ SESTİR, TEK SES DEĞİL. Motor sporlarının
+     * (ve atletizmin) evrensel deseni: **aynı perdede N kısa tik, sonra
+     * DAHA TİZ ve DAHA UZUN bir işaret**. Perde 3-2-1'de kasten
+     * DEĞİŞMEZ — "başla"nın farklı olduğu ancak öncekiler tekdüze olunca
+     * anlaşılır; yükselen bir sayım son notayı sıradanlaştırır.
+     *
+     * Tikin altındaki alçak vuruş telefon hoparlörü içindir: 700 Hz'lik
+     * ince bir bip küçük hoparlörde cılız duyuluyor, 180 Hz'lik kısa
+     * "tok" ona gövde veriyor. Üstüne çok kısık bir MOTOR BLİBİ — pilotlar
+     * ızgarada gazı böyle tıklatır; sesi "geri sayım" değil "YARIŞ geri
+     * sayımı" yapan şey bu.
+     */
+    case "sayim":
+      tone(700, 0.13, "square", 0, 0.10);
+      tone(180, 0.09, "sine", 0, 0.10);
+      motor({ dur: 0.20, bas: 88, son: 132, gain: 0.045, q: 6, startOffset: 0.02 });
+      break;
+    /**
+     * BAŞLA: tiz + uzun düdük (sayım tikinin bir buçuk oktav üstü), üstüne
+     * MOTOR KALKIŞI (perde 110 → 460 Hz, gaz açılıyor) ve kısa bir LASTİK
+     * CIYAKLAMASI (yüksek Q'lu gürültü — ıslık gibi, `gurultu`nun çamurda
+     * kullanılan hâlinin tiz karşılığı).
+     */
+    case "start":
+      tone(1046, 0.42, "square", 0, 0.13);
+      tone(1568, 0.34, "triangle", 0.02, 0.08);
+      motor({ dur: 0.75, bas: 110, son: 460, gain: 0.10, q: 7 });
+      gurultu({ dur: 0.34, bas: 2400, tepe: 3400, son: 900, q: 14, gain: 0.05, startOffset: 0.06 });
+      break;
     case "bitis":
       tone(659, 0.10, "triangle", 0, 0.17);
       tone(880, 0.10, "triangle", 0.09, 0.17);
