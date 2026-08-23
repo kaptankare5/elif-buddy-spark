@@ -5,7 +5,23 @@
 // notayı seçer → her bölüm hafifçe farklı tınlar.
 // Kapatma kalıcıdır (localStorage) — çocuk/veli tercihi korunur.
 
+import { getSettings } from "@/lib/settings";
+
 const MUTE_KEY = "elifba-game-music-muted-v1";
+
+/**
+ * ⚠️ VARSAYILAN **KAPALI** (kullanıcı kararı). Bu katman uygulamanın tek
+ * MELODİK sesi ve "müzik yok" kuralının dışında kalmış tek yerdi: Macera'da
+ * varsayılan AÇIK çalıyordu. Kullanıcının gerekçesi dinî hassasiyet —
+ * "elifbâ harfiyle müzik iyi olmayabilir, kutsal olduğunu düşünenler var".
+ * Kod ve düğme duruyor; müzik ancak veli bilerek AÇARSA çalıyor.
+ *
+ * Anahtarın üç hâli var, göç bu yüzden kendiliğinden doğru çalışıyor:
+ *   yok  → sessiz (yeni varsayılan; hiç dokunmamış herkes)
+ *   "1"  → sessiz (eskiden bilerek kapatanlar — kararları korunuyor)
+ *   "0"  → çalar  (yalnız bu sürümden sonra bilerek açanlar)
+ */
+const SESSIZ_VARSAYILAN = true;
 
 // Majör pentatonik aralıklar (yarım ton) — hangi sırayla çalınırsa çalınsın
 // yanlış nota yoktur; çocuk müziği için güvenli seçim.
@@ -21,15 +37,18 @@ class GameMusic {
   private step = 0;
 
   isMuted(): boolean {
-    try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
+    try {
+      const v = localStorage.getItem(MUTE_KEY);
+      return v === null ? SESSIZ_VARSAYILAN : v !== "0";
+    } catch { return SESSIZ_VARSAYILAN; }
   }
 
   setMuted(m: boolean) {
-    try {
-      if (m) localStorage.setItem(MUTE_KEY, "1");
-      else localStorage.removeItem(MUTE_KEY);
-    } catch { /* */ }
+    // ⚠️ Açık hâl AÇIKÇA yazılır ("0"): anahtarı silmek eski sürümde
+    // "sesi aç" demekti, artık "hiç dokunmadım" = SESSİZ demek.
+    try { localStorage.setItem(MUTE_KEY, m ? "1" : "0"); } catch { /* */ }
     if (this.master) this.master.gain.value = m ? 0 : 1;
+    if (m) this.stop();
   }
 
   private ensureCtx(): AudioContext | null {
@@ -79,6 +98,14 @@ class GameMusic {
   };
 
   start(levelSeed = 1) {
+    // ⚠️ SESSİZKEN AudioContext BİLE AÇILMAZ: eskiden ses grafiği kurulup
+    // kazancı 0'a çekiliyordu, yani kapalıyken de zamanlayıcı dönüyor ve
+    // her vuruşta osilatör yaratılıyordu. Varsayılan kapalı olunca bu
+    // "hiç kimsenin duymadığı" iş sürekli boşa dönerdi.
+    if (this.isMuted()) return;
+    // Ayarlar'daki "Ses Efektleri" kapalıysa müzik de çalmaz: veli sesi
+    // kapattığında uygulamanın tamamen susması beklenir.
+    if (!getSettings().sound) return;
     if (!this.ensureCtx()) return;
     this.root = ROOTS[(levelSeed - 1 + ROOTS.length) % ROOTS.length];
     if (this.running) return;
