@@ -343,3 +343,61 @@ describe("gurultu — süzülmüş gürültü ilkesi", () => {
     expect(() => gurultu({ dur: 0.17, bas: 240, tepe: 900, son: 170 })).not.toThrow();
   });
 });
+
+/**
+ * ⚠️ KULLANICI ŞARTI: "oyuna direk başlamasın, bölümü seçince direk başlayınca
+ * ekran gelmeden ses geliyor, 3'ten geriye doğru saysın." İki ayrı dert var:
+ *  (1) yarış bölüm seçimiyle AYNI KAREDE başlıyordu — çocuk daha sahneyi
+ *      görmeden koşuyordu;
+ *  (2) kapı sorusu `step` içinde silahlanıp SESİ ÇALIYORDU, yani soru ekran
+ *      boyanmadan soruluyordu. Sayım `step`'i geciktirdiği için ikisi de
+ *      tek çözümle kapanıyor — sayım biterse ses de o an başlar.
+ */
+describe("geri sayım (Parti)", () => {
+  const party = readFileSync(join(DIZIN, "PartyGame.tsx"), "utf8");
+
+  it("döngü DURARAK başlıyor (bölüm seçilir seçilmez koşmuyor)", () => {
+    // Kurulum sırası: önce `running` kapatılır, SONRA sayaç kurulur.
+    const kapat = party.indexOf("ctrl.running = false;");
+    const sayac = party.indexOf("let cd = ");
+    expect(kapat, "`ctrl.running = false` yok — yarış sayım beklemeden başlar").toBeGreaterThan(-1);
+    expect(sayac, "geri sayım sayacı yok").toBeGreaterThan(-1);
+    expect(kapat).toBeLessThan(sayac);
+    // Döngü içinde `running` yalnız sayım bitince açılır.
+    expect(/if \(cd <= 0\) \{[\s\S]{0,120}ctrl\.running = true;/.test(party),
+      "`running` sayımdan bağımsız bir yerde açılıyor").toBe(true);
+  });
+
+  /**
+   * Duraklatma da `ctrl.running`'i kapatıyor. Sayımı tek bayrakla izlemek
+   * denendi: sayım sırasında duraklatınca sayaç ilerlemeye devam edip oyunu
+   * KENDİLİĞİNDEN başlatıyordu.
+   */
+  it("sayım `ctrl.running` ile değil AYRI bayrakla izleniyor", () => {
+    expect(/let basladi = false/.test(party), "`basladi` bayrağı yok").toBe(true);
+    expect(/if \(!basladi\)/.test(party), "sayım dalı bayrağa bakmıyor").toBe(true);
+  });
+
+  /**
+   * ⚠️ Yarışı'ndaki `placeRacers()` tuzağının aynısı: yer/kamera yalnız `step()`
+   * içinde yazılırsa sayım boyunca herkes sahnenin merkezinde üst üste durur ve
+   * çocuk BOŞ yola bakar. Ölçüldü (ekran görüntüsü): karakterler görünmüyordu.
+   */
+  it("sahne sayımdan ÖNCE kuruluyor (karakterler ızgarada duruyor)", () => {
+    expect(/const yerlestir = \(\) => \{/.test(party), "yerleştirme işlevi yok").toBe(true);
+    expect(/yerlestir\(\);[\s\S]{0,400}let cd = /.test(party),
+      "yerleştirme sayımdan önce çağrılmıyor").toBe(true);
+    expect(/camera\.position\.set\(/.test(party),
+      "kamera sayım için takip hedefine oturtulmuyor").toBe(true);
+  });
+
+  it("sayım sürerken duraklatma düğmesi görünmüyor", () => {
+    expect(/\{geriSayim === null && \(/.test(party),
+      "sayım sırasında duraklatılabilir — duracak bir şey yok").toBe(true);
+  });
+
+  it("sahne bırakılırken sayım da temizleniyor", () => {
+    expect(/cancelAnimationFrame\(raf\);[\s\S]{0,200}setGeriSayim\(null\)/.test(party),
+      "çıkışta sayım perdesi açık kalıyor").toBe(true);
+  });
+});

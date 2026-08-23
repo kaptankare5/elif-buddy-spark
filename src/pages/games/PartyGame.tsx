@@ -40,7 +40,7 @@ import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { createAdaptiveResolution } from "./_perf";
 import { pickNextGameItem, recordGameAnswer, getGameItemLevel } from "@/lib/gameProgress";
 import { useRemedyOnGameOver } from "@/lib/remedial";
-import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
+import { playItem, playFeedback, playSfx, preloadItems, tone } from "@/lib/audio";
 import { sfx } from "@/lib/juice";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
@@ -381,6 +381,14 @@ const PartyGame = () => {
    * çocuk nerede kaldığını görsün; kararan ekran "oyun bitti" gibi duruyor.
    */
   const [duraklat, setDuraklat] = useState(false);
+  /**
+   * ⚠️ BÖLÜM SEÇİLİNCE OYUN ANINDA BAŞLIYORDU (kullanıcı bildirdi: "ekran
+   * gelmeden ses geliyor"). Sahne ilk kareyi çizmeden soru sesi çalıyor ve
+   * çocuk daha nerede olduğunu görmeden koşmaya başlamış oluyordu.
+   * Artık Yarışı'ndaki gibi 3-2-1 geri sayımı var: sahne görünür, karakter
+   * ızgarada bekler, sayım bitince hem hareket hem SORU başlar.
+   */
+  const [geriSayim, setGeriSayim] = useState<number | null>(null);
   const powerRef = useRef<PowerKind | null>(null);
   const statsRef = useRef({ correct: 0, wrong: 0 });
   const flashK = useRef(0);
@@ -1615,14 +1623,54 @@ const PartyGame = () => {
     let hudT = 0;
     const ctrl = ctrlRef.current;
     ctrl.dir = 0; ctrl.dragX = null; ctrl.jump = false; ctrl.usePower = false;
-    ctrl.running = true;
+    ctrl.running = false;
+    /**
+     * ⚠️ GERİ SAYIM BOYUNCA SAHNE `step()` ÇALIŞMADAN KURULMALI: yarışmacıların
+     * yeri ve kamera yalnız `step()` içinde yazılıyordu — sayarken herkes sahnenin
+     * merkezinde üst üste duruyor, çocuk BOŞ yola bakıyordu (Yarışı'nda aynı
+     * tuzak `placeRacers()` ile çözülmüştü). Kamera yumuşatmasız, doğrudan
+     * takip hedefine oturur.
+     */
+    const yerlestir = () => {
+      for (const r of racers) {
+        r.group.position.set(r.x, r.y, wz(r.z));
+        r.group.visible = true;
+      }
+      camera.position.set(player.x * 0.5, 12.5, wz(player.z - 17.5));
+      camera.lookAt(player.x * 0.3, 0.6, wz(player.z + 13));
+    };
+    yerlestir();
+    /**
+     * ⚠️ SAYIM `ctrl.running` İLE DEĞİL AYRI BİR BAYRAKLA İZLENİR: duraklatma
+     * da `running`'i kapatıyor. Tek bayrakla, sayım sırasında duraklatınca
+     * sayım devam edip oyunu KENDİLİĞİNDEN başlatıyordu.
+     */
+    let cd = 3.2;
+    let basladi = false;
+    setGeriSayim(3);
+    let sonSayi = 4;
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       const dtRaw = (now - last) / 1000;
       const dt = Math.min(DT_MAX, dtRaw);
       last = now;
       adaptiveRes.sample(dtRaw);
-      if (ctrlRef.current.running) step(dt);
+      if (!basladi) {
+        cd -= dt;
+        const sayi = Math.max(0, Math.ceil(cd - 0.2));
+        if (sayi !== sonSayi) {
+          sonSayi = sayi;
+          setGeriSayim(sayi);
+          // Sayı sesi: 3-2-1 kısa tık, "BAŞLA" parlak — hepsi tek atımlık.
+          if (sayi > 0) tone(620, 0.09, "sine", 0, 0.13);
+          else { tone(880, 0.1, "triangle", 0, 0.18); tone(1318, 0.16, "triangle", 0.08, 0.18); }
+        }
+        if (cd <= 0) {
+          basladi = true;
+          ctrl.running = true;
+          setGeriSayim(null);
+        }
+      } else if (ctrlRef.current.running) step(dt);
       renderer.render(scene, camera);
       hudT -= dt;
       if (hudT <= 0) {
@@ -1642,6 +1690,7 @@ const PartyGame = () => {
 
     return () => {
       cancelAnimationFrame(raf);
+      setGeriSayim(null);
       window.removeEventListener("resize", resize);
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
@@ -1711,13 +1760,16 @@ const PartyGame = () => {
             >
               <X className="h-6 w-6" />
             </button>
-            <button
-              onClick={() => duraklatDegistir(true)}
-              aria-label="Duraklat"
-              className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-muted-foreground shadow-card backdrop-blur active:scale-90"
-            >
-              <Pause className="h-6 w-6" />
-            </button>
+            {/* Sayım sürerken duraklatacak bir şey yok — düğme gizli. */}
+            {geriSayim === null && (
+              <button
+                onClick={() => duraklatDegistir(true)}
+                aria-label="Duraklat"
+                className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-muted-foreground shadow-card backdrop-blur active:scale-90"
+              >
+                <Pause className="h-6 w-6" />
+              </button>
+            )}
             <div className="rounded-2xl bg-white/85 px-3 py-1.5 text-center shadow-card backdrop-blur">
               <div className="text-[10px] font-bold text-muted-foreground">B{level} · Sıra</div>
               <div className="text-xl font-extrabold text-primary">{hud.place}.</div>
@@ -1736,6 +1788,23 @@ const PartyGame = () => {
               <div className="text-lg leading-tight">{power ? POWERS[power].emoji : "—"}</div>
             </div>
           </div>
+
+          {/* GERİ SAYIM — sahne görünür, karakter ızgarada bekler. Soru sesi
+              de ancak sayım bitince çalar (kapılar `step` içinde silahlanıyor,
+              `step` de sayım boyunca hiç çalışmıyor).
+              ⚠️ Sayı EKRANIN ORTASINDA DEĞİL, YOLUN ÜSTÜNDE: tam ortada
+              karakterin ve "Sen" etiketinin üzerine biniyordu — çocuğun
+              başlamadan önce görmesi gereken tek şey kendi karakteri. */}
+          {geriSayim !== null && (
+            <div className="pointer-events-none absolute inset-0 z-40 flex items-start justify-center pt-[26vh]">
+              <div
+                key={geriSayim}
+                className="animate-pop text-[7rem] font-extrabold text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.55)]"
+              >
+                {geriSayim > 0 ? geriSayim : "BAŞLA!"}
+              </div>
+            </div>
+          )}
 
           {/* DURAKLATMA PERDESİ — sahne DONAR ama görünür kalır (döngü
               çizmeye devam ediyor, yalnız `step` duruyor). Kararan ekran
