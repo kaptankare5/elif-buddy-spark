@@ -158,7 +158,11 @@ const Settings = () => {
             <Volume2 className="h-7 w-7 text-primary" />
             <div className="flex-1">
               <h3 className="text-base font-extrabold text-foreground">Ses Efektleri</h3>
-              <p className="text-xs text-muted-foreground">Doğru/yanlış kısa sesler</p>
+              {/* ⚠️ Anahtar artık GERÇEKTEN kapatıyor (eskiden hiçbir yerde
+                  okunmuyordu) ve kapsamı yalnız doğru/yanlış değil: oyun
+                  efektleri + yarıştaki motor/rüzgâr gibi sürekli sesler de
+                  buna bağlı. Harf kayıtları MUAF — onlar soru sorar. */}
+              <p className="text-xs text-muted-foreground">Oyun sesleri ve doğru/yanlış tonları (harf kayıtları etkilenmez)</p>
             </div>
             <Switch
               checked={s.sound}

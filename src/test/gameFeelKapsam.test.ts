@@ -542,3 +542,50 @@ describe("süresi dolan güç uyarısı", () => {
     expect(/Math\.ceil\(pu\.jet\)/.test(sub), "eski saniye rozeti duruyor").toBe(false);
   });
 });
+
+/**
+ * ⚠️ SÜREKLİ SES KATMANI — uygulamada HİÇ YOKTU. 15 oyunun sesi de
+ * "olay oldu → çıt" biçimindeydi (ölçüldü: `sfx`/`playSfx` çağrıları,
+ * hepsi tek atımlık). Oysa hız türlerinin ses kimliği DURUM sesidir:
+ * motor, lastik, zemin, rüzgâr. Kullanıcı bunu yarış oyununda istedi
+ * ("arka planda sesi az motor sesi"); aynı boşluk üç hız oyununda da vardı.
+ *
+ * ⚠️ MÜZİK DEĞİL: melodi/ölçü/akort yok, aracın ve hızın kendi sesi.
+ * Uygulamanın "müzik yok" kuralı melodik arka plan içindir.
+ */
+describe("sürekli ses katmanı (hız oyunları)", () => {
+  const oku = (ad: string) => readFileSync(join(DIZIN, ad), "utf8");
+
+  it("Yarışı'nda motor + lastik + zemin katmanı var", () => {
+    const k = oku("KartGame.tsx");
+    expect(/motorDongusu\(/.test(k), "motor döngüsü yok").toBe(true);
+    expect((k.match(/gurultuDongusu\(/g) ?? []).length,
+      "lastik ve çim katmanlarından biri eksik").toBeGreaterThanOrEqual(2);
+    // Perdesi HIZDAN beslenmeli — sabit bir uğultu motor değildir.
+    expect(/motorSes\.ayarla\(hiz\)/.test(k), "motor hıza bağlı değil").toBe(true);
+    // Bırakılmazsa oyundan çıkınca ses devam eder.
+    expect(/motorSes\.dur\(\)/.test(k), "çıkışta motor susturulmuyor").toBe(true);
+  });
+
+  it("Koşusu ve Partisi'nde rüzgâr katmanı var ve bırakılıyor", () => {
+    for (const ad of ["SubwayGame.tsx", "PartyGame.tsx"]) {
+      const k = oku(ad);
+      expect(/gurultuDongusu\(/.test(k), `${ad}: rüzgâr katmanı yok`).toBe(true);
+      expect(/\.dur\(\)/.test(k), `${ad}: katman bırakılmıyor`).toBe(true);
+    }
+  });
+
+  /** Ekranda gözle görülen hız ile kulakta duyulan hız AYNI sayıdan gelmeli. */
+  it("Koşusu'nda rüzgâr, hız çizgileriyle aynı sayıdan besleniyor", () => {
+    const k = oku("SubwayGame.tsx");
+    // Tek bir `k` hesabı var; hem çizgilerin opaklığı hem rüzgâr ondan okuyor.
+    const hesap = k.indexOf("const k = Math.max(0, Math.min(1, (s.speed - BASE_SPEED)");
+    const cizgi = k.indexOf("el.style.opacity = String(s.running ? k *");
+    const ruzgar = k.indexOf("ruzgar?.ayarla(s.running ?");
+    expect(hesap, "hız hesabı bulunamadı").toBeGreaterThan(-1);
+    expect(cizgi, "hız çizgileri o hesabı kullanmıyor").toBeGreaterThan(hesap);
+    expect(ruzgar, "rüzgâr o hesabı kullanmıyor").toBeGreaterThan(hesap);
+    // (Kare döngüsündeki `hizK` ayrıdır ve öyle olmalı: o 3B kamera görüş
+    // açısını sürüyor, bu ise 200 ms'lik DOM/ses güncellemesi.)
+  });
+});

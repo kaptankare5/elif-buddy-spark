@@ -11,7 +11,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { UyarlanirDpr } from "./_perf";
 import * as THREE from "three";
 import { PageHeader } from "@/components/PageHeader";
-import { playItem, playFeedback } from "@/lib/audio";
+import { playItem, playFeedback, gurultuDongusu, type SurekliSes } from "@/lib/audio";
 import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { useAskLayer } from "./_askUI";
 import { okunurAd } from "@/lib/askMode";
@@ -1144,6 +1144,15 @@ const SubwayGame = () => {
 
   // Güç göstergesi — düşük frekans HUD güncellemesi
   useEffect(() => {
+    /**
+     * ⚠️ HIZIN SESİ DE OLMALI. Koşu türünün ses kimliği sürekli RÜZGÂR
+     * katmanıdır; bizde bütün sesler "olay oldu → çıt" biçimindeydi, yani
+     * hızlanmak KULAKTA hiç duyulmuyordu. Kenar hız çizgileriyle AYNI
+     * sayıdan besleniyor — göz ve kulak aynı şeyi söylüyor.
+     * ⚠️ TEMBEL KURULUR: sayfa açılır açılmaz gürültü kaynağı çalıştırmak
+     * hem gereksiz hem de kullanıcı hareketi öncesi bağlamı uyandırıyor.
+     */
+    let ruzgar: SurekliSes | null = null;
     const id = setInterval(() => {
       const s = sim.current;
       setPu((prev) => {
@@ -1156,13 +1165,17 @@ const SubwayGame = () => {
        * 60 render demek olurdu. 200 ms çözünürlük yeterli — hız zaten
        * yavaş değişen bir büyüklük (rampa doğru cevaba bağlı).
        */
+      const k = Math.max(0, Math.min(1, (s.speed - BASE_SPEED) / (SPEED_MAX_FOV - BASE_SPEED)));
       const el = hizRef.current;
-      if (el) {
-        const k = Math.max(0, Math.min(1, (s.speed - BASE_SPEED) / (SPEED_MAX_FOV - BASE_SPEED)));
-        el.style.opacity = String(s.running ? k * 0.5 * hareketKatsayisi() : 0);
+      if (el) el.style.opacity = String(s.running ? k * 0.5 * hareketKatsayisi() : 0);
+      if (s.running && !ruzgar) {
+        ruzgar = gurultuDongusu({ tip: "lowpass", bas: 320, tepe: 1500, q: 1.3, gain: 0.05 });
       }
+      // ⚠️ TABAN SEVİYE VAR (0.2): koşucu taban hızda da hareket hâlinde,
+      // sıfırdan başlayan rüzgâr oyunun ilk yarısını sessiz bırakıyordu.
+      ruzgar?.ayarla(s.running ? 0.2 + 0.8 * k : 0);
     }, 200);
-    return () => clearInterval(id);
+    return () => { clearInterval(id); ruzgar?.dur(); };
   }, []);
 
   const showBanner = useCallback((text: string, tone: "good" | "bad" | "power", ms = 1600) => {

@@ -40,7 +40,7 @@ import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { createAdaptiveResolution } from "./_perf";
 import { pickNextGameItem, recordGameAnswer, getGameItemLevel } from "@/lib/gameProgress";
 import { useRemedyOnGameOver } from "@/lib/remedial";
-import { playItem, playFeedback, playSfx, preloadItems, tone } from "@/lib/audio";
+import { playItem, playFeedback, playSfx, preloadItems, tone, gurultuDongusu } from "@/lib/audio";
 import { sfx } from "@/lib/juice";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
@@ -1631,6 +1631,15 @@ const PartyGame = () => {
      * tuzak `placeRacers()` ile çözülmüştü). Kamera yumuşatmasız, doğrudan
      * takip hedefine oturur.
      */
+    /**
+     * ⚠️ KOŞMANIN SESİ DE OLMALI: Koşusu ve Yarışı'yla aynı boşluk buradaydı
+     * da — bütün sesler tek atımlıktı, hız KULAKTA hiç duyulmuyordu.
+     * Burada sürekli katman RÜZGÂR: karakter koşarken hafif, roketle
+     * (`spEfektif` tavana giderken) belirgin. Kısık tutulur, kapı soruları
+     * bunun üstünde kalmalı.
+     */
+    const ruzgarSes = gurultuDongusu({ tip: "lowpass", bas: 300, tepe: 1400, q: 1.3, gain: 0.045 });
+
     const yerlestir = () => {
       for (const r of racers) {
         r.group.position.set(r.x, r.y, wz(r.z));
@@ -1675,6 +1684,12 @@ const PartyGame = () => {
       hudT -= dt;
       if (hudT <= 0) {
         hudT = 0.16;
+        // Rüzgâr: taban hızda kısık, roketle açılır. Duraklatmada/sayımda susar.
+        ruzgarSes.ayarla(
+          basladi && ctrlRef.current.running
+            ? 0.25 + 0.75 * clamp((player.spEfektif - BASE_SPEED) / (BOOST_SPEED - BASE_SPEED), 0, 1)
+            : 0,
+        );
         const ahead = racers.filter((r) => !r.isPlayer && (r.finished !== null || r.z > player.z)).length;
         setHud({
           place: ahead + 1,
@@ -1690,6 +1705,7 @@ const PartyGame = () => {
 
     return () => {
       cancelAnimationFrame(raf);
+      ruzgarSes.dur();
       setGeriSayim(null);
       window.removeEventListener("resize", resize);
       canvas.removeEventListener("pointerdown", onDown);
