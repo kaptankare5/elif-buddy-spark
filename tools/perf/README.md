@@ -83,3 +83,28 @@ yüzden görsel açısal hız `π/(n·dt)` ile kelepçelenir.
 `node tools/perf/kirp.mjs kaynak.png cikti.png X Y EN BOY [ZOOM]` — telefon
 ölçüsünde çekilen karede tekerlek göbeği gibi küçük ayrıntılar birkaç piksel
 kalıyor; "düzeldi mi" sorusu göz kararına düşmesin diye bölgeyi büyütür.
+
+## Ses zaman çizelgesi (`sesZaman.mjs`)
+
+`juice.mjs` yalnız "ses çıktı mı" diye sayıyor. Bir SIRA tasarlarken bu
+yetmiyor — yarış geri sayımının doğru ANDA ve doğru PERDEDE çaldığı
+görülmeli. Araç WebAudio'nun osilatör frekans çağrılarını ve `start(t)`
+zamanını sarmalayıp çizelgeyi yazdırır:
+
+```
+node tools/perf/sesZaman.mjs /oyunlar/kart "Bahçe Turu" 6000
+
+   t      tür       dalga      perde (Hz)
+  0.00   ton       square     700        ← tik "3"
+  0.02   ton       sawtooth   88 → 132   ← ızgarada gaz blibi
+  1.16   ton       square     700        ← tik "2"  (aynı perde)
+  2.15   ton       square     700        ← tik "1"
+  3.21   ton       square     1046       ← BAŞLA (tiz + uzun)
+  3.21   ton       sawtooth   110 → 460  ← motor kalkışı
+  3.27   gürültü   -          —          ← lastik cıyaklaması
+```
+
+⚠️ **İlk ölçüm bir hata yakaladı**: tikler 1.0 sn yerine **2.0 sn** arayla
+çalıyordu. Sebep sesin kendisi değildi — geri sayım sayacı fizik dt'siyle
+besleniyordu ve `DT_MAX` (0.05) 20 fps'in altındaki her kareyi kırpıyordu,
+yani "3-2-1" yavaş cihazda 3.2 yerine 5.8 sn sürüyordu.

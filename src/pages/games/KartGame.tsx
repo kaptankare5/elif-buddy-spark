@@ -42,6 +42,7 @@ import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
 import { zorlukAyari } from "@/lib/zorluk";
 import { clamp, createSarsinti, hareketKatsayisi } from "@/lib/gameFeel";
+import { sfx } from "@/lib/juice";
 import { oyunBitti, useOyunKayitlari } from "@/lib/oyunSonucu";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
 import { letterTexture, nameTexture, emojiTexture, faceTexture, hubTexture, wordTexture, blockedTexture } from "./_letterTexture";
@@ -1845,6 +1846,11 @@ const KartGame = () => {
     let hudT = 0;
     let cd = 3.2;
     setCountdown(3);
+    /**
+     * ⚠️ SES SAYI DEĞİŞİNCE ÇALAR, HER KAREDE DEĞİL: `shown` her karede
+     * yeniden hesaplanıyor, tik sesini oraya koymak saniyede 60 bip demek.
+     */
+    let sonSayi = 4;
     const ctrl = ctrlRef.current;
     ctrl.dir = 0; ctrl.dragU = null; ctrl.usePower = false;
     ctrl.running = false;
@@ -1858,13 +1864,33 @@ const KartGame = () => {
       const tNow = now * 0.001;
 
       if (!ctrl.running && cd > 0) {
-        cd -= dt;
+        /**
+         * ⚠️ SAYAÇ KELEPÇESİZ SÜREYİ KULLANIR. Fizik dt'si `DT_MAX` (0.05)
+         * ile kelepçeli — arka plandan dönüşte araçlar duvarın içinden
+         * geçmesin diye. Ama sayacı onunla beslemek, 20 fps'in ALTINDAKİ
+         * cihazda geri sayımı YAVAŞLATIYOR: ölçüldü (`tools/perf/sesZaman.mjs`,
+         * ~10 fps) — tikler 1.0 sn yerine 2.0 sn arayla çaldı, "3-2-1"
+         * 3.2 sn yerine 5.8 sn sürdü. Sayaç gerçek süreyi kullanır; arka
+         * plandan dönüşte tek karede bitmesin diye 0.5 sn tavanı var.
+         */
+        cd -= Math.min(0.5, dtRaw);
         const shown = Math.ceil(cd - 0.2);
         setCountdown(shown > 0 ? shown : 0);
+        if (shown !== sonSayi) {
+          sonSayi = shown;
+          /**
+           * ⚠️ "BAŞLA!" SESİ YAZIYLA AYNI ANDA, yarışın fiilen başladığı
+           * anda DEĞİL: `shown` 0'a düştüğünde yazı beliriyor, araçlar ise
+           * 0.2 sn sonra (cd ≤ 0) kalkıyor. Sesi kalkışa bağlamak, yazı
+           * KAYBOLURKEN öttürmek olurdu. Bu sıra gerçeğe de uyuyor —
+           * önce işaret duyulur, sonra araçlar fırlar; motor sesi 0.75 sn
+           * sürdüğü için kalkışın üstünü de örtüyor.
+           */
+          sfx(shown > 0 ? "sayim" : "start");
+        }
         if (cd <= 0) {
           ctrl.running = true;
           setCountdown(null);
-          playSfx("dove");
         }
         placeRacers();
         // Geri sayımda kamera geride ve yukarıda: hem ızgarayı hem pistin

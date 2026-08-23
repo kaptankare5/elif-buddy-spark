@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 383 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 391 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -1026,6 +1026,26 @@ alınmadığı orada yazılı (Mario'nun kayganlığı, MK'nin drift kademeleri�
   - `_letterTexture.ts` ortak: harf panosu / isim etiketi / sevimli yüz /
     emoji dokusu. Partisi de bunu kullanır — harfi panoya sığdırma ve yüz
     çizimi tek yerde.
+- ⚠️ **YARIŞ BAŞLANGIÇ SESİ İKİ SESTİR** (`sfx("sayim")` / `sfx("start")`,
+  juice.ts): motor sporlarının evrensel deseni — **aynı perdede üç tik,
+  sonra daha TİZ ve UZUN bir işaret**. Sayımda perde kasten DEĞİŞMEZ;
+  yükselen bir sayım son notayı sıradanlaştırır, "başla"nın farklı olduğu
+  ancak öncekiler tekdüze olunca anlaşılır. Tikin altındaki 180 Hz'lik
+  vuruş telefon hoparlörü içindir (ince bir bip küçük hoparlörde cılız
+  kalıyor). Sesi "geri sayım" değil "YARIŞ geri sayımı" yapan şey
+  **motor**: `motor()` (audio.ts) perdesi KAYAN testere dalgasını perdeyi
+  takip eden rezonanslı süzgeçten geçirir, iki osilatör hafif detonedir
+  (vuru = hırıltı). Tikte kısık bir gaz blibi (88→132 Hz), başlangıçta
+  kalkış (110→460 Hz) + lastik cıyaklaması (yüksek Q'lu `gurultu`).
+  Bekçi: `yarisSesi.test.ts` — sahte AudioContext kurup GERÇEKTEN hangi
+  osilatörün hangi perdede açıldığını ölçer (dizgi eşleştirmesi değil).
+- ⚠️ **GERİ SAYIM SAYACI KELEPÇESİZ SÜREYİ KULLANIR** (Yarışı): fizik dt'si
+  `DT_MAX` (0.05) ile kırpılıyor — arka plandan dönüşte tünelleme olmasın
+  diye. Sayacı onunla beslemek 20 fps'in ALTINDAKİ cihazda geri sayımı
+  YAVAŞLATIYOR: ölçüldü (`tools/perf/sesZaman.mjs`, ~10 fps) tikler 1.0 sn
+  yerine 2.0 sn arayla çaldı, "3-2-1" 3.2 yerine **5.8 sn** sürdü.
+  `cd -= Math.min(0.5, dtRaw)` — 0.5 tavanı arka plandan dönüşte sayımın
+  tek karede bitmesini engeller. (Partisi'nde aynı kalıp duruyor.)
 - ⚠️ **UYARLANIR ÇÖZÜNÜRLÜK** (`_perf.ts`, Partisi + Yarışı): Capacitor/
   WebView'de en pahalı şey üçgen değil DOLDURULAN PİKSEL. 2026 telefonlarında
   dpr 2.6-3.5; sabit `setPixelRatio(2)` ile 412×880 ekran 1.45 MP olarak
