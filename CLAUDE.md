@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 281 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 377 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -919,6 +919,20 @@ alınmadığı orada yazılı (Mario'nun kayganlığı, MK'nin drift kademeleri�
     karakter yanıp sönerek bunu GÖSTERİR. ⚠️ Görünürlüğün TEK SAHİBİ
     kamera bloğudur — iki ayrı yerde `group.visible` atarsan biri ötekini
     ezer (bir kez oldu).
+  - ⚠️ **YARIŞ 3-2-1 SAYIMIYLA BAŞLAR** (`geriSayim`, 3.2 sn): bölüm seçilir
+    seçilmez koşuluyordu ve ilk kapının sorusu `step` içinde silahlanıp
+    ekran boyanmadan çalıyordu (kullanıcı: "başlayınca ekran gelmeden ses
+    geliyor"). Sayım `step`'i geciktirdiği için ses de kendiliğinden
+    gecikiyor — ayrı bir ses erteleme koduna gerek yok. ⚠️ Sayım
+    `ctrl.running` ile İZLENMEZ, ayrı `basladi` bayrağıyla izlenir:
+    duraklatma da `running`'i kapatıyor, tek bayrakla sayım sırasında
+    duraklatınca sayaç ilerleyip oyunu KENDİLİĞİNDEN başlatıyordu.
+    ⚠️ Sahne sayımdan ÖNCE `yerlestir()` ile kurulur (Yarışı'ndaki
+    `placeRacers()` tuzağının aynısı): yer/kamera yalnız `step()` içinde
+    yazılıyordu, çocuk sayım boyunca BOŞ yola bakıyordu (ekran görüntüsüyle
+    görüldü). Sayı ekranın ortasında değil YOLUN ÜSTÜNDE (`pt-[26vh]`) —
+    tam ortada karakterin ve "Sen" etiketinin üzerine biniyordu.
+    Bekçi: `gameFeelKapsam.test.ts` → "geri sayım (Parti)".
   - Diğer tuzaklar: kamera oyuncunun ~17 birim gerisinde → geçilen kapı
     gizlenmeli, kameraya yakın yarışmacı `visible=false`; çekiç direği pivotun
     çocuğu OLMAYACAK (yoksa çekiçle döner); yüz düzlemi kapsülün DIŞINDA ve
