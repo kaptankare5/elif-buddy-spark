@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 377 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 383 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -975,6 +975,40 @@ alınmadığı orada yazılı (Mario'nun kayganlığı, MK'nin drift kademeleri�
     çocuk pistin dışında takılıp kalmasın; ceza yavaşlık, kilitlenme değil.
   - Şiddetsiz: muz yalnız KAYDIRIR, yıldız yalnız korur. Güçler tek slot ve
     rastgele (🍄 turbo · ⭐ yıldız · 🍌 muz · 🪶 tüy), Partisi'yle aynı kural.
+  - ⚠️ **TEKERLEK ÜÇ KATLI KURULUR** (`body → hub → wheel`, ölçüm
+    `tools/perf/teker.mjs`). Kullanıcı "sağa sola gidince ön tekerler
+    havadaymış gibi" dedi; ÖLÇÜLDÜ: tam savrulmada aks yataydan **35.5°**
+    kalkıyor, tekerlek yerden **0.373 birim** (yarıçapının %60'ı)
+    yükseliyordu. İKİ AYRI kusur aynı görüntüyü veriyordu:
+    (1) **gövde eğimi tekerleği de yatırıyordu** — gerçek araçta gövde
+    süspansiyon üzerinde yatar, lastik YERDE kalır; eğim artık `shell`
+    düğümünde, tekerlekler `body`nin doğrudan çocuğu.
+    (2) **yuvarlanma (X) ile direksiyon (Y) AYNI Euler'deydi** — three.js
+    "XYZ" sırasında matris Rx·Ry olur, yani sürekli büyüyen yuvarlanma açısı
+    direksiyon EKSENİNİ devirir (Unity forumlarındaki klasik "ön teker
+    gimbal" sorunu). Artık göbek yalnız Y, çocuğu olan tekerlek yalnız X.
+    Yeni değerler: aks eğimi **0°**, yerden açıklık **0**.
+  - ⚠️ **DİREKSİYON AÇISI İKİ KAYNAĞIN TOPLAMI**: (a) sürüş girdisi
+    (`drift × STEER_INPUT`, arcade payı — çocuk sağa basınca teker görünür
+    biçimde sağa döner), (b) **pistin kavisi**, bisiklet modeliyle
+    δ = atan(L·κ). (b) olmadan uzun virajda `drift` sıfır olduğu için teker
+    DÜMDÜZ kalıyordu, oysa araç dönüyor. κ, pist boyunca iki kirişin
+    arasındaki açıdan ölçülür — **dt gerektirmez**, geri sayımda da doğru.
+    Üstüne **Ackermann**: iç teker daha küçük yayı çizdiği için daha çok
+    döner (cot δ_dış = cot δ_iç + iz/dingil; iz 2.5, dingil 2.6 → 24°
+    ortalamada iç 29.6° · dış 20.2°). Sürücünün elindeki direksiyon da döner.
+  - ⚠️ **JANTTA DESEN OLMAZSA DÖNÜŞ GÖRÜNMEZ** (`hubTexture`): lastik de
+    göbek de düz silindir, yani dönme eksenine göre TAM SİMETRİK — kod her
+    karede döndürüyordu, ekranda hiçbir şey değişmiyordu. Doku PAYLAŞILIR,
+    çizim çağrısı artmaz (ölçüldü: 185 çizim / 47.9k üçgen — eskisiyle
+    AYNI). ⚠️ Desenin simetri derecesi **strobe sınırını** belirler: `n`
+    kollu göbek karede π/n'den fazla dönerse zamansal örtüşmeye girer ve
+    tekerlek GERİYE dönüyormuş gibi görünür (wagon-wheel etkisi). Görsel
+    açısal hız bu yüzden `π/(HUB_SPOKES·dt)` ile kelepçelenir — dt'ye bağlı
+    olduğu için 30 fps'lik cihazda kendiliğinden daha sıkı. Yuvarlanma
+    ω = v/yarıçap (arka teker büyük → yavaş döner) ve **dt ile** çarpılır;
+    eski sabit `* 0.016` 120 Hz telefonda tekerleği iki kat hızlı
+    döndürüyordu. Bekçi: `gameFeelKapsam.test.ts` → "tekerlek (Yarışı)".
   - Sürücü ANIMAL CROSSING oranlarında ve YUVARLAK parçalardan (küre/kapsül/
     torus): büyük kafa, çizilmiş sevimli yüz, AÇIK kask (kapalı vizör camı
     YOK — küre "kuşağı" kaskın çevresini sardığı için arkadan bakınca cam

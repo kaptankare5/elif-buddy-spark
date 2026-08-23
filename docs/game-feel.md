@@ -186,6 +186,53 @@ sarsıntı + drift kıvılcımı**.
 etmeyen bir yalan olurdu. Kıvılcım "hızlı viraj alıyorsun" demeye devam ediyor,
 o doğru.
 
+### ⚠️ Ön tekerlekler: "havadaymış gibi" (kullanıcı tespiti)
+
+MK'de aracın tekerleği türün İMZASIDIR — kamera hep arkada olduğu için çocuğun
+en çok baktığı hareketli parça odur. Bizde iki ayrı kusur aynı görüntüyü
+veriyordu; payları `tools/perf/teker.mjs` ile ölçüldü (tam savrulmada):
+
+```
+ESKİ  aks eğimi en çok 35.5° · ortalama 16.4°  | yerden açıklık 0.373 (yarıçapın %60'ı)
+YENİ  aks eğimi en çok  0.0°                   | yerden açıklık 0.000
+```
+
+1. **Gövde eğimi tekerleği de yatırıyordu.** Gerçek araçta gövde süspansiyon
+   üzerinde yatar, lastik yerde kalır (oyun tarafında bunun karşılığı, gövde
+   kabuğunu tekerlek düğümünden AYIRMAK — ray-cast araç kurulumlarının
+   "chassis float, wheels planted" düzeni). Eğim artık `shell` düğümünde.
+2. **Yuvarlanma (X) ile direksiyon (Y) aynı Euler'deydi.** three.js "XYZ"
+   sırasında matris Rx·Ry olur: sürekli büyüyen yuvarlanma açısı direksiyon
+   EKSENİNİ deviriyordu. Unity forumlarında bu tam olarak kayıtlı bir tuzak —
+   "arka tekerlekler düzgün dönüyor, ÖN tekerlekler bozuluyor, çünkü onlar
+   ayrıca direksiyona da çevriliyor". Çözüm her yerde aynı: **iki ayrı düğüm**
+   (ya da kuaterniyon çarpımı), göbek yalnız direksiyonu, tekerlek yalnız
+   yuvarlanmayı döndürür.
+
+| teknik | durum |
+|---|---|
+| direksiyon ve yuvarlanma ayrı düğümde | ✅ yeni |
+| gövde yatar, tekerlek yerde kalır | ✅ yeni |
+| **Ackermann** (iç teker dıştan çok döner) | ✅ yeni |
+| pistin kavisi tekerleğe yansır (δ = atan(L·κ)) | ✅ yeni |
+| sürücünün elindeki direksiyon döner | ✅ yeni |
+| jant deseni + strobe kelepçesi | ✅ yeni |
+| süspansiyon çökmesi / burun dalması | ❌ *bilerek alınmadı* |
+
+⚠️ **Bilerek alınmadı:** gerçek süspansiyon çökmesi (hızlanmada arka oturur,
+frende burun dalar) her tekerlek için ayrı yay-sönüm ister; bizim fizik
+modelimiz yanal KAYMA üzerine kurulu, ivme eğrisi otomatik gaz tarafından
+sürülüyor. Sahte bir çökme, olmayan bir şeyi haber veren bir yalan olurdu —
+kıvılcım renk kademesiyle aynı gerekçe.
+
+⚠️ **Jant deseni bir SÜS DEĞİL, ölçüm aracı**: lastik de göbek de düz silindir,
+yani dönme eksenine göre tam simetrik. Desen olmadan yuvarlanma animasyonu
+ekranda HİÇ görünmüyor (kod her karede döndürüyor, göz hiçbir şey görmüyor).
+Desen gelince strobe (wagon-wheel) sınırı devreye girer: `n` kollu göbek karede
+π/n'den fazla dönerse tekerlek geriye dönüyormuş gibi görünür. Görsel açısal
+hız `π/(n·dt)` ile kelepçelendi — dt'ye bağlı olduğu için 30 fps'lik cihazda
+kendiliğinden daha sıkı.
+
 ---
 
 ## 5. Uçan Kuş → **Flappy Bird**

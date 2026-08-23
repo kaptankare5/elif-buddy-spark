@@ -197,6 +197,71 @@ export function faceTexture(): THREE.CanvasTexture {
   return t;
 }
 
+/**
+ * JANT GÖBEĞİ — tekerleğin döndüğünün GÖRÜLEBİLMESİ için.
+ *
+ * ⚠️ NEDEN GEREKLİ: lastik de göbek de düz silindir, yani dönme eksenine göre
+ * TAM SİMETRİK. Kod tekerleği her karede döndürüyordu ama ekranda hiçbir şey
+ * değişmiyordu — dönen simetrik bir cisim duruyormuş gibi görünür. Desen
+ * gelince yuvarlanma görünür oluyor ve araç "kayıyor" değil "yuvarlanıyor"
+ * gibi duruyor.
+ *
+ * ⚠️ DESENİN SİMETRİSİ STROBE SINIRINI BELİRLER: `n` kollu bir göbek, karede
+ * yarım kol adımından (π/n) fazla dönerse zamansal örtüşmeye girer ve
+ * tekerlek GERİYE dönüyormuş gibi görünür (wagon-wheel etkisi). Bu yüzden
+ * kol sayısı AZ (3) tutuldu ve kollardan biri farklı renk: gözün takip
+ * ettiği belirgin işaret bir tane olunca desen fiilen 1. dereceden simetrik
+ * olur, örtüşme eşiği yükselir. Çizim silindirin KAPAKLARINA düşer
+ * (three.js kapak UV'si merkezi (0.5,0.5) olan bir daireye eşlenir).
+ */
+export function hubTexture(spokes = 3): THREE.CanvasTexture {
+  const key = `H:${spokes}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+
+  const S = 128;
+  const c = document.createElement("canvas");
+  c.width = S; c.height = S;
+  const g = c.getContext("2d")!;
+  const M = S / 2;
+
+  // jant gövdesi: açık metalik disk
+  g.fillStyle = "#e8edf3";
+  g.beginPath(); g.arc(M, M, M, 0, Math.PI * 2); g.fill();
+  // dış çember (lastikle sınır)
+  g.strokeStyle = "#9aa5b1";
+  g.lineWidth = 6;
+  g.beginPath(); g.arc(M, M, M - 5, 0, Math.PI * 2); g.stroke();
+
+  // kollar — biri vurgulu (gözün takip ettiği tek işaret)
+  for (let i = 0; i < spokes; i++) {
+    const a = (i / spokes) * Math.PI * 2 - Math.PI / 2;
+    g.save();
+    g.translate(M, M);
+    g.rotate(a);
+    g.fillStyle = i === 0 ? "#f59e0b" : "#7b8794";
+    g.beginPath();
+    g.moveTo(-8, -10);
+    g.lineTo(8, -10);
+    g.lineTo(5, -(M - 12));
+    g.lineTo(-5, -(M - 12));
+    g.closePath();
+    g.fill();
+    g.restore();
+  }
+
+  // orta somun
+  g.fillStyle = "#4b5563";
+  g.beginPath(); g.arc(M, M, 15, 0, Math.PI * 2); g.fill();
+  g.fillStyle = "#cbd5e1";
+  g.beginPath(); g.arc(M, M, 8, 0, Math.PI * 2); g.fill();
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  cache.set(key, t);
+  return t;
+}
+
 /** Emoji'yi şeffaf zeminli dokuya çizer (taç, muz, item kutusu ikonu…). */
 export function emojiTexture(emoji: string, size = 256): THREE.CanvasTexture {
   const key = `E:${emoji}:${size}`;
