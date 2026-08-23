@@ -693,13 +693,23 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   kesme frekansı SÜPÜRÜLEN alçak geçiren süzgeçten geçirir; ıslaklık yüksek
   Q'dan (rezonans) gelir. Gürültü tamponu bir kez üretilip önbelleğe alınır —
   her seferinde 0.5 sn'lik rastgele dizi doldurmak telefonda kareyi düşürür.
-- Parti'de çamur: her adımda `sfx("camur")` + yerde AYAK İZİ + sıçrayan
-  damlalar. ⚠️ İz, çamurdan ÇIKTIKTAN sonra da `IZ_ADIM` (5) adım devam
-  eder — asıl bilgi orada ("ayağıma çamur bulaştı"); içindeyken zaten
-  yavaşlıyor. Ses yalnız çamurun İÇİNDE çalar, dışarıdaki izler sessizdir.
+- Parti'de çamur: her adımda `sfx("camur")` + AYAK ÇAMURA BULANIR + yerde
+  ayak izi + sıçrayan damlalar. Hepsi tek sayıya bağlı: `yogunluk`
+  (= kalan çamurlu adım / `IZ_ADIM`), çamurun içinde 1, çıkınca adım adım 0.
+  ⚠️ **AYAKLARIN AYRI MALZEMESİ VAR** (`ayakMat`/`ayakDeriMat`): ayakkabı
+  gövdeyle aynı malzemeyi paylaşıyordu, çamuru boyamak gövdeyi ve bereyi de
+  karartırdı. Kopya malzeme sayesinde yalnız ayak kirlenir.
+  ⚠️ **İZ KOYUDAN AÇIĞA GİDER** (kullanıcı şartı: "ilk adım koyu iken adım
+  attıkça rengi açılsın"): izin başlangıç opaklığı ve boyu yoğunlukla
+  ölçeklenir, damla sayısı da azalır (3 → 1).
+  ⚠️ **ZAMAN SOLMASI GECİKMELİ** (ilk %65 tam koyulukta durur): doğrusal
+  solmada ilk iz hem EN KOYU hem EN ESKİ olduğu için en çok soluyor ve
+  bütün izler birbirine benziyordu — adım gradyanı ekranda kayboluyordu.
+  ⚠️ İz, çamurdan ÇIKTIKTAN sonra da `IZ_ADIM` (5) adım devam eder — asıl
+  bilgi orada; içindeyken zaten yavaşlıyor. Ses yalnız çamurun İÇİNDE çalar.
   ⚠️ İz/damla HAVUZDAN gelir (her adımda mesh yaratmak WebView'de çöp
   toplayıcıyı tetikler) ve yalnız OYUNCU iz bırakır — 5 bot da bıraksa ekran
-  çamur içinde kalır. ⚠️ Çamur TİTREŞMEZ (saniyede ~3 adım).
+  çamur içinde kalır. Zıplarken iz basılmaz. ⚠️ Çamur TİTREŞMEZ (~3 adım/sn).
 
 ### Görsel oyun hissi (`src/lib/gameFeel.ts`)
 `juice.ts` KULAĞA ve ELE hitap eder (ses + titreşim); `gameFeel.ts` GÖZE.

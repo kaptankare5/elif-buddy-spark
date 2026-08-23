@@ -81,9 +81,15 @@ const ROLLER_CLEAR = 2.4;      // silindirin üstü
 const BOOST_TIME = 3.5;
 const MUD_TIME = 1.8;
 /** Yerdeki çamur izi kaç saniyede söner. */
-const IZ_OMRU = 2.6;
+const IZ_OMRU = 3.2;
 /** Çamurdan ÇIKTIKTAN sonra kaç adım daha iz bırakılır (ayaktaki çamur). */
 const IZ_ADIM = 5;
+/** Ayağa/ize bulaşan çamurun rengi. */
+const CAMUR_RENK = 0x4a2d18;
+/** İlk (en koyu) ayak izinin opaklığı. */
+const IZ_OPAK = 0.85;
+/** `lerp` için hazır Color — her karede yeni nesne yaratmamak için modül düzeyinde. */
+const CAMUR_TON = new THREE.Color(CAMUR_RENK);
 const NET_TIME = 2.2;
 const HIT_TIME = 1.0;          // takla süresi
 /** Takladan sonra hiçbir engelin çarpmadığı süre (sn) — bkz. Racer.graceT. */
@@ -302,6 +308,12 @@ interface Racer {
   gateChoice: number | null;
   finished: number | null;
   hop: number;
+  /** Ayakkabı/bacak malzemesi — çamur BURAYA bulaşır (gövde temiz kalır). */
+  ayakMat: THREE.MeshLambertMaterial;
+  ayakDeriMat: THREE.MeshLambertMaterial;
+  /** Çamursuz hâlin renkleri — temizlenirken buraya geri dönülür. */
+  ayakRenk: THREE.Color;
+  ayakDeriRenk: THREE.Color;
   group: THREE.Group;
   body: THREE.Group;      // gövde + yüz + şapka (birlikte eğilir/takla atar)
   legs: [THREE.Object3D, THREE.Object3D];
@@ -521,16 +533,17 @@ const PartyGame = () => {
     const IZ_SAYISI = 14, SICRAMA_SAYISI = 18;
     const izGeo = track(new THREE.CircleGeometry(0.42, 10));
     const izMat = track(new THREE.MeshBasicMaterial({
-      color: 0x4a2d18, transparent: true, opacity: 0.82, depthWrite: false,
+      color: CAMUR_RENK, transparent: true, opacity: IZ_OPAK, depthWrite: false,
     }));
-    type Iz = { mesh: THREE.Mesh; t: number };
+    /** `güç` = izin BAŞLANGIÇ koyuluğu; zamanla ondan sıfıra solar. */
+    type Iz = { mesh: THREE.Mesh; t: number; güç: number };
     const izler: Iz[] = [];
     for (let i = 0; i < IZ_SAYISI; i++) {
       const m = new THREE.Mesh(izGeo, izMat.clone());
       m.rotation.x = -Math.PI / 2;
       m.visible = false;
       scene.add(m);
-      izler.push({ mesh: m, t: 0 });
+      izler.push({ mesh: m, t: 0, güç: 0 });
     }
     let izSira = 0;
 
@@ -555,14 +568,25 @@ const PartyGame = () => {
     /** Çamurdan çıktıktan sonra kaç adım daha iz kalacak. */
     let camurluAdim = 0;
 
-    /** Bir ayak izi bas + birkaç damla sıçrat. */
-    const camurAdimi = (x: number, z: number, yan: number) => {
+    /**
+     * Bir ayak izi bas + birkaç damla sıçrat.
+     * @param yogunluk 1 = ayak çamur dolu (ilk adım), 0 = çamur bitti.
+     *
+     * ⚠️ İZ ADIM ADIM AÇILIR (kullanıcı isteği): "ilk adım koyu iken adım
+     * attıkça rengi açılsın, çamur azalıyormuş gibi". Koyuluk YOĞUNLUKLA
+     * ölçekleniyor; damla sayısı da azalıyor — son adımda tek damla kalıyor,
+     * çünkü ayakta sıçrayacak çamur kalmadı.
+     */
+    const camurAdimi = (x: number, z: number, yan: number, yogunluk: number) => {
       const iz = izler[izSira++ % IZ_SAYISI];
       iz.t = 0;
       iz.mesh.position.set(x + yan * 0.3, 0.045, wz(z));
-      iz.mesh.scale.setScalar(0.8 + Math.random() * 0.4);
+      iz.mesh.scale.setScalar((0.62 + 0.38 * yogunluk) * (0.85 + Math.random() * 0.3));
+      iz.güç = IZ_OPAK * yogunluk;
+      (iz.mesh.material as THREE.MeshBasicMaterial).opacity = iz.güç;
       iz.mesh.visible = true;
-      for (let i = 0; i < 3; i++) {
+      const damla = Math.max(1, Math.round(3 * yogunluk));
+      for (let i = 0; i < damla; i++) {
         const sp = sicramalar[sicramaSira++ % SICRAMA_SAYISI];
         sp.t = 0;
         sp.mesh.position.set(x + yan * 0.3, 0.2, wz(z));
@@ -579,9 +603,18 @@ const PartyGame = () => {
       for (const iz of izler) {
         if (!iz.mesh.visible) continue;
         iz.t += dt;
-        const k = 1 - iz.t / IZ_OMRU;
-        if (k <= 0) { iz.mesh.visible = false; continue; }
-        (iz.mesh.material as THREE.MeshBasicMaterial).opacity = 0.82 * k;
+        if (iz.t >= IZ_OMRU) { iz.mesh.visible = false; continue; }
+        /**
+         * ⚠️ SOLMA GECİKMELİ (ilk %65 tam koyulukta durur).
+         * Doğrusal solmada ZAMAN gradyanı, ADIM gradyanını bastırıyordu:
+         * ilk iz hem EN KOYU hem EN ESKİ olduğu için en çok soluyor, sonuçta
+         * bütün izler birbirine benziyordu. Oysa istenen "ilk adım koyu,
+         * sonrakiler açık". İz önce olduğu gibi durur, sonra kaybolur —
+         * böylece adım adım açılma ekranda okunur.
+         */
+        const y0 = iz.t / IZ_OMRU;
+        const k = y0 < 0.65 ? 1 : 1 - (y0 - 0.65) / 0.35;
+        (iz.mesh.material as THREE.MeshBasicMaterial).opacity = iz.güç * k;
       }
       for (const sp of sicramalar) {
         if (!sp.mesh.visible) continue;
@@ -897,14 +930,23 @@ const PartyGame = () => {
         arms.push(a);
       }
       // bacaklar (ayakkabılı)
+      /**
+       * ⚠️ AYAKLARA AYRI MALZEME: ayakkabılar gövdeyle aynı `mat`'i
+       * paylaşıyordu; çamuru boyamak için o malzemeyi karartmak gövdeyi ve
+       * bereyi de karartırdı. Ayrı bir kopya (aynı renkle başlar) yalnız
+       * ayakları çamura bulamayı mümkün kılıyor. Bacak derisi de aynı
+       * malzemeyi alır — çamur ayakkabıdan bileğe çıkar.
+       */
+      const ayakMat = track(new THREE.MeshLambertMaterial({ color }));
+      const ayakDeriMat = track(new THREE.MeshLambertMaterial({ color: skinMat.color.getHex() }));
       const legs: THREE.Object3D[] = [];
       for (const s of [-1, 1]) {
         const l = new THREE.Group();
         l.position.set(s * 0.3, 0.58, 0);
-        const limb = new THREE.Mesh(legGeo, skinMat);
+        const limb = new THREE.Mesh(legGeo, ayakDeriMat);
         limb.position.y = -0.22;
         l.add(limb);
-        const foot = new THREE.Mesh(footGeo, mat);
+        const foot = new THREE.Mesh(footGeo, ayakMat);
         foot.scale.set(1, 0.62, 1.35);
         foot.position.set(0, -0.48, -0.1);   // ayak ucu ileri = -Z
         l.add(foot);
@@ -966,6 +1008,9 @@ const PartyGame = () => {
         legs: legs as [THREE.Object3D, THREE.Object3D],
         arms: arms as [THREE.Object3D, THREE.Object3D],
         bodyMat: mat, aura,
+        ayakMat, ayakDeriMat,
+        ayakRenk: new THREE.Color(color),
+        ayakDeriRenk: new THREE.Color(skinMat.color.getHex()),
       };
     };
 
@@ -1298,13 +1343,26 @@ const PartyGame = () => {
          */
         if (r.isPlayer) {
           if (r.mudT > 0) camurluAdim = IZ_ADIM;
+          /**
+           * ⚠️ YOĞUNLUK = AYAKTA KALAN ÇAMUR (1 → 0). Çamurun İÇİNDEYKEN her
+           * karede tazelendiği için 1'de kalır; çıkınca her adımda azalır.
+           * Hem AYAĞIN rengi hem İZİN koyuluğu buna bağlı — "ilk adım koyu,
+           * adım attıkça açılıyor" (kullanıcı isteği).
+           */
+          const yogunluk = camurluAdim / IZ_ADIM;
+          // Ayak ve bacak çamura bulanır; gövde ve bere temiz kalır.
+          r.ayakMat.color.copy(r.ayakRenk).lerp(CAMUR_TON, yogunluk);
+          r.ayakDeriMat.color.copy(r.ayakDeriRenk).lerp(CAMUR_TON, yogunluk * 0.75);
+
           const adim = Math.floor(r.hop / Math.PI);
           if (adim !== sonAdim) {
             const yan = adim % 2 === 0 ? 1 : -1;      // sağ/sol ayak
             sonAdim = adim;
             if (camurluAdim > 0 && r.y < 0.25 && r.hitT <= 0) {
+              // ⚠️ İz, ADIMDAN ÖNCEKİ yoğunlukla basılır: çamurdan çıkınca
+              // ilk iz en koyu olsun, sayaç ondan SONRA düşsün.
+              camurAdimi(r.x, r.z, yan, yogunluk);
               camurluAdim--;
-              camurAdimi(r.x, r.z, yan);
               // Ses YALNIZ çamurun İÇİNDEYKEN: dışarıdaki izler ayakta kalan
               // çamurdur, orada şlop sesi çıkmaz — yalnız iz kalır.
               if (r.mudT > 0) sfx("camur");

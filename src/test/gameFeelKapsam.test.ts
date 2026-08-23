@@ -307,6 +307,34 @@ describe("çamur geri bildirimi (Parti)", () => {
     expect(m, "IZ_ADIM tanımlı değil").not.toBeNull();
     expect(Number(m![1])).toBeGreaterThanOrEqual(3);
   });
+
+  /**
+   * ⚠️ KULLANICI ŞARTI: "ayakları çamura bulansın, ilk adım koyu iken adım
+   * attıkça rengi açılsın". İki ayrı kanal — ayağın RENGİ ve izin KOYULUĞU,
+   * ikisi de kalan çamur miktarına (`yogunluk`) bağlı olmalı.
+   */
+  it("ayak çamura bulanıyor (gövde değil)", () => {
+    expect(/ayakMat\.color[\s\S]{0,60}lerp\(/.test(party), "ayak rengi çamura çevrilmiyor").toBe(true);
+    expect(/ayakDeriMat/.test(party), "bacak derisi ayrı malzeme almamış").toBe(true);
+    // Gövde malzemesi çamurla boyanmamalı — yalnız ayak kirlenir.
+    expect(/bodyMat\.color[\s\S]{0,40}CAMUR/.test(party), "gövde de çamura boyanmış").toBe(false);
+  });
+
+  it("izin koyuluğu adım adım AZALIYOR", () => {
+    expect(/yogunluk/.test(party), "yoğunluk hesabı yok").toBe(true);
+    expect(/güç\s*=\s*IZ_OPAK\s*\*\s*yogunluk/.test(party),
+      "izin başlangıç koyuluğu yoğunluğa bağlı değil").toBe(true);
+  });
+
+  /**
+   * ⚠️ ZAMAN SOLMASI ADIM GRADYANINI BASTIRMAMALI: doğrusal solmada ilk iz
+   * hem EN KOYU hem EN ESKİ olduğu için en çok soluyor ve bütün izler
+   * birbirine benziyor. İz önce olduğu gibi durmalı, sonra kaybolmalı.
+   */
+  it("iz önce tam koyulukta duruyor, sonra soluyor", () => {
+    expect(/y0\s*<\s*0?\.\d+\s*\?\s*1\s*:/.test(party),
+      "iz doğrusal soluyor — adım gradyanı bastırılıyor").toBe(true);
+  });
 });
 
 describe("gurultu — süzülmüş gürültü ilkesi", () => {
