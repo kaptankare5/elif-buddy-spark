@@ -25,7 +25,7 @@ import { sfx, titre } from "@/lib/juice";
 import { gorevIlerlet, useGorevler, gorevMetni } from "@/lib/gorevler";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
-import { Volume2, Heart, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Pause, Play } from "lucide-react";
+import { Volume2, Heart, Pause, Play } from "lucide-react";
 import { useOyunSonu } from "@/lib/oyunSonucu";
 import { OyunSonuKarti } from "@/components/OyunSonuKarti";
 
@@ -1755,36 +1755,12 @@ const SubwayGame = () => {
           Kaydır: ⬅➡ şerit, ⬆ zıpla, ⬇ kay • Trenlere zıpla, üstünde koş, altın topla!
         </p>
 
-        <div className="mt-2 grid grid-cols-4 gap-2">
-          <button
-            onClick={() => move(-1)}
-            aria-label="Sola geç"
-            className="rounded-2xl bg-primary text-primary-foreground py-4 font-extrabold shadow-soft active:scale-95 flex items-center justify-center"
-          >
-            <ArrowLeft className="h-7 w-7" />
-          </button>
-          <button
-            onClick={jump}
-            aria-label="Zıpla"
-            className="rounded-2xl bg-info text-info-foreground py-4 font-extrabold shadow-soft active:scale-95 flex items-center justify-center"
-          >
-            <ArrowUp className="h-7 w-7" />
-          </button>
-          <button
-            onClick={slide}
-            aria-label="Kay"
-            className="rounded-2xl bg-warning text-warning-foreground py-4 font-extrabold shadow-soft active:scale-95 flex items-center justify-center"
-          >
-            <ArrowDown className="h-7 w-7" />
-          </button>
-          <button
-            onClick={() => move(1)}
-            aria-label="Sağa geç"
-            className="rounded-2xl bg-primary text-primary-foreground py-4 font-extrabold shadow-soft active:scale-95 flex items-center justify-center"
-          >
-            <ArrowRight className="h-7 w-7" />
-          </button>
-        </div>
+        {/* ⚠️ EKRANDAKİ YÖN TUŞLARI KALDIRILDI (kullanıcı şartı). Bütün
+            hareketler oyun alanının KENDİSİNDEN yapılıyor — kaydırma
+            (sağa/sola şerit, yukarı zıpla, aşağı kay) ve kısa dokunuş
+            (sol/sağ üçte bir şerit, orta soruyu tekrar dinlet), masaüstünde
+            de ok tuşları/WASD. Yani hiçbir işlem tuşlara BAĞLI DEĞİLDİ;
+            kaldırınca oyun alanına daha çok yer kalıyor. */}
 
         {paused && !gameOver && (
           <div className="mt-2 flex justify-center">
