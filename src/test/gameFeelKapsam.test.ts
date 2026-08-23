@@ -276,3 +276,42 @@ describe("kamera konforu", () => {
     expect(rot, `${dosya}: sarsıntının dönme bileşeni 0 olmalı`).toBe("0");
   });
 });
+
+/**
+ * ÇAMUR GERİ BİLDİRİMİ — "çamura bastığı belli olsun" (kullanıcı isteği).
+ *
+ * ⚠️ HAZIR SES DOSYASI KULLANILMADI: bu ortamdan freesound/pixabay/
+ * opengameart'ın hiçbirine erişilemiyor (hepsi egress'te kapalı) VE
+ * uygulamanın bütün oyun sesleri WebAudio ile üretiliyor — tek bir mp3 hem
+ * paket boyutu hem lisans/atıf yükü getirirdi. Çamur sesi zaten sentezle
+ * iyi çıkıyor: ıslaklık, kesme frekansı süpürülen yüksek-Q gürültüden gelir
+ * (periyodik bir ton DEĞİL — `tone` tek başına yetmezdi, `gurultu` eklendi).
+ */
+describe("çamur geri bildirimi (Parti)", () => {
+  const party = readFileSync(join(DIZIN, "PartyGame.tsx"), "utf8");
+
+  it("çamurda ses çalıyor", () => {
+    expect(/sfx\("camur"\)/.test(party), "çamur sesi hiç çalınmıyor").toBe(true);
+  });
+
+  it("ayak izi ve sıçrama HAVUZDAN geliyor (her adımda mesh yaratılmıyor)", () => {
+    expect(/IZ_SAYISI/.test(party) && /SICRAMA_SAYISI/.test(party),
+      "havuz yok — her adımda nesne yaratmak WebView'de çöp toplayıcıyı tetikler").toBe(true);
+    expect(/camurAdimi\s*\(/.test(party), "iz basma çağrısı yok").toBe(true);
+    expect(/camurGuncelle\s*\(/.test(party), "izleri yaşlandıran çağrı yok").toBe(true);
+  });
+
+  /** Çamurdan ÇIKTIKTAN sonra da birkaç adım iz kalmalı — asıl anlatan bu. */
+  it("çamurdan çıkınca birkaç adım daha iz bırakılıyor", () => {
+    const m = party.match(/const IZ_ADIM = (\d+)/);
+    expect(m, "IZ_ADIM tanımlı değil").not.toBeNull();
+    expect(Number(m![1])).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("gurultu — süzülmüş gürültü ilkesi", () => {
+  it("WebAudio yokken bile istisna atmıyor", async () => {
+    const { gurultu } = await import("@/lib/audio");
+    expect(() => gurultu({ dur: 0.17, bas: 240, tepe: 900, son: 170 })).not.toThrow();
+  });
+});

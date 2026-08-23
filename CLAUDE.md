@@ -682,6 +682,25 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   `juice-pop`) — **transform ile**, `top/left` ile değil (yeniden yerleşim
   tetikleyip zaten kasan cihazda kareyi düşürüyor).
 
+### Ses üretimi — gürültü ilkesi (`audio.ts`'teki `gurultu`)
+- ⚠️ **HAZIR SES DOSYASI YOK, HEPSİ SENTEZ.** Uygulamanın bütün OYUN sesleri
+  WebAudio ile üretiliyor (gerçek hoca kayıtları ayrı konu). Tek bir sfx
+  mp3'ü hem paket boyutu hem lisans/atıf yükü demek; ayrıca bu ortamdan
+  freesound/pixabay/opengameart/kenney'in hiçbirine erişilemiyor (egress
+  kapalı) — indirmek mümkün değil.
+- ⚠️ **`tone` YETMEZ, DOĞADAKİ SESLER PERİYODİK DEĞİL**: çamur, toz, su,
+  rüzgâr gürültüdür. `gurultu({dur, bas, tepe, son, q})` beyaz gürültüyü
+  kesme frekansı SÜPÜRÜLEN alçak geçiren süzgeçten geçirir; ıslaklık yüksek
+  Q'dan (rezonans) gelir. Gürültü tamponu bir kez üretilip önbelleğe alınır —
+  her seferinde 0.5 sn'lik rastgele dizi doldurmak telefonda kareyi düşürür.
+- Parti'de çamur: her adımda `sfx("camur")` + yerde AYAK İZİ + sıçrayan
+  damlalar. ⚠️ İz, çamurdan ÇIKTIKTAN sonra da `IZ_ADIM` (5) adım devam
+  eder — asıl bilgi orada ("ayağıma çamur bulaştı"); içindeyken zaten
+  yavaşlıyor. Ses yalnız çamurun İÇİNDE çalar, dışarıdaki izler sessizdir.
+  ⚠️ İz/damla HAVUZDAN gelir (her adımda mesh yaratmak WebView'de çöp
+  toplayıcıyı tetikler) ve yalnız OYUNCU iz bırakır — 5 bot da bıraksa ekran
+  çamur içinde kalır. ⚠️ Çamur TİTREŞMEZ (saniyede ~3 adım).
+
 ### Görsel oyun hissi (`src/lib/gameFeel.ts`)
 `juice.ts` KULAĞA ve ELE hitap eder (ses + titreşim); `gameFeel.ts` GÖZE.
 ⚠️ Ölçüldü: ses katmanı 15 oyunun hepsindeydi ama görsel taraf boştu —

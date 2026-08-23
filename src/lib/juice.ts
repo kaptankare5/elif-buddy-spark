@@ -10,7 +10,7 @@
 //
 // ⚠️ SES ÜRETİMİ audio.ts'teki `tone`'dan gelir. Burada ikinci bir
 // AudioContext açmak mobil tarayıcıda ses kilidini (autoplay unlock) bozar.
-import { tone } from "@/lib/audio";
+import { tone, gurultu } from "@/lib/audio";
 import { titre, type Titresim } from "@/lib/titresim";
 
 export type JuiceSfx =
@@ -22,6 +22,7 @@ export type JuiceSfx =
   | "kaydir"   // şerit değiştirme / savurma
   | "ates"     // atış (Uzay Savaşı)
   | "seri"     // seri kilometre taşı (5, 10, 15…)
+  | "camur"    // çamura basma — ıslak "şlop"
   | "bitis";   // bölüm/oyun bitişi
 
 /**
@@ -50,6 +51,8 @@ const VARSAYILAN_TITRESIM: Partial<Record<JuiceSfx, Titresim>> = {
   patlat: "hafif",
   seri: "basari",
   bitis: "basari",
+  // ⚠️ Çamur TİTREMEZ: çamurun içinde her adımda çalıyor (saniyede ~2-3 kez).
+  // "Sık yapılan hareket titremez" kuralı — yukarıdaki nota bak.
 };
 
 export function sfx(kind: JuiceSfx, opts?: { seri?: number; titresim?: Titresim | false }) {
@@ -94,6 +97,21 @@ export function sfx(kind: JuiceSfx, opts?: { seri?: number; titresim?: Titresim 
       tone(1568, 0.07, "triangle", 0.12, 0.15);
       tone(2093, 0.18, "triangle", 0.18, 0.14);
       break;
+    case "camur": {
+      /**
+       * ÇAMUR "ŞLOP"U — periyodik bir ton DEĞİL, SÜZÜLMÜŞ GÜRÜLTÜ. Çamur
+       * sesinin ıslaklığı, ayak gömülüp çıkarken filtre kesme frekansının
+       * hızla süpürülmesinden ve yüksek rezonanstan (Q) geliyor. Altta kısa
+       * bir hava kabarcığı "blop"u var.
+       * ⚠️ Her adım HAFİFÇE FARKLI (`r`): aynı şlop üst üste çalınca mekanik
+       * duyuluyor; gerçek çamur her adımda başka ses çıkarır.
+       */
+      const r = 0.85 + Math.random() * 0.3;
+      gurultu({ dur: 0.17, bas: 240 * r, tepe: 900 * r, son: 170, q: 7, gain: 0.11 });
+      tone(96 * r, 0.1, "sine", 0.01, 0.09);
+      tone(150 * r, 0.07, "sine", 0.05, 0.05);
+      break;
+    }
     case "bitis":
       tone(659, 0.10, "triangle", 0, 0.17);
       tone(880, 0.10, "triangle", 0.09, 0.17);
