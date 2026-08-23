@@ -36,7 +36,7 @@ import { gamePool, pickWrongs, shuffle } from "./_shared";
 import { createAdaptiveResolution } from "./_perf";
 import { pickNextGameItem, recordGameAnswer, getGameItemLevel } from "@/lib/gameProgress";
 import { useRemedyOnGameOver } from "@/lib/remedial";
-import { playItem, playFeedback, playSfx, preloadItems } from "@/lib/audio";
+import { playItem, playFeedback, playSfx, preloadItems, motorDongusu, gurultuDongusu } from "@/lib/audio";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { gardenTease } from "@/lib/sessionEnd";
 import { isTestUnlockActive } from "@/lib/testUnlock";
@@ -1855,6 +1855,38 @@ const KartGame = () => {
     ctrl.dir = 0; ctrl.dragU = null; ctrl.usePower = false;
     ctrl.running = false;
 
+    /**
+     * ⚠️ YARIŞIN SES KİMLİĞİ SÜREKLİ KATMANDADIR. Uygulamadaki bütün sesler
+     * "olay oldu → çıt" biçimindeydi; oysa yarış türünün sesi motor, lastik
+     * ve zemindir — olay değil, DURUM. Üçü de kısık tutulur: soru sesi ve
+     * harf kayıtları bunların üstünde kalmalı.
+     *  · MOTOR — perdesi hıza bağlı, rölantide kısık. Çocuk gaza bastığını
+     *    ekrana bakmadan da duyar.
+     *  · LASTİK — yalnız gerçekten savrulurken (küçük direksiyon düzeltmesi
+     *    cıyaklamaz; eşik olmadan araç düz giderken bile ötüyordu).
+     *  · ÇİM — pist dışında alçak, boğuk uğultu. Mario Kart'ın "çime çıktın"
+     *    cezası zaten hız; ses onu SEBEBİYLE birlikte anlatıyor.
+     */
+    const motorSes = motorDongusu({ bas: 66, tepe: 250, gain: 0.042, q: 4 });
+    const lastikSes = gurultuDongusu({ tip: "bandpass", bas: 1800, tepe: 3200, q: 9, gain: 0.05 });
+    const cimSes = gurultuDongusu({ tip: "lowpass", bas: 260, tepe: 900, q: 1.2, gain: 0.07 });
+    /**
+     * Sürekli katmanları oyunun durumundan besler.
+     * ⚠️ HER KAREDE DEĞİL, HUD TEMPOSUNDA (7 Hz) çağrılır: parametreler
+     * `setTargetAtTime` ile sürülüyor ve zaman sabiti 0.08 sn — 60 Hz'de
+     * güncellemek her karede beş otomasyon olayı yazmak demek, oysa kulak
+     * farkı duymuyor. Yumuşatmayı zaten WebAudio yapıyor.
+     */
+    const sesGuncelle = (calisiyor: boolean) => {
+      if (!calisiyor) { motorSes.ayarla(0); lastikSes.ayarla(0); cimSes.ayarla(0); return; }
+      const hiz = clamp(player.v / TURBO_MAX, 0, 1);
+      motorSes.ayarla(hiz);
+      // Eşik 0.35: altındaki savrulma normal viraj alma, cıyaklamaz.
+      lastikSes.ayarla(clamp((Math.abs(player.drift) - 0.35) / 0.65, 0, 1) * hiz);
+      cimSes.ayarla(Math.abs(player.u) > ROAD_HALF ? clamp(player.v / BASE_MAX, 0, 1) : 0);
+    };
+
+    let sesAcik = false;
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       const dtRaw = (now - last) / 1000;
@@ -1901,8 +1933,14 @@ const KartGame = () => {
         worldAt(player.s + 30, 0, camLook);
         camLook.y += 2.4;
         camera.lookAt(camLook);
+        // Geri sayımda motor RÖLANTİDE çalışır (araçlar ızgarada bekliyor).
+        sesAcik = true;
       } else if (ctrl.running) {
         step(dt, tNow);
+        sesAcik = true;
+      } else {
+        // Duraklatma / yarış bitti: sürekli katmanlar susar.
+        sesAcik = false;
       }
 
       renderer.render(scene, camera);
@@ -1910,6 +1948,7 @@ const KartGame = () => {
       hudT -= dt;
       if (hudT <= 0) {
         hudT = 0.14;
+        sesGuncelle(sesAcik);
         const mine = totalOf(player);
         const ahead = racers.filter((r) => !r.isPlayer && (r.finished !== null || totalOf(r) > mine)).length;
         setHud({
@@ -1927,6 +1966,7 @@ const KartGame = () => {
 
     return () => {
       cancelAnimationFrame(raf);
+      motorSes.dur(); lastikSes.dur(); cimSes.dur();
       window.removeEventListener("resize", resize);
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);

@@ -26,6 +26,11 @@ const SAR = () => {
     o.frequency.setValueAtTime = (v, t) => { k.f.push(Math.round(v)); return sv(v, t); };
     const er = o.frequency.exponentialRampToValueAtTime.bind(o.frequency);
     o.frequency.exponentialRampToValueAtTime = (v, t) => { k.f.push(Math.round(v)); return er(v, t); };
+    // ⚠️ SÜREKLİ SESLER `setTargetAtTime` ile sürülür (fermuar gürültüsü
+    // olmasın diye). Bu yakalanmazsa motor/rüzgâr katmanı çizelgede tek bir
+    // sabit perde gibi görünür — hızla değiştiği hiç görünmez.
+    const st2 = o.frequency.setTargetAtTime.bind(o.frequency);
+    o.frequency.setTargetAtTime = (v, t, c) => { k.surekli = (k.surekli || 0) + 1; k.enAz = Math.min(k.enAz ?? 1e9, v); k.enCok = Math.max(k.enCok ?? 0, v); return st2(v, t, c); };
     const st = o.start.bind(o);
     o.start = (t) => { k.tip = o.type; k.t = t ?? 0; window.__ses.push(k); return st(t); };
     return o;
@@ -70,6 +75,7 @@ console.log("   t      tür       dalga      perde (Hz)");
 console.log("─".repeat(52));
 for (const s of ses) {
   const f = s.f.length ? (s.f.length > 1 ? `${s.f[0]} → ${s.f[s.f.length - 1]}` : `${s.f[0]}`) : "—";
-  console.log(`${(s.t - t0).toFixed(2).padStart(6)}   ${s.tur.padEnd(9)} ${s.tip.padEnd(10)} ${f}`);
+  const sur = s.surekli ? `   SÜREKLİ (${s.surekli} güncelleme, ${Math.round(s.enAz)}-${Math.round(s.enCok)} Hz)` : "";
+  console.log(`${(s.t - t0).toFixed(2).padStart(6)}   ${s.tur.padEnd(9)} ${s.tip.padEnd(10)} ${f}${sur}`);
 }
 await b.close();

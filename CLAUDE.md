@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 396 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 404 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -688,6 +688,34 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   mp3'ü hem paket boyutu hem lisans/atıf yükü demek; ayrıca bu ortamdan
   freesound/pixabay/opengameart/kenney'in hiçbirine erişilemiyor (egress
   kapalı) — indirmek mümkün değil.
+- ⚠️ **SES AYARI HİÇBİR ŞEYİ KAPATMIYORDU** (Ayarlar → "Ses Efektleri").
+  `getSettings().sound` bütün kod tabanında TEK yerde okunuyordu: Ayarlar
+  sayfasının kendi `checked` değerinde. `tone`/`gurultu`/`motor`/`sfx`/
+  `playFeedback` ona hiç bakmıyordu — anahtar süsten ibaretti, kapatan veli
+  hiçbir fark duymuyordu. Artık kapı `sfxAcik()` ile `tone`, `gurultu`,
+  `motor` ve sürekli katmanların içinde. ⚠️ **KAPI YALNIZ EFEKTLERE**:
+  `playItem`/`playSpeech` (gerçek hoca kayıtları) ASLA kısılmaz — oyunların
+  sorusu SESLE sorulur, onları susturmak oyunu oynanamaz yapar.
+  Bekçi: `sesAyari.test.ts` (sahte AudioContext ile osilatör sayar).
+- ⚠️ **SÜREKLİ SES KATMANI** (`motorDongusu` / `gurultuDongusu`, `SurekliSes`):
+  uygulamada HİÇ YOKTU — 15 oyunun sesi de "olay oldu → çıt" biçimindeydi.
+  Oysa hız türlerinin ses kimliği DURUM sesidir: motor, lastik, zemin,
+  rüzgâr. Kullanıcı bunu yarışta istedi ("arka planda sesi az motor sesi");
+  aynı boşluk üç hız oyununda da vardı.
+  · **Yarışı**: motor (perde hızdan, 66→250 Hz) + lastik cıyaklaması
+    (bandpass, yalnız |drift| > 0.35) + çim uğultusu (pist dışında).
+  · **Koşusu / Partisi**: rüzgâr; Koşusu'nda kenar hız çizgileriyle AYNI
+    sayıdan beslenir — göz ve kulak aynı şeyi söyler.
+  ⚠️ **MÜZİK DEĞİL**: melodi/ölçü/akort yok, aracın ve hızın kendi sesi.
+  "Müzik yok" kuralı melodik/ritmik arka plan içindir.
+  ⚠️ Parametreler `setTargetAtTime` ile sürülür (`setValueAtTime` her karede
+  çağrılınca "fermuar" gürültüsü çıkıyor) ve güncelleme HER KAREDE DEĞİL
+  HUD temposunda (7 Hz) yapılır — zaman sabiti 0.08 sn olduğu için kulak
+  farkı duymuyor, 60 Hz'de her karede beş otomasyon olayı yazmak gereksiz.
+  ⚠️ Gürültü tamponu döngü için **2 sn**'ye çıkarıldı: 0.5 sn'lik gürültü
+  saniyede iki kez tekrarlanınca kulak onu ritmik bir doku olarak yakalıyor.
+  ⚠️ Katmanlar oyundan çıkarken `dur()` ile bırakılmalı, yoksa ses sürer.
+  Bekçi: `gameFeelKapsam.test.ts` → "sürekli ses katmanı (hız oyunları)".
 - ⚠️ **`tone` YETMEZ, DOĞADAKİ SESLER PERİYODİK DEĞİL**: çamur, toz, su,
   rüzgâr gürültüdür. `gurultu({dur, bas, tepe, son, q})` beyaz gürültüyü
   kesme frekansı SÜPÜRÜLEN alçak geçiren süzgeçten geçirir; ıslaklık yüksek

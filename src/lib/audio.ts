@@ -3,6 +3,7 @@
 import manifest from "../../public/audio/manifest.json";
 import type { ContentItem, Lang } from "@/data/types";
 import { titre, type Titresim } from "@/lib/titresim";
+import { getSettings } from "@/lib/settings";
 
 let activeAudio: HTMLAudioElement | null = null;
 let activeUtterance: SpeechSynthesisUtterance | null = null;
@@ -277,6 +278,22 @@ export function primeAudio() {
 
 // Kısa "ding" (doğru) / "buzz" (yanlış) sesi — WebAudio ile sentezlenir.
 let _audioCtx: AudioContext | null = null;
+/**
+ * ⚠️ AYARLARDAKİ "SES EFEKTLERİ" ANAHTARI HİÇBİR ŞEYİ KAPATMIYORDU.
+ * `getSettings().sound` yalnız Ayarlar sayfasının kendi `checked` değerinde
+ * okunuyordu; `tone`/`gurultu`/`sfx`/`playFeedback` ona hiç bakmıyordu, yani
+ * anahtar süsten ibaretti (grep: `.sound` tek yerde geçiyordu). Sürekli çalan
+ * bir motor sesi eklemeden ÖNCE bu kapı gerçekten çalışmalı — kapatılamayan
+ * bir arka plan sesi kabul edilemez.
+ *
+ * ⚠️ KAPI YALNIZ EFEKTLERE: `playItem` / `playSpeech` (gerçek hoca kayıtları)
+ * ASLA kısılmaz. Oyunların sorusu SESLE soruluyor; onları susturmak oyunu
+ * oynanamaz yapar. Anahtarın metni de bunu diyor: "Doğru/yanlış kısa sesler".
+ */
+function sfxAcik(): boolean {
+  try { return getSettings().sound; } catch { return true; }
+}
+
 function getCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
   try {
@@ -291,6 +308,7 @@ function getCtx(): AudioContext | null {
 // ⚠️ juice.ts de kullanıyor — ses üretimi TEK YERDE kalsın, ikinci bir
 // AudioContext açmak mobil tarayıcıda ses kilidini bozuyor.
 export function tone(freq: number, dur: number, type: OscillatorType, startOffset = 0, gain = 0.18) {
+  if (!sfxAcik()) return;
   const ctx = getCtx();
   if (!ctx) return;
   const t0 = ctx.currentTime + startOffset;
@@ -323,7 +341,12 @@ export function tone(freq: number, dur: number, type: OscillatorType, startOffse
 let _gurultuBuf: AudioBuffer | null = null;
 function gurultuTamponu(ctx: AudioContext): AudioBuffer {
   if (_gurultuBuf && _gurultuBuf.sampleRate === ctx.sampleRate) return _gurultuBuf;
-  const n = Math.floor(ctx.sampleRate * 0.5);
+  // ⚠️ 2 SANİYE (eskiden 0.5): tampon artık DÖNGÜYLE de çalıyor (rüzgâr,
+  // lastik cıyaklaması, çim uğultusu). 0.5 sn'lik gürültü saniyede iki kez
+  // tekrarlanınca kulak bunu ritmik bir doku olarak yakalıyor — "gürültü"
+  // değil "makine" gibi duyuluyor. Tek atımlık kullanımlar zaten
+  // tamponun başından okuyor, onlar etkilenmiyor.
+  const n = Math.floor(ctx.sampleRate * 2);
   const buf = ctx.createBuffer(1, n, ctx.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
@@ -341,6 +364,7 @@ export function gurultu(o: {
   q?: number;
   startOffset?: number;
 }) {
+  if (!sfxAcik()) return;
   const ctx = getCtx();
   if (!ctx) return;
   const t0 = ctx.currentTime + (o.startOffset ?? 0);
@@ -389,6 +413,7 @@ export function motor(o: {
   q?: number;
   startOffset?: number;
 }) {
+  if (!sfxAcik()) return;
   const ctx = getCtx();
   if (!ctx) return;
   const t0 = ctx.currentTime + (o.startOffset ?? 0);
@@ -415,6 +440,146 @@ export function motor(o: {
     osc.start(t0);
     osc.stop(t0 + o.dur + 0.02);
   }
+}
+
+/**
+ * SÜREKLİ SES KATMANI — tek atımlık sfx'in tam tersi.
+ *
+ * ⚠️ UYGULAMADA HİÇ YOKTU: 15 oyunun sesi de "olay oldu → çıt" biçimindeydi.
+ * Oysa yarış/koşu türlerinin ses kimliği SÜREKLİ katmandadır: motor, rüzgâr,
+ * lastik. Ölçüldü — bizde bu kategoriden tek bir ses bile yoktu.
+ *
+ * ⚠️ BU MÜZİK DEĞİLDİR ve müzik yerine de geçmez: melodi, ölçü, akort yok.
+ * Aracın/hızın KENDİ sesi, yani oyunun fiziksel geri bildirimi. Uygulamanın
+ * "müzik yok" kuralı melodik/ritmik arka plan içindir.
+ *
+ * ⚠️ PARAMETRE `setTargetAtTime` İLE SÜRÜLÜR: `setValueAtTime` her karede
+ * çağrılınca perde basamak basamak zıplıyor ve "fermuar" (zipper) gürültüsü
+ * çıkıyor. Üstel yaklaşma hem yumuşak hem ucuz.
+ */
+export type SurekliSes = {
+  /** 0..1 yoğunluk (hız, kayma şiddeti…). */
+  ayarla(v: number): void;
+  /** Tamamen bırak — düğümler kapanır. */
+  dur(): void;
+};
+
+const SESSIZ: SurekliSes = { ayarla() {}, dur() {} };
+const bir = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/**
+ * MOTOR DÖNGÜSÜ — yarış boyunca çalan, perdesi hızdan beslenen motor.
+ * `motor()` tek atımlıktır (kalkış blibi); bu ise kapatılana kadar çalar.
+ *
+ * ⚠️ ARKA PLANDA KALMALI: kazanç tavanı bilerek çok düşük (0.045). Bu ses
+ * soruların ve harf kayıtlarının ÜSTÜNE binerse oyunun asıl işini bozar.
+ * Rölantide daha da kısıktır — hız arttıkça hem tizleşir hem yükselir,
+ * yani çocuk gaza bastığını KULAKLA da duyar.
+ */
+export function motorDongusu(o?: {
+  bas?: number; tepe?: number; gain?: number; q?: number;
+}): SurekliSes {
+  if (!sfxAcik()) return SESSIZ;
+  const ctx = getCtx();
+  if (!ctx) return SESSIZ;
+  const bas = o?.bas ?? 68;
+  const tepe = o?.tepe ?? 240;
+  const tavan = o?.gain ?? 0.045;
+  const t0 = ctx.currentTime;
+
+  const f = ctx.createBiquadFilter();
+  f.type = "lowpass";
+  f.Q.value = o?.q ?? 4;
+  f.frequency.setValueAtTime(bas * 5, t0);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(tavan * 0.5, t0 + 0.25);
+  f.connect(g).connect(ctx.destination);
+
+  // İki testere hafif detone (vuru = motorun hırıltısı) + bir oktav altta
+  // kısık sine: telefon hoparlöründe gövdeyi o veriyor.
+  const oscs: OscillatorNode[] = [];
+  for (const [detune, kat, kazanc] of [[0, 1, 1], [9, 1, 1], [0, 0.5, 0.6]] as const) {
+    const osc = ctx.createOscillator();
+    osc.type = kat === 1 ? "sawtooth" : "sine";
+    osc.detune.value = detune;
+    osc.frequency.setValueAtTime(bas * kat, t0);
+    if (kazanc === 1) osc.connect(f);
+    else {
+      const sg = ctx.createGain();
+      sg.gain.value = kazanc;
+      osc.connect(sg).connect(f);
+    }
+    osc.start(t0);
+    oscs.push(osc);
+  }
+
+  let bitti = false;
+  return {
+    ayarla(v) {
+      if (bitti) return;
+      const k = bir(v);
+      const hz = bas + (tepe - bas) * k;
+      const now = ctx.currentTime;
+      oscs[0].frequency.setTargetAtTime(hz, now, 0.08);
+      oscs[1].frequency.setTargetAtTime(hz, now, 0.08);
+      oscs[2].frequency.setTargetAtTime(hz * 0.5, now, 0.08);
+      f.frequency.setTargetAtTime(hz * 5, now, 0.08);
+      g.gain.setTargetAtTime(tavan * (0.5 + 0.5 * k), now, 0.12);
+    },
+    dur() {
+      if (bitti) return;
+      bitti = true;
+      const now = ctx.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setTargetAtTime(0, now, 0.05);
+      for (const osc of oscs) { try { osc.stop(now + 0.4); } catch { /* */ } }
+    },
+  };
+}
+
+/**
+ * GÜRÜLTÜ DÖNGÜSÜ — rüzgâr, lastik cıyaklaması, çim uğultusu.
+ * Yoğunluk 0 iken TAMAMEN sessizdir, yani "kayarken cıyakla, düz giderken
+ * sus" gibi kapılar ayrı bir mantık istemez.
+ */
+export function gurultuDongusu(o: {
+  tip?: BiquadFilterType; bas: number; tepe: number; q?: number; gain: number;
+}): SurekliSes {
+  if (!sfxAcik()) return SESSIZ;
+  const ctx = getCtx();
+  if (!ctx) return SESSIZ;
+  const t0 = ctx.currentTime;
+  const src = ctx.createBufferSource();
+  src.buffer = gurultuTamponu(ctx);
+  src.loop = true;
+  const f = ctx.createBiquadFilter();
+  f.type = o.tip ?? "lowpass";
+  f.Q.value = o.q ?? 3;
+  f.frequency.setValueAtTime(o.bas, t0);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  src.connect(f).connect(g).connect(ctx.destination);
+  src.start(t0);
+
+  let bitti = false;
+  return {
+    ayarla(v) {
+      if (bitti) return;
+      const k = bir(v);
+      const now = ctx.currentTime;
+      f.frequency.setTargetAtTime(o.bas + (o.tepe - o.bas) * k, now, 0.1);
+      g.gain.setTargetAtTime(Math.max(0.0001, o.gain * k), now, 0.12);
+    },
+    dur() {
+      if (bitti) return;
+      bitti = true;
+      const now = ctx.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setTargetAtTime(0, now, 0.05);
+      try { src.stop(now + 0.4); } catch { /* */ }
+    },
+  };
 }
 
 // Doğru-cevap melodileri — monotonluğu kırmak için varyasyon (1000. dinleyişte
