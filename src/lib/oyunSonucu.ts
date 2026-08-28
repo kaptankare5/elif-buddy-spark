@@ -33,9 +33,28 @@ export interface OyunKaydi {
 
 type Kayit = Record<string, OyunKaydi>;
 
+/**
+ * KALDIRILAN OYUNLAR — kayıtları cihazdan da temizlenir.
+ *
+ * ⚠️ Oyunu koddan silmek çocuğun telefonundaki rekorunu SİLMEZ: kayıtlar tek
+ * bir sözlükte oyun id'siyle duruyor ve kimse okumadığı için sonsuza kadar
+ * orada kalır. Kullanıcı "tüm verileri sil" dedi; okuma sırasında bir kez
+ * ayıklamak hem ucuz hem de göç gerektirmiyor.
+ * Yeni bir oyun kaldırılırsa id'si buraya eklenmeli.
+ */
+const KALDIRILAN = new Set(["lane"]);   // İki Yol Koşusu (kaldırıldı)
+
 function oku(): Kayit {
   if (typeof window === "undefined") return {};
-  try { return JSON.parse(localStorage.getItem(KEY) || "{}") as Kayit; } catch { return {}; }
+  try {
+    const k = JSON.parse(localStorage.getItem(KEY) || "{}") as Kayit;
+    let ayikla = false;
+    for (const id of KALDIRILAN) if (id in k) { delete k[id]; ayikla = true; }
+    if (ayikla) {
+      try { localStorage.setItem(KEY, JSON.stringify(k)); } catch { /* ignore */ }
+    }
+    return k;
+  } catch { return {}; }
 }
 
 function yaz(k: Kayit) {

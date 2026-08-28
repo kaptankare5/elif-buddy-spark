@@ -37,7 +37,7 @@ describe("Arapça glif ortalama", () => {
    * %21'i ve ölçümde glifleri uçta dışarı çıkarıyordu. Daire/kutu içindeki
    * gliflerde kısa salınım (`animate-float-az`) kullanılmalı.
    */
-  it.each(["src/pages/games/RunnerGame.tsx", "src/pages/games/LaneRunnerGame.tsx"])(
+  it.each(["src/pages/games/RunnerGame.tsx"])(
     "%s kutu içindeki glifte KISA salınım kullanıyor",
     (yol) => {
       const src = oku(yol);

@@ -45,7 +45,7 @@ describe("görsel oyun hissi kapsamı", () => {
   const dosyalar = readdirSync(DIZIN).filter((f) => f.endsWith(".tsx") && !YARDIMCI.has(f));
 
   it("taranacak oyun var", () => {
-    expect(dosyalar.length).toBeGreaterThanOrEqual(15);
+    expect(dosyalar.length).toBeGreaterThanOrEqual(14);
   });
 
   it.each(dosyalar)("%s görsel geri bildirim veriyor", (dosya) => {

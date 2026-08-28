@@ -20,8 +20,11 @@ describe("zorluk kapsamı", () => {
   const dosyalar = readdirSync(OYUN_DIZINI)
     .filter((f) => f.endsWith(".tsx") && !YARDIMCI.has(f));
 
-  it("15 oyun dosyası bulunur", () => {
-    expect(dosyalar.length).toBe(15);
+  // ⚠️ Sayı BİLEREK sabit: yeni oyun eklenip zorluğa bağlanmayı unutmak
+  // ya da bir oyunu silip kaydını unutmak burada yakalanır.
+  // (İki Yol Koşusu kullanıcı isteğiyle kaldırıldı: 15 → 14.)
+  it("14 oyun dosyası bulunur", () => {
+    expect(dosyalar.length).toBe(14);
   });
 
   it.each(dosyalar)("%s zorluk ayarını okur", (dosya) => {
