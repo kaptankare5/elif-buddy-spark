@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 
 const B = process.env.BASE || 'http://127.0.0.1:4173';
 // OYUN=subway,kart ile daralt; CPU=1 ile yavaşlatmayı kapat.
-const OYUNLAR = (process.env.OYUN || 'quiz,memory,balloon,sorter,match3,triple,snake,flappy,puzzle,runner,lane,subway,platform,party,kart').split(',');
+const OYUNLAR = (process.env.OYUN || 'quiz,memory,balloon,sorter,match3,triple,snake,flappy,puzzle,runner,subway,platform,party,kart').split(',');
 
 const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args:['--no-sandbox','--use-gl=swiftshader','--enable-unsafe-swiftshader'] });

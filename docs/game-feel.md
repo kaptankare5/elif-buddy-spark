@@ -383,15 +383,12 @@ yok; karşılığı:
 
 ---
 
-## 15. İki Yol Koşusu → **hypercasual şerit koşusu**
+## 15. İki Yol Koşusu — **KALDIRILDI**
 
-Hypercasual tasarım literatürünün özeti: *"eylem ne olursa olsun oyuncu onu
-yapmaktan tatmin olmalı"* — bu türde cila mekaniğin kendisi kadar önemli.
-
-| teknik | durum |
-|---|---|
-| çarpmada sarsıntı | ✅ yeni |
-| doğru toplamada seri sesi | ✅ zaten vardı |
+Kullanıcı isteğiyle oyun ve bütün verileri silindi (bkz. `oyunSonucu.ts`
+içindeki `KALDIRILAN`). Numara, sonraki bölümlerin yeri kaymasın diye
+duruyor. Koşu türünü Subway Surfers tarzı **ElifBa Koşusu** (2. bölüm)
+temsil ediyor — o duruyor.
 
 ---
 

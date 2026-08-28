@@ -16,7 +16,7 @@ import { chromium } from 'playwright';
 const B = process.env.BASE || 'http://127.0.0.1:4173';
 const SURE = +(process.env.SURE || 60);        // saniye
 const OYUNLAR = (process.env.OYUN ||
-  'quiz,memory,balloon,sorter,match3,triple,snake,flappy,puzzle,runner,lane,subway,platform,party,kart'
+  'quiz,memory,balloon,sorter,match3,triple,snake,flappy,puzzle,runner,subway,platform,party,kart'
 ).split(',');
 
 const SAR = () => {

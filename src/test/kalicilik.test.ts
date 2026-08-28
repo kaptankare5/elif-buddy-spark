@@ -134,3 +134,36 @@ describe("bölüm yıldızı", () => {
     expect(seri.count).toBeGreaterThan(0);
   });
 });
+
+/**
+ * ⚠️ OYUNU KODDAN SİLMEK ÇOCUĞUN CİHAZINDAKİ REKORU SİLMEZ. Kayıtlar tek bir
+ * sözlükte oyun id'siyle duruyor; oyun listeden kalkınca o girdiyi kimse
+ * okumuyor ama sonsuza kadar orada kalıyor. Kullanıcı İki Yol Koşusu'nu
+ * silerken "tüm verileri" dedi — `KALDIRILAN` kümesi okuma sırasında bir kez
+ * ayıklıyor, ayrı bir göç adımı gerekmiyor.
+ */
+describe("kaldırılan oyunun verisi", () => {
+  const KEY = "elifba-oyun-sonuc-v1";
+
+  it("kaldırılan oyunun kaydı okumada siliniyor", () => {
+    localStorage.setItem(KEY, JSON.stringify({
+      lane: { enIyi: 120, yon: "yuksek", oynama: 7, son: 1, birim: "puan" },
+      snake: { enIyi: 9, yon: "yuksek", oynama: 2, son: 1, birim: "puan" },
+    }));
+    // Herhangi bir okuma ayıklamayı tetikler.
+    expect(getOyunKaydi("lane"), "kaldırılan oyunun kaydı hâlâ okunuyor").toBeNull();
+    const kalan = JSON.parse(localStorage.getItem(KEY) || "{}");
+    expect("lane" in kalan, "kayıt localStorage'da duruyor").toBe(false);
+    // ⚠️ Yalnız kaldırılanı siler — ötekiler duruyor.
+    expect(kalan.snake?.enIyi, "duran oyunun kaydı da silinmiş").toBe(9);
+  });
+
+  it("İki Yol Koşusu koddan tamamen kalkmış", () => {
+    const dosyalar = readdirSync(join(process.cwd(), "src/pages/games"));
+    expect(dosyalar.includes("LaneRunnerGame.tsx"), "oyun dosyası duruyor").toBe(false);
+    for (const yol of ["src/pages/Game.tsx", "src/pages/Games.tsx", "src/lib/gameMode.ts"]) {
+      const src = readFileSync(join(process.cwd(), yol), "utf8");
+      expect(/["']lane["']/.test(src), `${yol} hâlâ "lane" oyununa bakıyor`).toBe(false);
+    }
+  });
+});

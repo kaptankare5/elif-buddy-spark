@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 409 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 405 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -850,10 +850,10 @@ alınmadığı orada yazılı (Mario'nun kayganlığı, MK'nin drift kademeleri�
 - **Üç kademe** `ZORLUKLAR` (kolay/orta/zor): `baslangic`, `tavan`,
   `tavanDogru` (tavana kaç doğruda varılır), `can`, `sik`, `sure`, `tahta`.
   **Varsayılan KOLAY** (kullanıcı şartı — çocuklar hep kolayla başlasın).
-- ⚠️ **ZORLUK HER OYUNDA AYNI ŞEY DEĞİL — ÜÇ EKSEN.** 15 oyunun hepsi bağlı
+- ⚠️ **ZORLUK HER OYUNDA AYNI ŞEY DEĞİL — ÜÇ EKSEN.** 14 oyunun hepsi bağlı
   (bekçi: `zorlukKapsam.test.ts`; bir dönem yalnız 6'sı bağlıydı ve Ayarlar'daki
   düğme çalışıyormuş gibi duruyordu).
-  · **HIZ** (Koşusu, Macera, Parti, Yarışı, İki Yol, Balon, Kuş, Yılan, Uzay):
+  · **HIZ** (Koşusu, Macera, Parti, Yarışı, Balon, Kuş, Yılan, Uzay):
     hız bandı + `can`. Koşusu'nda **Orta kademe eski ayarı BİREBİR korur**
     (13.0 → 24.0, 40 doğruda; 10 doğruda 14.8) — zorluk yalnız bandın uçlarını
     kaydırır, kullanıcının onayladığı t² eğrisine DOKUNMAZ.
@@ -888,7 +888,15 @@ alınmadığı orada yazılı (Mario'nun kayganlığı, MK'nin drift kademeleri�
   SRS'e YAZILMAZ: hafıza oyununda ıska konumu unutmaktır, harfi bilmemek
   değil — ona −2 seviye yazmak ölçtüğümüz şeyi bozar. Bayrak `ilkKartYeniSes`
   ile kart AÇILMADAN ÖNCE okunur (sonra okursan hep "görülmüş" çıkar).
-- 13 oyun `src/pages/games/`; kayıt: Game.tsx (route) + Games.tsx (liste,
+- ⚠️ **OYUN SİLİNİRSE ALTI YER GÜNCELLENİR** (İki Yol Koşusu böyle kaldırıldı,
+  kullanıcı isteği): dosyanın kendisi · `Game.tsx` (lazy import + `GAMES`
+  dizisi + `case`) · `Games.tsx` (liste) · `SUPER_MODE_GAMES` (gameMode.ts) ·
+  `tools/perf/*.mjs` içindeki oyun listeleri · kapsam testlerindeki oyun
+  SAYISI (`zorlukKapsam` tam sayı bekliyor). ⚠️ **ÇOCUĞUN CİHAZINDAKİ REKOR
+  KENDİLİĞİNDEN SİLİNMEZ**: kayıtlar tek sözlükte oyun id'siyle duruyor ve
+  kimse okumadığı için sonsuza kadar orada kalıyordu — `oyunSonucu.ts`
+  içindeki `KALDIRILAN` kümesi okuma sırasında bir kez ayıklıyor.
+- 14 oyun `src/pages/games/`; kayıt: Game.tsx (route) + Games.tsx (liste,
   Kolay/Zor gruplu) + `SUPER_MODE_GAMES` (gameMode.ts) + Settings metni.
 - "Elif Ba Macerası" (`PlatformGame.tsx`, id "platform"): 10 bölüm, cami
   finali. **Şiddetsiz tasarım korunacak** — canavar öldürülmez, Nur'a değen

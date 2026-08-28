@@ -4,7 +4,7 @@
 // hızı (11.5 birim/sn) ve dalga aralığı (4.3 sn) skordan TAMAMEN bağımsızdı —
 // 1. dakika ile 20. dakika aynı. Uzay Savaşı'nda düşman hızı sabitti, yalnız
 // sıklık artıyordu, o da skor 70'te tavan yapıp duruyordu. Yılan sabit
-// 3.85 hamle/sn, Balon skordan bağımsız. Tek 2B istisna İki Yol Koşusu.
+// 3.85 hamle/sn, Balon skordan bağımsız.
 //
 // İki ayrı kavram var, karıştırma:
 //   · ZORLUK  = çocuğun/velinin seçtiği bant (bu dosya)

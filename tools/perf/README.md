@@ -2,7 +2,7 @@
 
 ```
 acilis.mjs    açılış hızı: eski paket ile yeni paketi yan yana koyar
-oyunlar.mjs   15 oyunu tek tek açar, oynatır: fps · takılma · hata
+oyunlar.mjs   14 oyunu tek tek açar, oynatır: fps · takılma · hata
 3b.mjs        3B oyunların CİHAZDAN BAĞIMSIZ maliyeti: çizim çağrısı, üçgen
 juice.mjs     ses/titreşim gerçekten çıkıyor mu (WebAudio çağrısı sayılır)
 yogunluk.mjs  dakikada kaç harf soruluyor + ilk soruya kadar geçen süre
@@ -39,7 +39,7 @@ Bir harfin mp3'ünün çalması = o harfin sorulduğu an. Oyunun öğretme hız�
 doğrudan ölçüsü. Ölçüldü (60 sn, rastgele oynayan bot):
 
 ```
-balon 154⚠ · koşusu 58⚠ · hafıza 32 · quiz 23 · iki-yol 17 · kutu 10
+balon 154⚠ · koşusu 58⚠ · hafıza 32 · quiz 23 · kutu 10
 üçlü-eşle 8 · kuş 8 · yılan 7 · uzay 7 · üçlü-eşleştir 4 · yarışı 3
 parti 2 · yapboz 1 · macera 0⚠
 ```

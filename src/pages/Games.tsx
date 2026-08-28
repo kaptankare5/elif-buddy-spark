@@ -26,7 +26,6 @@ const GAMES: GameDef[] = [
   { id: "snake", title: "Yılan Oyunu", emoji: "🐍", color: "from-success to-topic-doga", desc: "Harfleri ye, sınavı geç", diff: "zor" },
   { id: "runner", title: "Uzay Savaşı", emoji: "🚀", color: "from-indigo-500 to-fuchsia-500", desc: "Doğru hedefi vur, yanlışı vurma", diff: "zor" },
   { id: "match3", title: "Üçlü Eşleştir", emoji: "🍬", color: "from-topic-pink to-warning", desc: "3'lü dizip patlat", diff: "zor" },
-  { id: "lane", title: "İki Yol Koşusu", emoji: "🛤️", color: "from-indigo-400 to-sky-400", desc: "Doğru yola geç, harfi topla", diff: "zor" },
 ];
 
 const Games = () => {
