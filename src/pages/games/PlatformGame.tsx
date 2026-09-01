@@ -3093,7 +3093,19 @@ const PlatformGame = () => {
 
           {/* bölüm seçme ekranı */}
           {!started && !gameOver && !won && (
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2.5 bg-background/90 p-3">
+            /**
+             * ⚠️ İÇERİK KUTUYA SIĞMIYORDU — ÖLÇÜLDÜ: kutu 230 px, içerik
+             * 261 px, yani 31 px taşıyor ve kap `overflow-hidden` olduğu
+             * için alttaki talimat satırı KALICI olarak kesiliyordu; çocuk
+             * onu hiçbir şekilde okuyamıyordu (kaydırma da yoktu).
+             * İki katmanlı çözüm: (1) kap `overflow-y-auto` — hangi ekranda
+             * olursa olsun içerik erişilebilir kalır; (2) iç blok `m-auto`
+             * — yer varken ortalar, taşınca üstten düzgün kaydırılır
+             * (`justify-center` + kaydırma birlikte kullanılınca içeriğin
+             * ÜSTÜ erişilemez hâle geliyor, bilinen tuzak).
+             */
+            <div className="absolute inset-0 z-30 flex flex-col overflow-y-auto bg-background/90 px-3 py-2">
+              <div className="m-auto flex flex-col items-center gap-2">
               <div className="text-lg font-extrabold text-warning">🕌 Bölüm Seç</div>
               <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                 {THEMES.map((t, i) => {
@@ -3125,10 +3137,17 @@ const PlatformGame = () => {
                   );
                 })}
               </div>
-              <div className="text-[11px] font-bold text-muted-foreground text-center leading-relaxed px-4">
-                Sesi dinle, doğru harf bloğuna dokun — ödül kazan! 🎁 (can, Nur, mıknatıs...)<br />
-                ✨ Nur varken dokunduğun canavar güvercin olup uçar 🕊️ • Gizli kapıları ara 🚪<br />
-                ◀ ▶ yürü • Zıpla • Uçurumlara dikkat ⚠️ • Camiye ulaşınca bölüm biter 🕌
+              {/*
+                ⚠️ KISA TUTULDU: oyun alanı ~230 px ve panel ondan taşıyordu.
+                Üç satırlık anlatım burada okunmuyordu (kesiliyordu); geri
+                kalanı (Nur, gizli kapı, uçurum) zaten oyun içinde
+                keşfediliyor — başlangıç ekranında çocuğun bilmesi gereken
+                iki şey var: ne yapacağı ve nasıl hareket edeceği.
+              */}
+              <div className="text-[11px] font-bold text-muted-foreground text-center leading-snug px-4">
+                Sesi dinle, doğru harf bloğuna dokun 🎁<br />
+                ◀ ▶ yürü • Zıpla • Camiye ulaş 🕌
+              </div>
               </div>
             </div>
           )}
