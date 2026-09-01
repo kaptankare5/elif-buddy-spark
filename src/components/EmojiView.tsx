@@ -1,5 +1,6 @@
+import { useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
-import { glifKaydirmaEm } from "@/lib/glifOlcu";
+import { glifKaydirmaEm, glifOlcumAboneOl, glifOlcumSurumu } from "@/lib/glifOlcu";
 
 // Renders an emoji or a special "badge" emoji marker.
 // Supported markers:
@@ -42,6 +43,16 @@ function fitScale(value: string): number {
 }
 
 export function EmojiView({ value, className, fit }: { value?: string; className?: string; fit?: boolean }) {
+  /**
+   * ⚠️ FONT GELİNCE YENİDEN ÇİZ. Ölçüm fontun yüklü olmasını gerektiriyor;
+   * yüklenmeden çizilen glif YEDEK FONTLA hesaplanmış kaydırmayı ömür boyu
+   * taşıyordu (ölçüldü: ح'ye −0.29 em uygulanmış, doğrusu −0.785 em → harf
+   * kutunun 31 px altında). `glifOlcu` font hazır olunca sürümü artırıyor,
+   * burada ona abone olup bir kez yeniden çiziyoruz.
+   * Kanca KOŞULSUZ çağrılır (kancalar erken dönüşten önce gelmeli).
+   */
+  useSyncExternalStore(glifOlcumAboneOl, glifOlcumSurumu, () => 0);
+
   if (!value) return null;
 
   if (ARABIC_RE.test(value)) {

@@ -33,6 +33,51 @@ describe("Arapça glif ortalama", () => {
   });
 
   /**
+   * ⚠️ KELEPÇE GERÇEK ÖLÇÜMÜ KESMEMELİ. 0.5 em sınırı "ölçüm bozulursa"
+   * konmuştu ama ÖLÇÜLDÜ (Amiri Quran, 28 harf + 8 harekeli dizi): gereken
+   * kaydırma −0.815 .. −0.177 em ve **36 glifin 14'ü** kelepçeye takılıyordu —
+   * tam da şikâyet edilen derin çanaklılar (ج ح خ 0.285 em · م 0.235 ·
+   * ي 0.165 · ع 0.145). Kelepçe doğru ölçümü sessizce kırpıyordu.
+   */
+  it("kaydırma kelepçesi ölçülen aralığı (0.815 em) kapsıyor", () => {
+    const src = oku("src/lib/glifOlcu.ts");
+    const m = src.match(/Math\.max\((-?[\d.]+),\s*Math\.min\(([\d.]+),\s*kaydir\)\)/);
+    expect(m, "kelepçe ifadesi bulunamadı").not.toBeNull();
+    expect(Math.abs(Number(m![1])), "alt kelepçe 0.815 em'i kesiyor").toBeGreaterThanOrEqual(0.9);
+    expect(Number(m![2]), "üst kelepçe 0.815 em'i kesiyor").toBeGreaterThanOrEqual(0.9);
+  });
+
+  /**
+   * ⚠️ FONT GELİNCE YENİDEN ÇİZİLMELİ. Ölçüm fontun yüklü olmasını gerektiriyor;
+   * `glifOlcu` font hazır olunca önbelleği atıyordu ama kimse yeniden
+   * çizmediği için bileşen YEDEK FONTLA hesaplanmış kaydırmayı ömür boyu
+   * taşıyordu (ölçüldü: ح'ye −0.29 em uygulanmış, doğrusu −0.785 em → harf
+   * kutunun 31 px altında kalıyordu).
+   */
+  it("EmojiView font hazır olunca yeniden çiziliyor", () => {
+    const olcu = oku("src/lib/glifOlcu.ts");
+    expect(/glifOlcumAboneOl/.test(olcu), "abonelik dışa aktarılmamış").toBe(true);
+    expect(/_surum\s*\+=\s*1/.test(olcu), "font hazır olunca sürüm artmıyor").toBe(true);
+    const src = oku("src/components/EmojiView.tsx");
+    expect(/useSyncExternalStore\(\s*glifOlcumAboneOl/.test(src),
+      "EmojiView ölçüm sürümüne abone değil").toBe(true);
+  });
+
+  /**
+   * ⚠️ DENETİM KARTI DA `EmojiView` KULLANIR. Bu kart ortak bileşene
+   * geçirilmemişti; kullanıcı ekran görüntüsüyle bildirdi (ح kutunun altından
+   * taşıp şıkkın üstüne biniyordu). ÖLÇÜLDÜ (412px ekran): önce ح kutunun
+   * 27 px altına taşıyordu, mürekkep merkezi kutu merkezinin 51.5 px altında;
+   * sonra taşma yok, sapma −4.6 px (kasıtlı YUKARI_PAY).
+   */
+  it("Denetim kartı glifi EmojiView ile çiziyor", () => {
+    const src = oku("src/components/AuditCard.tsx");
+    expect(/<EmojiView\s/.test(src), "AuditCard EmojiView kullanmıyor").toBe(true);
+    expect(/font-arabic[^"]*"\s*\)?\s*\}?\s*dir="rtl"/.test(src),
+      "glif hâlâ düz metin olarak basılıyor").toBe(false);
+  });
+
+  /**
    * ⚠️ Daire içindeki glif 12px salınamaz: 56px'lik dairede bu yarıçapın
    * %21'i ve ölçümde glifleri uçta dışarı çıkarıyordu. Daire/kutu içindeki
    * gliflerde kısa salınım (`animate-float-az`) kullanılmalı.

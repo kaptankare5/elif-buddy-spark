@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 413 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 416 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -555,6 +555,30 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   çok az üstte olsun" dedi, `YUKARI_PAY`). Kaydırma `em` cinsinden döner,
   punto değişse de çalışır; font yüklenince önbellek bir kez atılır (yedek
   fontla ölçüm yanlış çıkar).
+- ⚠️ **KELEPÇE GERÇEK ÖLÇÜMÜ KESİYORDU** (`glifOlcu.ts`): "ölçüm saçmalarsa"
+  diye konan ±0.5 em sınırı, ÖLÇÜLDÜ (Amiri Quran, 28 harf + 8 harekeli dizi)
+  **36 glifin 14'ünü** kırpıyordu — hem de tam şikâyet edilenleri: ج ح خ
+  (0.285 em kayıp) · م (0.235) · ي (0.165) · ع (0.145) · ر (0.120). Gereken
+  kaydırma aralığı −0.815 .. −0.177 em; sınır ölçüme dayanarak **1.0 em**
+  yapıldı → 0/36. (Araç: `tools/perf/glifKart.mjs --kelepce`.)
+- ⚠️ **FONT GELİNCE YENİDEN ÇİZ**: ölçüm fontun yüklü olmasını ister;
+  `glifOlcu` font hazır olunca önbelleği atıyordu AMA kimse yeniden
+  çizmiyordu, yani font yüklenmeden çizilen bileşen YEDEK FONTLA hesaplanmış
+  kaydırmayı ömür boyu taşıyordu (ölçüldü: ح'ye −0.29 em uygulanmış, doğrusu
+  −0.785 em). Artık `document.fonts.ready` bir sürüm sayacını artırıyor,
+  `EmojiView` `useSyncExternalStore` ile abone.
+- ⚠️ **DENETİM KARTI DA ORTAK BİLEŞENİ KULLANIR** (`AuditCard.tsx`): bu kart
+  `EmojiView`'e geçirilmemişti, kullanıcı ekran görüntüsüyle bildirdi.
+  ÖLÇÜLDÜ (412px ekran, 104px kutu): ح kutunun **27 px altına** taşıyor,
+  mürekkep merkezi kutu merkezinin **51.5 px altında** (ر 6.5/40.3) — kutunun
+  üst yarısı boş, harf dibe yapışık ve şıkkın üstüne biniyor. Düzeltmeden
+  sonra taşma yok, sapma −4.6 px (kasıtlı `YUKARI_PAY`).
+  ⚠️ Aynı karttaki ÜÇ ŞIK DA "Bu" yazıyordu: ekranda üç aynı cevap gibi
+  duruyordu ve okuma bilmeyen çocuk hangi düğmenin hangi sesi seçtiğini
+  çıkaramıyordu. Artık seçme düğmesi ŞIKKIN NUMARASINI taşır (👆 1/2/3),
+  solundaki 🔊 ile bağı kurar. Simge ✓ OLAMAZ — kart doğru cevabı zaten
+  "✓ Doğru" ile gösteriyor, üç şıkta ✓ görünce hepsi doğruymuş gibi durur.
+  Bekçi: `glifOrtalama.test.ts` (üç kural da kilitli).
 - ⚠️ **MÜREKKEP ORTALAMASI ARTIK `EmojiView`'İN İÇİNDE.** `glifOlcu.ts` vardı
   ama ortak bileşen kullanmıyordu; her oyun tek tek uygulamak zorundaydı ve
   çoğu unutulmuştu. Kullanıcı iki kez aynı hatayı bildirdi ("uzay oyununda

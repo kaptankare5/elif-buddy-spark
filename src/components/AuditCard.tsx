@@ -10,10 +10,11 @@
 // tekrar dinleme bu yükü kaldırır; bedeli yalnız SÜREdir, o da 20 soruda bir
 // olduğu için önemsizdir. (Bu format ana test olsaydı süre öldürücü olurdu.)
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Volume2, ShieldCheck } from "lucide-react";
+import { Volume2, ShieldCheck, Pointer } from "lucide-react";
 import { playItem, playFeedback } from "@/lib/audio";
 import type { AuditQuestion } from "@/lib/auditQuestion";
 import { cn } from "@/lib/utils";
+import { EmojiView } from "@/components/EmojiView";
 import type { ContentItem } from "@/data/types";
 
 export function AuditCard({ question, onDone }: {
@@ -62,12 +63,21 @@ export function AuditCard({ question, onDone }: {
       <p className="mb-3 text-center text-sm font-bold text-foreground">
         Bu harfin sesi hangisi?
       </p>
+      {/* ⚠️ GLİF `EmojiView` İLE ÇİZİLİR, düz metin olarak DEĞİL.
+          Bu kart o kuralın dışında kalmıştı ve kullanıcı ekran görüntüsüyle
+          bildirdi: ح kutunun altından taşıp şıkkın üstüne biniyordu.
+          ÖLÇÜLDÜ (`tools/perf/_denetim.mjs` deseni, 412px ekran, 104px kutu):
+          ح kutunun 27 px ALTINA taşıyor, mürekkep merkezi kutu merkezinin
+          51.5 px altında (ر 6.5/40.3 · ا -10/17.3 · ك -10/13.8) — yani
+          kutunun üst yarısı bomboş, harf dibe yapışık. `leading` satır
+          KUTUSUNU büyütür, mürekkebi ORTALAMAZ; `EmojiView` mürekkebi ölçüp
+          `translateY` ile ortalar (glifOlcu.ts). */}
       <div className="mb-4 flex justify-center">
         <div className={cn(
-          "rounded-2xl bg-card px-8 py-4 font-arabic text-emerald-800 shadow-soft leading-[1.6]",
+          "flex min-h-[7rem] min-w-[7rem] items-center justify-center rounded-2xl bg-card px-8 py-4 text-emerald-800 shadow-soft",
           harfBoyu,
-        )} dir="rtl">
-          {glif}
+        )}>
+          <EmojiView value={glif} />
         </div>
       </div>
       <div className="grid gap-2">
@@ -87,18 +97,30 @@ export function AuditCard({ question, onDone }: {
               >
                 <Volume2 className="h-6 w-6" /> {i + 1}
               </button>
+              {/* ⚠️ SEÇME DÜĞMESİ ŞIKKIN NUMARASINI TAŞIR.
+                  Eskiden üçünde de yalnız "Bu" yazıyordu: ekranda üç aynı
+                  cevap gibi görünüyordu (kullanıcı ekran görüntüsüyle
+                  bildirdi) ve okuma bilmeyen çocuk hangi düğmenin hangi sesi
+                  seçtiğini yazıdan çıkaramıyordu. Numara, solundaki 🔊
+                  düğmesiyle bağı kurar — dinlediği sesin numarasını seçer.
+                  ⚠️ SİMGE ✓ OLAMAZ: bu kart doğru cevabı zaten "✓ Doğru" ile
+                  gösteriyor; seçme düğmesinde de ✓ olsaydı çocuk üç şıkkın da
+                  doğru işaretlendiğini sanırdı. Dokunma simgesi kullanılır. */}
               <button
                 onClick={() => sec(o)}
                 disabled={picked !== null}
+                aria-label={`${i + 1}. sesi seç`}
                 className={cn(
-                  "h-14 flex-1 rounded-2xl border-2 text-sm font-extrabold shadow-soft transition-bouncy",
+                  "flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border-2 text-base font-extrabold shadow-soft transition-bouncy",
                   picked === null && "border-border bg-card hover:-translate-y-0.5",
                   secildi && dogruSik && "border-success bg-success/15 text-success",
                   secildi && !dogruSik && "border-destructive bg-destructive/15 text-destructive",
                   picked !== null && !secildi && "border-border/40 bg-card/60 text-muted-foreground",
                 )}
               >
-                {secildi ? (dogruSik ? "✓ Doğru" : "✗") : "Bu"}
+                {secildi
+                  ? (dogruSik ? "✓ Doğru" : "✗")
+                  : <><Pointer className="h-5 w-5 opacity-60" /> {i + 1}</>}
               </button>
             </div>
           );
