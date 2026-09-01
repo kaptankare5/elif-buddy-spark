@@ -125,3 +125,31 @@ görünmez; ekran görüntüsünde de yalnız boş bir alan olarak çıkar ve
 ⚠️ Ağ/kaynak hataları (`net::`, `Failed to load resource`) AYIKLANIR: bu
 ortamda Google Fonts ve YouTube'a çıkış kapalı, onları saymak gerçek
 hataları gürültüye gömüyordu.
+
+## Glif kart denetimi (`glifKart.mjs`)
+
+Arapça harf, içinde durduğu **kutunun** dışına taşıyor mu? `glifKutu.mjs`
+oyun düşmanının DAİRESİNİ ölçer; bu araç sayfadaki gerçek kutuyu ölçer —
+uygulamayı açar, Flashcard'ın denetim kartını tetikler, mürekkep pikselini
+sayar.
+
+```
+npx vite --host 127.0.0.1 --port 5199 &
+HARF=06 node tools/perf/glifKart.mjs cikti.png   # 06 = ح
+node tools/perf/glifKart.mjs --kelepce           # glifOlcu kelepçesi kaç glifi kesiyor
+```
+
+⚠️ **İki ayraç tuzağı** (ikisine de yakalandım):
+
+1. **Komşu yazılar da koyu yeşil.** İlk ölçüm başlığı ve şıkkın yazısını
+   mürekkep sandı, dört yandan da "taşma" bildirdi. Araç artık ölçümden önce
+   glif dışındaki her şeyi `visibility:hidden` yapıyor (yerleşim bozulmaz).
+2. **"Aynı sayı her harfte" = ayraç kırpma KENARINI ölçüyor.** Alt taşma
+   altı harfte de tam 39.5 çıkmıştı; o, glifin değil kırpma payının sınırıydı.
+
+**Ölçülen kusurlar (2026-09):** denetim kartı `EmojiView` kullanmıyordu →
+ح kutunun 27 px altına taşıyor, mürekkep merkezi kutu merkezinin 51.5 px
+altındaydı. Düzeltmeden sonra taşma yok, sapma −4.6 px (kasıtlı `YUKARI_PAY`).
+`--kelepce` ise `glifOlcu.ts`'in ±0.5 em sınırının **36 glifin 14'ünü**
+kestiğini gösterdi (ج ح خ 0.285 em · م 0.235 · ي 0.165 · ع 0.145); sınır
+ölçüme dayanarak 1.0 em yapıldı → 0/36.

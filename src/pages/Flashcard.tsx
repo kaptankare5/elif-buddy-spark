@@ -276,7 +276,13 @@ const Flashcard = () => {
         </div>
         )}
 
+        {/* ⚠️ DENETİM KARTI DA EKRANI DOLDURUR. Normal kartın kabı sabit
+            yüksekliktedir (`h-[min(420px,58svh)]`); denetim kartı o kabın
+            yerine geçince altında koca bir boşluk kalıyordu (kullanıcı ekran
+            görüntüsüyle bildirdi) — kart ekranın tepesine yapışık, altı
+            bomboş. Aynı yükseklikte bir kapta DİKEY ORTALANIR. */}
         {denetim && (
+          <div className="flex min-h-[min(420px,58svh)] items-center">
           <AuditCard
             question={denetim}
             onDone={(dogru) => {
@@ -285,6 +291,7 @@ const Flashcard = () => {
               pickNext();
             }}
           />
+          </div>
         )}
 
         {!denetim && current && (

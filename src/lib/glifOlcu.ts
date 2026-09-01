@@ -16,6 +16,13 @@
 //
 // ⚠️ FONT YÜKLENMEDEN ölçüm YANLIŞ çıkar (tarayıcı yedek fontu ölçer).
 // `document.fonts.ready` beklenip önbellek bir kez temizleniyor.
+//
+// ⚠️ ÖNBELLEĞİ TEMİZLEMEK TEK BAŞINA YETMİYORDU — kimse yeniden çizmiyordu.
+// Font yüklenmeden çizilen bileşen YEDEK FONTLA ölçülmüş kaydırmayı ömür boyu
+// taşıyordu (ölçüldü: ح'ye −0.29 em uygulanmıştı, doğrusu −0.785 em; harf
+// kutunun 31 px altında kalıyordu). Artık `document.fonts.ready` bir SÜRÜM
+// sayacını artırıyor ve `EmojiView` `useSyncExternalStore` ile ona abone —
+// font gelince bir kez yeniden çizilir.
 
 /** Kullanıcı isteği: tam ortadan bu kadar YUKARI dursun (em). */
 const YUKARI_PAY = 0.05;
@@ -24,6 +31,17 @@ let _fontAilesi: string | null = null;
 let _ctx: CanvasRenderingContext2D | null = null;
 const _cache = new Map<string, number>();
 let _fontHazir = false;
+// Font yüklenince artan sürüm — abone bileşenler yeniden çizilsin diye.
+let _surum = 0;
+const _aboneler = new Set<() => void>();
+
+/** Ölçüm sürümüne abone ol (React `useSyncExternalStore` için). */
+export function glifOlcumAboneOl(cb: () => void): () => void {
+  _aboneler.add(cb);
+  return () => { _aboneler.delete(cb); };
+}
+/** Şu anki ölçüm sürümü — font yüklenince değişir. */
+export function glifOlcumSurumu(): number { return _surum; }
 
 function fontAilesi(): string {
   if (_fontAilesi) return _fontAilesi;
@@ -59,6 +77,8 @@ function fontuBekle() {
     void (document as Document & { fonts?: FontFaceSet }).fonts?.ready.then(() => {
       _cache.clear();
       _fontAilesi = null;
+      _surum += 1;
+      for (const cb of _aboneler) cb();
     });
   } catch { /* ignore */ }
 }
@@ -93,8 +113,19 @@ export function glifKaydirmaEm(glif: string): number {
   // Tarayıcı bu ölçüleri vermiyorsa (eski WebView) kaydırma yapma.
   if (![asc, desc, fAsc, fDesc].every((x) => typeof x === "number" && isFinite(x))) return 0;
   const kaydir = (((fDesc - fAsc) - (desc - asc)) / 2) / PX - YUKARI_PAY;
-  // Emniyet kelepçesi: ölçüm saçmalarsa glifi kutudan dışarı fırlatma.
-  const n = Math.max(-0.5, Math.min(0.5, kaydir));
+  /**
+   * Emniyet kelepçesi: ölçüm saçmalarsa glifi kutudan dışarı fırlatma.
+   *
+   * ⚠️ 0.5 EM ÇOK DARDI — GERÇEK DEĞERLERİ KESİYORDU. Ölçüldü (Amiri Quran,
+   * 28 harf + 8 harekeli dizi = 36 glif): gereken kaydırma **−0.815 .. −0.177**
+   * em aralığında ve **36 glifin 14'ü** 0.5 kelepçesine takılıyordu — hem de
+   * tam şikâyet edilenler: ج ح خ (0.285 em kayıp) · م (0.235) · ع (0.145) ·
+   * ي (0.165) · ر (0.120). Kelepçe "ölçüm bozulursa" içindi ama sessizce
+   * DOĞRU ölçümü de kırpıyordu; ح 72px puntoda 20.5 px aşağıda kalıyordu.
+   * Yeni sınır ölçüme dayanıyor: en uçtaki gereksinim 0.815, tavan 1.0 em
+   * (satır kutusunun kendisinden büyük bir kaydırma zaten anlamsızdır).
+   */
+  const n = Math.max(-1, Math.min(1, kaydir));
   _cache.set(glif, n);
   return n;
 }
