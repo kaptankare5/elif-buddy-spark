@@ -24,8 +24,12 @@ page.on("console", (m) => { if (m.type() === "error") console.log("konsol:", m.t
 // ⚠️ TEST PANELİ AÇIK BAŞLASIN: kilitli konularda oyun havuzu boş kalıyor ve
 // ekran "oyun yok" hâline düşüyor. Görsel denetim için bütün konular açık.
 await page.addInitScript(() => {
-  localStorage.setItem("elifba-test-panel-v1", "1");
-  localStorage.setItem("elifba-test-unlock-v1", "1");
+  // try/catch şart: betik her çerçeveye giriyor, yüklenemeyen iframe'in
+  // opak origin'inde localStorage erişimi SecurityError atıyor.
+  try {
+    localStorage.setItem("elifba-test-panel-v1", "1");
+    localStorage.setItem("elifba-test-unlock-v1", "1");
+  } catch { /* yoksay */ }
 });
 
 await page.goto(KOK + rota, { waitUntil: "networkidle" });

@@ -53,8 +53,12 @@ const ctx = await b.newContext({ viewport: { width: 412, height: 880 } });
 const p = await ctx.newPage();
 await p.route("**://*.supabase.co/**", (r) => r.abort());
 await p.addInitScript(() => {
-  localStorage.setItem("elifba-test-panel-v1", "1");
-  localStorage.setItem("elifba-test-unlock-v1", "1");
+  // try/catch şart: betik her çerçeveye giriyor, yüklenemeyen iframe'in
+  // opak origin'inde localStorage erişimi SecurityError atıyor.
+  try {
+    localStorage.setItem("elifba-test-panel-v1", "1");
+    localStorage.setItem("elifba-test-unlock-v1", "1");
+  } catch { /* yoksay */ }
 });
 await p.addInitScript(SAR);
 await p.goto(`${B}${rota}`, { waitUntil: "domcontentloaded", timeout: 45000 });
