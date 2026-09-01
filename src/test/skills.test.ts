@@ -11,6 +11,7 @@ import { isTopicCompleted, getUnlockedSections, practiceItems } from "@/lib/unlo
 import { skillOf, skillIdsOf, topicSkillIds, itemsForSkill, pickItemForSkill, blameTarget, skillLevel, PREREQ_LEVEL } from "@/lib/skills";
 import { pickDistractors, resetConfusion, __resetConfusionCache } from "@/lib/confusion";
 import { letterNumOf } from "@/lib/confusables";
+import type { ContentItem } from "@/data/types";
 
 const topics = getAllTopics();
 const T = (id: string) => topics.find((t) => t.id === id)!;
@@ -42,16 +43,6 @@ describe("beceri anahtarı", () => {
     // Her beceri 28 harfin hepsiyle sorulabilir → çocuk aynı harekeyi
     // her seferinde başka harfle görür.
     expect(itemsForSkill(t.items, "hrk-fetha")).toHaveLength(28);
-  });
-
-  it("4. Harf + Hareke: beceri harfin ŞEKLİ (l2-NN-pos), hareke değil", () => {
-    const t = T("harf-hareke");
-    const sks = topicSkillIds(t);
-    expect(sks.length).toBeGreaterThan(20);
-    expect(sks.every((s) => /^l2-\d{2}-(init|med|fin)$/.test(s))).toBe(true);
-    // Aynı şekil farklı harekelerle sorulabilir (şe/şi/şü → hep şın-ortada)
-    const cok = sks.filter((s) => itemsForSkill(t.items, s).length > 1);
-    expect(cok.length).toBeGreaterThan(0);
   });
 
   it("pickItemForSkill yalnız o beceriyi taşıyan öğe döndürür", () => {
@@ -129,8 +120,7 @@ describe("müfredat bütünlüğü", () => {
      */
     const numarali = topics.map((t) => t.title).filter((b) => /^\d+\./.test(b));
     expect(numarali[2]).toBe("3. Harekeler");
-    expect(numarali[3]).toBe("4. Harf + Hareke Alıştırması");
-    expect(numarali[4]).toBe("5. Cezm");
+    expect(numarali[3]).toBe("4. Cezm");
     // Numaralı konularda başlıktaki numara ile sıra aynı olmalı.
     numarali.forEach((baslik, i) => {
       expect(Number(baslik.split(".")[0]), baslik).toBe(i + 1);
@@ -144,13 +134,19 @@ describe("müfredat bütünlüğü", () => {
     }
   });
 
-  it("Yazılışlar alıştırmasız, Harf+Hareke onun yerini alıyor", () => {
-    expect(T("yazilislar").noPractice).toBe(true);
-    // Yazılışlar'ın ölçülemeyen şekilleri, 4. konuda beceri olarak ölçülüyor.
-    const formSkills = new Set(topicSkillIds(T("harf-hareke")));
-    const yazForms = T("yazilislar").items.map((i) => i.id);
-    const kesisim = yazForms.filter((id) => formSkills.has(id));
-    expect(kesisim.length).toBeGreaterThan(20);
+  it("Yazılışlar bir DERS konusu — alıştırmasız, bölümleri kilitsiz", () => {
+    /**
+     * ⚠️ Kullanıcı kararı: "Harflerin Yazılışları"nda alıştırma YOK, o yüzden
+     * bölüm kilidi de yok (uyulması imkânsız bir şart olurdu). Şekiller
+     * gösterilir ve dinletilir; ölçüm 1. konudaki harf tanımaya dayanır.
+     */
+    const yaz = T("yazilislar");
+    expect(yaz.noPractice).toBe(true);
+    expect(isTopicCompleted(yaz)).toBe(false);   // girilmeden bitmez
+    // Bütün bölümler açık — kilit orada anlamsız.
+    expect(getUnlockedSections(yaz).size).toBe(
+      new Set(yaz.items.map((i) => i.section)).size,
+    );
   });
 
   it("her öğenin becerisi ya kendisi ya da tanımlı bir anahtar", () => {
@@ -178,7 +174,6 @@ describe("müfredat bütünlüğü", () => {
 // ÇELDİRİCİ KISITI — şıklar yalnız ölçülen eksende farklılaşmalı.
 describe("çeldirici kısıtı (distractorKey)", () => {
   const harekeler = T("harekeler");
-  const harfHareke = T("harf-hareke");
 
   it("Harekeler'de şıklar AYNI HARF, farklı hareke", () => {
     // Ölçülen hareke; farklı harf koyulsaydı çocuk harften tanır, harekeye
@@ -195,20 +190,9 @@ describe("çeldirici kısıtı (distractorKey)", () => {
     }
   });
 
-  it("Harf+Hareke'de şıklar AYNI HAREKELİ, farklı harf/şekil", () => {
-    // Ölçülen harfin şekli; harekeler karışsaydı çocuk sesteki ünlüden eler.
-    for (const hedef of harfHareke.items.slice(0, 20)) {
-      const wrongs = pickDistractors(harfHareke.items, hedef, 3);
-      expect(wrongs.length).toBeGreaterThan(0);
-      for (const w of wrongs) {
-        expect(w.distractorKey, `${hedef.id} → ${w.id}`).toBe(hedef.distractorKey);
-      }
-    }
-  });
-
   it("Harekeler konusu 3 şıklı (4. şık başka harf olurdu)", () => {
     expect(harekeler.optionCount).toBe(3);
-    expect(harfHareke.optionCount).toBeUndefined();   // varsayılan 4
+    expect(T("harfler").optionCount).toBeUndefined();   // varsayılan 4
   });
 
   it("kısıt 3 çeldirici istense bile düşmez, ŞIK AZ OLUR", () => {
@@ -265,42 +249,49 @@ describe("öğretme örneklemi (practice: false)", () => {
 });
 
 describe("ön koşul (prereqSkill) — yanlış teşhis koymayalım", () => {
-  const t4 = () => T("harf-hareke");
-
-  it("4. konudaki her soru bir hareke ön koşulu taşır", () => {
-    for (const it0 of t4().items) {
-      expect(it0.prereqSkill, it0.id).toMatch(/^hrk-(fetha|esre|otre)$/);
-    }
+  /**
+   * ⚠️ ŞU AN HİÇBİR KONU `prereqSkill` KULLANMIYOR — "4. Harf + Hareke
+   * Alıştırması" kullanıcı kararıyla silindi (oyunlar zaten alıştırma).
+   * Mekanizma DURUYOR: bir soru başka bir beceriyi bildiğini varsayıyorsa
+   * hatanın nereye yazılacağı hâlâ bu kuralla belirleniyor. Test bu yüzden
+   * konuya değil, elde kurulmuş bir öğeye bakar.
+   */
+  const sahte = (pre: string): ContentItem => ({
+    id: "l2-13-med",
+    label: "şe",
+    speech: "şe",
+    lang: "ar",
+    emoji: "ـشَـ",
+    skill: "l2-13-med",
+    prereqSkill: pre,
   });
 
-  it("hareke ZAYIFSA hata harekeye yazılır, şekle değil", () => {
-    const hedef = t4().items.find((i) => i.prereqSkill === "hrk-fetha")!;
+  it("ön koşul ZAYIFSA hata ön koşula yazılır, becerinin kendisine değil", () => {
     // fetha hiç çalışılmamış (L1)
-    const b = blameTarget(hedef, "harf-hareke");
+    const b = blameTarget(sahte("hrk-fetha"), "yazilislar");
     expect(b.prereqBlamed).toBe(true);
     expect(b.skillId).toBe("hrk-fetha");
-    expect(b.topicId).toBe("harekeler");
+    expect(b.topicId).toBe("harekeler");   // beceri hangi konudaysa oraya
   });
 
-  it("hareke L4'teyse hata ŞEKLE yazılır", async () => {
+  it("ön koşul L4'teyse hata BECERİNİN KENDİSİNE yazılır", async () => {
     for (const g of [200, 203, 210]) {   // 3 ayrı gün × üretim = 3 puan
       gunde(g);
       await recordSrsAnswer("quiz", "harekeler", "hrk-fetha", true, { responseMs: 900, evidence: "production" });
     }
     expect(skillLevel("hrk-fetha")).toBe(PREREQ_LEVEL);
-    const hedef = t4().items.find((i) => i.prereqSkill === "hrk-fetha")!;
-    const b = blameTarget(hedef, "harf-hareke");
+    const hedef = sahte("hrk-fetha");
+    const b = blameTarget(hedef, "yazilislar");
     expect(b.prereqBlamed).toBe(false);
     expect(b.skillId).toBe(skillOf(hedef));
-    expect(b.topicId).toBe("harf-hareke");
+    expect(b.topicId).toBe("yazilislar");
   });
 
   it("L3 YETMEZ — eşik L4 (biliyor ama tereddütlü sayılmaz)", async () => {
     // tek doğru → L3
     await recordSrsAnswer("quiz", "harekeler", "hrk-esre", true, { responseMs: 900 });
     expect(skillLevel("hrk-esre")).toBe(3);
-    const hedef = t4().items.find((i) => i.prereqSkill === "hrk-esre")!;
-    expect(blameTarget(hedef, "harf-hareke").prereqBlamed).toBe(true);
+    expect(blameTarget(sahte("hrk-esre"), "yazilislar").prereqBlamed).toBe(true);
   });
 
   it("ön koşulu olmayan konuda davranış değişmez", () => {

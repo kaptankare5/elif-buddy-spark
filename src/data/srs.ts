@@ -187,9 +187,29 @@ export function clearLocalProgress(scope: "active" | "guest" | "all") {
   try { window.dispatchEvent(new Event(PROGRESS_EVENT)); } catch { /* */ }
 }
 
+/**
+ * KALDIRILAN KONULAR — verileri cihazdan da ayıklanır.
+ *
+ * ⚠️ Konuyu koddan silmek çocuğun telefonundaki seviyelerini SİLMEZ: SRS
+ * durumu tek bir sözlükte konu id'siyle duruyor ve kimse okumadığı için
+ * sonsuza kadar orada kalır (ilerleme yüzdelerini de şişirir). Okuma
+ * sırasında bir kez ayıklamak hem ucuz hem de göç gerektirmiyor —
+ * `oyunSonucu.ts`'teki `KALDIRILAN` ile aynı desen.
+ * Yeni bir konu kaldırılırsa id'si buraya eklenmeli.
+ */
+const KALDIRILAN_KONU = ["harf-hareke"];   // 4. Harf + Hareke Alıştırması
+
 function load(ns: Namespace): SrsState {
   if (typeof window === "undefined") return {};
-  try { return JSON.parse(localStorage.getItem(KEY(ns)) || "{}"); } catch { return {}; }
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY(ns)) || "{}") as SrsState;
+    let ayikla = false;
+    for (const id of KALDIRILAN_KONU) if (id in s) { delete s[id]; ayikla = true; }
+    // Doğrudan yazılır: save() olay yayıyor, okuma sırasında render döngüsü
+    // tetiklemesin.
+    if (ayikla) { try { localStorage.setItem(KEY(ns), JSON.stringify(s)); } catch { /* */ } }
+    return s;
+  } catch { return {}; }
 }
 
 function save(ns: Namespace, s: SrsState) {

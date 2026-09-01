@@ -500,8 +500,8 @@ const Topic = () => {
     // KARIŞIKLIK ÖLÇÜMÜ: testte hangi şıkkı seçtiğini biliyoruz — en net sinyal.
     // Yanlış seçim o çiftin ısısını yükseltir; partner ORTADAYKEN doğru cevap
     // gerçek bir ayrımdır ve üst üste 3 olunca ısıyı düşürür.
-    // Karışıklık da BECERİ anahtarıyla ölçülür: 4. konuda beceri
-    // `l2-13-med` olduğu için confusables/telafi katmanı harfin hâlini
+    // Karışıklık da BECERİ anahtarıyla ölçülür — öğe id'siyle değil; beceri
+    // bir harf hâliyse (`l2-13-med` gibi) confusables/telafi katmanı onu
     // tanır ve doğru hafıza dersini açabilir.
     if (correct) recordDiscrimination(skillOf(q.target), q.options.map((o) => skillOf(o)));
     else recordConfusionPick(skillOf(q.target), skillOf(opt));
@@ -528,11 +528,11 @@ const Topic = () => {
       retryIdRef.current = null;
       retryUsedRef.current = false;
     } else {
-      // ⚠️ YANLIŞ cevap kimin hanesine yazılacak? "4. Harf + Hareke"de
-      // "şe" sorusu şın'ın ortadaki hâlini ölçer ama bu ancak fetha
-      // gerçekten biliniyorsa geçerli. Fetha L4 değilse hata ŞEKLE değil
-      // HAREKEYE yazılır — yoksa yanlış teşhis koyup şekli boşuna
-      // cezalandırırdık (kullanıcı kararı, eşik L4).
+      // ⚠️ YANLIŞ cevap kimin hanesine yazılacak? Bir soru başka bir beceriyi
+      // (ön koşulu) bildiğini varsayıyorsa ve o ön koşul L4 değilse, hata
+      // ölçülen beceriye DEĞİL ön koşula yazılır — yoksa yanlış teşhis koyup
+      // asıl bilinen şeyi boşuna cezalandırırdık (kullanıcı kararı, eşik L4).
+      // Şu an `prereqSkill` kullanan konu yok; kural genel.
       const hedef = correct
         ? { topicId: topic.id, skillId: skillOf(q.target), prereqBlamed: false }
         : blameTarget(q.target, topic.id);

@@ -31,12 +31,11 @@ export interface ContentItem {
    *  • "3. Harekeler": 84 hece sorulur ama ölçülen 3 şeydir — üstün, esre,
    *    ötre (`hrk-fetha` / `hrk-esre` / `hrk-otre`). Çocuk harekeyi
    *    anladıysa 28 harfin hepsini görmesine gerek yok; konu biter.
-   *  • "4. Harf + Hareke": "şe" sorulur (şın ortada + fetha), ölçülen
-   *    ŞIN'IN ORTADAKİ HÂLİ'dir (`l2-13-med`). Hareke zaten bilindiği
-   *    varsayılır, hata harfin şekline yazılır.
    *
-   * Bu sayede 2. konuda (Yazılışlar) alıştırma yapmadan geçilen şekiller,
-   * burada harekeyle birlikte gerçekten ölçülür.
+   * ⚠️ Bir dönem "4. Harf + Hareke Alıştırması" da bunu kullanıyordu ("şe"
+   * sorulur, `l2-13-med` ölçülür); kullanıcı kararıyla SİLİNDİ — harekeli
+   * harf alıştırması zaten oyunlarda yapılıyor. Mekanizma duruyor, şu an
+   * yalnız Harekeler konusu kullanıyor.
    *
    * ⚠️ Cevaptan SONRAKİ her şey (SRS seviyesi, karışıklık ısısı, telafi)
    * bu anahtar üzerinden çalışır — bkz. `src/lib/skills.ts`.
@@ -51,9 +50,6 @@ export interface ContentItem {
    *  • "3. Harekeler" — ölçülen HAREKE. Şıklar AYNI HARF olmalı
    *    (بَ بِ بُ). Farklı harfler koyulsaydı çocuk harften tanır, harekeye
    *    hiç bakmazdı. Anahtar = harf numarası.
-   *  • "4. Harf + Hareke" — ölçülen harfin ŞEKLİ. Şıklar AYNI HAREKELİ
-   *    olmalı (hepsi fethalı). Harekeler karışsaydı çocuk sesteki ünlüden
-   *    eler, şekle bakmazdı. Anahtar = hareke sesi.
    *
    * Boşsa kısıt yok — bütün havuz aday (eski davranış).
    */
@@ -75,10 +71,10 @@ export interface ContentItem {
   /**
    * ÖN KOŞUL BECERİSİ — bu soru başka bir beceriyi BİLDİĞİNİ varsayar.
    *
-   * "4. Harf + Hareke"de "şe" sorusu şın'ın ortadaki hâlini ölçer AMA bu
-   * ancak çocuk fethayı gerçekten biliyorsa geçerli bir çıkarımdır. Fetha
-   * henüz sağlam değilse hatayı harfin şekline yazmak YANLIŞ teşhis olur —
-   * çocuk aslında harekeyi bilmiyordur.
+   * Örnek: "şe" sorusu şın'ın ortadaki hâlini ölçer AMA bu ancak çocuk
+   * fethayı gerçekten biliyorsa geçerli bir çıkarımdır. Fetha henüz sağlam
+   * değilse hatayı harfin şekline yazmak YANLIŞ teşhis olur — çocuk aslında
+   * harekeyi bilmiyordur. (Bunu kullanan konu şu an YOK; kural duruyor.)
    *
    * Bu yüzden yanlış cevapta ön koşul kontrol edilir: ön koşul L4 ise hata
    * `skill`'e (şekle) yazılır, değilse ÖN KOŞULA yazılır. Eşik L4'tür

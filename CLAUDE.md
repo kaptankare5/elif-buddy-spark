@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 416 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 413 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -166,13 +166,13 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   ⚠️ **SÂKİN AYN APOSTROFLU**: `اَعْ` = "a'" (düz "a" değil), `اَعَّ` = "a'a".
   Ayn'ın Türkçe karşılığı olmadığı için cezimli hâli düz sesliye dönüyordu ve
   yazılı şıkta elifle ayırt edilemiyordu. Apostrof ikilenmez ("a''a" değil).
-- **11 numaralı konu + 1 NUMARASIZ ders konusu** (`yazilis-hafiza`, kullanıcı
+- **10 numaralı konu + 1 NUMARASIZ ders konusu** (`yazilis-hafiza`, kullanıcı
   isteği: "hafıza yöntemi... onu ayrı konu olarak al"). Video'lu olanlar
   `topic.video`. ⚠️ **DERS KONUSUNUN İÇERİĞİ AYRI SAYFADA** (`topic.page`):
   Topic.tsx öğe ızgarası çizer, oysa hafıza yöntemi animasyonlu bir derstir
   (`/yazilis-hafiza`); konu açılınca `<Navigate replace>` ile oraya gidilir,
   içerik KOPYALANMAZ. ⚠️ **NUMARASIZ BIRAKILDI**: araya numaralı konu sokmak
-  sonraki dokuz başlığı ve testlerde/CLAUDE.md'de onlara yapılan bütün
+  sonraki sekiz başlığı ve testlerde/CLAUDE.md'de onlara yapılan bütün
   atıfları kaydırırdı. Bekçi: `skills.test.ts` → "konu sırası ve numaraları
   tutarlı" (numarasız olabilmenin şartı: `noPractice` + `page`).
 - ⚠️ **ALIŞTIRMASIZ KONU "GİRİLİNCE" BİTER** (kullanıcı şartı: "en azından bir
@@ -196,15 +196,28 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   Konu 168 değil **6** cevapta biter. `optionCount: 3` — şıklar aynı harfin
   üç harekesi (بَ بِ بُ); 4. şık başka harf olurdu, çocuk harekeye bakmadan
   elerdi. `distractorKey` = harf numarası.
-- **4. Harf + Hareke Alıştırması** (`harf-hareke`): "şe" sorulur, ölçülen
-  şın'ın ORTADAKİ hâli (`skill: l2-13-med`). 2. konuda (Yazılışlar,
-  `noPractice`) alıştırmasız geçilen şekiller asıl burada ölçülür.
-  `distractorKey` = hareke sesi → şıklar hep aynı harekeli.
+- ⚠️ **"4. Harf + Hareke Alıştırması" SİLİNDİ** (kullanıcı kararı: "harf
+  hareke konusunda zaten oyunlar falan var ya, onlar zaten alıştırma").
+  75 öğesi vardı, ölçtüğü şey harfin ŞEKLİYDİ (`skill: l2-13-med`).
+  ⚠️ ÖLÇÜLEN SONUÇ (silmeden önce kullanıcıya sunuldu, kabul edildi):
+  o 51 şekil becerisini ölçen **başka konu yok** → artık **0** yerde ölçülüyor.
+  2. konudaki (Yazılışlar) 84 şekil öğretiliyor ama hiç denetlenmiyor.
+  Oyun havuzu bu boşluğu KAPATMAZ: `getUnlockedItemIdSet` (unlock.ts:192)
+  `noPractice` konuları TAMAMEN atlıyor, yani Yazılışlar'ın 84 öğesi oyunlara
+  hiç girmiyor (ölçüldü: test kilidi açıkken bile havuzdaki `l2-*` sayısı 0).
+  Oyunlardaki "alıştırma" 3. konunun harekeli heceleridir, şekiller değil.
+  Şekiller yine ölçülsün istenirse iki yol var: Yazılışlar'ı alıştırmalı
+  konuya çevirmek ya da `getUnlockedItemIdSet`'in `noPractice` süzgecini
+  kaldırıp şekilleri oyun havuzuna sokmak (o zaman `sameSound` yüzünden
+  yalnız "Şekil Eşleme" modu sorabilir — dört hâl aynı mp3'ü çalıyor).
+  Cihazda kalan eski seviyeler `srs.ts`'teki `KALDIRILAN_KONU` ile ayıklanır.
 - `distractorKey` kısıtı **sessizce düşmez**: aday azsa ŞIK AZ olur. Eskiden
   düşüyordu ve soru ölçmek istediğini ölçmüyordu (testi var).
-- `prereqSkill` + `blameTarget`: 4. konudaki yanlış, hareke **L4**
-  (`PREREQ_LEVEL`) değilse ŞEKLE değil HAREKEYE yazılır — yanlış teşhis
-  koymamak için. L3 yetmez ("biliyor ama tereddütlü").
+- `prereqSkill` + `blameTarget`: bir soru başka bir beceriyi bildiğini
+  varsayıyorsa ve o ön koşul **L4** (`PREREQ_LEVEL`) değilse yanlış, ölçülen
+  beceriye değil ÖN KOŞULA yazılır — yanlış teşhis koymamak için. L3 yetmez
+  ("biliyor ama tereddütlü"). ⚠️ Şu an kullanan konu YOK (4. konu silindi);
+  kural ve bekçisi duruyor, testi elde kurulmuş öğeyle çalışıyor.
 - `practice: false` = öğe sayfada görünür ama HİÇ SORULMAZ, tamamlanma
   sayımına girmez. Şedde/Med/Tenvin'de yalnız `OGRETME_ORNEKLEMI`
   (Be, Râ, Sin, Mim) sorulur; asıl alıştırma Ekstralar'dır.
@@ -229,7 +242,8 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   olmaz. (Şedde/Tenvin/Cezm Ekstraları bir dönem bu yüzden hiç sorulmuyordu;
   kayıtları gelince süzgeç onları kendiliğinden geri aldı.) Flashcard
   süzülmez (soru görsel).
-- Maliyet: Elifbâ'yı bitirmek **1334 → 498** doğru cevap.
+- Maliyet: Elifbâ'yı bitirmek **1334 → 396** doğru cevap (4. konu silinince
+  498'den indi; ölçüm: `practiceItems` × beceri × 2).
 - ⚠️ `git update-index --cacheinfo` YENİ dosya yolu için `--add` ister;
   onsuz sessizce atlar ve main derlenmez hâlde kalır (bir kez oldu).
 - `item.section` = "N. Bölüm" (yukarı bak) veya "Ekstralar"

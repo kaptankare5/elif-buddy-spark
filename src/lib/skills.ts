@@ -1,17 +1,19 @@
 // 🎯 BECERİ KATMANI — "soru neyi gösterir" ile "soru neyi ölçer" ayrımı.
 //
 // Uygulamanın çoğu konusunda ikisi aynıdır: Elif sorulur, Elif'in seviyesi
-// değişir. Ama yeni müfredatta iki konu bunu ayırıyor:
+// değişir. Ama müfredatta bir konu bunu ayırıyor:
 //
 //   3. Harekeler          → 84 hece sorulur, ÖLÇÜLEN 3 şey: üstün/esre/ötre
-//   4. Harf + Hareke      → "şe" sorulur, ÖLÇÜLEN şın'ın ORTADAKİ hâli
 //
 // Neden: 3. konuda yeni bilgi 84 değil 3 tanedir (28 harf 1. konuda zaten
 // öğrenildi, burada eklenen sadece üç işaret). 84 öğeyi tek tek L3'e
 // çıkarmak 168 doğru cevap demek — aşırı alıştırma. Çocuk harekeyi
-// anladıysa konu biter. 4. konuda ise tersi: hareke bilindiği için hata
-// harfin ŞEKLİNE yazılır, böylece 2. konuda alıştırmasız geçilen
-// başta/ortada/sonda hâlleri burada gerçekten ölçülür.
+// anladıysa konu biter.
+//
+// ⚠️ Bir dönem "4. Harf + Hareke Alıştırması" da bunu kullanıyordu ("şe"
+// sorulur, şın'ın ORTADAKİ hâli ölçülür). Kullanıcı kararıyla silindi:
+// harekeli harf alıştırması zaten oyunlarda yapılıyor. Katman genel kaldı,
+// yeni bir konu aynı ayrımı isterse hazır.
 //
 // ⚠️ TEK KURAL: cevaptan sonraki HER ŞEY beceri anahtarını kullanır —
 // SRS seviyesi, karışıklık ısısı, telafi. Soru üretimi ise tersine çalışır:
@@ -82,10 +84,13 @@ export function isSkillTopic(topic: ContentTopic): boolean {
 
 
 // --- ÖN KOŞUL (prereqSkill) ---
-// "4. Harf + Hareke"de "şe" sorusu şın'ın ortadaki hâlini ölçer, AMA bu ancak
-// çocuk fethayı gerçekten biliyorsa geçerli bir çıkarımdır. Fetha sağlam
-// değilse yanlış cevabı harfin şekline yazmak YANLIŞ TEŞHİS olur — çocuk
-// aslında harekeyi bilmiyordur ve şekil boşuna cezalandırılır.
+// Bir soru başka bir beceriyi BİLDİĞİNİ varsayıyorsa, hata nereye yazılmalı?
+// Örnek: "şe" sorusu şın'ın ortadaki hâlini ölçer, AMA bu ancak çocuk fethayı
+// gerçekten biliyorsa geçerli bir çıkarımdır. Fetha sağlam değilse yanlış
+// cevabı harfin şekline yazmak YANLIŞ TEŞHİS olur — çocuk aslında harekeyi
+// bilmiyordur ve şekil boşuna cezalandırılır.
+// ⚠️ Şu an hiçbir konu `prereqSkill` kullanmıyor (bkz. yukarıdaki not);
+// kural duruyor, bekçisi `skills.test.ts`.
 
 let _skillTopic: Map<string, string> | null = null;
 /** Bu beceri hangi konunun SRS kovasında tutuluyor? */
