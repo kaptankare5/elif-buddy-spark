@@ -40,7 +40,7 @@ describe("hedef seçimi", () => {
   it("konu zaten açıksa yoklama yapılmaz", () => {
     // 1. konudan bakınca 3. konu kilitli; ama 3. konudan bakınca sıradaki
     // (4.) konu da kilitli olmalı — açık olsaydı null dönerdi.
-    expect(nextLockedTopic("harekeler")?.id).toBe("harf-hareke");
+    expect(nextLockedTopic("harekeler")?.id).toBe("cezm");
   });
 
   it("son konudan sonra yoklanacak konu yok", () => {
@@ -127,8 +127,8 @@ describe("avans — bilene yol açar, bilmeyeni kayırmaz", () => {
 
   it("her atlamadan sonra sonraki konu daha az soruyla geçer", () => {
     const ilk = gecir("harekeler");
-    const ikinci = gecir("harf-hareke");
-    const ucuncu = gecir("cezm");
+    const ikinci = gecir("cezm");
+    const ucuncu = gecir("sedde");
     expect(ilk).toBe(7);
     expect(ikinci).toBeLessThan(ilk);
     expect(ucuncu).toBeLessThanOrEqual(ikinci);
@@ -136,18 +136,18 @@ describe("avans — bilene yol açar, bilmeyeni kayırmaz", () => {
 
   it("bir konuda elenince avans SIFIRLANIR", () => {
     gecir("harekeler");
-    while (recordProbe("harf-hareke", false) === "devam") { /* elen */ }
-    expect(probeInfo("harf-hareke").seri).toBe(0);
+    while (recordProbe("cezm", false) === "devam") { /* elen */ }
+    expect(probeInfo("cezm").seri).toBe(0);
     // Avans gitti → sonraki konu yine tam 7 doğru ister
     let n = 0;
-    while (recordProbe("cezm", true) !== "atlanabilir" && n < 20) n++;
+    while (recordProbe("sedde", true) !== "atlanabilir" && n < 20) n++;
     expect(n + 1).toBe(7);
   });
 });
 
 describe("teklif — sistem dayatmaz, sorar", () => {
   it("KABUL: konu atlanır ve sonraki konu açılır (öğeler görülmemiş kalır)", () => {
-    expect(getUnlockedTopicIds().has("harf-hareke")).toBe(false);
+    expect(getUnlockedTopicIds().has("cezm")).toBe(false);
     for (let i = 0; i < 7; i++) recordProbe("harekeler", true);
     acceptSkip("harekeler");
     // SkipOffer bileşeninin yaptığı ikinci adım:

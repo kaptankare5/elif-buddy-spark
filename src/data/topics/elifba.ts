@@ -206,125 +206,6 @@ const HAREKE: Array<{ suf: "fetha" | "esre" | "otre"; mark: string; vowel: "a" |
   { suf: "otre",  mark: "ُ", vowel: "u" },  // ــُ  → "ü/u"
 ];
 
-// ---- Sayfa 10-11 alıştırma kelimeleri (Diyanet Elifbâ) ----
-// Her kelime [harf adı, hareke] dizisi. Kelimeler pozisyonlu (başta/ortada/
-// sonda) harekeli harf kartlarına bölünür ve tekrarlar ayıklanır.
-type HV = "a" | "i" | "u";
-type WordSpec = [string, HV][];
-const HAREKE_ALISTIRMA_KELIMELERI: WordSpec[] = [
-  // sayfa 10
-  [["Dad", "a"], ["Ra", "a"], ["Be", "a"]],      // ضَرَبَ
-  [["Gaf", "a"], ["Ra", "a"], ["Elif", "a"]],    // قَرَاَ
-  [["Ra", "a"], ["Cim", "a"], ["Ayn", "a"]],     // رَجَعَ
-  [["Ra", "a"], ["Ze", "a"], ["Gaf", "a"]],      // رَزَقَ
-  [["Sad", "a"], ["Be", "a"], ["Ra", "a"]],      // صَبَرَ
-  [["Ra", "a"], ["Fe", "a"], ["Ayn", "a"]],      // رَفَعَ
-  [["Ye", "a"], ["Dal", "a"], ["Kef", "a"]],     // يَدَكَ
-  [["Za", "a"], ["He", "a"], ["Ra", "a"]],       // ظَهَرَ
-  [["Ha", "a"], ["Mim", "i"], ["Dal", "a"]],     // حَمِدَ
-  [["Sin", "a"], ["Mim", "i"], ["Ayn", "a"]],    // سَمِعَ
-  [["Ayn", "a"], ["Mim", "i"], ["Lem", "a"]],    // عَمِلَ
-  [["Sad", "a"], ["Ayn", "i"], ["Gaf", "a"]],    // صَعِقَ
-  [["Sad", "a"], ["Ayn", "i"], ["Dal", "a"]],    // صَعِدَ
-  [["Ta", "a"], ["Fe", "i"], ["Gaf", "a"]],      // طَفِقَ
-  [["Nun", "a"], ["Dad", "i"], ["Cim", "a"]],    // نَضِجَ
-  [["Fe", "a"], ["Ra", "i"], ["Ha", "a"]],       // فَرِحَ
-  [["Se", "u"], ["Lem", "u"], ["Se", "u"]],      // ثُلُثُ
-  [["Kef", "u"], ["Te", "u"], ["Be", "u"]],      // كُتُبُ
-  [["Hı", "u"], ["Lem", "u"], ["Gaf", "u"]],     // خُلُقُ
-  [["Ra", "u"], ["Sin", "u"], ["Lem", "u"]],     // رُسُلُ
-  [["Sad", "a"], ["Mim", "a"], ["Dal", "u"]],    // صَمَدُ
-  [["Fe", "a"], ["He", "u"], ["Vev", "a"]],      // فَهُوَ
-  [["Gaf", "u"], ["Te", "i"], ["Lem", "a"]],     // قُتِلَ
-  [["Ra", "a"], ["Ğayn", "i"], ["Be", "a"]],     // رَغِبَ
-  [["Mim", "a"], ["Ra", "i"], ["Dad", "a"]],     // مَرِضَ
-  [["Ğayn", "u"], ["Fe", "i"], ["Ra", "a"]],     // غُفِرَ
-  [["Zel", "u"], ["Kef", "i"], ["Ra", "a"]],     // ذُكِرَ
-  // sayfa 11
-  [["Şin", "a"], ["Cim", "a"], ["Ra", "a"]],     // شَجَرَ
-  [["Sin", "u"], ["Be", "u"], ["Lem", "a"]],     // سُبُلَ
-  [["Kef", "a"], ["Zel", "i"], ["Be", "a"]],     // كَذِبَ
-  [["Hı", "a"], ["Ta", "i"], ["Ra", "a"]],       // خَطِرَ
-  [["Te", "a"], ["Be", "i"], ["Ayn", "a"]],      // تَبِعَ
-  [["Kef", "a"], ["Sin", "a"], ["Be", "a"]],     // كَسَبَ
-  [["Ta", "u"], ["Be", "i"], ["Ayn", "a"]],      // طُبِعَ
-  [["Ra", "a"], ["Kef", "i"], ["Be", "a"]],      // رَكِبَ
-  [["Ha", "a"], ["Sin", "u"], ["Nun", "a"]],     // حَسُنَ
-  [["Lem", "a"], ["Ayn", "i"], ["Be", "a"]],     // لَعِبَ
-  [["Sad", "a"], ["Dal", "a"], ["Gaf", "a"]],    // صَدَقَ
-  [["Ayn", "u"], ["Nun", "u"], ["Gaf", "u"]],    // عُنُقُ
-  [["Vev", "a"], ["Sad", "a"], ["Fe", "a"]],     // وَصَفَ
-  [["Vev", "a"], ["Sin", "i"], ["Ayn", "a"]],    // وَسِعَ
-  [["Dal", "a"], ["Hı", "a"], ["Lem", "a"]],     // دَخَلَ
-  [["Sin", "a"], ["Ra", "i"], ["Ayn", "a"]],     // سَرِعَ
-  [["Nun", "a"], ["Kef", "a"], ["Sad", "a"]],    // نَكَصَ
-  [["Fe", "a"], ["Ze", "i"], ["Ayn", "a"]],      // فَزِعَ
-  [["Ra", "u"], ["Ze", "i"], ["Gaf", "a"]],      // رُزِقَ
-  [["Be", "a"], ["Ra", "a"], ["Ze", "a"]],       // بَرَزَ
-  [["Ra", "u"], ["Be", "u"], ["Ayn", "u"]],      // رُبُعُ
-  [["Kef", "a"], ["Ra", "i"], ["He", "a"]],      // كَرِهَ
-  [["Lem", "a"], ["Ayn", "a"], ["Nun", "a"]],    // لَعَنَ
-  [["Ha", "a"], ["Sin", "i"], ["Be", "a"]],      // حَسِبَ
-  [["Be", "a"], ["Ta", "a"], ["Nun", "a"]],      // بَطَنَ
-  [["Sin", "a"], ["Hı", "i"], ["Ra", "a"]],      // سَخِرَ
-  [["Ra", "a"], ["He", "i"], ["Gaf", "a"]],      // رَهِقَ
-];
-
-// Sonrasına bağlanmayan harfler: bir sonraki harf başta/müstakil formunu alır.
-const NON_CONNECT = new Set(["Elif", "Dal", "Zel", "Ra", "Ze", "Vev"]);
-const HV_TO_SUF: Record<HV, "fetha" | "esre" | "otre"> = { a: "fetha", i: "esre", u: "otre" };
-const HV_MARK: Record<HV, string> = { a: "َ", i: "ِ", u: "ُ" };
-
-// Kelimeleri pozisyonlu harekeli harf kartlarına böler ve tekrarları ayıklar.
-// Müstakil (izole) hâller atlanır — bunlar konunun temel kartlarında zaten var.
-function buildHarekeExtras(): ContentItem[] {
-  const seen = new Set<string>();
-  const out: ContentItem[] = [];
-  for (const word of HAREKE_ALISTIRMA_KELIMELERI) {
-    for (let i = 0; i < word.length; i++) {
-      const [name, hv] = word[i];
-      const l = byName.get(name);
-      if (!l) continue;
-      const prevConnects = i > 0 && !NON_CONNECT.has(word[i - 1][0]);
-      const hasNext = i < word.length - 1;
-      const pos = !prevConnects && hasNext ? "init" : prevConnects && hasNext ? "med" : prevConnects ? "fin" : "iso";
-      if (pos === "iso") continue;
-      const form = pos === "init" ? l.init : pos === "med" ? l.med : l.fin;
-      if (form === l.iso) continue; // bağlanmayan harflerin başta hâli müstakille aynı
-      // Glif temelli tekrar ayıklama: bağlanmayan harflerde ortada/sonda formu
-      // aynı görünür (ـر) — ikisinden yalnız biri eklensin.
-      const key = `${l.n}|${form}|${hv}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const v = harekeVowels(l.thick);
-      const read = `${l.cons}${v[hv]}`;
-      const posTr = pos === "init" ? "başta" : pos === "med" ? "ortada" : "sonda";
-      const suf = HV_TO_SUF[hv];
-      const harekeAd = suf === "fetha" ? "fethalı" : suf === "esre" ? "esreli" : "ötreli";
-      out.push({
-        id: `l3x-${pad2(l.n)}-${pos}-${hv}`,
-        label: `${l.name} ${posTr} ${harekeAd}`,
-        speech: read,
-        lang: "tr" as const,
-        emoji: form + HV_MARK[hv],
-        translit: read,
-        audio: audioPath(`hareke-${pad2(l.n)}-${suf}.mp3`),
-        section: bolum(l.n),
-        // ÖLÇÜLEN: harekeyi bildiği varsayılır, hata harfin ŞEKLİNE
-        // yazılır. 2. konuda (Yazılışlar) alıştırmasız geçilen
-        // başta/ortada/sonda hâlleri asıl burada ölçülür.
-        skill: `l2-${pad2(l.n)}-${pos}`,
-        // Şıklar AYNI HAREKELİ olmalı: ölçülen harfin şekli,
-        // harekeler karışsaydı çocuk sesteki ünlüden eler, şekle bakmazdı.
-        distractorKey: `hv-${hv}`,
-        // Bu soru harekeyi BİLDİĞİNİ varsayar. Hareke L4 değilse yanlış
-        // cevap şekle değil HAREKEYE yazılır (yanlış teşhis olmasın).
-        prereqSkill: `hrk-${suf}`,
-      });
-    }
-  }
-  return out;
-}
 
 const t3_harekeler: ContentTopic = {
   id: "harekeler",
@@ -394,28 +275,6 @@ const OGRETME_ORNEKLEMI = new Set([2, 10, 12, 24]); // Be, Râ, Sin, Mim
 const CEKIRDEK_AGIRLIK = 3;
 const ekstraAgirlik = (frekans: number) => CEKIRDEK_AGIRLIK + frekans * 2;
 
-// 4. KONU — HARF + HAREKE ALIŞTIRMASI (yeni müfredat).
-//
-// 2. konu (Yazılışlar) alıştırmasız geçiliyor: çocuk başta/ortada/sonda
-// hâllerini görüyor ama tek başına 84 şekil ezberlemiyor. Asıl alıştırma
-// BURADA, harekeyle birlikte: "şe" diye sorulur, doğru cevap şın'ın
-// ORTADAKİ hâli + fetha, şıklar fethalı başka harflerdir.
-//
-// ⚠️ Ölçülen HAREKE DEĞİL, harfin ŞEKLİ (skill: l2-NN-pos). Bu ancak
-// hareke gerçekten biliniyorsa doğru bir çıkarımdır — o yüzden bu konu
-// 3. konu bitmeden açılmaz ve hareke becerileri arada yoklanmaya devam
-// eder (questionSource bakım kanalı).
-const t4_harf_hareke: ContentTopic = {
-  id: "harf-hareke",
-  parent: P,
-  title: "4. Harf + Hareke Alıştırması",
-  description: "Harflerin başta/ortada/sonda hâlleri, harekeyle",
-  emoji: "ﺷَ",
-  practiceMode: "visual",
-  gridCols: 3,
-  items: buildHarekeExtras(),
-};
-
 // 5. KONU — CEZM: her harf (Elif hariç)
 // Kef'in üç cezimli kartı uzun süre SESSİZDİ (cezm-21-*.mp3 yoktu) — kaydı
 // olmayan öğe oyun havuzuna ve konu testine hiç girmediği için o üç kart
@@ -448,7 +307,7 @@ const CEZM_EKSTRA: Array<[string, string, number]> = [
 const t4_cezm: ContentTopic = {
   id: "cezm",
   parent: P,
-  title: "5. Cezm",
+  title: "4. Cezm",
   description: "Cezimli okuyuş (eb, ib, üb…)",
   emoji: "ﹿ",
   practiceMode: "visual",
@@ -544,7 +403,7 @@ const SEDDE_ELIF_PRE: Record<"fetha" | "esre" | "otre", string> = {
 const t5_sedde: ContentTopic = {
   id: "sedde",
   parent: P,
-  title: "6. Şedde",
+  title: "5. Şedde",
   description: "Şeddeli okuyuş (ebbe, ibbe, übbe…)",
   emoji: "ﹽ",
   practiceMode: "visual",
@@ -683,7 +542,7 @@ function medVowel(thick: Thickness, suf: "fetha" | "esre" | "otre"): string {
 const t6_med: ContentTopic = {
   id: "med",
   parent: P,
-  title: "7. Med Harfleri",
+  title: "6. Med Harfleri",
   description: "Elif, vav ve ye ile uzatma",
   // Rozet de Türk imlâsında: "ﺁ" (madda'lı bitişik biçim) yerine اٰ.
   emoji: "اٰ",
@@ -767,7 +626,7 @@ const ASAR: Array<[string, string]> = [
 const t7_asar: ContentTopic = {
   id: "asar-med-kasr",
   parent: P,
-  title: "8. Âsar, Med ve Kasr",
+  title: "7. Âsar, Med ve Kasr",
   description: "Uzatma işaretleri — videoyu izle",
   // Rozet, konunun kendi konusu olan MED İŞARETİNİ gösterir (مَٓا).
   emoji: "مَٓا",
@@ -798,7 +657,7 @@ const TENVIN_EKSTRA: Array<[string, string]> = [
 const t8_tenvin: ContentTopic = {
   id: "tenvin",
   parent: P,
-  title: "9. Tenvin",
+  title: "8. Tenvin",
   description: "İki üstün, iki esre, iki ötre",
   emoji: "ࣰ",
   practiceMode: "visual",
@@ -845,7 +704,7 @@ const t8_tenvin: ContentTopic = {
 const t9_zamir: ContentTopic = {
   id: "zamir-lafzatullah",
   parent: P,
-  title: "10. Zamir ve Lafzatullah",
+  title: "9. Zamir ve Lafzatullah",
   description: "Allah lafzının okunuşu",
   // Rozet de mushaf yazımında: "ﷲ" bitişik biçimi hançer elifi göstermiyor.
   emoji: "اللّٰه",
@@ -882,7 +741,7 @@ const t9_zamir: ContentTopic = {
 const t10_elif_lam: ContentTopic = {
   id: "elif-lam-ra",
   parent: P,
-  title: "11. Elif-Lâm Takısı ve Râ",
+  title: "10. Elif-Lâm Takısı ve Râ",
   description: "ال takısı ve râ harfinin okunuşu",
   emoji: "ﺍﻟ",
   practiceMode: "visual",
@@ -940,7 +799,6 @@ export const elifbaTopics: ContentTopic[] = [
   t2_yazilislar,
   t2b_yazilis_hafiza,
   t3_harekeler,
-  t4_harf_hareke,
   t4_cezm,
   t5_sedde,
   t6_med,

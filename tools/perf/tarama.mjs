@@ -36,7 +36,6 @@ const ROTALAR = [
   ["/konu/elifba/yazilislar", "konu-yazilislar"],
   ["/konu/elifba/yazilis-hafiza", "konu-hafiza"],
   ["/konu/elifba/harekeler", "konu-harekeler"],
-  ["/konu/elifba/harf-hareke", "konu-harf-hareke"],
   ["/konu/elifba/cezm", "konu-cezm"],
   ["/konu/elifba/sedde", "konu-sedde"],
   ["/konu/elifba/med", "konu-med"],

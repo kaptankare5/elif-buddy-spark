@@ -37,8 +37,8 @@ const SECTION_CONFUSION_MAX = 0.6;
 export function hotPairInSection(items: ContentItem[]): [ContentItem, ContentItem] | null {
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
-      // Isı BECERİ anahtarıyla kaydediliyor (4. konuda `l2-13-med` gibi),
-      // öğe id'siyle sorulursa hep 0 döner ve kapı hiç kapanmaz.
+      // Isı BECERİ anahtarıyla kaydediliyor (`hrk-fetha` gibi), öğe
+      // id'siyle sorulursa hep 0 döner ve kapı hiç kapanmaz.
       if (heatBetween(skillOf(items[i]), skillOf(items[j])) >= SECTION_CONFUSION_MAX) {
         return [items[i], items[j]];
       }
