@@ -27,6 +27,15 @@ const KEY = () => {
 export interface TopicPlacement {
   skipped?: boolean;
   skippedAt?: number;
+  /**
+   * Konuya EN AZ BİR KEZ girildi mi (ms).
+   * ⚠️ ALIŞTIRMASIZ KONULAR İÇİN ŞART (kullanıcı şartı): "bu alıştırma
+   * olmayan bölümlerin hemen sonraki bölümü açma, en azından bir kere konuya
+   * girsin." Eskiden `noPractice` konular otomatik "tamamlandı" sayılıyordu,
+   * yani çocuk Yazılışlar'ı hiç AÇMADAN sonraki konuya geçebiliyordu —
+   * müfredatın bu adımı fiilen atlanıyordu.
+   */
+  ziyaret?: number;
   confirmed?: boolean; // deneme süresi geçildi (radar seyreldi)
   bc: boolean[];       // son ara-kontrol sonuçları (en çok BC_WINDOW)
 }
@@ -66,6 +75,19 @@ export function getPlacement(topicId: string): TopicPlacement | null {
 
 export function isTopicSkipped(topicId: string): boolean {
   return !!load()[topicId]?.skipped;
+}
+
+/** Konuya en az bir kez girildi mi? */
+export function isTopicVisited(topicId: string): boolean {
+  return !!load()[topicId]?.ziyaret;
+}
+
+/** Konu sayfası açıldığında çağrılır. İkinci kez yazmaz (gereksiz olay yok). */
+export function markTopicVisited(topicId: string) {
+  const s = load();
+  if (s[topicId]?.ziyaret) return;
+  s[topicId] = { ...(s[topicId] ?? { bc: [] }), ziyaret: Date.now() };
+  save(s);
 }
 
 // Hızlı-geçiş sınavı geçildi → konuyu "atlandı" işaretle (öğeler görülmemiş

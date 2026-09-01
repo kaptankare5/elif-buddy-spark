@@ -116,6 +116,15 @@ export interface ContentTopic {
   optionCount?: number;
   // Konu videosu (YouTube izleme linki) — konu sayfasında gömülü oynatılır
   video?: string;
+  /**
+   * Konunun içeriği AYRI BİR SAYFADAYSA o sayfanın yolu.
+   *
+   * ⚠️ Konu sayfası (`Topic.tsx`) öğe ızgarası çizer; anlatım konularının
+   * (Yazılış Hafıza Yöntemi) içeriği ise animasyonlu bir derstir, öğe
+   * listesi değil. Bu alan verilince konu açıldığında doğrudan o sayfaya
+   * gidilir — içerik iki yerde KOPYALANMAZ, tek kaynak sayfanın kendisi.
+   */
+  page?: string;
 }
 
 export type SubjectId = "elifba";

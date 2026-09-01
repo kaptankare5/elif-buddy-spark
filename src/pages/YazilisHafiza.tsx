@@ -18,6 +18,7 @@ import { HarekeMnemo } from "@/components/mnemonics/HarekeMnemo";
 import { STABLE_GROUP, TAIL_RULES, DOT_GROUPS, STROKE_PAIRS, HAREKE_MNEMONICS, writingItemIds } from "@/data/writingMnemonics";
 import { findItem } from "@/data/subjects";
 import { playItem } from "@/lib/audio";
+import { markTopicVisited } from "@/lib/placement";
 import { Zap } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
@@ -25,6 +26,14 @@ import { useLocation } from "react-router-dom";
 const YazilisHafiza = () => {
   // Konu sayfasından "kuyruk-silme" / "hareke" gibi bir bölüme direkt atlanabilsin
   // diye (Diyanet/veli konuya girip çıkarken tam anlatımı görsün).
+  /**
+   * ⚠️ ZİYARET BURADA İŞARETLENİR: bu ders KENDİ KONUSU (`yazilis-hafiza`)
+   * ve alıştırması olmadığı için tamamlanma ölçütü "bir kez girildi"dir
+   * (bkz. `isTopicCompleted`). Konu rotası buraya yönlendirdiği için
+   * Topic.tsx'in kaydı yetmez — sayfaya doğrudan da gelinebiliyor.
+   */
+  useEffect(() => { markTopicVisited("yazilis-hafiza"); }, []);
+
   const { hash } = useLocation();
   useEffect(() => {
     if (!hash) return;

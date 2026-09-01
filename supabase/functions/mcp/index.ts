@@ -793,9 +793,21 @@ var t10_elif_lam = {
     translit: it.sp
   }))
 };
+var t2b_yazilis_hafiza = {
+  id: "yazilis-hafiza",
+  parent: P,
+  title: "Yaz\u0131l\u0131\u015F Haf\u0131za Y\xF6ntemi",
+  description: "84 \u015Fekli ezberleme \u2014 \xFC\xE7 kural\u0131 \xF6\u011Fren",
+  emoji: "\u0640\u0628\u0640",
+  practiceMode: "visual",
+  noPractice: true,
+  page: "/yazilis-hafiza",
+  items: []
+};
 var elifbaTopics = [
   t1_harfler,
   t2_yazilislar,
+  t2b_yazilis_hafiza,
   t3_harekeler,
   t4_harf_hareke,
   t4_cezm,

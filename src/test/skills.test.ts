@@ -121,15 +121,27 @@ describe("konu tamamlanması BECERİ sayar", () => {
 
 describe("müfredat bütünlüğü", () => {
   it("konu sırası ve numaraları tutarlı", () => {
-    const sirali = topics.map((t) => t.title);
-    expect(sirali[2]).toBe("3. Harekeler");
-    expect(sirali[3]).toBe("4. Harf + Hareke Alıştırması");
-    expect(sirali[4]).toBe("5. Cezm");
-    // Başlıktaki numara ile dizideki sıra aynı olmalı
-    sirali.forEach((baslik, i) => {
-      const n = Number(baslik.split(".")[0]);
-      expect(n, baslik).toBe(i + 1);
+    /**
+     * ⚠️ ARAYA NUMARASIZ DERS KONUSU GİREBİLİR (Yazılış Hafıza Yöntemi):
+     * o bir YÖNTEM dersi, yeni bir harf konusu değil. Numara almıyor ki
+     * araya girmesi sonraki dokuz konunun numaralarını — ve testlerde,
+     * CLAUDE.md'de onlara yapılan bütün atıfları — kaydırmasın.
+     */
+    const numarali = topics.map((t) => t.title).filter((b) => /^\d+\./.test(b));
+    expect(numarali[2]).toBe("3. Harekeler");
+    expect(numarali[3]).toBe("4. Harf + Hareke Alıştırması");
+    expect(numarali[4]).toBe("5. Cezm");
+    // Numaralı konularda başlıktaki numara ile sıra aynı olmalı.
+    numarali.forEach((baslik, i) => {
+      expect(Number(baslik.split(".")[0]), baslik).toBe(i + 1);
     });
+    // Numarasız olabilmenin şartı: alıştırmasız VE kendi ders sayfası olan
+    // bir konu. Yoksa numarasız başlık yalnızca unutulmuş bir numaradır.
+    for (const t of topics) {
+      if (/^\d+\./.test(t.title)) continue;
+      expect(t.noPractice, `${t.title}: numarasız ama alıştırmalı`).toBe(true);
+      expect(typeof t.page, `${t.title}: numarasız ama ders sayfası yok`).toBe("string");
+    }
   });
 
   it("Yazılışlar alıştırmasız, Harf+Hareke onun yerini alıyor", () => {

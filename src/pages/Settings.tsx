@@ -20,7 +20,7 @@ import { clearLocalProgress, hydrateSrsFromCloud } from "@/data/srs";
 import { ConfirmDestructive } from "@/components/ConfirmDestructive";
 import { toast } from "sonner";
 import { useTestUnlock, useDebugMode, useTestPanel, tryUnlockWithCode, closeTestPanel } from "@/lib/testUnlock";
-import { KeyRound, Users, Ruler } from "lucide-react";
+import { KeyRound, Users, Ruler, Layers } from "lucide-react";
 import { useStudents, addStudent, removeStudent, switchStudent } from "@/lib/students";
 
 
@@ -167,6 +167,25 @@ const Settings = () => {
             <Switch
               checked={s.sound}
               onCheckedChange={(v) => { set({ sound: v }); if (v) setTimeout(() => playFeedback(true), 100); }}
+            />
+          </div>
+
+          {/* ⚠️ SADE ÇALIŞMA — kullanıcı isteği: "flashcard kısmında bir de
+              motivasyonsuz fulle öğrenme modu ekle". Varsayılan KAPALI:
+              normal mod (SRS sırası + seviye rozeti) çoğu çocuk için daha
+              iyi öğretiyor; sade mod "bu konuyu bir baştan geçelim" diyen
+              veli/hoca içindir. */}
+          <div className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card border-2 border-border/40">
+            <Layers className="h-7 w-7 text-primary" />
+            <div className="flex-1">
+              <h3 className="text-base font-extrabold text-foreground">Flashcard'da sade çalışma</h3>
+              <p className="text-xs text-muted-foreground">
+                Yıldız ve sayaç yok; deste baştan sona sırayla dönülür. İlerleme yine kaydedilir.
+              </p>
+            </div>
+            <Switch
+              checked={s.flashcardSade}
+              onCheckedChange={(v) => set({ flashcardSade: v })}
             />
           </div>
 
