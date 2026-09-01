@@ -9,22 +9,19 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { OYUN_DIZINI, oyunDosyalari, OYUN_SAYISI } from "./_oyunDosyalari";
 import { ZORLUKLAR, rampa, sureIcin, tahtaBoyu, sikSayisiIcin } from "@/lib/zorluk";
 
-const OYUN_DIZINI = join(process.cwd(), "src/pages/games");
 
-/** Zorluk gerektirmeyen dosyalar: yardımcı modüller. */
-const YARDIMCI = new Set(["_shared.ts", "_askUI.tsx", "_letterTexture.ts", "_perf.ts"]);
 
 describe("zorluk kapsamı", () => {
-  const dosyalar = readdirSync(OYUN_DIZINI)
-    .filter((f) => f.endsWith(".tsx") && !YARDIMCI.has(f));
+  const dosyalar = oyunDosyalari();
 
   // ⚠️ Sayı BİLEREK sabit: yeni oyun eklenip zorluğa bağlanmayı unutmak
   // ya da bir oyunu silip kaydını unutmak burada yakalanır.
   // (İki Yol Koşusu kullanıcı isteğiyle kaldırıldı: 15 → 14.)
-  it("14 oyun dosyası bulunur", () => {
-    expect(dosyalar.length).toBe(14);
+  it(`${OYUN_SAYISI} oyun dosyası bulunur`, () => {
+    expect(dosyalar.length).toBe(OYUN_SAYISI);
   });
 
   it.each(dosyalar)("%s zorluk ayarını okur", (dosya) => {

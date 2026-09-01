@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 416 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 434 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -392,6 +392,43 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   da aynı kurtarma karşıtlık zincirinin önünde. Bakım sorusunun ÇELDİRİCİLERİ
   de yalnız açık bölümlerden gelir.
 
+### Kutlama ve kilit bildirimleri (`UnlockCelebration` + `_bolumKutlama`)
+- **ÜÇ ÇIKIŞ YOLU BİRDEN** (kullanıcı şartı: "1 2 saniye sonra otomatik
+  kapansın veya kapatma tuşu olsun, ya da ikisi de"): kendiliğinden kapanma
+  (**2.2 sn**), kapatma düğmesi, ekrana dokunma.
+  ⚠️ `ACILIS_KILIDI` (350 ms) şart: kutlama, çocuğun son cevabını verdiği
+  dokunuşun ardından açılıyor; o dokunuşun BIRAKMA olayı kutlamayı daha
+  görünmeden kapatıyordu.
+- ⚠️ **GERİ SAYIM GÖRÜNÜR**: kapatma düğmesinin çevresindeki halka kalan
+  süreyi çizer. Çocuk kutlamanın kapanacağını önceden görmeli, yoksa "bir şey
+  yapmam mı lazım?" diye bekliyor (Koşusu'nun güç barıyla aynı gerekçe:
+  5-8 yaşta rakam okumak ayrı bir iş).
+- ⚠️ **SORU SORAN KUTLAMA KENDİLİĞİNDEN KAPANMAZ** (`action` alanı): "sonraki
+  konuya geçmek ister misin?" bir bildirim değil TEKLİFtir; 2 saniyede
+  kaybolan soru sorulmamış sayılır. Halka da çizilmez. "Şimdi değil" küçük ve
+  sade — reddetmek kolay olmalı ama dikkat çekmemeli.
+- ⚠️ **"SON BÖLÜM AÇILDI" ≠ "KONU BİTTİ"**: Topic.tsx açılan bölüm sayısı
+  artınca "🏆 Konu tamamlandı!" yazıyordu, YANLIŞTI — `getUnlockedSections`
+  bir bölümü ÖNCEKİ bölüm ustalaşınca açar, yani son bölüm açıldığında onun
+  öğeleri hâlâ L1. Çocuk konuyu bitirmeden tebrik alıyor, gerçek bitişte
+  İKİNCİ tebrik geliyordu. Artık bölüm haberi "🔓 Yeni bölüm açıldı"
+  (kilit sesi), gerçek bitiş ayrı bir efektte (`isTopicCompleted`).
+- ⚠️ **TEKLİF YALNIZ GÖZ ÖNÜNDE BİTİNCE ÇIKAR**: yalnız `isTopicCompleted`e
+  bakılsaydı, bitirdiği konuya pekiştirmek için dönen çocuk ikinci kez
+  tebrik + zaten geçtiği konuya yönlendirme alırdı. Sayfa açıkken
+  "bitmemiş → bitti" geçişi görülmeliydi (`bitmemisGoruldu` ref'i), ayrıca
+  öğrenciye özel `elifba-topicdone-*` anahtarıyla bir kez.
+- **Oyunlarda** (`_bolumKutlama.tsx`, Macera/Parti/Yarışı ortak):
+  "🎉 N. Bölüm tamam!" + açıldıysa alt satırda "🔓 N+1. Bölüm açıldı" ve
+  650 ms sonra kilit sesi. ⚠️ İKİ AYRI kutlama açılmaz — 4+ saniye sürerdi,
+  "geçmek zorda olmasın" şartına aykırı.
+  ⚠️ **"YENİ mi açıldı" AÇMADAN ÖNCE ölçülür** (`oncekiAcik`): `unlockLevel`
+  sonrası sorulursa yanıt hep "zaten açıktı" olur ve haber HİÇ verilmez.
+  ⚠️ **MACERA'DA KUTLAMA GECİKMELİ**: cami kapısına değince 1.15 sn'lik
+  konfeti gösterisi oynuyor; kutlamayı o anda açmak gösterinin üstünü
+  örtüyordu. Bilgi hazırlanır, `winT` bitince gösterilir.
+  Bekçi: `bolumKutlama.test.ts` (import değil ÇAĞRI arar).
+
 ### Karışan harfler (`confusables.ts` + `confusion.ts`)
 - `confusables.ts` = STATİK bilgi (import etmez, yapraktır): rasm öbekleri
   (ب/ت/ث/ن/ي…, ا/ل, ك/ل, م/ه) **ve** aynı harfin başta/ortada/sonda hâlleri
@@ -742,8 +779,25 @@ Mod oyuna GİRERKEN dondurulur (ortasında değişirse şıkların anlamı kayar
   Şimdi hepsinde var (bekçi `juiceKapsam.test.ts`; gerçekten ÇALDIĞINI ölçen
   araç `tools/perf/juice.mjs` — WebAudio'nun `createOscillator`'ını sayıyor).
 - `sfx(kind, { seri, titresim })`: topla · guc · zipla · carp · patlat ·
-  kaydir · ates · seri · bitis. **Müzik YOK** (audio.ts'teki kuralla aynı),
-  hepsi tek atımlık bildirim tonu.
+  kaydir · ates · seri · bitis · **kutlama** · **kilit**. **Müzik YOK**
+  (audio.ts'teki kuralla aynı), hepsi tek atımlık bildirim tonu.
+- ⚠️ **BÖLÜM BİTİŞİ "DOĞRU CEVAP" SESİYLE AYNIYDI**: Macera/Parti/Yarışı'nın
+  üçünde de bölüm bitince çalan tek şey `playFeedback(true)` idi — bir soruyu
+  bilmekle bir bölümü bitirmek kulakta AYNI şey. Kullanıcı istedi: "bir
+  bölümü bitirirse alkış sesi falan olsun".
+  ⚠️ **ALKIŞ DEĞİL, ÇAN + KIVILCIM** (kullanıcı zaten şüphelenmişti: "alkış
+  sesi kötü durur, başka biriyle düşün"). Üç sebep: (1) gerçek alkış KAYIT
+  ister, burada hazır ses dosyası yok ve ses bankalarına erişim kapalı;
+  (2) sentetik alkış = süzülmüş gürültü patlamaları, telefon hoparlöründe
+  alkışa değil PARAZİTE benziyor; (3) alkış bir KALABALIK sesi — tek başına
+  çalışan çocuğa sahte seyirci eklemek "kendi rekorun, kıyas yok" ilkesiyle
+  çelişir. `kutlama` = yükselen dört nota (son nota uzun) + alçak vuruş +
+  7 düzensiz aralıklı tiz "kıvılcım" (konfetinin kulaktaki karşılığı).
+- ⚠️ **`kilit` MELODİK OLAMAZ**: "bölüm bitti" ile "yeni bölüm açıldı" arka
+  arkaya çalıyor; ikisi de çan olsaydı çocuk tek uzun ses duyardı. Kilit
+  MEKANİK: iki kısa mandal tıkırtısı (yüksek Q'lu gürültü) + alçak "tok" +
+  yükselen parıltı. Hiç nota taşımaz. Bekçi `yarisSesi.test.ts` sahte
+  AudioContext ile ölçer (kutlama nota ağırlıklı, kilit gürültü ağırlıklı).
 - ⚠️ **SERİ ARTTIKÇA TİZLEŞİR** (Mario'nun para kuralı): aynı "çıt"ı 40 kez
   duymak tekdüze; yükselen perde "biriktiriyorum" hissi verir. 12 adımda
   tavan (yoksa duyulamaz frekansa çıkıyor). Koşusu'nda seri 1.2 sn

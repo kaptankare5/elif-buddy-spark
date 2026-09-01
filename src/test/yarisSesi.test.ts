@@ -151,3 +151,71 @@ describe("yarış geri sayımı (Yarışı)", () => {
       "sayaç DT_MAX ile kelepçeli — yavaş cihazda geri sayım uzuyor").toBe(true);
   });
 });
+
+/**
+ * KUTLAMA ve KİLİT — "bölüm bitti" ile "yeni bölüm açıldı" AYRI duyulmalı.
+ *
+ * ⚠️ İkisi arka arkaya çalıyor (bölümü bitir → sonraki bölüm açıldı). Aynı
+ * aileden olsalardı çocuk tek bir uzun ses duyar, "bir şey açıldı" bilgisi
+ * kaybolurdu. Bu yüzden kutlama MELODİK (yükselen notalar + kıvılcım),
+ * kilit MEKANİK (mandal tıkırtısı + parıltı, hiç nota yok).
+ *
+ * ⚠️ ALKIŞ YOK: gerçek alkış kayıt ister (bu uygulamada hazır ses dosyası
+ * yok), sentetiği telefonda parazite benziyor ve alkış bir KALABALIK sesi —
+ * "kendi rekorun, kıyas yok" ilkesiyle çelişir.
+ */
+describe("kutlama ve kilit sesleri", () => {
+  beforeEach(() => { OSC = []; GURULTU = 0; });
+
+  it("kutlama gerçekten ses üretiyor", () => {
+    sfx("kutlama", { titresim: false });
+    expect(OSC.length, "hiç osilatör açılmadı — ses kod yolunda kayboluyor").toBeGreaterThan(0);
+  });
+
+  it("kutlama BİTİŞ'ten daha büyük bir olay (daha çok katman)", () => {
+    sfx("bitis", { titresim: false });
+    const bitisN = OSC.length;
+    OSC = [];
+    sfx("kutlama", { titresim: false });
+    expect(OSC.length, "kutlama bitiş kadar — bölümü bitirmek tek soruyla aynı duyuluyor")
+      .toBeGreaterThan(bitisN);
+  });
+
+  it("kutlamanın perdesi YÜKSELİYOR (başarı yönü)", () => {
+    sfx("kutlama", { titresim: false });
+    // Gövde notaları: üçgen dalga. İlk ile son arasında yükseliş olmalı.
+    const govde = OSC.filter((o) => o.tip === "triangle").map((o) => o.frekanslar[0]);
+    expect(govde.length).toBeGreaterThan(2);
+    expect(govde[govde.length - 1], "son nota ilkinden tiz değil").toBeGreaterThan(govde[0]);
+  });
+
+  it("kutlamada KIVILCIM var (kısa tiz çıtlar) ve alçak gövde vuruşu", () => {
+    sfx("kutlama", { titresim: false });
+    const frekanslar = OSC.map((o) => o.frekanslar[0] ?? 0);
+    expect(Math.max(...frekanslar), "kıvılcım yok — konfetinin sesi eksik").toBeGreaterThan(1500);
+    expect(Math.min(...frekanslar), "alçak vuruş yok — telefon hoparlöründe cılız kalır")
+      .toBeLessThan(200);
+  });
+
+  /**
+   * ⚠️ KİLİT HİÇ NOTA TAŞIMAMALI. Melodik olsaydı kutlamanın devamı gibi
+   * duyulur, ayrı bir "açıldı" bilgisi vermezdi.
+   */
+  it("kilit MEKANİK: gürültü katmanları var, tiz nota yok", () => {
+    sfx("kilit", { titresim: false });
+    expect(GURULTU, "kilit sesinde gürültü (mandal/parıltı) yok").toBeGreaterThan(1);
+    const tiz = OSC.filter((o) => (o.frekanslar[0] ?? 0) > 400);
+    expect(tiz.length, "kilit melodik nota taşıyor — kutlamayla karışır").toBe(0);
+  });
+
+  it("kilit ile kutlama birbirine benzemiyor", () => {
+    sfx("kutlama", { titresim: false });
+    const k = { osc: OSC.length, gur: GURULTU };
+    OSC = []; GURULTU = 0;
+    sfx("kilit", { titresim: false });
+    const l = { osc: OSC.length, gur: GURULTU };
+    // Kutlama nota ağırlıklı, kilit gürültü ağırlıklı.
+    expect(k.osc, "kutlama nota ağırlıklı değil").toBeGreaterThan(k.gur);
+    expect(l.gur, "kilit gürültü ağırlıklı değil").toBeGreaterThan(l.osc);
+  });
+});

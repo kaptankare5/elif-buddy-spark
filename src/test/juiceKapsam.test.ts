@@ -11,13 +11,13 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { oyunDosyalari } from "./_oyunDosyalari";
 import { sfx, type JuiceSfx } from "@/lib/juice";
 
 const DIZIN = join(process.cwd(), "src/pages/games");
-const YARDIMCI = new Set(["_shared.ts", "_askUI.tsx", "_letterTexture.ts", "_perf.ts"]);
 
 describe("juice kapsamı", () => {
-  const dosyalar = readdirSync(DIZIN).filter((f) => f.endsWith(".tsx") && !YARDIMCI.has(f));
+  const dosyalar = oyunDosyalari();
 
   it.each(dosyalar)("%s ses geri bildirimi veriyor", (dosya) => {
     const kaynak = readFileSync(join(DIZIN, dosya), "utf8");

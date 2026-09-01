@@ -22,6 +22,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { oyunDosyalari } from "./_oyunDosyalari";
 import {
   createSarsinti, createHitstop, ezilmeUzama, createZiplamaYardimi,
   createParcaciklar, damp, easeOutBack, HIS, INIS_SURE,
@@ -29,7 +30,6 @@ import {
 } from "@/lib/gameFeel";
 
 const DIZIN = join(process.cwd(), "src/pages/games");
-const YARDIMCI = new Set(["_shared.ts", "_askUI.tsx", "_letterTexture.ts", "_perf.ts"]);
 
 /** Görsel geri bildirim sayılan kalıplar — biri bile yeterli. */
 const KALIPLAR: Array<[string, RegExp]> = [
@@ -42,7 +42,7 @@ const KALIPLAR: Array<[string, RegExp]> = [
 ];
 
 describe("görsel oyun hissi kapsamı", () => {
-  const dosyalar = readdirSync(DIZIN).filter((f) => f.endsWith(".tsx") && !YARDIMCI.has(f));
+  const dosyalar = oyunDosyalari();
 
   it("taranacak oyun var", () => {
     expect(dosyalar.length).toBeGreaterThanOrEqual(14);
