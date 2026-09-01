@@ -24,7 +24,7 @@ import {
   getPlacementDebug,
   markTopicVisited,
 } from "@/lib/placement";
-import { getUnlockedTopicIds, getUnlockedItemIdSet, isTopicCompleted } from "@/lib/unlock";
+import { getUnlockedTopicIds, getUnlockedItemIdSet, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
 import { pickReviewItem } from "@/lib/review";
 import { letterNumOf } from "@/lib/confusables";
 import { pickDistractors } from "@/lib/confusion";
@@ -506,6 +506,35 @@ describe("yeni müfredat kabulleri", () => {
   it("şıklı cevap (selfReport yok) ilk karşılaşmada L3'te kalır", async () => {
     await recordSrsAnswer("quiz", "harfler", "l1-14", true, { responseMs: 1500 });
     expect(getTopicSrs("quiz", "harfler")["l1-14"].level).toBe(3);
+  });
+
+  /**
+   * ⚠️ ALIŞTIRMASIZ KONUDA BÖLÜM KİLİDİ OLAMAZ. Kapının şartı "bu bölümdeki
+   * her öğeyi L3'e çıkar"; oysa orada hiçbir öğe SORULMUYOR, yani seviye
+   * asla yükselmiyor ve 1. bölümden sonrası ASLA açılmıyordu.
+   * ÖLÇÜLDÜ (gerçek oyuncu kurulumu): çocuk 84 şeklin yalnız 9'unu
+   * görebiliyordu; kalan 12 bölüm "Alıştırma yaparak öğrenince açılır"
+   * yazan kilitli kutulardı — o konuda alıştırma olmadığı için uyulması
+   * imkânsız bir yönerge. Üstelik konu "bir kez girilince" tamamlandığı
+   * için çocuk 75 şekli hiç görmeden sonraki konuya geçiyordu.
+   */
+  it("alıştırmasız konuda BÜTÜN bölümler açık", () => {
+    const yaz = topics.find((t) => t.id === "yazilislar")!;
+    const sira = getSectionOrder(yaz);
+    expect(sira.length, "Yazılışlar bölümsüz").toBeGreaterThan(1);
+    const acik = getUnlockedSections(yaz);
+    expect(acik.size, `${acik.size}/${sira.length} bölüm açık`).toBe(sira.length);
+    // Bütün öğeler görünür olmalı — hiçbiri kilit arkasında kalmaz.
+    expect(getUnlockedItemsOf(yaz).length).toBe(yaz.items.length);
+  });
+
+  /** ⚠️ Alıştırmalı konuda kilit AYNEN durmalı — muafiyet yalnız noPractice. */
+  it("alıştırmalı konuda bölüm kilidi bozulmadı", () => {
+    const harfler = topics.find((t) => t.id === "harfler")!;
+    const sira = getSectionOrder(harfler);
+    const acik = getUnlockedSections(harfler);
+    expect(sira.length).toBeGreaterThan(1);
+    expect(acik.size, "temiz profilde tek bölüm açık olmalı").toBe(1);
   });
 
   it("'Harflerin Yazılışları' alıştırmasız ve oyun havuzuna girmez", () => {

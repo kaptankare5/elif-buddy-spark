@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 414 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 416 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -341,6 +341,19 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   değişmez). L3→L4 = üst üste 2 doğru (`consecutiveCorrect`), L4→L5 = kanıt
   kuru. Seçici: görülmemişler müfredat sırasıyla, art arda aynı öğe yok,
   ağırlıklar L1 %46 → L5 %8 (%85 başarı kuralı, monoton iniş).
+- ⚠️ **ALIŞTIRMASIZ KONUDA BÖLÜM KİLİDİ YOK** (kullanıcı tespiti: "orada
+  zaten alıştırma yok, ne işe yarayacak"). Kapının şartı "bu bölümdeki her
+  öğeyi L3'e çıkar"; `noPractice` konuda hiçbir öğe SORULMADIĞI için seviye
+  asla yükselmiyor ve 1. bölümden sonrası ASLA açılmıyordu. ÖLÇÜLDÜ (gerçek
+  oyuncu kurulumu, test kilidi KAPALI): Yazılışlar'da çocuk 84 şeklin yalnız
+  **9**'unu görebiliyordu; kalan 12 bölüm "Alıştırma yaparak öğrenince
+  açılır" yazan kilitli kutulardı — o konuda alıştırma olmadığı için
+  uyulması İMKÂNSIZ bir yönerge. Üstelik konu "bir kez girilince"
+  tamamlandığından çocuk 75 şekli hiç görmeden geçiyordu. Bölüm rozeti
+  (☆ 0/9) da gizlendi: ölçtüğü şey orada yok. ⚠️ Muafiyet YALNIZ
+  `noPractice`e; alıştırmalı konuda kilit aynen duruyor (bekçisi var).
+  ⚠️ Bu hata test kilidi (1234) AÇIKKEN GÖRÜNMEZ — o bayrak bütün bölümleri
+  açıyor. Bölüm kilidi ölçülürken bayrak KAPALI olmalı.
 - Bölüm kilidi `src/lib/unlock.ts`: konu içi section'lar sıralı açılır.
   Açılma şartı İKİ tane: (1) bölümdeki tüm öğeler L3+, (2) bölüm içinde
   sıcak karışıklık kalmamış (`hotPairInSection`, eşik 0.6). Eskiler açık

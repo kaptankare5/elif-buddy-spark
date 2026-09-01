@@ -402,8 +402,11 @@ const Topic = () => {
                   <span className={cn(!open && "text-muted-foreground")}>
                     {isExtra ? "✨ Ekstralar" : sec}
                   </span>
-                  {/* Bölüm ilerleme rozeti: kaç öğe ustalaşıldı */}
-                  {open && !isExtra && total > 0 && (
+                  {/* Bölüm ilerleme rozeti: kaç öğe ustalaşıldı.
+                      ⚠️ Alıştırmasız konuda GÖSTERİLMEZ: orada hiçbir şey
+                      sorulmadığı için sayaç sonsuza kadar "☆ 0/9" kalır —
+                      çocuğa yapabileceği bir şey varmış gibi görünür. */}
+                  {open && !isExtra && !topic.noPractice && total > 0 && (
                     <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 border border-warning/40 px-2 py-0.5 text-[11px] text-warning">
                       {done >= total ? "⭐" : "☆"} {done}/{total}
                     </span>

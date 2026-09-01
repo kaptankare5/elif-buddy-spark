@@ -121,6 +121,27 @@ export function getSectionOrder(topic: ContentTopic): string[] {
 export function getUnlockedSections(topic: ContentTopic): Set<string> {
   const order = getSectionOrder(topic);
   const out = new Set<string>();
+  /**
+   * ⚠️ ALIŞTIRMASIZ KONUDA BÖLÜM KİLİDİ YOK — VE OLAMAZ.
+   *
+   * Kapının şartı "bu bölümdeki her öğeyi L3'e çıkar"; oysa `noPractice`
+   * konularda hiçbir öğe SORULMUYOR, dolayısıyla seviye asla 1'in üstüne
+   * çıkmıyor ve 1. bölümden sonrası ASLA açılmıyordu.
+   *
+   * ÖLÇÜLDÜ (Yazılışlar, gerçek oyuncu kurulumu): 13 bölüm başlığı
+   * çiziliyor ama çocuk 84 şeklin yalnız **9**'unu görebiliyor; kalan 12
+   * bölüm "Alıştırma yaparak öğrenince açılır" yazan kilitli kutular
+   * olarak duruyordu — o konuda alıştırma OLMADIĞI için uyulması imkânsız
+   * bir yönerge. Üstelik konu "bir kez girilince" tamamlandığı için çocuk
+   * 75 şekli hiç görmeden sonraki konuya geçiyordu.
+   *
+   * Bölümler zaten ALIŞTIRMANIN bilişsel yükünü bölmek için var (Sweller);
+   * alıştırma yoksa bölünecek yük de yok, geriye yalnız gruplama kalır.
+   */
+  if (topic.noPractice) {
+    for (const sec of order) out.add(sec);
+    return out;
+  }
   if (isTestUnlockActive()) {
     for (const sec of order) out.add(sec);
     return out;
