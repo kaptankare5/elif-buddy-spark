@@ -36,6 +36,7 @@ import { createSarsinti, createHitstop, ezilmeUzama, damp, HIS } from "@/lib/gam
 import { useGameMode } from "@/lib/gameMode";
 import { zorlukAyari } from "@/lib/zorluk";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
+import { useBolumKutlama } from "./_bolumKutlama";
 import type { ContentItem } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { Heart, Volume2, ArrowLeft, ArrowRight, ArrowUp, Pause, Play } from "lucide-react";
@@ -1504,6 +1505,15 @@ const PlatformGame = () => {
 
   const [level, setLevel] = useState(1);
   const [unlocked, setUnlocked] = useState(() => getUnlockedLevel());
+  /**
+   * ⚠️ OYUN DÖNGÜSÜ REF ÜZERİNDEN ÇAĞIRIR. Macera'nın `step`'i uzun ömürlü
+   * bir efektin içinde yaşıyor; oradan doğrudan `kutla`yı yakalamak, ileride
+   * bağımlılığı değişirse eski kapanışı çağırma riski taşır. Ref her
+   * render'da tazelenir, döngü hep güncelini çağırır.
+   */
+  const { kutla, katman: kutlamaKatmani } = useBolumKutlama();
+  const kutlaRef = useRef(kutla);
+  kutlaRef.current = kutla;
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const zorluk = useRef(zorlukAyari());
@@ -1647,6 +1657,13 @@ const PlatformGame = () => {
     // görünüp oyun 3'te bitiyor.
     let score = 0, streak = 0, lives = zorluk.current.can, over = false;
     let winning = false, winT = 0, winBurst = 0;
+    /**
+     * ⚠️ KUTLAMA, OYUN İÇİ KAZANMA ANİMASYONUNDAN SONRA AÇILIR. Cami kapısına
+     * değince 1.15 sn'lik bir konfeti gösterisi oynuyor; kutlama kutusunu o
+     * anda açmak tam da bu gösterinin ÜSTÜNÜ örtüyordu. Bilgi burada
+     * hazırlanır, `winT` bitince (setWon ile aynı karede) gösterilir.
+     */
+    let kutlamaBekleyen: Parameters<typeof kutlaRef.current>[0] | null = null;
     let standSolid: SolidEnt | null = null;
     let cleanT = 1;
     let dpr = 1, kScale = 1;
@@ -2184,8 +2201,18 @@ const PlatformGame = () => {
         const y = kalanCan >= zorluk.current.can ? 3 : kalanCan >= 2 ? 2 : 1;
         setYildiz("platform", lv, y);
         setKazanilanYildiz(y);
+        // ⚠️ "YENİ mi açıldı" AÇMADAN ÖNCE ölçülür; sonra sorulursa hep
+        // "zaten açıktı" çıkar ve kilit haberi hiç verilmez.
+        const oncekiAcik = getUnlockedLevel();
         unlockLevel(lv + 1);
         setUnlocked(getUnlockedLevel());
+        // Bölüm bitişi artık "doğru cevap" sesi değil (bkz. _bolumKutlama).
+        // Kutlama HEMEN açılmaz — kazanma animasyonu bitince (aşağıda).
+        kutlamaBekleyen = {
+          bolum: lv,
+          yeniAcilan: lv < LEVEL_COUNT && lv + 1 > oncekiAcik ? lv + 1 : null,
+          sonBolum: lv >= LEVEL_COUNT,
+        };
       }
       if (winning) {
         c.moveDir = 0;
@@ -2199,6 +2226,7 @@ const PlatformGame = () => {
         if (winT <= 0) {
           over = true;
           setWon(true);
+          if (kutlamaBekleyen) { kutlaRef.current(kutlamaBekleyen); kutlamaBekleyen = null; }
           return;
         }
       }
@@ -3290,6 +3318,7 @@ const PlatformGame = () => {
         )}
       </main>
       {ask.katman}
+      {kutlamaKatmani}
     </div>
   );
 };

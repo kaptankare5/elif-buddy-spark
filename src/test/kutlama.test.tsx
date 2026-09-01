@@ -10,6 +10,9 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
 
 vi.mock("@/components/Buddy", () => ({ Buddy: () => <div data-testid="buddy" /> }));
+// Ses gerçekten ÇAĞRILIYOR mu — jsdom'da AudioContext yok, sessizce yutulurdu.
+const sesler: string[] = [];
+vi.mock("@/lib/juice", () => ({ sfx: (k: string) => { sesler.push(k); } }));
 
 describe("UnlockCelebration", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -44,13 +47,76 @@ describe("UnlockCelebration", () => {
     expect(done).not.toHaveBeenCalled();
   });
 
-  it("dokunulmazsa kendiliğinden kapanır (2.6 sn)", () => {
+  /**
+   * ⚠️ SÜRE 1-2 SANİYE BANDINDA (kullanıcı şartı: "1 2 saniye sonra otomatik
+   * kapansın"). 2.6 sn'den 2.2'ye indirildi; kapatma düğmesi ve ekrana
+   * dokunma zaten daha hızlı çıkış veriyor.
+   */
+  it("dokunulmazsa kendiliğinden kapanır (2.2 sn)", () => {
     const done = vi.fn();
     render(<UnlockCelebration title="Yeni bölüm!" onDone={done} />);
-    gec(2500);
+    gec(2100);
     expect(done).not.toHaveBeenCalled();
     gec(200);
     expect(done).toHaveBeenCalledTimes(1);
+  });
+
+  /** Kutlamanın SESİ olmalı — sessiz bir kutlama fark edilmiyor. */
+  it("açılışta kutlama sesi çalar, tür seçilebilir", () => {
+    sesler.length = 0;
+    render(<UnlockCelebration title="x" onDone={vi.fn()} />);
+    expect(sesler, "varsayılan ses çalmadı").toEqual(["kutlama"]);
+    sesler.length = 0;
+    render(<UnlockCelebration title="x" onDone={vi.fn()} sound="kilit" />);
+    expect(sesler).toEqual(["kilit"]);
+    sesler.length = 0;
+    render(<UnlockCelebration title="x" onDone={vi.fn()} sound={false} />);
+    expect(sesler, "sound={false} sessiz olmalı — arka arkaya kutlamada ikincisi").toEqual([]);
+  });
+
+  /**
+   * ⚠️ GERİ SAYIM GÖRÜNÜR: çocuk kutlamanın kapanacağını önceden görmeli,
+   * yoksa "bir şey yapmam mı lazım?" diye bekliyor. Halka kapatma
+   * düğmesinin çevresinde daralır.
+   */
+  it("kendiliğinden kapanırken geri sayım halkası çizilir ve daralır", () => {
+    const { container } = render(<UnlockCelebration title="x" onDone={vi.fn()} />);
+    const halka = () => container.querySelector("circle") as SVGCircleElement | null;
+    expect(halka(), "geri sayım halkası yok").not.toBeNull();
+    const ilk = Number(halka()!.getAttribute("stroke-dashoffset"));
+    gec(1100);
+    const sonra = Number(halka()!.getAttribute("stroke-dashoffset"));
+    expect(sonra, "halka ilerlemiyor — geri sayım görünmüyor").toBeGreaterThan(ilk);
+  });
+
+  /**
+   * ⚠️ TEKLİF KENDİLİĞİNDEN KAPANMAZ. "Sonraki konuya geçmek ister misin?"
+   * bir bildirim değil sorudur; 2 saniyede kaybolursa çocuk hiç görmemiş
+   * olur. Eylemli kutlamada halka da çizilmez.
+   */
+  it("eylem (teklif) varsa kendiliğinden KAPANMAZ ve halka çizilmez", () => {
+    const done = vi.fn();
+    const gec2 = vi.fn();
+    const { container } = render(
+      <UnlockCelebration title="Konu bitti" onDone={done}
+        action={{ label: "Sonraki konu", onClick: gec2 }} />,
+    );
+    expect(container.querySelector("circle"), "teklifte geri sayım halkası olmamalı").toBeNull();
+    gec(6000);
+    expect(done, "teklif kendiliğinden kapandı — çocuk soruyu görmeden kayboldu").not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Sonraki konu"));
+    expect(gec2).toHaveBeenCalled();
+  });
+
+  it("teklif reddedilebilir (Şimdi değil)", () => {
+    const done = vi.fn();
+    render(
+      <UnlockCelebration title="Konu bitti" onDone={done}
+        action={{ label: "Sonraki konu", onClick: vi.fn() }} />,
+    );
+    gec(400);
+    fireEvent.click(screen.getByText("Şimdi değil"));
+    expect(done).toHaveBeenCalled();
   });
 
   it("konfeti dokunuşu yutmaz (pointer-events-none)", () => {

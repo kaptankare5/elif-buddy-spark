@@ -52,6 +52,7 @@ import { isTestUnlockActive } from "@/lib/testUnlock";
 import { zorlukAyari } from "@/lib/zorluk";
 import { createSarsinti, clamp, hareketKatsayisi } from "@/lib/gameFeel";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
+import { useBolumKutlama } from "./_bolumKutlama";
 import type { ContentItem } from "@/data/types";
 
 /** Mantıksal ilerleme (artan) → sahne koordinatı (-Z). Yukarıdaki eksen notu. */
@@ -331,6 +332,14 @@ const PartyGame = () => {
   const [phase, setPhase] = useState<Phase>("levels");
   const [level, setLevel] = useState(1);              // oynanan bölüm (1..10)
   const [unlocked, setUnlocked] = useState(() => getUnlockedLevel());
+  /**
+   * ⚠️ OYUN DÖNGÜSÜ REF ÜZERİNDEN ÇAĞIRIR: `step` uzun ömürlü bir efektin
+   * içinde yaşıyor, kutlamayı doğrudan yakalamak efekt bağımlılığı
+   * gerektirirdi (ve bağımlılık eklemek sahneyi yeniden kurardı).
+   */
+  const { kutla, katman: kutlamaKatmani } = useBolumKutlama();
+  const kutlaRef = useRef(kutla);
+  kutlaRef.current = kutla;
   const yildizlar = useYildizlar();
   const [hud, setHud] = useState({ place: 1, pct: 0, correct: 0, wrong: 0 });
   const [power, setPower] = useState<PowerKind | null>(null);      // taşınan tek güç
@@ -1428,6 +1437,10 @@ const PartyGame = () => {
             ctrlRef.current.running = false;
             // Bölümü bitirmek sonrakini açar (derece şartı yok — çocuk
             // sonuncu da olsa parkuru tamamladıysa devam edebilmeli).
+            // ⚠️ "YENİ mi açıldı" AÇMADAN ÖNCE ölçülür: unlockLevel'dan sonra
+            // sorulursa hep "zaten açıktı" çıkar ve kilit haberi hiç verilmez
+            // (bölümü ikinci kez oynayanda da yanlışlıkla haber verilmez).
+            const oncekiAcik = getUnlockedLevel();
             unlockLevel(level + 1);
             setUnlocked(getUnlockedLevel());
             // ⚠️ PA-1 DERECE KAYDI: bölümü bitirmek tek bit bilgiydi, sıyrılarak
@@ -1437,7 +1450,14 @@ const PartyGame = () => {
             setYildiz("party", level, r.finished === 1 ? 3 : r.finished <= 3 ? 2 : 1);
             setResult({ place: r.finished, correct: statsRef.current.correct, wrong: statsRef.current.wrong });
             setPhase("finish");
-            playFeedback(r.finished <= 3);
+            // ⚠️ BÖLÜM BİTİŞİ ARTIK "DOĞRU CEVAP" SESİ DEĞİL. Eskiden burada
+            // yalnız playFeedback(true) vardı: bir bölümü bitirmek, bir
+            // soruyu doğru bilmekle kulakta AYNI şeydi (kullanıcı istedi).
+            kutlaRef.current({
+              bolum: level,
+              yeniAcilan: level < LEVEL_COUNT && level + 1 > oncekiAcik ? level + 1 : null,
+              sonBolum: level >= LEVEL_COUNT,
+            });
           }
         }
       }
@@ -2100,6 +2120,7 @@ const PartyGame = () => {
           </div>
         </div>
       )}
+      {kutlamaKatmani}
     </div>
   );
 };

@@ -25,7 +25,9 @@ export type JuiceSfx =
   | "camur"    // çamura basma — ıslak "şlop"
   | "sayim"    // yarış geri sayımı: 3-2-1 (hepsi AYNI perde)
   | "start"    // yarış başlangıcı: tiz uzun düdük + motor kalkışı
-  | "bitis";   // bölüm/oyun bitişi
+  | "bitis"    // bölüm/oyun bitişi
+  | "kutlama"  // BÖLÜM TAMAMLANDI — bitiş'ten büyük, "başardın" anı
+  | "kilit";   // KİLİT AÇILDI — mekanik, melodik değil
 
 /**
  * ⚠️ SERİ ARTTIKÇA TİZLEŞİR (Mario'nun para sesi kuralı): aynı sesi 40 kez
@@ -55,6 +57,8 @@ const VARSAYILAN_TITRESIM: Partial<Record<JuiceSfx, Titresim>> = {
   sayim: "hafif",
   start: "basari",
   bitis: "basari",
+  kutlama: "basari",
+  kilit: "hafif",
   // ⚠️ Çamur TİTREMEZ: çamurun içinde her adımda çalıyor (saniyede ~2-3 kez).
   // "Sık yapılan hareket titremez" kuralı — yukarıdaki nota bak.
 };
@@ -151,6 +155,58 @@ export function sfx(kind: JuiceSfx, opts?: { seri?: number; titresim?: Titresim 
       tone(880, 0.10, "triangle", 0.09, 0.17);
       tone(1046, 0.10, "triangle", 0.18, 0.17);
       tone(1318, 0.26, "triangle", 0.27, 0.18);
+      break;
+    /**
+     * KUTLAMA — bölüm tamamlandı.
+     *
+     * ⚠️ NEDEN ALKIŞ DEĞİL (kullanıcı: "alkış sesi kötü durur, başka biriyle
+     * düşün" — haklı, üç ayrı sebep):
+     *  1. Gerçek alkış KAYIT ister. Bu uygulamada hazır ses dosyası YOK,
+     *     her şey WebAudio ile sentezleniyor (audio.ts'teki kural) ve bu
+     *     ortamdan ses bankalarına erişim de kapalı.
+     *  2. Sentetik alkış = süzülmüş gürültü patlamaları; telefon
+     *     hoparlöründe alkışa değil PARAZİTE/YAĞMURA benziyor.
+     *  3. Alkış bir KALABALIK sesidir. Tek başına çalışan çocuğa sahte bir
+     *     seyirci eklemek, uygulamanın "kendi rekorun, kıyas yok" ilkesiyle
+     *     de çelişir.
+     * Yerine ÇAN + KIVILCIM: yükselen dört nota (bitiş'in daha geniş hâli,
+     * son nota UZUN) + üstüne serpiştirilmiş kısa tiz "çıt"lar — konfetinin
+     * kulaktaki karşılığı. Alttaki alçak vuruş telefon hoparlörüne gövde
+     * verir (ince tiz sesler küçük hoparlörde cılız kalıyor).
+     * ⚠️ MÜZİK DEĞİL: ölçü/ritim/akort yok, tek atımlık bildirim tonu —
+     * `bitis` ve `start` ile aynı aile (bkz. dosya başındaki kural).
+     */
+    case "kutlama": {
+      // gövde: yükselen dört nota, sonuncusu uzun
+      tone(523, 0.12, "triangle", 0, 0.17);
+      tone(659, 0.12, "triangle", 0.10, 0.17);
+      tone(784, 0.12, "triangle", 0.20, 0.17);
+      tone(1046, 0.45, "triangle", 0.30, 0.19);
+      // alçak vuruş — küçük hoparlörde gövde
+      tone(131, 0.22, "sine", 0, 0.13);
+      // kıvılcımlar: 7 kısa tiz çıt, düzensiz aralıklarla (ritim OLUŞMASIN)
+      const kivilcim = [
+        [1568, 0.34], [2093, 0.44], [1760, 0.57], [2637, 0.63],
+        [2093, 0.75], [3136, 0.82], [2349, 0.95],
+      ] as const;
+      for (const [f, t0] of kivilcim) tone(f, 0.06, "sine", t0, 0.055);
+      break;
+    }
+    /**
+     * KİLİT AÇILDI — "yeni bölüm/harf açıldı" bildirimi.
+     *
+     * ⚠️ KUTLAMADAN AYRI DUYULMALI: ikisi arka arkaya çalabiliyor (bölümü
+     * bitir → sonraki bölüm açıldı). İkisi de çan olsaydı çocuk tek bir
+     * uzun ses duyardı. Bu yüzden kilit MELODİK DEĞİL, MEKANİK: iki kısa
+     * "tık" (yüksek Q'lu gürültü = mandal), alçak bir "tok" (kilit dili),
+     * sonra yükselen bir parıltı (kapı açıldı). Tek perde bile taşımıyor,
+     * dolayısıyla melodiyle karışması mümkün değil.
+     */
+    case "kilit":
+      gurultu({ dur: 0.05, bas: 2600, tepe: 4200, son: 2000, q: 12, gain: 0.07 });
+      gurultu({ dur: 0.05, bas: 2600, tepe: 4200, son: 2000, q: 12, gain: 0.07, startOffset: 0.09 });
+      tone(147, 0.16, "sine", 0.09, 0.14);
+      gurultu({ dur: 0.42, bas: 700, tepe: 3600, son: 5200, q: 3, gain: 0.05, startOffset: 0.18 });
       break;
   }
 }

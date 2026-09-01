@@ -14,16 +14,16 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { oyunDosyalari } from "./_oyunDosyalari";
 import { oyunBitti, getOyunKaydi } from "@/lib/oyunSonucu";
 import { siparisAc, siparisIsle, SIPARIS_SABIR, SIPARIS_ADET } from "@/lib/siparis";
 import { setYildiz, getYildiz } from "@/lib/bolumYildiz";
 import type { ContentItem } from "@/data/types";
 
 const DIZIN = join(process.cwd(), "src/pages/games");
-const YARDIMCI = new Set(["_shared.ts", "_askUI.tsx", "_letterTexture.ts", "_perf.ts"]);
 
 describe("kalıcılık kapsamı", () => {
-  const dosyalar = readdirSync(DIZIN).filter((f) => f.endsWith(".tsx") && !YARDIMCI.has(f));
+  const dosyalar = oyunDosyalari();
 
   it.each(dosyalar)("%s oturum sonunu kaydediyor", (dosya) => {
     const kaynak = readFileSync(join(DIZIN, dosya), "utf8");

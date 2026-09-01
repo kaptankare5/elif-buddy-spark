@@ -45,6 +45,7 @@ import { clamp, createSarsinti, hareketKatsayisi } from "@/lib/gameFeel";
 import { sfx } from "@/lib/juice";
 import { oyunBitti, useOyunKayitlari } from "@/lib/oyunSonucu";
 import { setYildiz, useYildizlar } from "@/lib/bolumYildiz";
+import { useBolumKutlama } from "./_bolumKutlama";
 import { letterTexture, nameTexture, emojiTexture, faceTexture, hubTexture, wordTexture, blockedTexture } from "./_letterTexture";
 import { getAskMode, okunurAd, pickNameWrongs, getFlashMs, FLASH_CUE_MS, FLASH_SIK, USTTE_SIK, yaziliSik, type AskMode } from "@/lib/askMode";
 import type { ContentItem } from "@/data/types";
@@ -290,6 +291,14 @@ const KartGame = () => {
   const [phase, setPhase] = useState<Phase>("tracks");
   const [track, setTrack] = useState(1);
   const [unlocked, setUnlocked] = useState(() => getUnlockedTrack());
+  /**
+   * ⚠️ OYUN DÖNGÜSÜ REF ÜZERİNDEN ÇAĞIRIR: `step` uzun ömürlü bir efektin
+   * içinde yaşıyor, kutlamayı doğrudan yakalamak efekt bağımlılığı
+   * gerektirirdi (ve bağımlılık eklemek sahneyi yeniden kurardı).
+   */
+  const { kutla, katman: kutlamaKatmani } = useBolumKutlama();
+  const kutlaRef = useRef(kutla);
+  kutlaRef.current = kutla;
   const yildizlar = useYildizlar();
   // ⚠️ REKORLAR KANCAYLA OKUNUR, render sırasında `getOyunKaydi()` ile DEĞİL:
   // öyleyken pist listesi her render'da 3 pist × 2 kez localStorage okuyup
@@ -1511,6 +1520,9 @@ const KartGame = () => {
             r.finished = done + 1;
             if (r.isPlayer) {
               ctrlRef.current.running = false;
+              // ⚠️ "YENİ mi açıldı" AÇMADAN ÖNCE ölçülür; sonra sorulursa hep
+              // "zaten açıktı" çıkar ve kilit haberi hiç verilmez.
+              const oncekiAcik = getUnlockedTrack();
               unlockTrack(track + 1);
               setUnlocked(getUnlockedTrack());
               // Derece yıldızı + en iyi tur rekoru.
@@ -1520,7 +1532,13 @@ const KartGame = () => {
               }
               setResult({ place: r.finished, correct: statsRef.current.correct, wrong: statsRef.current.wrong });
               setPhase("finish");
-              playFeedback(r.finished <= 3);
+              // Bölüm bitişi artık "doğru cevap" sesi değil (bkz. _bolumKutlama).
+              kutlaRef.current({
+                bolum: track,
+                ad: "Pist",
+                yeniAcilan: track < TRACK_COUNT && track + 1 > oncekiAcik ? track + 1 : null,
+                sonBolum: track >= TRACK_COUNT,
+              });
             }
             continue;
           }
@@ -2306,6 +2324,7 @@ const KartGame = () => {
           </div>
         </div>
       )}
+      {kutlamaKatmani}
     </div>
   );
 };

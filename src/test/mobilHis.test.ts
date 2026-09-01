@@ -14,14 +14,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { oyunDosyalari } from "./_oyunDosyalari";
 import { createSarsinti, hareketKatsayisi, __resetHareket } from "@/lib/gameFeel";
 import { titre, setTitresimAcik } from "@/lib/titresim";
 
 const DIZIN = join(process.cwd(), "src/pages/games");
-const YARDIMCI = new Set(["_shared.ts", "_askUI.tsx", "_letterTexture.ts", "_perf.ts"]);
 
 describe("dokunma tepkiselliği", () => {
-  const dosyalar = readdirSync(DIZIN).filter((f) => f.endsWith(".tsx") && !YARDIMCI.has(f));
+  const dosyalar = oyunDosyalari();
 
   /**
    * ⚠️ İKİ KABUL EDİLEN YOL:

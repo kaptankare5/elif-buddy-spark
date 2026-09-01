@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, Navigate, Link } from "react-router-dom";
+import { useParams, Navigate, Link, useNavigate } from "react-router-dom";
 import { getSubject, getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
 import { EmojiView } from "@/components/EmojiView";
@@ -17,7 +17,7 @@ import {
   type Level,
 } from "@/data/srs";
 import { cn } from "@/lib/utils";
-import { isTopicUnlocked, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
+import { isTopicUnlocked, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf, nextTopicOf } from "@/lib/unlock";
 import { blameTarget, pickItemForSkill, skillIdsOf, skillOf } from "@/lib/skills";
 import { isTopicSkipped, recordBackCheck, markTopicVisited } from "@/lib/placement";
 import { recordProbe } from "@/lib/forwardProbe";
@@ -80,7 +80,14 @@ const Topic = () => {
 
   const [q, setQ] = useState<{ target: ContentItem; options: ContentItem[] } | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
-  const [celebrate, setCelebrate] = useState<{ title: string; subtitle?: string } | null>(null);
+  const [celebrate, setCelebrate] = useState<{
+    title: string;
+    subtitle?: string;
+    sound?: "kutlama" | "kilit";
+    kilitSesi?: boolean;
+    action?: { label: string; onClick: () => void };
+  } | null>(null);
+  const navigate = useNavigate();
   const [showSkip, setShowSkip] = useState(false);
   const questionStartRef = useRef<number>(0);
   // Yanlış cevaplanan harf bir sonraki soruda tekrar sorulsun (anlık düzeltici
@@ -233,14 +240,72 @@ const Topic = () => {
     try { prev = Number(localStorage.getItem(key) ?? "-1"); } catch { /* ignore */ }
     if (prev < 0) { try { localStorage.setItem(key, String(count)); } catch { /* ignore */ } return; }
     if (count > prev) {
-      const done = order.length;
+      /**
+       * ⚠️ "SON BÖLÜM AÇILDI" ≠ "KONU BİTTİ". Burada başlık "🏆 Konu
+       * tamamlandı!" yazıyordu, YANLIŞTI: `getUnlockedSections` bir bölümü
+       * ÖNCEKİ bölüm ustalaşınca açıyor, yani son bölüm açıldığında onun
+       * öğeleri daha L1'de. Çocuk konuyu bitirmeden "tamamlandı" tebriği
+       * alıyor, sonra gerçek bitişte İKİNCİ bir tebrik geliyordu.
+       * Gerçek bitişin kutlaması aşağıdaki ayrı efektte (isTopicCompleted).
+       */
+      const sonBolum = count >= order.length;
       setCelebrate({
-        title: count >= done ? "🏆 Konu tamamlandı!" : "Yeni bölüm açıldı! 🎉",
-        subtitle: count >= done ? "Hepsini öğrendin, aferin!" : `${count}. Bölüm hazır — hadi devam!`,
+        title: sonBolum ? "🔓 Son bölüm açıldı!" : "🔓 Yeni bölüm açıldı!",
+        subtitle: `${count}. Bölüm hazır — hadi devam!`,
+        // Bu bir KİLİT haberi, bitiş kutlaması değil: mekanik ses çalar.
+        sound: "kilit",
       });
       try { localStorage.setItem(key, String(count)); } catch { /* ignore */ }
     }
   }, [topic, tick]);
+
+  /**
+   * KONU GERÇEKTEN BİTTİ Mİ? → sonraki konuya geçme TEKLİFİ.
+   *
+   * Kullanıcı isteği: "tüm konu biterse sonraki konuya geçmek ister misin
+   * diye sorsun".
+   *
+   * ⚠️ ÖLÇÜT `isTopicCompleted`, açılan bölüm sayısı DEĞİL (yukarıdaki nota
+   * bak) — bölüm açılması "sıradaki bölüme geçebilirsin" demek, konunun
+   * bitmesi ise bütün becerilerin L3+ olması VE bölüm içi karışıklığın
+   * sönmesi demek.
+   * ⚠️ TEKLİF KENDİLİĞİNDEN KAPANMAZ (UnlockCelebration `action`): 2
+   * saniyede kaybolan bir soru sorulmamış sayılır. "Şimdi değil" ile
+   * reddedilir ve bir daha sorulmaz (ısrar yok — atlama teklifindeki
+   * kuralın aynısı).
+   */
+  // Bu sayfa açıkken konunun BİTMEMİŞ hâlini gördük mü? (bkz. aşağıdaki not)
+  const bitmemisGoruldu = useRef<string | null>(null);
+  useEffect(() => {
+    if (!topic) return;
+    if (!isTopicCompleted(topic)) { bitmemisGoruldu.current = topic.id; return; }
+    /**
+     * ⚠️ TEKLİF YALNIZ GÖZ ÖNÜNDE BİTİNCE ÇIKAR. Yalnız `isTopicCompleted`e
+     * baksaydık, çoktan bitmiş bir konuyu tekrar açan çocuk (pekiştirme için
+     * geri dönmek serbest) "Konu tamamlandı! Sonraki konuya geç?" teklifi
+     * alırdı — bitirdiği bir şey için ikinci kez tebrik, üstelik zaten
+     * geçtiği bir konuya yönlendirme. Bölüm kutlamasındaki "prev < 0 ise
+     * sessizce kaydet" mantığının aynısı: geçişi görmediysek kutlama yok.
+     */
+    if (bitmemisGoruldu.current !== topic.id) return;
+    const sonraki = nextTopicOf(topic.id);
+    if (!sonraki) return;
+    const scope = getActiveStudentScope() ?? "guest";
+    const key = `elifba-topicdone-${scope}-${topic.id}`;
+    try { if (localStorage.getItem(key)) return; } catch { /* ignore */ }
+    try { localStorage.setItem(key, "1"); } catch { /* ignore */ }
+    setCelebrate({
+      title: "🏆 Konu tamamlandı!",
+      subtitle: `Sıradaki: ${sonraki.title}`,
+      action: {
+        label: "▶ Sonraki konuya geç",
+        onClick: () => {
+          setCelebrate(null);
+          navigate(`/konu/${subjectId}/${sonraki.id}`);
+        },
+      },
+    });
+  }, [topic, tick, navigate, subjectId]);
 
   if (!subject || !topic) return <Navigate to="/" replace />;
   if (!isTopicUnlocked(topic.id)) return <Navigate to="/" replace />;
@@ -485,7 +550,14 @@ const Topic = () => {
           />
         )}
         {celebrate && (
-          <UnlockCelebration title={celebrate.title} subtitle={celebrate.subtitle} onDone={() => setCelebrate(null)} />
+          <UnlockCelebration
+            title={celebrate.title}
+            subtitle={celebrate.subtitle}
+            sound={celebrate.sound}
+            kilitSesi={celebrate.kilitSesi}
+            action={celebrate.action}
+            onDone={() => setCelebrate(null)}
+          />
         )}
       </div>
     );
@@ -671,7 +743,14 @@ const Topic = () => {
         )}
       </main>
       {celebrate && (
-        <UnlockCelebration title={celebrate.title} subtitle={celebrate.subtitle} onDone={() => setCelebrate(null)} />
+        <UnlockCelebration
+            title={celebrate.title}
+            subtitle={celebrate.subtitle}
+            sound={celebrate.sound}
+            kilitSesi={celebrate.kilitSesi}
+            action={celebrate.action}
+            onDone={() => setCelebrate(null)}
+          />
       )}
     </div>
   );

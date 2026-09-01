@@ -195,3 +195,21 @@ export function getUnlockedItemIdSet(): Set<string> {
   }
   return out;
 }
+
+/**
+ * Müfredat sırasında BU konudan sonraki konu (varsa).
+ *
+ * ⚠️ Alıştırmasız (ders) konular ATLANMAZ — `nextLockedTopic`'ten farkı bu.
+ * Orada amaç "yoklanacak kilitli konu"ydu; burada amaç çocuğa "sıradaki
+ * konuya geçmek ister misin?" diye sormak ve müfredatın sırası ders
+ * konularını da içeriyor (Yazılışlar, Hafıza Yöntemi). Onları atlamak,
+ * kullanıcının "en azından bir kere konuya girsin" şartını delerdi.
+ */
+export function nextTopicOf(topicId: string): ContentTopic | null {
+  for (const s of SUBJECTS) {
+    const i = s.topics.findIndex((t) => t.id === topicId);
+    if (i < 0) continue;
+    return s.topics[i + 1] ?? null;
+  }
+  return null;
+}
