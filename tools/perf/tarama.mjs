@@ -54,9 +54,20 @@ await mkdir(DIZIN, { recursive: true });
 const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium",
   args: ["--no-sandbox", "--use-gl=swiftshader", "--enable-unsafe-swiftshader"] });
 const ctx = await b.newContext({ viewport: { width: 412, height: 880 }, deviceScaleFactor: 2 });
+/**
+ * ⚠️ INIT SCRIPT try/catch İÇİNDE OLMALI — yoksa ARACIN KENDİSİ sahte hata
+ * üretir. Playwright bu betiği HER ÇERÇEVEYE enjekte ediyor; video'lu
+ * konularda YouTube iframe'i bu ortamda yüklenemiyor ve
+ * `chrome-error://chromewebdata/` çerçevesine düşüyor. O çerçevenin origin'i
+ * opak olduğu için `localStorage` erişimi `SecurityError` atıyor ve tarama
+ * bunu UYGULAMA hatası sanıyordu (ölçüldü: 3 konu, hepsi `video` alanı olan).
+ * Uygulamanın kendi kodu zaten her yerde try/catch kullanıyor.
+ */
 await ctx.addInitScript(() => {
-  localStorage.setItem("elifba-test-panel-v1", "1");
-  localStorage.setItem("elifba-test-unlock-v1", "1");
+  try {
+    localStorage.setItem("elifba-test-panel-v1", "1");
+    localStorage.setItem("elifba-test-unlock-v1", "1");
+  } catch { /* opak origin (yüklenemeyen iframe) — sorun değil */ }
 });
 await ctx.route("**://*.supabase.co/**", (r) => r.abort());
 
