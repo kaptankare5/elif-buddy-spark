@@ -20,6 +20,7 @@ import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
 import { pickContrastId, recordDiscrimination, recordMiss } from "@/lib/confusion";
 import { considerRemedy, showRemedy } from "@/lib/remedial";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/lib/settings";
 import { LevelBadge } from "@/components/LevelBadge";
 import { AuditCard } from "@/components/AuditCard";
 import { pickAuditQuestion, type AuditQuestion } from "@/lib/auditQuestion";
@@ -59,9 +60,34 @@ const Flashcard = () => {
   // DENETİM KARTI (lib/audit.ts): 20 kartta bir, "Biliyorum" beyanının
   // gerçekten tuttuğunu ölçen kontrol sorusu. Doluyken normal kart gizlenir.
   const [denetim, setDenetim] = useState<AuditQuestion | null>(null);
+  // Sade çalışma: motivasyon ögeleri kapalı, deste sırayla dönülür.
+  const [ayarlar] = useSettings();
+  const sade = ayarlar.flashcardSade;
+  const sadeIdx = useRef(0);
 
   const pickNext = () => {
     if (itemIds.length === 0) return;
+    /**
+     * SADE ÇALIŞMA (Ayarlar → "Flashcard'da sade çalışma").
+     *
+     * ⚠️ SEÇİCİ TAMAMEN DEVRE DIŞI: normalde sıradaki kartı SRS belirler
+     * (kurtarma, karışan partner, serpiştirilmiş bakım, denetim). Bunların
+     * hepsi öğrenmeyi hızlandırır ama çocuğa "neyin ne zaman geleceği belli
+     * değil" hissi verir. Sade modda deste BAŞTAN SONA, sırayla ve eksiksiz
+     * dönülür — "bu konuyu bir baştan geçelim" çalışması budur.
+     * ⚠️ Cevap YİNE SRS'e yazılır: kaldırılan şey motivasyon ögesi, kayıt değil.
+     */
+    if (sade) {
+      chainRef.current = 0;
+      reviewTopicRef.current = null;
+      const id = itemIds[sadeIdx.current % itemIds.length];
+      sadeIdx.current = (sadeIdx.current + 1) % itemIds.length;
+      setCurrentId(id);
+      setFlipped(false);
+      setDrag(0);
+      startRef.current = Date.now();
+      return;
+    }
     // 0a) DENETİM SIRASI MI? 20 kartta bir, "Biliyorum" beyanının gerçekten
     //     tuttuğunu ölçen kontrol sorusu gelir. Aday yoksa (henüz L3+ harf
     //     yok) sessizce normal karta düşer — sayaç bir sonrakinde dener.
@@ -230,6 +256,9 @@ const Flashcard = () => {
           centered
         />
 
+        {/* ⚠️ SADE MODDA MOTİVASYON ÖGESİ YOK: seviye rozeti (yıldızlar) ve
+            oturum sayacı gizlenir — geriye yalnız kart ve cevap kalır. */}
+        {!sade && (
         <div className="mb-3 flex items-center justify-center gap-2 text-xs font-bold">
           <span className={cn(
             "rounded-full px-2.5 py-0.5 border",
@@ -245,6 +274,7 @@ const Flashcard = () => {
             Bu oturum: {done} kart
           </span>
         </div>
+        )}
 
         {denetim && (
           <AuditCard
@@ -283,7 +313,7 @@ const Flashcard = () => {
               >
                 {/* Ön yüz */}
                 <div className="absolute inset-0 backface-hidden rounded-3xl bg-card border-4 border-primary/25 shadow-elegant flex flex-col overflow-hidden">
-                  <LevelBadge itemId={current.id} topicId={curTopicId} className="absolute right-2 top-2" />
+                  {!sade && <LevelBadge itemId={current.id} topicId={curTopicId} className="absolute right-2 top-2" />}
                   <div className="flex-1 min-h-0 flex items-center justify-center px-4">
                     <span className="font-arabic text-emerald-800 leading-[1.6] text-[clamp(5rem,24vw,8rem)]">
                       {current.emoji}

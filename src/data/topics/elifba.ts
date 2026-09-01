@@ -909,9 +909,36 @@ const t10_elif_lam: ContentTopic = {
   })),
 };
 
+/**
+ * YAZILIŞ HAFIZA YÖNTEMİ — 2. konunun (başta/ortada/sonda) EZBER YÜKÜNÜ
+ * kurala çeviren ders. Kullanıcı şartı: "hafıza yöntemi vardı ya, başta
+ * ortada halleri vs. için, onu ayrı konu olarak al."
+ *
+ * ⚠️ İÇERİK BURADA DEĞİL, KENDİ SAYFASINDA (`page`): ders animasyonlu
+ * (kuyruk silme, nokta karşılaştırma, çizgi yöntemi) — öğe ızgarası değil.
+ * İçeriği buraya kopyalamak iki ayrı doğru kaynak yaratırdı.
+ *
+ * ⚠️ NUMARASIZ: sonraki konular 3..11 diye numaralı ve bu numaralar hem
+ * testlerde hem CLAUDE.md'de geçiyor. Araya numaralı bir konu sokmak
+ * dokuz başlığı ve onlara yapılan bütün atıfları kaydırırdı; numarasız
+ * başlık "bu bir yöntem dersi, yeni bir harf konusu değil" diye de okunuyor.
+ */
+const t2b_yazilis_hafiza: ContentTopic = {
+  id: "yazilis-hafiza",
+  parent: P,
+  title: "Yazılış Hafıza Yöntemi",
+  description: "84 şekli ezberleme — üç kuralı öğren",
+  emoji: "ـبـ",
+  practiceMode: "visual",
+  noPractice: true,
+  page: "/yazilis-hafiza",
+  items: [],
+};
+
 export const elifbaTopics: ContentTopic[] = [
   t1_harfler,
   t2_yazilislar,
+  t2b_yazilis_hafiza,
   t3_harekeler,
   t4_harf_hareke,
   t4_cezm,

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { getSubject, getTopic } from "@/data/subjects";
 import { PageHeader } from "@/components/PageHeader";
+import { EmojiView } from "@/components/EmojiView";
 import { RouteHead } from "@/components/RouteHead";
 import { playItem, playFeedback, preloadItems } from "@/lib/audio";
 import { Volume2, Layers, Zap, Lock, Gamepad2 } from "lucide-react";
@@ -18,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { isTopicUnlocked, isTopicCompleted, getUnlockedSections, getSectionOrder, getUnlockedItemsOf } from "@/lib/unlock";
 import { blameTarget, pickItemForSkill, skillIdsOf, skillOf } from "@/lib/skills";
-import { isTopicSkipped, recordBackCheck } from "@/lib/placement";
+import { isTopicSkipped, recordBackCheck, markTopicVisited } from "@/lib/placement";
 import { recordProbe } from "@/lib/forwardProbe";
 import { UnlockCelebration } from "@/components/UnlockCelebration";
 import { SkipTest } from "@/components/SkipTest";
@@ -110,6 +111,16 @@ const Topic = () => {
     setQ(null);
     setPicked(null);
   }, [topicId, mode]);
+
+  /**
+   * ⚠️ ZİYARET KAYDI — alıştırmasız konuların TEK tamamlanma ölçütü budur
+   * (bkz. `isTopicCompleted`). Kullanıcı şartı: "en azından bir kere konuya
+   * girsin." Kayıt bütün konularda tutulur (ileride başka yerde de lazım
+   * olabilir), ama kapıyı yalnız `noPractice` konularda açıyor.
+   */
+  useEffect(() => {
+    if (topic && isTopicUnlocked(topic.id)) markTopicVisited(topic.id);
+  }, [topic]);
 
   useEffect(() => {
     if (mode !== "test" || !topic || unlockedItemIds.length === 0 || q || denetim) return;
@@ -233,6 +244,13 @@ const Topic = () => {
 
   if (!subject || !topic) return <Navigate to="/" replace />;
   if (!isTopicUnlocked(topic.id)) return <Navigate to="/" replace />;
+  /**
+   * ⚠️ İÇERİĞİ AYRI SAYFADA OLAN KONU (bkz. `ContentTopic.page`): konu
+   * sayfası öğe ızgarası çizer, oysa Yazılış Hafıza Yöntemi animasyonlu bir
+   * derstir. `replace` ŞART — yoksa geri tuşu bu rotaya dönüp yeniden
+   * yönlendiriyor ve çocuk dersten çıkamıyor.
+   */
+  if (topic.page) return <Navigate to={topic.page} replace />;
 
   const srs = getTopicSrs(NS, topic.id);
   const levelCount: Record<Level, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -267,15 +285,19 @@ const Topic = () => {
       className="relative aspect-square rounded-2xl bg-card border-2 border-primary/15 flex flex-col overflow-hidden shadow-soft transition-bouncy hover:-translate-y-1 hover:border-primary/40 hover:shadow-card active:scale-95"
     >
       <LevelBadge itemId={skillOf(it)} topicId={topic.id} className="absolute right-1 top-1" />
-      {/* Glif bölgesi — hareke işaretleri taşsa bile alttaki etiket bandına binemez */}
+      {/*
+        ⚠️ `EmojiView` ŞART, düz `<span>` DEĞİL. Kullanıcı tespiti: "esre
+        (alt çizgi) ze harfinde gözükmüyordu". Sebep: `leading` satır
+        KUTUSUNU büyütür ama MÜREKKEBİ ortalamaz — ز ر س ش ص gibi taban
+        çizgisinin altına inen harflerde esre daha da aşağı düşüyor ve
+        altındaki opak etiket bandı (`relative z-10`) onun üstünü boyuyordu.
+        `EmojiView` mürekkebi ölçüp `translateY` ile ortalıyor (glifOlcu.ts).
+      */}
       <span className="flex-1 min-h-0 flex w-full items-center justify-center px-1">
-        <span className={cn(
-          "font-arabic text-emerald-800",
+        <EmojiView value={it.emoji} className={cn(
+          "text-emerald-800",
           cols === 4 ? "text-3xl sm:text-4xl" : cols === 3 ? "text-[2.5rem] sm:text-5xl" : "text-6xl",
-          "leading-[1.55]",
-        )}>
-          {it.emoji}
-        </span>
+        )} />
       </span>
       {it.translit && (
         <span className={cn(
@@ -615,12 +637,12 @@ const Topic = () => {
                     )}
                   >
                     <LevelBadge itemId={skillOf(opt)} topicId={topic.id} className="absolute right-1.5 top-1.5" />
-                    <span className={cn(
-                      "font-arabic text-5xl leading-[1.5]",
+                    {/* Aynı gerekçe: soru şıklarında da mürekkep ORTALANIR,
+                        yoksa esre kutunun alt kenarına yapışıyor. */}
+                    <EmojiView value={opt.emoji} className={cn(
+                      "text-5xl",
                       (isCorrect || isWrong) ? "text-white" : "text-emerald-800",
-                    )}>
-                      {opt.emoji}
-                    </span>
+                    )} />
                     {isCorrect && (
                       <span className="text-sm font-extrabold text-white animate-fade-in">
                         {opt.translit || opt.label}

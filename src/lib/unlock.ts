@@ -1,7 +1,8 @@
 // Konu kilidi sistemi.
 // Kural: Bir konudaki tüm itemların SRS seviyesi >= 3 olduğunda sonraki
 // konu açılır. İlk konu her zaman açıktır. `noPractice: true` konular
-// otomatik olarak "tamamlanmış" sayılır (alıştırma yok).
+// alıştırma içermediği için ZİYARET EDİLİNCE tamamlanmış sayılır (bkz.
+// isTopicCompleted) — eskiden hiç girilmeden de tamamlanmış sayılıyorlardı.
 //
 // KONU İÇİ BÖLÜM (CHUNK) KİLİDİ — bilişsel yük teorisi (Sweller):
 // Çocuk çalışma belleği ~4 öğe kaldırır; 28 harfi bir anda sormak aşırı
@@ -21,7 +22,7 @@ import { SUBJECTS, findTopicOfItem } from "@/data/subjects";
 import { getTopicSrs, type Level, type Namespace } from "@/data/srs";
 import type { ContentItem, ContentTopic } from "@/data/types";
 import { isTestUnlockActive } from "@/lib/testUnlock";
-import { isTopicSkipped } from "@/lib/placement";
+import { isTopicSkipped, isTopicVisited } from "@/lib/placement";
 import { heatBetween } from "@/lib/confusion";
 import { skillIdsOf, skillOf } from "@/lib/skills";
 
@@ -47,7 +48,14 @@ export function hotPairInSection(items: ContentItem[]): [ContentItem, ContentIte
 }
 
 export function isTopicCompleted(topic: ContentTopic): boolean {
-  if (topic.noPractice) return true;
+  /**
+   * ⚠️ ALIŞTIRMASIZ KONU "GİRİLİNCE" BİTER, KENDİLİĞİNDEN DEĞİL.
+   * Eskiden `return true` idi: çocuk Yazılışlar'ı hiç AÇMADAN sonraki konu
+   * açılıyordu, yani müfredatın o adımı fiilen atlanmış oluyordu. Kullanıcı
+   * şartı: "en azından bir kere konuya girsin". Ölçüt bir kez ziyaret —
+   * alıştırma yok, dolayısıyla başka bir ölçüt de yok.
+   */
+  if (topic.noPractice) return isTopicVisited(topic.id);
   const srs = getTopicSrs(NS, topic.id);
   if (topic.items.length === 0) return true;
   // ⚠️ ÖĞE değil BECERİ sayılır. "3. Harekeler"de 84 öğe var ama ölçülen 3

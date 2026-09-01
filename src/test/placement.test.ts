@@ -22,6 +22,7 @@ import {
   pickBackCheckTopic,
   recordBackCheck,
   getPlacementDebug,
+  markTopicVisited,
 } from "@/lib/placement";
 import { getUnlockedTopicIds, getUnlockedItemIdSet, isTopicCompleted } from "@/lib/unlock";
 import { pickReviewItem } from "@/lib/review";
@@ -136,6 +137,13 @@ describe("serpiştirilmiş bakım (pickReviewItem)", () => {
       state[t0.id][it.id] = { level: 3, correct: 3, total: 3, seen: 3, lastSeen: Date.now() - 5 * 86_400_000 };
     }
     localStorage.setItem("elifba-srs-quiz-guest-v1", JSON.stringify(state));
+    // ⚠️ Aradaki ALIŞTIRMASIZ konu (Yazılışlar) artık bir kez ziyaret ister
+    // (bkz. `isTopicCompleted`). Gerçek çocuk da oraya girip geçiyor;
+    // kurulum bunu taklit ediyor, yoksa t1 hiç açılmaz.
+    for (const t of topics) {
+      if (t.id === t1.id) break;
+      if (t.noPractice) markTopicVisited(t.id);
+    }
     expect(getUnlockedTopicIds().has(t1.id)).toBe(true);
 
     const t0ids = new Set(t0.items.map((i) => i.id));
@@ -503,25 +511,36 @@ describe("yeni müfredat kabulleri", () => {
   it("'Harflerin Yazılışları' alıştırmasız ve oyun havuzuna girmez", () => {
     const yaz = topics.find((t) => t.id === "yazilislar")!;
     expect(yaz.noPractice).toBe(true);
-    expect(isTopicCompleted(yaz)).toBe(true);          // kilit için engel değil
     const havuz = getUnlockedItemIdSet();
     for (const it of yaz.items) expect(havuz.has(it.id)).toBe(false);
   });
 
-  it("alıştırmasız konu sonraki konuyu kilitlemez", () => {
+  /**
+   * ⚠️ KULLANICI ŞARTI: "bu alıştırma olmayan bölümlerin hemen sonraki
+   * bölümü açma, en azından bir kere konuya girsin." Eskiden `noPractice`
+   * konular koşulsuz "tamamlandı" sayılıyordu, yani çocuk Yazılışlar'ı hiç
+   * AÇMADAN sonraki konuya geçiyordu — müfredatın o adımı fiilen atlanmış
+   * oluyordu.
+   */
+  it("alıştırmasız konu, ZİYARET EDİLMEDEN sonrakini açmaz", () => {
     const i = topics.findIndex((t) => t.id === "yazilislar");
-    // 1. konu tamamlanmadan 2. konu zaten kilitli; 2. konu açıldığında
-    // alıştırması olmadığı için 3. konu da onunla birlikte açılır.
-    for (const it of topics[0].items) {
-      localStorage.setItem("elifba-srs-quiz-guest-v1", "{}");
-    }
+    const yaz = topics[i];
+    // 1. konuyu tamamla ki 2. konu (Yazılışlar) açılsın.
     const state: Record<string, Record<string, unknown>> = { [topics[0].id]: {} };
     for (const it of topics[0].items) {
       state[topics[0].id][it.id] = { level: 4, correct: 2, total: 2, seen: 2, lastSeen: Date.now() };
     }
     localStorage.setItem("elifba-srs-quiz-guest-v1", JSON.stringify(state));
-    const acik = getUnlockedTopicIds();
-    expect(acik.has(topics[i].id)).toBe(true);
-    expect(acik.has(topics[i + 1].id)).toBe(true);     // yazılışlar geçildi
+
+    expect(isTopicCompleted(yaz), "hiç girilmeden tamamlandı sayılıyor").toBe(false);
+    let acik = getUnlockedTopicIds();
+    expect(acik.has(yaz.id), "Yazılışlar açılmalı").toBe(true);
+    expect(acik.has(topics[i + 1].id), "girilmeden sonraki konu açılmış").toBe(false);
+
+    // Konuya bir kez girmek yeterli — alıştırma yok, başka ölçüt de yok.
+    markTopicVisited(yaz.id);
+    expect(isTopicCompleted(yaz)).toBe(true);
+    acik = getUnlockedTopicIds();
+    expect(acik.has(topics[i + 1].id), "ziyaretten sonra da açılmadı").toBe(true);
   });
 });

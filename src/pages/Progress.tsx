@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { EmojiView } from "@/components/EmojiView";
 import { skillIdsOf, skillOf } from "@/lib/skills";
 import { practiceItems } from "@/lib/unlock";
+import { isTopicVisited } from "@/lib/placement";
 
 const NS = "quiz" as const;
 
@@ -99,36 +100,62 @@ const ProgressPage = () => {
                   }
                   const pct = ids.length ? Math.round((touched / ids.length) * 100) : 0;
                   const topicLoading = showCloudLoading;
+                  /**
+                   * ⚠️ KONU ANLATIMI SATIRI SADE OLMALI (kullanıcı şartı:
+                   * "alt tarafını sil, bir sürü şey varsa sadece tamamlandı
+                   * de"). Alıştırmasız konuda ölçülen hiçbir şey yok: beş
+                   * seviye rozeti hep 0 gösteriyordu ve açılınca 84 kart
+                   * (Yazılışlar'ın bütün başta/ortada/sonda hâlleri)
+                   * dökülüyordu — hiçbiri sorulmayan, seviyesi olmayan
+                   * kartlar. Tek anlamlı bilgi: girildi mi, girilmedi mi.
+                   */
+                  const gorulmus = t.noPractice && isTopicVisited(t.id);
                   return (
                     <details key={t.id} className="group rounded-2xl bg-muted/50 overflow-hidden">
                       <summary className="flex items-center gap-3 p-3 cursor-pointer list-none transition-bouncy hover:bg-muted">
                         <span className="text-2xl text-emerald-800"><EmojiView value={t.emoji} /></span>
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-sm truncate">{t.title}</div>
-                          <div className="mt-1 h-2 rounded-full bg-background overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-info via-primary to-success" style={{ width: topicLoading ? "100%" : t.noPractice ? "100%" : `${pct}%` }} />
-                          </div>
+                          {!t.noPractice && (
+                            <div className="mt-1 h-2 rounded-full bg-background overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-info via-primary to-success" style={{ width: topicLoading ? "100%" : `${pct}%` }} />
+                            </div>
+                          )}
                           <div className="mt-1 text-[10px] text-muted-foreground font-semibold">
                             {topicLoading ? "Yükleniyor…"
-                              : t.noPractice ? "👀 Alıştırma yok — görüp geçilir"
+                              : t.noPractice ? "👀 Konu anlatımı — alıştırma yok"
                               : `${touched}/${ids.length} beceri • %${pct}`}
                           </div>
                         </div>
-                        <div className="flex gap-1 text-[10px] font-bold">
-                          {[1, 2, 3, 4, 5].map((l) => (
-                            <span key={l} className={cn("rounded px-1 py-0.5",
-                              l === 1 && "bg-info/20 text-info",
-                              l === 2 && "bg-warning/20 text-warning",
-                              l === 3 && "bg-secondary text-secondary-foreground",
-                              l === 4 && "bg-success/20 text-success",
-                              l === 5 && "bg-gold/25 text-gold-foreground")}>
-                              {topicLoading ? "…" : counts[l as Level]}
-                            </span>
-                          ))}
-                        </div>
+                        {t.noPractice ? (
+                          <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                            gorulmus ? "bg-success/20 text-success" : "bg-muted text-muted-foreground")}>
+                            {gorulmus ? "✓ Tamamlandı" : "Girilmedi"}
+                          </span>
+                        ) : (
+                          <div className="flex gap-1 text-[10px] font-bold">
+                            {[1, 2, 3, 4, 5].map((l) => (
+                              <span key={l} className={cn("rounded px-1 py-0.5",
+                                l === 1 && "bg-info/20 text-info",
+                                l === 2 && "bg-warning/20 text-warning",
+                                l === 3 && "bg-secondary text-secondary-foreground",
+                                l === 4 && "bg-success/20 text-success",
+                                l === 5 && "bg-gold/25 text-gold-foreground")}>
+                                {topicLoading ? "…" : counts[l as Level]}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <span className="text-muted-foreground text-xs group-open:rotate-180 transition-transform">▼</span>
                       </summary>
                       <div className="px-3 pb-3 pt-1">
+                        {t.noPractice ? (
+                          <div className="mb-2 rounded-lg bg-card border border-border/40 px-3 py-2 text-center text-xs font-semibold text-muted-foreground">
+                            {gorulmus
+                              ? "✓ Tamamlandı — bu konuda ölçülen bir şey yok."
+                              : "Bu konu görülüp geçilir. Bir kez girince tamamlanır."}
+                          </div>
+                        ) : (
                         <div className="grid grid-cols-2 gap-1.5 mb-2">
                           {ids.map((sk) => {
                             const it = temsilci.get(sk)!;
@@ -158,6 +185,7 @@ const ProgressPage = () => {
                             );
                           })}
                         </div>
+                        )}
                         <Link to={`/konu/${s.id}/${t.id}`} className="block text-center text-xs font-bold text-primary py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20">
                           Konuya git →
                         </Link>

@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 405 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 410 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -166,7 +166,25 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   ⚠️ **SÂKİN AYN APOSTROFLU**: `اَعْ` = "a'" (düz "a" değil), `اَعَّ` = "a'a".
   Ayn'ın Türkçe karşılığı olmadığı için cezimli hâli düz sesliye dönüyordu ve
   yazılı şıkta elifle ayırt edilemiyordu. Apostrof ikilenmez ("a''a" değil).
-- **11 konu** (yeni müfredat); video'lu olanlar `topic.video`.
+- **11 numaralı konu + 1 NUMARASIZ ders konusu** (`yazilis-hafiza`, kullanıcı
+  isteği: "hafıza yöntemi... onu ayrı konu olarak al"). Video'lu olanlar
+  `topic.video`. ⚠️ **DERS KONUSUNUN İÇERİĞİ AYRI SAYFADA** (`topic.page`):
+  Topic.tsx öğe ızgarası çizer, oysa hafıza yöntemi animasyonlu bir derstir
+  (`/yazilis-hafiza`); konu açılınca `<Navigate replace>` ile oraya gidilir,
+  içerik KOPYALANMAZ. ⚠️ **NUMARASIZ BIRAKILDI**: araya numaralı konu sokmak
+  sonraki dokuz başlığı ve testlerde/CLAUDE.md'de onlara yapılan bütün
+  atıfları kaydırırdı. Bekçi: `skills.test.ts` → "konu sırası ve numaraları
+  tutarlı" (numarasız olabilmenin şartı: `noPractice` + `page`).
+- ⚠️ **ALIŞTIRMASIZ KONU "GİRİLİNCE" BİTER** (kullanıcı şartı: "en azından bir
+  kere konuya girsin"). `isTopicCompleted` eskiden `noPractice` konularda
+  koşulsuz `true` dönüyordu: çocuk Yazılışlar'ı hiç AÇMADAN sonraki konuya
+  geçiyordu, müfredatın o adımı fiilen atlanıyordu. Ölçüt tek bir ziyaret
+  (`markTopicVisited`, placement.ts — öğrenciye özel anahtarda).
+- ⚠️ **İLERLEME EKRANINDA KONU ANLATIMI SATIRI SADEDİR** (kullanıcı şartı:
+  "alt tarafını sil, bir sürü şey varsa sadece tamamlandı de"): alıştırmasız
+  konuda ölçülen hiçbir şey yok — beş seviye rozeti hep 0 gösteriyordu ve
+  açılınca 84 kart dökülüyordu. Artık tek durum rozeti (✓ Tamamlandı /
+  Girilmedi) + tek satır.
 
 ### ⚠️ BECERİ KATMANI (`src/lib/skills.ts`) — yeni müfredatın çekirdeği
 "Soru neyi GÖSTERİR" ile "soru neyi ÖLÇER" ayrıdır. `ContentItem.skill`
@@ -194,6 +212,19 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
 - Ekstralar bilet ağırlığı `ekstraAgirlik(f) = 3 + f*2` → L4'te bile
   çekirdekten sık gelir. ⚠️ Çarpan tek başına YETMEZ: en seyrek Ekstra
   (f=1) ×2 = 2 ile çekirdeğin altında kalıyordu, taban şart.
+- ⚠️ **KONU KARTLARINDA VE ŞIKLARDA `EmojiView` KULLAN, düz `<span>` DEĞİL.**
+  Kullanıcı tespiti: "esre (alt çizgi) ze harfinde gözükmüyordu". `leading`
+  satır KUTUSUNU büyütür ama MÜREKKEBİ ortalamaz; ز ر س ش ص gibi taban
+  çizgisinin altına inen harflerde esre daha da aşağı düşüyor ve kartın
+  altındaki opak etiket bandı (`relative z-10`) üstünü boyuyordu. `EmojiView`
+  mürekkebi ölçüp `translateY` ile ortalar (`glifOlcu.ts`) — aynı hata
+  oyunlarda da yaşanmıştı, bu kez konu ızgarası ve test şıkları atlanmıştı.
+- ⚠️ **FLASHCARD'DA SADE ÇALIŞMA** (`settings.flashcardSade`, varsayılan
+  KAPALI): motivasyon ögeleri (seviye rozeti + yıldızlar, oturum sayacı,
+  kart üstü seviye) ve SRS'in sürpriz sırası (kurtarma, karışan partner,
+  serpiştirilmiş bakım, denetim kartı) kapanır; deste BAŞTAN SONA sırayla
+  dönülür. ⚠️ Cevap YİNE SRS'e yazılır — kaldırılan şey motivasyon, kayıt
+  değil. Bekçi: `sadeFlashcard.test.ts`.
 - Topic testi ses şartı uygular (oyun havuzu gibi): kaydı olmayan öğe soru
   olmaz. (Şedde/Tenvin/Cezm Ekstraları bir dönem bu yüzden hiç sorulmuyordu;
   kayıtları gelince süzgeç onları kendiliğinden geri aldı.) Flashcard
