@@ -108,3 +108,20 @@ node tools/perf/sesZaman.mjs /oyunlar/kart "Bahçe Turu" 6000
 çalıyordu. Sebep sesin kendisi değildi — geri sayım sayacı fizik dt'siyle
 besleniyordu ve `DT_MAX` (0.05) 20 fps'in altındaki her kareyi kırpıyordu,
 yani "3-2-1" yavaş cihazda 3.2 yerine 5.8 sn sürüyordu.
+
+## Rota taraması (`tarama.mjs`)
+
+`node tools/perf/tarama.mjs [cikti-dizini]` — 41 rotanın hepsini (bütün
+sayfalar + 12 konu + 14 oyun) tek tek açar, **konsol hatalarını** toplar,
+"sayfa boş mu / 404 mü" diye bakar ve her biri için ekran görüntüsü kaydeder.
+
+⚠️ **NEDEN GEREKLİ:** birim testleri mantığı denetler, ekran görüntüsü
+görünüşü — ama *"sayfa açılınca patlıyor mu"* ikisinin arasında kalıyor.
+React'te bir render hatası, o bileşen test edilmiyorsa testlerde hiç
+görünmez; ekran görüntüsünde de yalnız boş bir alan olarak çıkar ve
+"tasarım böyle" sanılır. Bu araç `pageerror` (yakalanmamış istisna) ile
+`console.error`'ı ayrı ayrı dinler.
+
+⚠️ Ağ/kaynak hataları (`net::`, `Failed to load resource`) AYIKLANIR: bu
+ortamda Google Fonts ve YouTube'a çıkış kapalı, onları saymak gerçek
+hataları gürültüye gömüyordu.
