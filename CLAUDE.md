@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 410 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 414 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
