@@ -127,6 +127,25 @@ describe("atölyenin ders akışı", () => {
     expect(src.includes("KuyrukAtolyesi"), "kuyruk silme oyunu yok").toBe(true);
   });
 
+  /**
+   * ⚠️ GERİ SAYIM SESİN BİTİŞİNDEN BAŞLAR, silme anından DEĞİL.
+   * Sabit süre kullanıldığında uzun adlı harflerde ses yarıda kesiliyordu
+   * (kullanıcı: "ayn derken sonraki harfe geçiyor"). Ölçüldü: harf adları
+   * 0.73-2.33 sn arasında (Ğayn 2.325 · Ayn 1.907 · Be 0.758); sabit 2.6 sn
+   * geçişte sese yalnız 1.7 sn kalıyordu.
+   */
+  it("otomatik geçiş, harfin sesi bitince başlar", () => {
+    const bilesen = kodu("src/components/mnemonics/KuyrukAtolyesi.tsx");
+    expect(/onSesBitti/.test(bilesen), "ses bitiş bildirimi yok").toBe(true);
+    // ses bitişi playItem'ın sözüne bağlı olmalı (sabit zamanlayıcıya değil)
+    expect(/playItem\([^)]*\)\s*\.finally/.test(bilesen), "ses bitişi beklenmiyor").toBe(true);
+    // dosya hiç yüklenemezse kilitlenmesin
+    expect(/SES_EMNIYET/.test(bilesen), "emniyet zamanlayıcısı yok").toBe(true);
+    const sayfa = kodu("src/pages/YazilisHafiza.tsx");
+    expect(/onSesBitti=\{\(\) => setBekliyor\(true\)\}/.test(sayfa),
+      "geri sayım hâlâ silme anından başlıyor").toBe(true);
+  });
+
   /** Sonraki harfe geçiş hem kendiliğinden hem düğmeyle olmalı. */
   it("sonraki harfe geçiş otomatik VE düğmeli", () => {
     const src = kodu("src/pages/YazilisHafiza.tsx");
