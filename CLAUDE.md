@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 434 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 435 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -38,6 +38,24 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   Çekirdek karşılığı olmayan Zamir/Elif-Lâm'da HECE↔SÜRE korelasyonu
   kullanıldı (0.953 ve 0.890). Ekstra çekimi çekirdekten 7-19 dB KISIKTI;
   her aile kendi çekirdeğinin seviyesine getirildi, pay 0.10 sn.
+- ⚠️ **ÖTÜMSÜZ ÜNSÜZ HECENİN SONUNDAYSA KESİM ONU YUTAR** (kullanıcı: "ek ik
+  ük… tam k diyorken yarıda kesiliyor"). `silencedetect` eşiği -25 dB; ünlü
+  -15 dB ama patlamalı ünsüzde (ك ت) önce ağız kapanıyor — GERÇEK sessizlik,
+  Kef'te **202 ms** — sonra gelen patlama yalnız **-36 dB**, yani eşiğin
+  altında kalıp "sessizlik"e dahil ediliyor ve ATILIYOR. Sızmalılarda (ث ف)
+  hışırtı -45..-60 dB'de 0.3-0.4 sn sürüyor, eşiğin altına düşer düşmez
+  kesiliyor. ÖLÇÜM (cezm, 84 parça, ortanca 0.558 sn): kesikler **Kef 0.386 ·
+  Te 0.393 · Se 0.402 · Fe 0.410** — dördü de ötümsüz.
+  ⚠️ **YALNIZ CEZM ETKİLENİR**: hece orada ünsüzle BİTİYOR. hareke/med/
+  tenvin/şedde'de aynı harf hecenin BAŞINDA (`ke` `kâ` `ken` `ekke`) —
+  ölçüldü, Kef'in süresi o ailelerde ortancayla birebir aynı.
+  `tools/ses/kuyruk.py` ile onarıldı (iki aşamalı arama, -63 dB).
+  ⚠️ **TEK AŞAMALI ARAMA BÜTÜN SETİ BOZAR**: "N ms sessizlik = bitti" kuralı
+  320 ms sabırla 84 parçanın 84'ünü uzatıyordu — nefes sesi kuyruk sanılıyor.
+  Yalnız KANITI OLAN dört harf onarıldı, kalanlar körlemesine yazılmadı.
+  ⚠️ Doğrulama TAYFLA: kurtarılan kuyrukların ağırlık merkezi 1.6-6.2 kHz
+  (ünlüler 0.4-1.3 kHz) ve sıra fonetiğe uyuyor — /k/ art damak en pes,
+  /θ/ /t/ diş en tiz. Kazanç EKLENMEZ (tepe değerleri aynı kalmalı).
 - ⚠️ **ÂSAR KONUSUNDA SÜRE MED TÜRÜNÜ ELE VERİR** — kartlar oradan
   doğrulandı: bedel 1.2 · tabiî 1.4 · muttasıl 3.1-3.5 · **lâzım 5.3** ·
   lâzım+şedde 4.1 sn. Kesimde 9 parça çıkıyordu; şeddeli `حَآجُّوكَ`

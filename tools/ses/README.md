@@ -64,3 +64,52 @@ gelen bir kart yok.
 Ölçüm: bütün aileler −20.9…−25.5 dBFS aralığında (4.6 dB), `basic` −24.2.
 Eski `sedde` −31.9 idi, yani **11 dB kısıktı** — oyunda o kartlara gelince ses
 düşüyordu; yeni sette bu kalktı.
+
+## ⚠️ Ötümsüz ünsüzler yarıda kesiliyordu (`kuyruk.py`)
+
+Kullanıcı bildirdi: **"ek ik ük… tam k diyorken yarıda kesiliyor"**.
+
+**Sebep.** `kes.py` parçaları `silencedetect` ile **-25 dB** eşikte ayırıyor.
+Ünlünün enerjisi ~-15 dB, ama ötümsüz bir ünsüz doğası gereği çok daha sessiz
+ve iki ayrı şekilde kayboluyor:
+
+| tür | ne oluyor | ölçüm (Kef "ek") |
+|---|---|---|
+| **patlamalı** ك ت | önce ağız kapanır → GERÇEK sessizlik, sonra patlama gelir ama -36 dB | ünlü 108.74-108.90 · kapanma 108.90-**109.19** · patlama **109.20-109.34** · kesim **109.008**'de bitiyor |
+| **sızmalı** ث ف | hışırtı 0.3-0.4 sn sürüyor ama -45..-60 dB | Se'de 310 ms, Fe'de 250 ms hışırtı dışarıda kalıyor |
+
+Yani patlama/hışırtı eşiğin altında olduğu için ffmpeg onu "sessizlik"e dahil
+edip ATIYORDU. Çocuk "e" duyuyor, "k"yı hiç duymuyor.
+
+**Kimler etkilendi.** Parça süresi ortancası 0.558 sn; en kısa dördü
+**Kef 0.386 · Te 0.393 · Se 0.402 · Fe 0.410** — hepsi ötümsüz. (Elif de kısa
+ama uygulama cezm-Elif'i kullanmıyor.) **Yalnız CEZM ailesi etkilendi**: hece
+orada ünsüzle BİTİYOR. hareke/med/tenvin/şedde'de aynı harf hecenin BAŞINDA
+(`ke`, `kâ`, `ken`, `ekke`) — ölçüldü, Kef'in süresi o ailelerde ortancayla
+birebir aynı (hareke 0.783 ↔ 0.784, med 1.123 ↔ 1.123).
+
+**Çözüm.** `kuyruk.py` bitişi İKİ AŞAMALI arar: (1) kesimden sonra ≤300 ms
+içinde ses yeniden başlıyor mu? (2) başlıyorsa nerede bitiyor? Eşik -63 dB —
+sessizlik tabanı (-80..-120 dB) ile en sessiz hışırtı (-61 dB) arasında.
+
+⚠️ **TEK AŞAMALI ARAMA BÜTÜN SETİ BOZARDI**: "N ms sessizlik = bitti" kuralıyla
+sabır 320 ms yapılınca **84 parçanın 84'ü** uzadı — araç heceden sonraki NEFES
+sesini de kuyruk sanıyordu. İki aşamalı hâli 62'ye indirdi ama o da yetmez:
+kalan çoğunluk zaten normal süreli, uzayan kısım nefes. Bu yüzden **yalnız
+KANITI OLAN dört harf** onarıldı (kısa parça + arkasından gelen gerçek ses).
+Kalanlar körlemesine yeniden yazılmadı.
+
+⚠️ **DOĞRULAMA TAYFLA YAPILIR, süreyle değil.** Eklenen kuyruğun gerçekten
+ünsüz olduğu tayf ağırlık merkeziyle ölçüldü: kuyruklar **1.6-6.2 kHz**,
+ünlüler 0.4-1.3 kHz. Üstelik sıralama fonetiğe uyuyor — **/k/ (art damak)
+en pes (1.6-3.2 kHz), /θ/ ve /t/ (diş) en tiz (4.3-6.2 kHz)**.
+
+⚠️ **KAZANÇ EKLENMEZ.** Tepe değerleri eski dosyalarla BİREBİR aynı (ünlüye
+dokunulmuyor); ortalama RMS 3-5 dB düşüyor çünkü sessiz ünsüz ortalamaya
+giriyor. Kazanç eklemek ünlüyü ailenin üstüne çıkarırdı.
+
+```bash
+cd tools/ses && python3 kuyruk.py yeni_kuyruk     # → 12 dosya
+```
+Bekçi: `src/test/audioFiles.test.ts` → "cezimli ötümsüz ünsüzler yarıda kesik değil"
+(dosya boyutu ailenin ortancasının %80'inin altına düşemez).
