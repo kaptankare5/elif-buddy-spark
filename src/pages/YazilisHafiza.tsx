@@ -10,19 +10,14 @@ import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { RouteHead } from "@/components/RouteHead";
 import { BuddyWithBubble } from "@/components/Buddy";
-import { TailErase } from "@/components/mnemonics/TailErase";
 import { KuyrukAtolyesi } from "@/components/mnemonics/KuyrukAtolyesi";
-import { DotCompare } from "@/components/mnemonics/DotCompare";
-import { StrokeCompare } from "@/components/mnemonics/StrokeCompare";
-import { HarekeMnemo } from "@/components/mnemonics/HarekeMnemo";
-import { STABLE_GROUP, TAIL_RULES, DOT_GROUPS, STROKE_PAIRS, HAREKE_MNEMONICS, writingItemIds } from "@/data/writingMnemonics";
-import { findItem } from "@/data/subjects";
-import { playItem } from "@/lib/audio";
+import { TAIL_RULES } from "@/data/writingMnemonics";
 import { markTopicVisited } from "@/lib/placement";
 import { Zap } from "lucide-react";
 import { harfRengi, acikTon } from "@/data/harfRenkleri";
+import { EmojiView } from "@/components/EmojiView";
 import { cn } from "@/lib/utils";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 const YazilisHafiza = () => {
@@ -59,57 +54,11 @@ const YazilisHafiza = () => {
           <BuddyWithBubble
             pose="point"
             size={88}
-            say="84 şekli ezberlemene gerek yok! Üç kuralı öğren, gerisini kendin bulursun. 🎯"
+            say="Harflerin kuyruğunu süngerle sil — arkasından çıkan şey ezberlemen gereken yeni bir harf değil, AYNI harf! 🧽"
           />
         </div>
 
-        {/* ---- 1) DEĞİŞMEYEN 6 HARF ---- */}
-        <section id="degismeyen" className="mb-5 scroll-mt-3">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success text-sm font-extrabold text-success-foreground">1</span>
-            <h2 className="text-base font-extrabold text-foreground">{STABLE_GROUP.title}</h2>
-          </div>
-          <div className="rounded-2xl border-2 border-success/40 bg-card p-3 shadow-card">
-            <p className="mb-3 text-[11px] font-bold leading-snug text-muted-foreground">
-              {STABLE_GROUP.hint}
-            </p>
-            <div dir="rtl" className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {STABLE_GROUP.letters.map((l) => {
-                const item = findItem(writingItemIds(l.n).init);
-                return (
-                  <button
-                    key={l.n}
-                    onClick={() => item && playItem(item)}
-                    aria-label={l.name}
-                    className="flex flex-col items-center gap-0.5 rounded-xl border-2 border-success/25 bg-success/5 py-2 transition-bouncy hover:-translate-y-0.5 active:scale-95"
-                  >
-                    <span className="font-arabic text-4xl leading-[1.6] text-emerald-900">{l.iso}</span>
-                    <span className="text-[11px] font-extrabold text-foreground" dir="ltr">{l.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {/* Kanıt şeridi: üç hâli de aynı */}
-            <div className="mt-3 rounded-xl bg-success/10 p-2">
-              <p className="mb-1 text-center text-[10px] font-extrabold text-success">
-                Bak: üç hâli de aynı! (örnek: Dal)
-              </p>
-              <div dir="rtl" className="flex items-center justify-center gap-3">
-                {(["iso", "init", "fin"] as const).map((k, i) => (
-                  <span key={k} className="flex flex-col items-center">
-                    <span className="font-arabic text-3xl leading-[1.6] text-emerald-900">
-                      {k === "iso" ? "د" : k === "init" ? "د" : "ـد"}
-                    </span>
-                    <span className="text-[9px] font-bold text-muted-foreground" dir="ltr">
-                      {["yalın", "başta", "sonda"][i]}
-                    </span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
+        
         {/* ---- 2) KUYRUK SİLME ---- */}
         <section id="kuyruk-silme" className="mb-5 scroll-mt-3">
           <div className="mb-2 flex items-center gap-2">
@@ -124,72 +73,12 @@ const YazilisHafiza = () => {
             </p>
           </div>
 
-          {/* Önce İZLE (bir kez, worked-example): nasıl silineceğini görsün */}
-          <div className="mb-3">
-            <p className="mb-1.5 text-center text-[11px] font-extrabold text-muted-foreground">
-              👀 Önce izle — Cim örneği
-            </p>
-            <TailErase rule={TAIL_RULES[0]} />
-          </div>
-
           {/* Sonra SEN DENE — kuyruk atölyesi (tek tek 16 kart yerine sahne) */}
           <KuyrukAtolyesiBolumu />
         </section>
 
-        {/* ---- 3) NOKTA YÖNTEMİ ---- */}
-        <section id="nokta-yontemi" className="mb-5 scroll-mt-3">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-warning text-sm font-extrabold text-warning-foreground">3</span>
-            <h2 className="text-base font-extrabold text-foreground">Nokta Yöntemi</h2>
-          </div>
-          <div className="mb-3 rounded-2xl border-2 border-warning/40 bg-warning/5 p-3">
-            <p className="text-[12px] font-bold leading-snug text-foreground">
-              Harfler birbirine karışıyorsa sebebi şu: <b>iskeletleri aynı!</b> Onları ayıran tek şey
-              noktanın <b className="text-warning">sayısı</b> ve <b className="text-warning">yeri</b> (üstte mi, altta mı).
-              Şekle değil, <b>noktaya</b> bak.
-            </p>
-          </div>
-          <div className="space-y-3">
-            {DOT_GROUPS.map((g) => (
-              <DotCompare key={g.id} group={g} />
-            ))}
-          </div>
-
-          {/* ÇİZGİ YÖNTEMİ — noktası olmayan ikili (Elif ile Lem). Nokta
-              bölümünün hemen ardında duruyor çünkü çocuğun sorusu aynı:
-              "bunlar birbirinin aynısı, nasıl ayıracağım?" Cevap farklı:
-              noktaya değil, çizginin devam edip etmediğine bak. */}
-          <div className="mt-3 space-y-3">
-            {STROKE_PAIRS.map((p) => (
-              <StrokeCompare key={p.id} pair={p} />
-            ))}
-          </div>
-        </section>
-
-        {/* ---- 4) HAREKE HAFIZA YÖNTEMİ (Türkçe öncelikli) ---- */}
-        <section id="hareke" className="mb-5 scroll-mt-3">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-info text-sm font-extrabold text-info-foreground">4</span>
-            <h2 className="text-base font-extrabold text-foreground">Hareke Hafıza Yöntemi</h2>
-          </div>
-          <div className="mb-3 rounded-2xl border-2 border-info/40 bg-info/5 p-3">
-            <p className="text-[12px] font-bold leading-snug text-foreground">
-              Üç harekenin <b className="text-info">TÜRKÇE ADI</b> zaten bize ipucu veriyor —
-              çocuk bunu ezberlemeden, sadece adını hatırlayarak bulur:
-            </p>
-            <ul className="mt-1.5 space-y-0.5 text-[12px] font-bold text-foreground">
-              <li>🔹 <b>ÜSTÜN</b> — adında &quot;ÜST&quot; var → <b className="text-info">üstte</b> durur.</li>
-              <li>🔹 <b>ÖTRE</b> — adında &quot;Ö&quot; var → <b className="text-info">Ü</b> diye okunur.</li>
-              <li>🔹 <b>ESRE</b> — üstünün <b className="text-info">tam tersi</b> → altta durur.</li>
-            </ul>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {HAREKE_MNEMONICS.map((m) => (
-              <HarekeMnemo key={m.id} m={m} />
-            ))}
-          </div>
-        </section>
-
+        
+        
         {/* Alıştırmaya çağrı — öğrendiğini hemen dene (geri getirme pratiği) */}
         <div className="rounded-2xl border-2 border-primary/30 bg-card p-4 text-center shadow-card">
           <BuddyWithBubble
@@ -221,16 +110,38 @@ const YazilisHafiza = () => {
  * bileşenin state'inde tutulur — localStorage'a bile yazılmaz, SRS'e hiç
  * dokunmaz. Sayfadan çıkınca sıfırlanır; burası bir ders, ölçüm değil.
  */
+/** Harf silinince sonrakine kendiliğinden geçme süresi (ms). */
+const OTOMATIK_GECIS = 2600;
+
 function KuyrukAtolyesiBolumu() {
   const [idx, setIdx] = useState(0);
   const [bitenler, setBitenler] = useState<number[]>([]);
+  const [bekliyor, setBekliyor] = useState(false);
   const rule = TAIL_RULES[idx];
   const renk = harfRengi(rule.n);
   const hepsiBitti = bitenler.length === TAIL_RULES.length;
-  const sonraki = useMemo(
-    () => TAIL_RULES.findIndex((r, i) => i > idx && !bitenler.includes(r.n)),
-    [idx, bitenler],
-  );
+  // Sıradaki BİTMEMİŞ harf; yoksa listede bir sonraki (baştan başa döner).
+  const hedefIdx = useMemo(() => {
+    const s = TAIL_RULES.findIndex((r, i) => i > idx && !bitenler.includes(r.n));
+    if (s >= 0) return s;
+    const b = TAIL_RULES.findIndex((r) => !bitenler.includes(r.n));
+    return b >= 0 ? b : (idx + 1) % TAIL_RULES.length;
+  }, [idx, bitenler]);
+
+  const gec = useCallback(() => {
+    setBekliyor(false);
+    setIdx(hedefIdx);
+  }, [hedefIdx]);
+
+  // Kendiliğinden geçiş — kutlama ve harfin sesi bitsin diye beklenir.
+  useEffect(() => {
+    if (!bekliyor) return;
+    const t = setTimeout(() => { setBekliyor(false); setIdx(hedefIdx); }, OTOMATIK_GECIS);
+    return () => clearTimeout(t);
+  }, [bekliyor, hedefIdx]);
+
+  // Harf değişince bekleme durumu sıfırlanır (elle seçim otomatiği iptal eder).
+  useEffect(() => { setBekliyor(false); }, [idx]);
 
   return (
     <div>
@@ -251,7 +162,7 @@ function KuyrukAtolyesiBolumu() {
               aria-label={`${r.name} harfini seç`}
               aria-current={secili}
               className={cn(
-                "relative flex h-10 w-10 items-center justify-center rounded-2xl font-arabic text-xl leading-[1.7] transition-transform active:scale-95",
+                "relative flex h-10 w-10 items-center justify-center rounded-2xl text-xl transition-transform active:scale-95",
                 secili ? "scale-110 shadow-card" : "shadow-soft",
               )}
               style={{
@@ -261,7 +172,7 @@ function KuyrukAtolyesiBolumu() {
                 outlineOffset: 2,
               }}
             >
-              {r.iso}
+              <EmojiView value={r.iso} />
               {tamam && (
                 <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-success text-[9px] font-black text-success-foreground">
                   ✓
@@ -275,22 +186,45 @@ function KuyrukAtolyesiBolumu() {
       <KuyrukAtolyesi
         key={rule.n}
         rule={rule}
-        onDone={() => setBitenler((b) => (b.includes(rule.n) ? b : [...b, rule.n]))}
+        onDone={() => {
+          setBitenler((b) => (b.includes(rule.n) ? b : [...b, rule.n]));
+          setBekliyor(true);
+        }}
       />
 
-      {/* ilerleme + sonraki */}
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-extrabold text-muted-foreground">
-          {bitenler.length} / {TAIL_RULES.length} harf temizlendi
-        </span>
-        <button
-          onClick={() => setIdx(sonraki >= 0 ? sonraki : (idx + 1) % TAIL_RULES.length)}
-          className="rounded-full px-4 py-2 text-[12px] font-extrabold text-white shadow-card active:scale-95"
-          style={{ background: renk }}
-        >
-          Sonraki harf ▶
-        </button>
+      {/* ilerleme */}
+      <div className="mt-2 text-center text-[11px] font-extrabold text-muted-foreground">
+        {bitenler.length} / {TAIL_RULES.length} harf temizlendi
       </div>
+
+      {/**
+        * ⚠️ SONRAKİ HARFE GEÇİŞ HEM KENDİLİĞİNDEN HEM ELLE (kullanıcı:
+        * "sonraki harfe geçmesi otomatik olsun veya harfin altında kocaman
+        * sonraki harf butonu olsun… kullanıcı anlasın yani").
+        * Otomatik geçiş, kutlama + HARFİN SESİ bitmeden başlamaz
+        * (OTOMATIK_GECIS): ses yarıda kesilirse çocuk harfi duymamış olur —
+        * zaten sesi eklememizin sebebi oydu.
+        * Düğme büyük ve SIRADAKİ HARFİ GÖSTERİR: okuma bilmeyen çocuk
+        * "hangi harfe geçiyorum"u yazıdan değil GLİFTEN anlar.
+        */}
+      <button
+        onClick={gec}
+        className="mt-2 flex w-full items-center justify-center gap-3 rounded-3xl px-4 py-4 text-white shadow-card transition-transform active:scale-95"
+        style={{ background: renk }}
+        aria-label={`Sonraki harfe geç: ${TAIL_RULES[hedefIdx].name}`}
+      >
+        <span className="text-base font-extrabold">Sonraki</span>
+        <span className="text-4xl"><EmojiView value={TAIL_RULES[hedefIdx].iso} /></span>
+        <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/25 text-xl font-black">
+          ▶
+          {bekliyor && (
+            <span
+              className="absolute inset-0 rounded-full border-[3px] border-white/90"
+              style={{ animation: `atolye-halka ${OTOMATIK_GECIS}ms linear forwards` }}
+            />
+          )}
+        </span>
+      </button>
 
       {hepsiBitti && (
         <div className="mt-2 rounded-2xl border-2 border-success/40 bg-success/10 p-2.5 text-center">

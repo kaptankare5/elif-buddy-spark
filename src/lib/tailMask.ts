@@ -95,6 +95,34 @@ function drawGlyph(ch: string, geom: TailMaskGeom, dx: number, dy = 0, color = "
 }
 
 /** Ortalanmış glif çizer (yalın/başta hâlleri aynı sahnede hizalansın diye). */
+/**
+ * Bir kanvasın mürekkep bayrakları (alfa > 40). Yüz yerleştirme, `headFlags`
+ * dışındaki gliflerde de gerekiyor: kuyruk silinince harf "başta" hâline
+ * dönüşüyor ve o BAŞKA bir şekil — gözler eski şeklin kutusunda kalırsa
+ * yüz havada asılı duruyor.
+ */
+export function inkFlags(c: HTMLCanvasElement): Uint8Array {
+  const g = c.getContext("2d", { willReadFrequently: true })!;
+  const d = g.getImageData(0, 0, c.width, c.height).data;
+  const n = c.width * c.height;
+  const f = new Uint8Array(n);
+  for (let i = 0; i < n; i++) f[i] = d[i * 4 + 3] > 40 ? 1 : 0;
+  return f;
+}
+
+/** Mürekkebin sınır kutusu. */
+export function inkBox(f: Uint8Array, cw: number, ch: number) {
+  let left = cw, right = -1, top = ch, bottom = -1;
+  for (let y = 0; y < ch; y++) {
+    for (let x = 0; x < cw; x++) {
+      if (!f[y * cw + x]) continue;
+      if (x < left) left = x; if (x > right) right = x;
+      if (y < top) top = y; if (y > bottom) bottom = y;
+    }
+  }
+  return { left, right, top, bottom };
+}
+
 export function drawCentered(ch: string, geom: TailMaskGeom, color = "#134e3a"): HTMLCanvasElement | null {
   const probe = drawGlyph(ch, geom, 0);
   if (probe.right < 0) return null;
@@ -148,8 +176,18 @@ function labelComponents(src: Uint8Array, cw: number, ch: number) {
 /**
  * @param renk Glifin rengi. Ders sayfasında her harfin KENDİ rengi var
  * (`data/harfRenkleri.ts`); varsayılan uygulamanın koyu yeşili.
+ * @param kuyrukRenk Kuyruk vurgusunun rengi (r,g,b). Verilmezse kırmızı.
+ *   ⚠️ HARFİN RENGİNE GÖRE SEÇİLMELİ: sabit kırmızı, kendi rengi kırmızıya
+ *   yakın harflerde (Cim #ef4444, Nun #dc2626, Ğayn #fb7185) kuyruğu
+ *   görünmez yapıyordu — çocuk neyi sileceğini ayırt edemiyordu (görsel
+ *   denetimde yakalandı). Çağıran taraf zıt renk verir.
  */
-export function buildTailMask(rule: TailRule, geom: TailMaskGeom, renk = "#134e3a"): TailMask | null {
+export function buildTailMask(
+  rule: TailRule,
+  geom: TailMaskGeom,
+  renk = "#134e3a",
+  kuyrukRenk: [number, number, number] = [220, 38, 38],
+): TailMask | null {
   const { cw, ch } = geom;
   const probe = drawGlyph(rule.iso, geom, 0, 0, renk);
   if (probe.right < 0) return null;
@@ -208,8 +246,8 @@ export function buildTailMask(rule: TailRule, geom: TailMaskGeom, renk = "#134e3
       if (x > tr) tr = x;
       if (y < tt) tt = y;
       if (y > tb) tb = y;
-      rImg.data[i * 4] = 220; rImg.data[i * 4 + 1] = 38;
-      rImg.data[i * 4 + 2] = 38; rImg.data[i * 4 + 3] = a;
+      rImg.data[i * 4] = kuyrukRenk[0]; rImg.data[i * 4 + 1] = kuyrukRenk[1];
+      rImg.data[i * 4 + 2] = kuyrukRenk[2]; rImg.data[i * 4 + 3] = a;
     } else {
       headInk++;
       headFlags[i] = 1;

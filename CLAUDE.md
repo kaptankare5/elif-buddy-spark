@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 444 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 449 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -480,12 +480,47 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   pembe (kullanıcı örneği). ⚠️ Renkler YALNIZ bu derste; konu/test/oyunlarda
   harf başına renk vermek karışıklık ölçümünü bozar — çocuk şekli değil RENGİ
   ezberler, renksiz kartta tanıyamaz.
+- ⚠️ **SAYFADA YALNIZ KUYRUK SİLME OYUNU** (kullanıcı kararı): nokta yöntemi,
+  çizgi karşılaştırması, hareke hafızası, "değişmeyen 6 harf" ve pasif izleme
+  animasyonu (`TailErase`) sayfadan çıkarıldı. Topic.tsx'teki
+  `/yazilis-hafiza#hareke` bağlantısı da kaldırıldı (çapa artık yok);
+  harekelerin hafıza ızgarası zaten konu sayfasında satır içi duruyor.
+  `DotCompare`/`StrokeCompare`/`EraseGame` bileşenleri DURUYOR — telafi
+  ekranı (`RemedyOverlay`) onları kullanıyor.
+- ⚠️ **ÖNCE KUTLAMA, SONRA HARFİN SESİ** (`HARF_SESI_GECIKME` 900 ms;
+  kullanıcı: "o harfin de sesi çıksın, tebrikler sesinden sonra"). İkisi aynı
+  anda çalarsa çan hocanın sesini örter. Harf değişirse bekleyen ses İPTAL
+  edilir, yoksa önceki harfin sesi yeni harfin üstüne çalar.
+- ⚠️ **KUYRUK RENGİ HARFİN ZITTIDIR** (`kuyrukRengi`, ton +180°): sabit
+  kırmızı vurgu, kendi rengi kırmızıya yakın harflerde (Cim #ef4444,
+  Nun #dc2626, Ğayn #fb7185, Ra, Ta) kuyruğu görünmez yapıyordu — çocuk neyi
+  sileceğini ayırt edemiyordu. Ölçüm: 28 harfin hepsinde ton farkı 180°.
+  Üstüne yüksek alfa (0.78-1.0) + hâle (shadowBlur) → "kuyruklar belirgin".
+- ⚠️ **SONRAKİ HARFE GEÇİŞ HEM OTOMATİK HEM DÜĞMELİ** (`OTOMATIK_GECIS`
+  2600 ms): otomatik geçiş kutlama + harf sesi bitmeden başlamaz (ses yarıda
+  kesilirse eklenmesinin sebebi kalmaz). Düğme SIRADAKİ HARFİN GLİFİNİ
+  gösterir — okuma bilmeyen çocuk yazıdan değil şekilden anlar; geri sayım
+  halkası da çizilir.
 - ⚠️ **GÖZLER BAŞA TAKILIR, kuyruğa değil**: kuyruk silinince gözler
   kaybolmamalı — "harf hâlâ orada" mesajının taşıyıcısı onlar.
   ⚠️ `headBox`ın ORTASI YETMEZ: ölçüldü, 15 harfin **3'ünde** göz havada
   kalıyordu (Hı, Dad, Lem) — kutuya harfin NOKTASI da giriyor ve kutu ortası
   mürekkebin dışına düşüyor. Doğrusu başın üst bölgesindeki EN GENİŞ mürekkep
-  satırını bulup gözleri onun aralığına koymak → 15/15.
+  satırını bulup gözleri onun aralığına koymak.
+- ⚠️ **YÜZ İKİ ŞEKİL İÇİN AYRI HESAPLANIR** (`lib/harfYuzu.ts`): silme öncesi
+  yalın harf (ج) ile sonrası "başta" hâli (ﺟ) FARKLI çizimler; yüz eskisinin
+  yerinde bırakılınca dönüşümden sonra surat havada kalıyordu (kullanıcı:
+  "silindikten sonraki suratlar düzgün değil"). Dönüşüm boyunca iki yüz
+  arasında geçiş yapılır. Ölçüm: **30/30** (15 harf × önce/sonra).
+- ⚠️ **AĞIZ DA MÜREKKEBE OTURTULUR, "gözlerin şu kadar altı" DEĞİL**: sabit
+  kaydırma MİM'de (م) ağzı halkanın İÇİNDEKİ boşluğa düşürüyordu. Üstelik göz
+  hattı seçilirken ALTINDA AĞZA YER KALMASI şart — Mim'de en geniş satır
+  halkanın tam ortası olduğu için altında mürekkep kalmıyordu; adaylar skor
+  sırasıyla denenip ağza yer bulunan ilk hat seçiliyor.
+- ⚠️ **GÖZ BOYU ŞEKLİN BÜTÜNÜNDEN**: satır genişliğine bağlıyken ince gövdeli
+  harflerde (Lem, Be, Nun) göz alt sınıra yapışıp minicik kalıyordu. Artık
+  `max(bw,bh)×0.11`; ince harfte göz gövdeden taşar (çizgi film gözü,
+  kasıtlı).
 - ⚠️ **YERLEŞİM ÖLÇÜLDÜ**: baseY 0.66/font 108'de mürekkep 0.23-0.95'e
   düşüyordu (üstte %23 boşluk, altta %5) ve sünger sahnenin dışına taşıyordu.
   Beş ikili denendi, **0.58/116** seçildi → 0.12-0.89, taşma 0.

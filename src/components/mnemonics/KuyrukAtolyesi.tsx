@@ -25,8 +25,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { TailRule } from "@/data/writingMnemonics";
-import { buildTailMask, drawCentered, tailFontSpec, type TailMask, type TailMaskGeom } from "@/lib/tailMask";
-import { harfRengi, acikTon } from "@/data/harfRenkleri";
+import { buildTailMask, drawCentered, inkBox, inkFlags, tailFontSpec, type TailMask, type TailMaskGeom } from "@/lib/tailMask";
+import { yuzYeri, type Yuz } from "@/lib/harfYuzu";
+import { EmojiView } from "@/components/EmojiView";
+import { harfRengi, acikTon, kuyrukRengi } from "@/data/harfRenkleri";
 import { sfx } from "@/lib/juice";
 import { playItem } from "@/lib/audio";
 import { findItem } from "@/data/subjects";
@@ -38,6 +40,8 @@ const S = 2;                      // iç çözünürlük
 const CW = W * S, CH = H * S;
 const BRUSH = 17 * S;             // sünger yarıçapı — çocuk parmağına bol
 const BITIS = 0.85;               // kuyruğun bu oranı silinince tamam
+/** Kutlama çanı bitmeden harfin sesi başlamasın (çan ~1.0 sn). */
+const HARF_SESI_GECIKME = 900;
 /**
  * ⚠️ SAHNEDEKİ YERLEŞİM ÖLÇÜLEREK SEÇİLDİ, gözle değil. İlk değerlerde
  * (baseY 0.66 · font 108) mürekkep 15 harfte 0.23-0.95 aralığına düşüyordu:
@@ -64,6 +68,14 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
   const cvRef = useRef<HTMLCanvasElement | null>(null);
   const maskRef = useRef<TailMask | null>(null);
   const initRef = useRef<HTMLCanvasElement | null>(null);
+  /**
+   * ⚠️ İKİ AYRI YÜZ: yalın harfin (ج) ve "başta" hâlinin (ﺟ) mürekkebi FARKLI
+   * yerlerde. Silme bitince harf ikinciye dönüşüyor; yüz birincinin yerinde
+   * bırakılırsa surat havada kalıyor (kullanıcı: "silindikten sonraki
+   * suratlar düzgün değil"). Dönüşüm boyunca iki yüz arasında geçiş yapılır.
+   */
+  const yuzIsoRef = useRef<Yuz | null>(null);
+  const yuzInitRef = useRef<Yuz | null>(null);
   const strokeRef = useRef<HTMLCanvasElement | null>(null);
   const limitedRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -76,6 +88,7 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
   const bittiRef = useRef(false);
   const sesRef = useRef(0);
   const kutlamaRef = useRef(0);
+  const sesT = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [oran, setOran] = useState(0);
   const [bitti, setBitti] = useState(false);
@@ -122,9 +135,25 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
     } else {
       g.drawImage(m.glyph, 0, 0);
       if (!bittiRef.current) {
-        // kuyruk, silinmemişken hafifçe nabız atar: "burayı sil" işareti
-        g.globalAlpha = 0.30 + 0.22 * (0.5 - 0.5 * Math.cos(t / 380));
+        /**
+         * ⚠️ KUYRUK BELİRGİN OLMALI (kullanıcı: "kuyruklar daha belirgin
+         * olsun, silecek ya"). Önce yalnız soluk bir kırmızı gölge vardı
+         * (0.30-0.52 alfa) ve harfin kendi rengi güçlü olduğu için hangi
+         * parçanın silineceği okunmuyordu. Şimdi üç katman:
+         *   1) kuyruk tamamen kırmızıya boyanır (yüksek alfa),
+         *   2) çevresine parlayan bir hâle (shadowBlur) konur,
+         *   3) hâlâ nabız atar ama tabanı yüksek — hiç sönmüyor.
+         * Silinen piksel anında kaybolduğu için ilerleme de görünür oluyor.
+         */
+        const nabiz = 0.78 + 0.22 * (0.5 - 0.5 * Math.cos(t / 420));
+        g.save();
+        const kr = kuyrukRengi(renk);
+        g.shadowColor = `rgba(${kr[0]},${kr[1]},${kr[2]},0.95)`;
+        g.shadowBlur = 10 * S;
+        g.globalAlpha = nabiz;
         g.drawImage(m.tailTint, 0, 0);
+        g.drawImage(m.tailTint, 0, 0);   // ikinci geçiş: hâle belirginleşsin
+        g.restore();
         g.globalAlpha = 1;
       }
       g.globalCompositeOperation = "destination-out";
@@ -132,9 +161,17 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
       g.globalCompositeOperation = "source-over";
     }
 
-    // 3) GÖZLER — başın MÜREKKEBİNİN üstünde, süngere bakar
-    const yer = gozYeri(m);
-    const { gx, gy, ar, ayrik } = yer;
+    // 3) YÜZ — mürekkebin üstünde; dönüşürken yeni şeklin yerine kayar
+    const yA = yuzIsoRef.current, yB = yuzInitRef.current;
+    if (!yA) return;
+    const k = kutlamaK > 0 && yB ? Math.min(1, kutlamaK * 1.4) : 0;
+    const ka = (a: number, b: number) => a + (b - a) * k;
+    const gx = yB ? ka(yA.gx, yB.gx) : yA.gx;
+    const gy = yB ? ka(yA.gy, yB.gy) : yA.gy;
+    const ar = yB ? ka(yA.ar, yB.ar) : yA.ar;
+    const ayrik = yB ? ka(yA.ayrik, yB.ayrik) : yA.ayrik;
+    const agizY = yB ? ka(yA.agizY, yB.agizY) : yA.agizY;
+    const agizR = yB ? ka(yA.agizR, yB.agizR) : yA.agizR;
     const hedef = spongeRef.current;
     // bakış yönü (küçük kayma)
     let bx = 0, by = 0;
@@ -168,12 +205,11 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
         g.beginPath(); g.arc(ex + bx - ar * 0.16, gy + by - ar * 0.18, ar * 0.16, 0, Math.PI * 2); g.fill();
       }
     }
-    // gülümseme (bitince büyür)
+    // gülümseme (bitince büyür) — yeri de mürekkebe göre ölçüldü
     g.strokeStyle = "#1f2937";
     g.lineWidth = 2 * S; g.lineCap = "round";
     g.beginPath();
-    const agizR = ar * (bittiRef.current ? 1.05 : 0.7);
-    g.arc(gx, gy + ar * 1.5, agizR, 0.2 * Math.PI, 0.8 * Math.PI);
+    g.arc(gx, agizY, agizR * (bittiRef.current ? 1.15 : 0.85), 0.18 * Math.PI, 0.82 * Math.PI);
     g.stroke();
     g.lineCap = "butt";
 
@@ -239,10 +275,22 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
       bittiRef.current = true;
       setBitti(true);
       kutlamaRef.current = performance.now();
+      /**
+       * ⚠️ ÖNCE KUTLAMA, SONRA HARFİN SESİ (kullanıcı isteği: "bir harfi
+       * silince o harfin de sesi çıksın, tebrikler sesinden sonra").
+       * İkisi AYNI ANDA çalarsa kutlama çanı hocanın sesini örtüyor —
+       * çocuk asıl öğrenmesi gereken şeyi duymuyor. Kutlama ~1.0 sn
+       * sürüyor, harf sesi onun bitişine yakın başlar.
+       */
       sfx("kutlama");
+      if (sesT.current) clearTimeout(sesT.current);
+      sesT.current = setTimeout(() => {
+        const it = findItem(writingItemIds(rule.n).init);
+        if (it) playItem(it);
+      }, HARF_SESI_GECIKME);
       onDone?.();
     }
-  }, [onDone]);
+  }, [onDone, rule.n]);
 
   // Maskeleri kur
   useEffect(() => {
@@ -253,13 +301,24 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
         await document.fonts.ready;
       } catch { /* yoksay */ }
       if (!alive) return;
-      const m = buildTailMask(rule, GEOM, renk);
+      const m = buildTailMask(rule, GEOM, renk, kuyrukRengi(renk));
       maskRef.current = m;
       initRef.current = drawCentered(rule.init, GEOM, renk);
+      // İki şeklin yüzü de burada, mürekkep ölçülerek hesaplanır.
+      yuzIsoRef.current = m ? yuzYeri(m.headFlags, CW, m.headBox) : null;
+      if (initRef.current) {
+        const f = inkFlags(initRef.current);
+        yuzInitRef.current = yuzYeri(f, CW, inkBox(f, CW, CH));
+      } else {
+        yuzInitRef.current = null;
+      }
       strokeRef.current = mkCanvas();
       limitedRef.current = mkCanvas();
       kopukRef.current = [];
       spongeRef.current = null;
+      // ⚠️ Harf değişirse bekleyen ses İPTAL: yoksa önceki harfin sesi yeni
+      // harfin üstüne çalıyor ve çocuk yanlış eşleştirme öğreniyor.
+      if (sesT.current) { clearTimeout(sesT.current); sesT.current = null; }
       bittiRef.current = false;
       kutlamaRef.current = 0;
       setBitti(false); setOran(0);
@@ -279,7 +338,10 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [hazir, ciz]);
 
-  useEffect(() => () => { if (uyariT.current) clearTimeout(uyariT.current); }, []);
+  useEffect(() => () => {
+    if (uyariT.current) clearTimeout(uyariT.current);
+    if (sesT.current) clearTimeout(sesT.current);
+  }, []);
 
   const yerel = (e: React.PointerEvent) => {
     const cv = cvRef.current!;
@@ -429,11 +491,19 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
       {/* sonuç: AYNI HARF vurgusu */}
       {bitti ? (
         <div className="mt-2 rounded-2xl bg-white/85 p-2 text-center">
+          {/* ⚠️ GLİFLER `EmojiView` İLE: düz <span>'de Arapça mürekkep satır
+              kutusunun altına kayıyor ve yandaki küçük yazının altında
+              kalıyordu (ekran görüntüsünde görüldü). EmojiView mürekkebi
+              ölçüp ortalıyor — uygulamanın her yerinde geçerli kural. */}
           <div className="flex items-center justify-center gap-2" dir="ltr">
-            <span className="font-arabic text-2xl leading-[1.7]" style={{ color: renk }} dir="rtl">{rule.iso}</span>
+            <span className="text-2xl" style={{ color: renk }}>
+              <EmojiView value={rule.iso} />
+            </span>
             <span className="text-[10px] font-extrabold text-muted-foreground">kuyruksuz</span>
             <span className="text-lg" aria-hidden>→</span>
-            <span className="font-arabic text-2xl leading-[1.7]" style={{ color: renk }} dir="rtl">{rule.init}</span>
+            <span className="text-2xl" style={{ color: renk }}>
+              <EmojiView value={rule.init} />
+            </span>
           </div>
           <p className="mt-0.5 text-[11px] font-extrabold text-foreground">
             Yine <span style={{ color: renk }}>{rule.name}</span>! Sadece kuyruğu gitti,
@@ -458,41 +528,6 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
       )}
     </div>
   );
-}
-
-/**
- * GÖZLERİ HARFİN MÜREKKEBİNE OTURT.
- *
- * ⚠️ İLK SÜRÜM `headBox`IN ORTASINI KULLANIYORDU ve ÖLÇÜMDE 15 harfin 3'ünde
- * göz HAVADA kalıyordu (Hı, Dad, Lem): kutuya harfin NOKTASI da giriyor,
- * nokta gövdeden uzakta olduğu için kutunun ortası mürekkebin dışına düşüyor.
- * (Lem'de gövde ince ve dik, kutu ortası boşluğa geliyor.)
- *
- * Doğrusu kutuya değil PİKSELE bakmak: başın üst bölgesinde EN GENİŞ mürekkep
- * satırını bul, iki gözü o satırın gerçek mürekkep aralığına yerleştir.
- * Sonuç ölçüldü: 15/15 göz harfin üstünde.
- */
-function gozYeri(m: TailMask): { gx: number; gy: number; ar: number; ayrik: number } {
-  const hb = m.headBox;
-  const bw = Math.max(1, hb.right - hb.left);
-  const bh = Math.max(1, hb.bottom - hb.top);
-  // başın üst %65'inde satır satır mürekkep aralığı ara
-  let enIyi = { y: hb.top + bh * 0.3, sol: hb.left, sag: hb.right, gen: -1 };
-  for (let y = Math.round(hb.top + bh * 0.12); y <= Math.round(hb.top + bh * 0.65); y += 2) {
-    let sol = -1, sag = -1;
-    for (let x = hb.left; x <= hb.right; x++) {
-      if (m.headFlags[y * CW + x]) { if (sol < 0) sol = x; sag = x; }
-    }
-    if (sol < 0) continue;
-    const gen = sag - sol;
-    if (gen > enIyi.gen) enIyi = { y, sol, sag, gen };
-  }
-  const gen = Math.max(1, enIyi.gen);
-  const ar = Math.max(7 * S, Math.min(11 * S, gen * 0.14));
-  // iki göz mürekkep aralığının içinde kalsın (kenarlara yapışmasın)
-  const ayrik = Math.max(ar * 1.15, Math.min(gen * 0.26, ar * 2.2));
-  const gx = (enIyi.sol + enIyi.sag) / 2;
-  return { gx, gy: enIyi.y, ar, ayrik };
 }
 
 function rrect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
