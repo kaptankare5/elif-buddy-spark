@@ -113,3 +113,38 @@ cd tools/ses && python3 kuyruk.py yeni_kuyruk     # → 12 dosya
 ```
 Bekçi: `src/test/audioFiles.test.ts` → "cezimli ötümsüz ünsüzler yarıda kesik değil"
 (dosya boyutu ailenin ortancasının %80'inin altına düşemez).
+
+## ⚠️ "ley" kartı — GEÇİCİ birleştirilmiş ses (`birlestir.py`)
+
+Kullanıcı: *"ley kelimesini liy diyor sanki"*. **Kulak haklı, ölçüldü.**
+
+`cezm-ekstra-03.mp3` dosyasının TAMAMINDA F1 = **231-306 Hz**, yani ünlü hiç
+açılmıyor. Aynı kayıttaki öteki "e"li kelimeler **578-708 Hz**'e çıkıyor
+(men 649 · ye' 708 · lem 582 · yes 578). Hoca o kayıtta "ley" dememiş.
+
+⚠️ **HİZA SORUNU DEĞİL** — önce onu denetledim: 14 kelimenin 13'ünde beklenen
+ünlü ölçümle tutuyor (bütün a'lar, bütün i/ü/u'lar). Kesim sınırının dışına
+da baktım, açık ünlü orada da yok (5.04-5.43 arası her yerde F1 ≤ 311 Hz).
+
+⚠️ **İLK ÖLÇÜMÜM YANLIŞTI, DÜZELTTİM.** Parçanın ilk yarısının ortancasına
+bakınca 5 kelime "uyuşmuyor" çıkmıştı — hepsi /l/ /m/ /y/ ile başlayanlar.
+O ünsüzlerin F1'i düşük olduğu için ünlüyü değil ONLARI ölçüyordum. Ölçüt
+"parçanın TAMAMINDA F1'in ulaştığı en yüksek değer" olunca 13/14 tuttu.
+Ders: sonorantla başlayan hecede ünlüyü ORTALAMAYLA arama.
+
+**Geçici çözüm** (kullanıcı onayı: "şimdilik yap ama bir ara hatırlat"):
+hocanın kendi iki kaydından `/l/` + `"ey"` birleştirildi.
+
+```bash
+cd tools/ses && python3 birlestir.py ../../public/audio/elifba/cezm-ekstra-03.mp3
+```
+
+⚠️ **"le" + "ey" UÇ UCA EKLENMEZ** — o "le-ey" olur, iki heceli. Alınan şey
+"le"nin yalnız `/l/` ünsüzü; ünlü ve kapanış tek parça hâlinde "ey"den gelir.
+⚠️ Perde uyumu ölçüldü: ek yerinde "le" ~140 Hz, "ey"in ünlü başı 137 Hz —
+sıçrama duyulmuyor. 30 ms eşit güçlü çapraz geçiş, tıkırtı yok (en büyük ani
+sıçrama 0.315, dokunulmamış kaynakta 0.320).
+⚠️ Kazanç −5.5 dB ŞART: kaynaklar çekirdek kayıt, ekstra ailesi daha kısık.
+Sonuç −24.4 dBFS = ailenin ortancası.
+
+**Sonuç:** F1 tepe 306 → **577 Hz**. Takip: `docs/gelecek-ozellikler.md`.

@@ -290,6 +290,11 @@ const CEZM_MISSING = new Set<number>(); // eksik kayıt kalmadı
 const CEZM_EKSTRA: Array<[string, string, number]> = [
   ["هُمْ", "hüm", 3],  // 2.577
   ["مِنْ", "min", 3],  // 2.281
+  // ⚠️ GEÇİCİ SES (bkz. docs/gelecek-ozellikler.md — "ley kartının sesi").
+  // Hocanın bu kelimeyi okuduğu kayıtta ünlü hiç açılmıyor (F1 231-306 Hz,
+  // aynı kayıttaki öteki "e"ler 578-708) — kulakta "liy" duyuluyordu.
+  // `cezm-ekstra-03.mp3` şu an hocanın KENDİ iki kaydından birleştirildi
+  // (`tools/ses/birlestir.py`). Doğru kayıt gelince değiştirilecek.
   ["لَيْ", "ley", 3],  // 1.224
   ["هِمْ", "him", 3],  //   919
   ["مَنْ", "men", 3],  //   837
