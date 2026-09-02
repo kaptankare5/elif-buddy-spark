@@ -52,3 +52,41 @@ export function acikTon(hex: string, oran = 0.35): string {
   const k = (v: number) => Math.round(v + (255 - v) * oran);
   return `#${((k(r) << 16) | (k(g) << 8) | k(b)).toString(16).padStart(6, "0")}`;
 }
+
+/**
+ * KUYRUK VURGU RENGİ — harfin kendi renginden ZITTI.
+ *
+ * ⚠️ SABİT KIRMIZI ÇALIŞMIYOR: kendi rengi kırmızıya yakın harflerde
+ * (Cim #ef4444, Nun #dc2626, Ğayn #fb7185, Ra #e11d48, Ta #f43f5e) kuyruk
+ * vurgusu harfin rengine karışıyor ve çocuk NEYİ sileceğini göremiyordu
+ * (görsel denetimde yakalandı). Kullanıcı da "kuyruklar daha belirgin olsun,
+ * silecek ya" dedi.
+ *
+ * Çözüm: rengi HSL'e çevir, tonu 180° döndür (tümleyen renk), doygunluğu ve
+ * parlaklığı sabitle. Böylece her harfte kuyruk ile gövde arasında en yüksek
+ * ton farkı oluşur — sabit bir renkle bunu garanti etmek mümkün değil.
+ */
+export function kuyrukRengi(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  let h = 0;
+  const d = mx - mn;
+  if (d !== 0) {
+    if (mx === r) h = ((g - b) / d) % 6;
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+  }
+  h = (h * 60 + 180 + 360) % 360;      // tümleyen ton
+  return hslRgb(h, 0.72, 0.42);        // doygun ve koyu: beyaz zeminde okunur
+}
+
+function hslRgb(h: number, s: number, l: number): [number, number, number] {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  const [r, g, b] =
+    h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x]
+    : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+}

@@ -829,12 +829,6 @@ function HarekeHafizaPreview() {
           </div>
         ))}
       </div>
-      <Link
-        to="/yazilis-hafiza#hareke"
-        className="flex items-center justify-center gap-1.5 border-t border-border/60 bg-muted/40 py-2 text-xs font-extrabold text-primary"
-      >
-        Animasyonlu tam anlatımı gör →
-      </Link>
     </div>
   );
 }

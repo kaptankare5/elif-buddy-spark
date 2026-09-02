@@ -355,3 +355,13 @@
   .animate-hareke-morph { animation: none; opacity: 0; }
   .animate-hareke-target { animation: none; opacity: 1; }
 }
+
+/* Kuyruk Atölyesi — "sonraki harf" düğmesindeki geri sayım halkası.
+   ⚠️ Görünür olmak ZORUNDA: harf silinince sonraki harfe kendiliğinden
+   geçiliyor; çocuk bunun olacağını önceden görmezse ekranda bir şey
+   "kendi kendine" değişmiş gibi oluyor (aynı gerekçe UnlockCelebration'daki
+   geri sayım halkasında da yazılı). */
+@keyframes atolye-halka {
+  from { clip-path: inset(0 0 0 0); opacity: 0.95; }
+  to   { clip-path: inset(0 0 100% 0); opacity: 0.25; }
+}
