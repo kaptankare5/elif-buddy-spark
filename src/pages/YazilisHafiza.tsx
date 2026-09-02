@@ -110,8 +110,19 @@ const YazilisHafiza = () => {
  * bileşenin state'inde tutulur — localStorage'a bile yazılmaz, SRS'e hiç
  * dokunmaz. Sayfadan çıkınca sıfırlanır; burası bir ders, ölçüm değil.
  */
-/** Harf silinince sonrakine kendiliğinden geçme süresi (ms). */
-const OTOMATIK_GECIS = 2600;
+/**
+ * Harfin SESİ BİTTİKTEN sonra sonraki harfe geçmeden önce beklenen süre (ms).
+ *
+ * ⚠️ ESKİDEN SİLME ANINDAN İTİBAREN SABİT 2.6 sn İDİ ve uzun adlı harflerde
+ * ses yarıda kesiliyordu (kullanıcı: "ayn derken sonraki harfe geçiyor").
+ * ÖLÇÜLDÜ — harf adı kayıtları 0.73-2.33 sn arasında: Ğayn 2.325 · Ayn 1.907
+ * · Sad/Nun/Mim 1.254 · Be 0.758. Sabit süreye 900 ms kutlama gecikmesi de
+ * eklenince sese yalnız 1.7 sn kalıyordu.
+ * Sabit süreyi en uzun sese göre (≈3.7 sn) büyütmek de yanlış olurdu: kısa
+ * adlı harflerde çocuk 2 saniye boşuna bekler. Bu yüzden geri sayım artık
+ * sesin BİTİŞİNDEN başlıyor — her harf kendi süresini alıyor.
+ */
+const OTOMATIK_GECIS = 1200;
 
 function KuyrukAtolyesiBolumu() {
   const [idx, setIdx] = useState(0);
@@ -186,10 +197,8 @@ function KuyrukAtolyesiBolumu() {
       <KuyrukAtolyesi
         key={rule.n}
         rule={rule}
-        onDone={() => {
-          setBitenler((b) => (b.includes(rule.n) ? b : [...b, rule.n]));
-          setBekliyor(true);
-        }}
+        onDone={() => setBitenler((b) => (b.includes(rule.n) ? b : [...b, rule.n]))}
+        onSesBitti={() => setBekliyor(true)}
       />
 
       {/* ilerleme */}

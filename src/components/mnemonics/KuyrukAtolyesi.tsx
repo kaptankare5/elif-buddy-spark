@@ -42,6 +42,8 @@ const BRUSH = 17 * S;             // sünger yarıçapı — çocuk parmağına 
 const BITIS = 0.85;               // kuyruğun bu oranı silinince tamam
 /** Kutlama çanı bitmeden harfin sesi başlamasın (çan ~1.0 sn). */
 const HARF_SESI_GECIKME = 900;
+/** Ses hiç bitmezse (dosya yüklenemedi) en geç bu kadar sonra devam et. */
+const SES_EMNIYET = 4000;
 /**
  * ⚠️ SAHNEDEKİ YERLEŞİM ÖLÇÜLEREK SEÇİLDİ, gözle değil. İlk değerlerde
  * (baseY 0.66 · font 108) mürekkep 15 harfte 0.23-0.95 aralığına düşüyordu:
@@ -62,7 +64,20 @@ const mkCanvas = () => {
 
 interface Kopuk { x: number; y: number; vx: number; vy: number; r: number; om: number }
 
-export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () => void }) {
+export function KuyrukAtolyesi({ rule, onDone, onSesBitti }: {
+  rule: TailRule;
+  /** Kuyruk silindiği ANDA — rozet/sayaç için. */
+  onDone?: () => void;
+  /**
+   * Harfin sesi BİTTİĞİNDE. Sonraki harfe geçiş geri sayımı bununla başlar:
+   * ⚠️ SABİT SÜRE YETMİYOR (kullanıcı: "ayn derken sonraki harfe geçiyor").
+   * Ölçüldü — harf adlarının süresi 0.73 sn ile 2.33 sn arasında değişiyor
+   * (Ğayn 2.325 · Ayn 1.907 · Be 0.758). Sabit 2.6 sn'lik geçişte sese
+   * yalnız 1.7 sn kalıyordu, yani UZUN adlar yarıda kesiliyordu. Sabit süreyi
+   * en uzun sese göre büyütmek de yanlış: kısa adlarda çocuk boşuna bekler.
+   */
+  onSesBitti?: () => void;
+}) {
   const renk = harfRengi(rule.n);
 
   const cvRef = useRef<HTMLCanvasElement | null>(null);
@@ -89,6 +104,9 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
   const sesRef = useRef(0);
   const kutlamaRef = useRef(0);
   const sesT = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Geri çağrılar ref'te: `olc` bağımlılığı değişince döngü kurulmasın.
+  const onSesBittiRef = useRef(onSesBitti);
+  onSesBittiRef.current = onSesBitti;
 
   const [oran, setOran] = useState(0);
   const [bitti, setBitti] = useState(false);
@@ -286,7 +304,17 @@ export function KuyrukAtolyesi({ rule, onDone }: { rule: TailRule; onDone?: () =
       if (sesT.current) clearTimeout(sesT.current);
       sesT.current = setTimeout(() => {
         const it = findItem(writingItemIds(rule.n).init);
-        if (it) playItem(it);
+        if (!it) { onSesBittiRef.current?.(); return; }
+        /**
+         * ⚠️ EMNİYET ZAMANLAYICISI: `playItem` ses bitince çözülüyor, ama
+         * dosya hiç yüklenemezse (mobil WebView, ağ) söz geç çözülebilir.
+         * O zaman geçiş hiç başlamaz ve çocuk ekranda kilitli kalır.
+         * En uzun kayıt 2.33 sn; 4 sn sonra her hâlükârda devam edilir.
+         */
+        let bitti = false;
+        const kapan = () => { if (!bitti) { bitti = true; onSesBittiRef.current?.(); } };
+        const emniyet = setTimeout(kapan, SES_EMNIYET);
+        void playItem(it).finally(() => { clearTimeout(emniyet); kapan(); });
       }, HARF_SESI_GECIKME);
       onDone?.();
     }

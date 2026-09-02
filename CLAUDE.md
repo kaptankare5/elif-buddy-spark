@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 449 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 450 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -496,11 +496,19 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   Nun #dc2626, Ğayn #fb7185, Ra, Ta) kuyruğu görünmez yapıyordu — çocuk neyi
   sileceğini ayırt edemiyordu. Ölçüm: 28 harfin hepsinde ton farkı 180°.
   Üstüne yüksek alfa (0.78-1.0) + hâle (shadowBlur) → "kuyruklar belirgin".
-- ⚠️ **SONRAKİ HARFE GEÇİŞ HEM OTOMATİK HEM DÜĞMELİ** (`OTOMATIK_GECIS`
-  2600 ms): otomatik geçiş kutlama + harf sesi bitmeden başlamaz (ses yarıda
-  kesilirse eklenmesinin sebebi kalmaz). Düğme SIRADAKİ HARFİN GLİFİNİ
-  gösterir — okuma bilmeyen çocuk yazıdan değil şekilden anlar; geri sayım
-  halkası da çizilir.
+- ⚠️ **SONRAKİ HARFE GEÇİŞ HEM OTOMATİK HEM DÜĞMELİ.** Düğme SIRADAKİ HARFİN
+  GLİFİNİ gösterir — okuma bilmeyen çocuk yazıdan değil şekilden anlar; geri
+  sayım halkası da çizilir.
+  ⚠️ **GERİ SAYIM SESİN BİTİŞİNDEN BAŞLAR, silme anından DEĞİL** (kullanıcı:
+  "ayn derken sonraki harfe geçiyor"). Sabit 2.6 sn'lik geçişte, 900 ms
+  kutlama gecikmesi düşünce sese yalnız **1.7 sn** kalıyordu; oysa harf adı
+  kayıtları **0.73-2.33 sn** arasında (Ğayn 2.325 · Ayn 1.907 · Sad/Nun/Mim
+  1.254 · Be 0.758) — uzun adlar yarıda kesiliyordu. Sabit süreyi en uzuna
+  göre büyütmek de yanlış: kısa adlarda çocuk 2 sn boşuna bekler. Çözüm
+  `playItem`in sözünü beklemek (`onSesBitti`), sonra `OTOMATIK_GECIS`
+  (1200 ms) saymak. Ölçüldü: Ğayn'a 3656 ms, Be'ye 2138 ms ayrılıyor.
+  ⚠️ `SES_EMNIYET` (4 sn) şart: dosya hiç yüklenemezse söz geç çözülür ve
+  geçiş hiç başlamaz — çocuk ekranda kilitli kalırdı.
 - ⚠️ **GÖZLER BAŞA TAKILIR, kuyruğa değil**: kuyruk silinince gözler
   kaybolmamalı — "harf hâlâ orada" mesajının taşıyıcısı onlar.
   ⚠️ `headBox`ın ORTASI YETMEZ: ölçüldü, 15 harfin **3'ünde** göz havada
