@@ -25,7 +25,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { TailRule } from "@/data/writingMnemonics";
-import { buildTailMask, drawCentered, inkBox, inkFlags, tailFontSpec, type TailMask, type TailMaskGeom } from "@/lib/tailMask";
+import { buildTailMask, drawCentered, inkBox, inkFlags, measureGlyph, tailFontSpec, type TailMask, type TailMaskGeom } from "@/lib/tailMask";
 import { yuzYeri, type Yuz } from "@/lib/harfYuzu";
 import { EmojiView } from "@/components/EmojiView";
 import { harfRengi, acikTon, kuyrukRengi } from "@/data/harfRenkleri";
@@ -35,26 +35,43 @@ import { findItem } from "@/data/subjects";
 import { writingItemIds } from "@/data/writingMnemonics";
 import { belirtmeHali, iyelikBelirtme } from "@/lib/turkce";
 
-const W = 300, H = 190;          // CSS px
+/**
+ * SAHNE ÖLÇÜLERİ — hem BÜYÜKLÜK hem SİLME ZORLUĞU buradan çıkıyor.
+ *
+ * ⚠️ İKİSİ AYNI SORUNUN İKİ YÜZÜ (kullanıcı: "harfler küçük… bayağı büyüt…
+ * bir de çok çabuk siliniyor, en azından iki kere silsin"). Sahne küçükken
+ * kuyruk da küçük oluyor ve çocuğun tek yatay hamlesi kuyruğun tamamını
+ * süpürüyordu.
+ *
+ * ÖLÇÜLDÜ (15 harf, kuyruğun ortasından tek soldan-sağa geçiş):
+ *   300×190 · font 116 · fırça 17 → tek geçişte **%86** siliniyor (eşik %85)
+ *      yani BİR hamlede bitiyor; ekranda glif ~93 px.
+ *   360×270 · font 186 · fırça 16 → tek geçişte **%36**, yani ~2.4 hamle
+ *      gerekiyor; ekranda glif ~149 px (**+%60**). Taşma 0.
+ * Ara adaylar da denendi (340×250/168, 360×260/176, 360×280/196); bu ikili
+ * "iki kere sil" isteğini karşılayan en büyük taşmasız seçenek.
+ */
+const W = 360, H = 270;          // CSS px
 const S = 2;                      // iç çözünürlük
 const CW = W * S, CH = H * S;
-const BRUSH = 17 * S;             // sünger yarıçapı — çocuk parmağına bol
+const BRUSH = 16 * S;             // sünger yarıçapı — çocuk parmağına bol
 const BITIS = 0.85;               // kuyruğun bu oranı silinince tamam
 /** Kutlama çanı bitmeden harfin sesi başlamasın (çan ~1.0 sn). */
 const HARF_SESI_GECIKME = 900;
 /** Ses hiç bitmezse (dosya yüklenemedi) en geç bu kadar sonra devam et. */
 const SES_EMNIYET = 4000;
 /**
- * ⚠️ SAHNEDEKİ YERLEŞİM ÖLÇÜLEREK SEÇİLDİ, gözle değil. İlk değerlerde
- * (baseY 0.66 · font 108) mürekkep 15 harfte 0.23-0.95 aralığına düşüyordu:
- * üstte %23 boşluk, altta %5 — harf sahnenin dibine yapışıyor ve sünger
- * dışarı taşıyordu. Denenen beş ikiliden en dengelisi:
- *   baseY 0.66/108 → 0.23-0.95 (dengesiz)
- *   baseY 0.58/116 → 0.12-0.89 (üst %12, alt %11 — SEÇİLEN)
- *   baseY 0.56/124 → 0.07-0.89 (harf büyük ama üstte pay kalmıyor)
- * Hiçbirinde taşma yok; ölçüm aracı `tools/perf/_yerlesim.mjs` deseni.
+ * ⚠️ YERLEŞİM ÖLÇÜLEREK SEÇİLDİ, gözle değil. Mürekkep 15 harfte 0.05-0.92
+ * aralığında kalıyor — taşma 0, sünger için altta pay var. (İlk sürümde
+ * baseY 0.66 · font 108 ile 0.23-0.95'e düşüyordu: üstte %23 boşluk, harf
+ * dibe yapışık.)
  */
-const GEOM: TailMaskGeom = { cw: CW, ch: CH, fontPx: 116 * S, baseY: Math.round(CH * 0.58) };
+const GEOM: TailMaskGeom = { cw: CW, ch: CH, fontPx: 186 * S, baseY: Math.round(CH * 0.57) };
+
+/** Harfin mürekkebi sahnenin bu kadarını kaplasın (dikey). */
+const HEDEF_DOLULUK = 0.78;
+/** Yatayda taşmasın diye üst sınır. */
+const EN_COK_EN = 0.86;
 
 const mkCanvas = () => {
   const c = document.createElement("canvas");
@@ -63,6 +80,47 @@ const mkCanvas = () => {
 };
 
 interface Kopuk { x: number; y: number; vx: number; vy: number; r: number; om: number }
+
+/**
+ * HER HARFİ KENDİ ÖLÇÜSÜNE GÖRE BÜYÜT VE ORTALA.
+ *
+ * ⚠️ SABİT TABAN ÇİZGİSİ SAHNEYİ İSRAF EDİYOR: harflerin mürekkebi ölçüldü —
+ * sahnenin ortalama **%55'ini** kullanıyorlar (Sin %41, Sad %43, Be %44,
+ * Cim/Ha %53) ve dikey merkezleri **0.32-0.66** arasında savruluyor (ideal
+ * 0.50). Yani kimi harf küçücük kalıyor, kimi kenara yapışıyor.
+ *
+ * ⚠️ "ÖLÇEKLE, SONRA YENİDEN ÖLÇ" YÖNTEMİ YANLIŞ SONUÇ VERDİ: büyütülen glif
+ * ölçüm sırasında kanvasın dışına taşıp KIRPILIYOR, kırpık kutudan hesaplanan
+ * merkez de yanlış çıkıyordu (ölçüldü: Fe'nin mürekkebi [0, 419] okunuyor,
+ * merkez 0.39 — üst kenara dayanmış ve kesilmiş).
+ *
+ * Doğrusu ANALİTİK: mürekkep kutusunu TABAN ÇİZGİSİNE GÖRE bir kez ölç
+ * (`ustOfs`, `altOfs`), bu ofsetler punto ile DOĞRUSAL ölçeklenir. Gereken
+ * ölçek ve taban çizgisi doğrudan hesaplanır; ikinci bir ölçüm — dolayısıyla
+ * kırpılma ihtimali — yok.
+ */
+function harfeGoreGeom(iso: string): TailMaskGeom {
+  const ol = measureGlyph(iso, GEOM);
+  if (!ol) return GEOM;
+  // Taban çizgisine göre ofsetler (negatif = çizginin üstünde)
+  const ustOfs = ol.top - GEOM.baseY;
+  const altOfs = ol.bottom - GEOM.baseY;
+  const boy = Math.max(1, altOfs - ustOfs);
+  const en = Math.max(1, ol.right - ol.left);
+  const olcek = Math.max(0.6, Math.min(2.2, Math.min(
+    (CH * HEDEF_DOLULUK) / boy,
+    (CW * EN_COK_EN) / en,
+  )));
+  const fontPx = Math.round(GEOM.fontPx * olcek);
+  const k = fontPx / GEOM.fontPx;                    // gerçekleşen ölçek
+  const merkezOfs = ((ustOfs + altOfs) / 2) * k;     // ölçekli merkez ofseti
+  let baseY = Math.round(CH / 2 - merkezOfs);
+  // Emniyet: mürekkep sahnenin dışına taşmasın (kenarda pay bırak)
+  const pay = Math.round(CH * 0.03);
+  baseY = Math.min(baseY, Math.round(CH - pay - altOfs * k));
+  baseY = Math.max(baseY, Math.round(pay - ustOfs * k));
+  return { ...GEOM, fontPx, baseY };
+}
 
 export function KuyrukAtolyesi({ rule, onDone, onSesBitti }: {
   rule: TailRule;
@@ -329,9 +387,13 @@ export function KuyrukAtolyesi({ rule, onDone, onSesBitti }: {
         await document.fonts.ready;
       } catch { /* yoksay */ }
       if (!alive) return;
-      const m = buildTailMask(rule, GEOM, renk, kuyrukRengi(renk));
+      // ⚠️ Yalın harf ile "başta" hâli AYRI ölçülür: ikisi farklı genişlikte,
+      // tek ölçekle çizilirse dönüşümde harf birden büyüyüp küçülüyor.
+      const gIso = harfeGoreGeom(rule.iso);
+      const gInit = harfeGoreGeom(rule.init);
+      const m = buildTailMask(rule, gIso, renk, kuyrukRengi(renk));
       maskRef.current = m;
-      initRef.current = drawCentered(rule.init, GEOM, renk);
+      initRef.current = drawCentered(rule.init, gInit, renk);
       // İki şeklin yüzü de burada, mürekkep ölçülerek hesaplanır.
       yuzIsoRef.current = m ? yuzYeri(m.headFlags, CW, m.headBox) : null;
       if (initRef.current) {
@@ -473,7 +535,10 @@ export function KuyrukAtolyesi({ rule, onDone, onSesBitti }: {
           ref={cvRef}
           width={CW}
           height={CH}
-          style={{ width: "100%", height: H, touchAction: "none" }}
+          /* ⚠️ Sabit `height` yerine EN-BOY ORANI: kap genişliği telefondan
+             telefona değişiyor; yükseklik sabit kalırsa çizim yatayda esner
+             (glif şişer). Oran verilince her ekranda bozulmadan büyür. */
+          style={{ width: "100%", aspectRatio: `${W} / ${H}`, touchAction: "none" }}
           className="rounded-2xl bg-white/80 shadow-inner"
           onPointerDown={bas}
           onPointerMove={hareket}

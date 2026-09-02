@@ -528,11 +528,30 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
 - ⚠️ **GÖZ BOYU ŞEKLİN BÜTÜNÜNDEN**: satır genişliğine bağlıyken ince gövdeli
   harflerde (Lem, Be, Nun) göz alt sınıra yapışıp minicik kalıyordu. Artık
   `max(bw,bh)×0.11`; ince harfte göz gövdeden taşar (çizgi film gözü,
-  kasıtlı).
-- ⚠️ **YERLEŞİM ÖLÇÜLDÜ**: baseY 0.66/font 108'de mürekkep 0.23-0.95'e
-  düşüyordu (üstte %23 boşluk, altta %5) ve sünger sahnenin dışına taşıyordu.
-  Beş ikili denendi, **0.58/116** seçildi → 0.12-0.89, taşma 0.
-  Sünger boştayken de sahne içine kelepçelenir.
+  kasıtlı). ⚠️ Üst sınır ORANTILI olmalı: sabit 16 px iken sahne büyütülünce
+  gözler olduğu yerde kalıp harfe göre küçüldü.
+- ⚠️ **GÖZ AÇIKLIĞI MÜREKKEBE TUTUNANA KADAR DARALTILIR**: sahne büyüyünce
+  açıklık da büyüdü ve 30 yüzün 4'ünde gözler satırın mürekkebinden dışarı
+  çıktı (Sad/Dad/Ayn'ın "başta" hâlleri geniş ve yassı). Ayraç körlemesine
+  değil, iki göz de mürekkebin üstünde kalana kadar küçültülür.
+- ⚠️ **SAHNE BÜYÜKLÜĞÜ İLE SİLME ZORLUĞU AYNI SORUNUN İKİ YÜZÜ** (kullanıcı:
+  "harfler küçük, bayağı büyüt… bir de çok çabuk siliniyor, en azından iki
+  kere silsin"). Sahne küçükken kuyruk da küçük oluyor ve tek yatay hamle
+  kuyruğun tamamını süpürüyordu. ÖLÇÜLDÜ (15 harf, kuyruk ortasından tek
+  soldan-sağa geçiş): **300×190 · font 116 · fırça 17 → tek geçişte %86**
+  (eşik %85, yani BİR hamlede bitiyor). **360×270 · font 186 · fırça 16 →
+  %36**, yani ~2.4 hamle. Gerçek etkileşimde de doğrulandı: 1. geçiş
+  bitirmiyor, 2. geçiş bitiriyor.
+- ⚠️ **HER HARF KENDİ ÖLÇÜSÜNE GÖRE BÜYÜTÜLÜP ORTALANIR** (`harfeGoreGeom`):
+  sabit taban çizgisiyle harfler sahnenin ortalama **%55'ini** kullanıyordu
+  (Sin %41, Sad %43, Be %44) ve dikey merkezleri **0.32-0.66** arasında
+  savruluyordu. Ölçüp ölçeklendikten sonra: **%78 kullanım, merkez tam 0.50**.
+  ⚠️ "ÖLÇEKLE, SONRA YENİDEN ÖLÇ" YANLIŞ: büyütülen glif ölçüm sırasında
+  kanvasın dışına taşıp KIRPILIYOR ve kırpık kutudan hesaplanan merkez yanlış
+  çıkıyor (Fe'nin mürekkebi [0,419] okunuyordu, merkez 0.39). Doğrusu
+  ANALİTİK: mürekkep kutusunu TABAN ÇİZGİSİNE göre bir kez ölç, ofsetler
+  puntoyla doğrusal ölçeklenir — ikinci ölçüm yok, kırpılma imkânsız.
+  ⚠️ Sünger boştayken de sahne içine kelepçelenir.
 - Baş SİLİNEMEZ (fırça izi kuyruk maskesiyle kesiştirilir); çocuk başı
   ovalarsa "orası kalacak" uyarısı çıkar.
 - ⚠️ **16 KART BİRDEN ÇİZİLMEZ**: eskiden `EraseGame` ızgarası 16 ayrı kanvas
