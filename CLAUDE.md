@@ -56,6 +56,18 @@ hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
   ⚠️ Doğrulama TAYFLA: kurtarılan kuyrukların ağırlık merkezi 1.6-6.2 kHz
   (ünlüler 0.4-1.3 kHz) ve sıra fonetiğe uyuyor — /k/ art damak en pes,
   /θ/ /t/ diş en tiz. Kazanç EKLENMEZ (tepe değerleri aynı kalmalı).
+- ⚠️ **"ley" EKSTRASININ SESİ GEÇİCİ OLARAK BİRLEŞTİRİLDİ** (tek istisna;
+  kullanıcı onayı "şimdilik yap ama bir ara hatırlat"). Kullanıcı "liy diyor
+  sanki" dedi, ÖLÇÜLDÜ: `cezm-ekstra-03.mp3`in tamamında F1 231-306 Hz, yani
+  ünlü hiç açılmıyor — aynı kayıttaki öteki "e"ler 578-708 Hz (men 649 ·
+  ye' 708 · lem 582 · yes 578). Hiza sorunu DEĞİL (14 kelimenin 13'ü tutuyor)
+  ve kesim sınırının dışında da açık ünlü yok. Şimdilik hocanın KENDİ iki
+  kaydından birleştirildi: `/l/` ← "le" (hareke-23-fetha) + `"ey"` ←
+  cezm-27-e (`tools/ses/birlestir.py`). F1 tepe 577 Hz.
+  ⚠️ Ünlüyü ORTALAMAYLA arama: ilk ölçümüm /l/ /m/ /y/ ile başlayan 5 kelimeyi
+  yanlışlıkla "uyuşmuyor" saydı — sonorantın düşük F1'i ünlüyü sulandırıyor.
+  Doğru ölçüt parçanın TAMAMINDA F1'in ulaştığı EN YÜKSEK değer.
+  Takip: `docs/gelecek-ozellikler.md` (doğru kayıt gelince değiştirilecek).
 - ⚠️ **ÂSAR KONUSUNDA SÜRE MED TÜRÜNÜ ELE VERİR** — kartlar oradan
   doğrulandı: bedel 1.2 · tabiî 1.4 · muttasıl 3.1-3.5 · **lâzım 5.3** ·
   lâzım+şedde 4.1 sn. Kesimde 9 parça çıkıyordu; şeddeli `حَآجُّوكَ`

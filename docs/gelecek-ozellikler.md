@@ -5,6 +5,50 @@ buradan silinip CLAUDE.md'ye geçer.
 
 ---
 
+## 🔴 "ley" kartının sesi — hocanın GERÇEK kaydıyla değiştirilecek
+
+**Durum: GEÇİCİ ÇÖZÜM YÜRÜRLÜKTE.** Kullanıcı kararı: *"şimdilik yap ama bir
+ara hatırlat, onu hocanın gerçek sesiyle değiştirelim"*. Bu maddeyi silmek
+için tek şart var: hocadan doğru bir **"ley" (لَيْ)** kaydı gelmesi.
+
+### Sorun (ölçüldü)
+
+Cezm konusunun Ekstralar bölümündeki `لَيْ` kartı — `cezm-ekstra-03.mp3` —
+kullanıcının kulağına "liy" gibi geliyordu. Ölçüm doğruladı: dosyanın
+TAMAMINDA **F1 = 231-306 Hz**, yani ünlü hiç açılmıyor. Aynı kayıttaki öteki
+"e"li kelimeler **578-708 Hz**'e çıkıyor (men 649 · ye' 708 · lem 582 ·
+yes 578). Yani hoca o kayıtta "ley" dememiş.
+
+⚠️ Hiza denetlendi, mesele kesim/eşleme DEĞİL: 14 kelimenin 13'ünde beklenen
+ünlü ölçümle tutuyor (bütün a'lar ve bütün i/ü/u'lar). Yalnız 3. kaydın
+içeriği kartla uyuşmuyor.
+
+### Şu an ne var
+
+`tools/ses/birlestir.py` — hocanın KENDİ iki kaydından birleştirilmiş bir
+"ley":
+
+| parça | kaynak | aralık |
+|---|---|---|
+| `/l/` | `hareke-23-fetha.mp3` ("le" — Lem + üstün) | 0.060-0.278 |
+| `"ey"` | `cezm-27-e.mp3` (Ye'nin cezimlisi) | 0.125-son |
+
+30 ms eşit güçlü çapraz geçiş, −5.5 dB kazançla ekstra ailesinin seviyesine
+(−24.4 dBFS) eşitlendi. Sonuç ölçüldü: **F1 tepe 577 Hz** (eski 306),
+ek yerinde perde sıçraması yok (F0 133 → 137 → 140 Hz), tıkırtı yok.
+
+### Neden kalıcı olmamalı
+
+Ses **hocanın söylemediği** bir okuyuş; iki ayrı kaydın birleşimi ona
+atfedilmiş oluyor. Uygulamanın ilkesi "gerçek hoca kayıtları"; burası o
+ilkenin tek istisnası ve geçici olmak üzere kabul edildi.
+
+**Değiştirince:** yeni kaydı `public/audio/elifba/cezm-ekstra-03.mp3` olarak
+koy, `tools/ses/birlestir.py`'yi sil, bu maddeyi kaldır ve CLAUDE.md'deki
+ilgili notu güncelle.
+
+---
+
 ## 🎤 Sesli okuma denetimi — "harfi gör, SÖYLE"
 
 **Durum:** yapılmadı. Kullanıcı isteği: *"harfi gör sonra ses ile söyleyerek
