@@ -197,35 +197,120 @@ function drawButterfly(g: CanvasRenderingContext2D, x: number, y: number, t: num
   g.restore();
 }
 
-// Platform oyunuyla aynı çocuk (küçük, süreklilik)
+/**
+ * 🧒 MİM — ana sayfadaki maskotun ta kendisi (kullanıcı isteği: "bahçeye ana
+ * sayfadaki çocuğu ekle").
+ *
+ * ⚠️ ÖNCEDEN BAŞKA BİR ÇOCUK VARDI: turuncu tişört, mavi şort, kahve saç.
+ * Ana sayfadaki Mim ise zümrüt yelekli, altın şeritli takkeli. İki ayrı
+ * çocuk, çocuğun gözünde iki ayrı kişi demek — süreklilik kayboluyordu.
+ * Bu çizim `components/Buddy.tsx`'teki SVG'nin kanvas karşılığıdır; renkler
+ * ORADAN alınmıştır, kopya değil aynı palet (aşağıdaki sabitler birebir).
+ *
+ * ⚠️ Neden SVG'yi üstüne bindirmedik: Mim sahnenin İÇİNDE duruyor — çimenin
+ * üstünde, gölgesiyle, gece/gündüz ışığıyla ve bahçe animasyonuyla aynı
+ * karede. Üste bindirilen bir SVG sahneye ait görünmez, gölgesi ve zemini
+ * olmaz.
+ */
+const MIM = {
+  ten: "#fcd9b8", tenKoyu: "#eab98d", sac: "#5a4632",
+  yelek: "#1f7a58", yelekKoyu: "#175f45", gomlek: "#fdf6e8",
+  takkeSerit: "#e8b73c", pantolon: "#3f5b70", agiz: "#a4552f",
+};
+
 function drawKid(g: CanvasRenderingContext2D, x: number, baseY: number, sc: number, t: number) {
   g.save();
   g.translate(x, baseY);
   g.scale(sc, sc);
   const bob = Math.sin(t * 2) * 0.6;
   g.translate(0, bob);
-  // bacaklar + ayakkabı
-  g.fillStyle = "#f5c093"; g.fillRect(-6, -10, 5, 10); g.fillRect(1, -10, 5, 10);
-  g.fillStyle = "#ef4444"; rr(g, -8, -4, 9, 4, 2); g.fill(); rr(g, 0, -4, 9, 4, 2); g.fill();
-  g.fillStyle = "#3b82f6"; rr(g, -8, -17, 16, 9, 3); g.fill();       // şort
-  g.fillStyle = "#f59e0b"; rr(g, -9, -28, 18, 13, 4); g.fill();      // tişört
-  g.fillRect(-12, -27, 4, 8); g.fillRect(8, -27, 4, 8);
-  g.fillStyle = "#ffd9b3"; g.beginPath(); g.arc(0, -35, 9, 0, Math.PI * 2); g.fill(); // kafa
-  g.fillStyle = "#6b4226"; g.beginPath(); g.arc(0, -37, 9.3, Math.PI, Math.PI * 2); g.fill(); // saç kubbe
-  g.beginPath(); g.arc(-5, -42, 4, 0, Math.PI * 2); g.arc(0, -44, 4.4, 0, Math.PI * 2); g.arc(5, -42, 4, 0, Math.PI * 2); g.fill();
-  // iki göz (düz bakış — bıyık görünümü yok)
-  g.fillStyle = "#1f2937";
-  g.beginPath(); g.arc(-3, -35, 1.5, 0, Math.PI * 2); g.arc(3, -35, 1.5, 0, Math.PI * 2); g.fill();
-  // temiz küçük gülümseme (aşağı, ortalı U)
-  g.strokeStyle = "#b45309"; g.lineWidth = 1.4; g.lineCap = "round";
-  g.beginPath(); g.arc(0, -30.5, 2.6, 0.25 * Math.PI, 0.75 * Math.PI); g.stroke();
+
+  // yumuşak gölge — karakteri zemine oturtur
+  g.fillStyle = "rgba(20,60,30,0.18)";
+  g.beginPath(); g.ellipse(0, 1, 13, 3.2, 0, 0, Math.PI * 2); g.fill();
+
+  // bacaklar + pabuçlar
+  g.fillStyle = MIM.pantolon;
+  rr(g, -6.5, -12, 5, 12, 2.5); g.fill();
+  rr(g, 1.5, -12, 5, 12, 2.5); g.fill();
+  g.fillStyle = MIM.yelekKoyu;
+  g.beginPath(); g.ellipse(-4, -1, 4.5, 2.6, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(4, -1, 4.5, 2.6, 0, 0, Math.PI * 2); g.fill();
+
+  // gövde: krem gömlek + zümrüt yelek
+  g.fillStyle = MIM.gomlek; rr(g, -9, -29, 18, 18, 5); g.fill();
+  g.fillStyle = MIM.yelek;
+  rr(g, -9, -29, 6.5, 18, 4); g.fill();
+  rr(g, 2.5, -29, 6.5, 18, 4); g.fill();
+  g.fillStyle = MIM.takkeSerit;
+  g.beginPath(); g.arc(0, -24, 0.9, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(0, -19, 0.9, 0, Math.PI * 2); g.fill();
+
+  // kollar (biri sulama kabını tutuyor)
+  g.strokeStyle = MIM.yelek; g.lineWidth = 4; g.lineCap = "round";
+  g.beginPath(); g.moveTo(-8, -27); g.quadraticCurveTo(-12, -22, -11, -16); g.stroke();
+  g.beginPath(); g.moveTo(8, -27); g.quadraticCurveTo(12, -24, 13, -20); g.stroke();
   g.lineCap = "butt";
-  // pembe yanaklar
-  g.fillStyle = "rgba(244,114,182,0.45)";
-  g.beginPath(); g.arc(-5.5, -32, 1.6, 0, Math.PI * 2); g.arc(5.5, -32, 1.6, 0, Math.PI * 2); g.fill();
-  // sulama kabı (elinde)
-  g.fillStyle = "#38bdf8"; rr(g, 9, -20, 8, 7, 2); g.fill();
-  g.fillRect(16, -19, 4, 2);
+  g.fillStyle = MIM.ten;
+  g.beginPath(); g.arc(-11, -15, 2.6, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(13, -19, 2.6, 0, Math.PI * 2); g.fill();
+
+  // sulama kabı
+  g.fillStyle = "#38bdf8"; rr(g, 12, -17, 8, 7, 2); g.fill();
+  g.fillRect(19, -16, 4, 1.8);
+  g.fillStyle = "rgba(56,189,248,0.55)";
+  for (let i = 0; i < 3; i++) {
+    const dy = ((t * 26 + i * 5) % 14);
+    g.beginPath(); g.arc(23.5, -14 + dy, 0.8, 0, Math.PI * 2); g.fill();
+  }
+
+  // baş
+  g.fillStyle = MIM.ten;
+  g.beginPath(); g.arc(0, -37, 8.5, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(-8.5, -36.5, 1.5, 0, Math.PI * 2); g.fill();   // kulaklar
+  g.beginPath(); g.arc(8.5, -36.5, 1.5, 0, Math.PI * 2); g.fill();
+  // saç (takkenin altından)
+  g.fillStyle = MIM.sac;
+  g.beginPath(); g.moveTo(-8.3, -38.5); g.quadraticCurveTo(-8.8, -34.5, -7, -32.5);
+  g.quadraticCurveTo(-8.2, -36, -6.5, -39.5); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(8.3, -38.5); g.quadraticCurveTo(8.8, -34.5, 7, -32.5);
+  g.quadraticCurveTo(8.2, -36, 6.5, -39.5); g.closePath(); g.fill();
+  // TAKKE — Mim'in imzası: zümrüt kubbe + altın şerit + tepe düğmesi
+  g.fillStyle = MIM.yelek;
+  g.beginPath(); g.moveTo(-8.5, -39);
+  g.quadraticCurveTo(-7.6, -46, 0, -46); g.quadraticCurveTo(7.6, -46, 8.5, -39);
+  g.quadraticCurveTo(4, -41, 0, -41); g.quadraticCurveTo(-4, -41, -8.5, -39);
+  g.closePath(); g.fill();
+  g.fillStyle = MIM.takkeSerit;
+  g.beginPath(); g.moveTo(-8.5, -39);
+  g.quadraticCurveTo(-4, -41.3, 0, -41.3); g.quadraticCurveTo(4, -41.3, 8.5, -39);
+  g.quadraticCurveTo(4, -40, 0, -40); g.quadraticCurveTo(-4, -40, -8.5, -39);
+  g.closePath(); g.fill();
+  g.beginPath(); g.arc(0, -45.5, 0.9, 0, Math.PI * 2); g.fill();
+  // kaşlar
+  g.strokeStyle = MIM.sac; g.lineWidth = 0.7; g.lineCap = "round";
+  g.beginPath(); g.moveTo(-4.5, -39.5); g.quadraticCurveTo(-3, -40.4, -1.9, -39.5); g.stroke();
+  g.beginPath(); g.moveTo(1.9, -39.5); g.quadraticCurveTo(3, -40.4, 4.5, -39.5); g.stroke();
+  // gözler — ~4.6 sn'de bir kırpar (SVG'deki SMIL'in kanvas karşılığı)
+  const kirp = (t % 4.6) > 4.35 ? 0.15 : 1;
+  g.fillStyle = "#2c2a26";
+  g.beginPath(); g.ellipse(-3.2, -37, 1, 1.2 * kirp, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(3.2, -37, 1, 1.2 * kirp, 0, 0, Math.PI * 2); g.fill();
+  if (kirp > 0.5) {
+    g.fillStyle = "#fff";
+    g.beginPath(); g.arc(-2.8, -37.4, 0.35, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(3.6, -37.4, 0.35, 0, Math.PI * 2); g.fill();
+  }
+  // yanaklar
+  g.fillStyle = "rgba(247,168,160,0.55)";
+  g.beginPath(); g.arc(-5.3, -34.6, 1.4, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(5.3, -34.6, 1.4, 0, Math.PI * 2); g.fill();
+  // burun + gülümseme
+  g.strokeStyle = MIM.tenKoyu; g.lineWidth = 0.6; g.lineCap = "round";
+  g.beginPath(); g.moveTo(-0.6, -35.6); g.quadraticCurveTo(0, -34.7, 0.6, -35.6); g.stroke();
+  g.strokeStyle = MIM.agiz; g.lineWidth = 0.8;
+  g.beginPath(); g.moveTo(-2.6, -33.6); g.quadraticCurveTo(0, -31.6, 2.6, -33.6); g.stroke();
+  g.lineCap = "butt";
   g.restore();
 }
 
