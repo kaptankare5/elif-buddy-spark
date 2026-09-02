@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import type { TailRule } from "@/data/writingMnemonics";
 import { playFeedback } from "@/lib/audio";
 import { buildTailMask, tailFontSpec, type TailMaskGeom } from "@/lib/tailMask";
+// ⚠️ Ek elle yazılınca "çanakını" çıkıyordu: bkz. lib/turkce.
+import { iyelikBelirtme } from "@/lib/turkce";
 
 const W = 260;             // CSS px
 const H = 150;
@@ -268,7 +270,7 @@ export function EraseGame({ rule }: { rule: TailRule }) {
             "relative rounded-xl bg-emerald-50/60 transition-opacity duration-500",
             solved ? "pointer-events-none opacity-0" : "cursor-grab active:cursor-grabbing",
           )}
-          aria-label={`${rule.name} harfinin ${rule.tailName}ını parmağınla sil`}
+          aria-label={`${rule.name} harfinin ${iyelikBelirtme(rule.tailName)} parmağınla sil`}
         />
 
         {/* Başa dokununca uyarı — DOĞRU şeyi öğretir: baş kalacak */}

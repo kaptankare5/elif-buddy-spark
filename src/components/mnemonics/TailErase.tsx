@@ -14,6 +14,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { TailRule } from "@/data/writingMnemonics";
 import { buildTailMask, drawCentered, tailFontSpec, type TailMask, type TailMaskGeom } from "@/lib/tailMask";
+// ⚠️ Ek elle yazılınca "çanakı" çıkıyordu (ünsüz yumuşaması): bkz. lib/turkce.
+import { belirtmeHali } from "@/lib/turkce";
 
 const S = 2; // iç çözünürlük çarpanı
 
@@ -172,7 +174,7 @@ export function TailErase({ rule, size = "md" }: { rule: TailRule; size?: "sm" |
           style={{ width: "100%", height: H }}
           className="rounded-xl bg-emerald-50/60"
           role="img"
-          aria-label={`${rule.name}: yalın hâlin ${rule.tailName}ı silinince başta hâli kalır`}
+          aria-label={`${rule.name}: yalın hâlin ${belirtmeHali(rule.tailName)} silinince başta hâli kalır`}
         />
       </div>
 

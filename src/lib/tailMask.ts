@@ -45,6 +45,11 @@ export type TailMask = {
   headInk: number;
   /** kuyruk mürekkebinin sınırları — silgi süpürmesi bu aralıkta gezer */
   tailBox: { left: number; right: number; top: number; bottom: number };
+  /**
+   * BAŞ mürekkebinin sınırları. Ders sayfasındaki atölye harfe GÖZ takıyor;
+   * gözler kuyruğa konursa silinince kaybolur, o yüzden başın kutusu lazım.
+   */
+  headBox: { left: number; right: number; top: number; bottom: number };
 };
 
 const mkCanvas = (cw: number, ch: number) => {
@@ -65,13 +70,13 @@ type Drawn = {
 };
 
 /** Glifi kendi kanvasına çizer + mürekkep kutusunu ölçer. */
-function drawGlyph(ch: string, geom: TailMaskGeom, dx: number, dy = 0): Drawn {
+function drawGlyph(ch: string, geom: TailMaskGeom, dx: number, dy = 0, color = "#134e3a"): Drawn {
   const c = mkCanvas(geom.cw, geom.ch);
   const g = c.getContext("2d", { willReadFrequently: true })!;
   g.font = fontOf(geom);
   g.textAlign = "left";
   g.textBaseline = "alphabetic";
-  g.fillStyle = "#134e3a";
+  g.fillStyle = color;
   g.fillText(ch, dx, geom.baseY + dy);
   const d = g.getImageData(0, 0, geom.cw, geom.ch).data;
   let right = -1, left = geom.cw, top = geom.ch, bottom = -1, ink = 0;
@@ -140,11 +145,15 @@ function labelComponents(src: Uint8Array, cw: number, ch: number) {
  * Yalın harfi çizer ve kuyruk/baş katmanlarını üretir.
  * Font henüz yüklenmemişse (boş glif) null döner.
  */
-export function buildTailMask(rule: TailRule, geom: TailMaskGeom): TailMask | null {
+/**
+ * @param renk Glifin rengi. Ders sayfasında her harfin KENDİ rengi var
+ * (`data/harfRenkleri.ts`); varsayılan uygulamanın koyu yeşili.
+ */
+export function buildTailMask(rule: TailRule, geom: TailMaskGeom, renk = "#134e3a"): TailMask | null {
   const { cw, ch } = geom;
-  const probe = drawGlyph(rule.iso, geom, 0);
+  const probe = drawGlyph(rule.iso, geom, 0, 0, renk);
   if (probe.right < 0) return null;
-  const iso = drawGlyph(rule.iso, geom, Math.round((cw - probe.right) / 2));
+  const iso = drawGlyph(rule.iso, geom, Math.round((cw - probe.right) / 2), 0, renk);
   const d = iso.data;
   const n = cw * ch;
 
@@ -229,6 +238,17 @@ export function buildTailMask(rule: TailRule, geom: TailMaskGeom): TailMask | nu
       if (near) tImg.data[i * 4 + 3] = 255;
     }
   }
+  // Baş mürekkebinin sınırları (göz yerleşimi için)
+  let hl = cw, hr = -1, ht = ch, hbm = -1;
+  for (let y = 0; y < ch; y++) {
+    for (let x = 0; x < cw; x++) {
+      if (!headFlags[y * cw + x]) continue;
+      if (x < hl) hl = x; if (x > hr) hr = x;
+      if (y < ht) ht = y; if (y > hbm) hbm = y;
+    }
+  }
+  const hb = { left: hl, right: hr, top: ht, bottom: hbm };
+
   tmCtx.putImageData(tImg, 0, 0);
   tgCtx.putImageData(rImg, 0, 0);
   hdCtx.putImageData(hImg, 0, 0);
@@ -242,5 +262,6 @@ export function buildTailMask(rule: TailRule, geom: TailMaskGeom): TailMask | nu
     tailInk,
     headInk,
     tailBox: { left: tl, right: tr, top: tt, bottom: tb },
+    headBox: hb,
   };
 }

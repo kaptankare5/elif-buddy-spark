@@ -8,7 +8,7 @@ Tailwind + shadcn + Supabase (Lovable ile oluşturuldu). Dev: `npm run dev`
 `tsconfig.json` `"files": []` + yalnız project reference içeriyor, o yüzden
 sessizce boş geçer. Doğrusu: **`npx tsc -p tsconfig.app.json --noEmit`**
 (+ `npx eslint src/` + `npx vitest run`). Şu anki taban:
-**tsc 0 hata · vitest 435 geçti / 2 atlandı · eslint 38 sorun (15 hata,
+**tsc 0 hata · vitest 444 geçti / 2 atlandı · eslint 38 sorun (15 hata,
 23 uyarı)** — bu sayıların ÜSTÜNE çıkan her şey senin getirdiğin yeni
 hatadır. (Eskiden `src/lib/mcp/` yüzünden 4 tsc hatası vardı, artık yok.)
 
@@ -280,6 +280,15 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   (Diyanet PDF alıştırmalarından). CRLF satır sonları — çok satırlı Edit
   eşleşmesi başarısız olursa nedeni bu (tek satır anchor veya node kullan).
 
+### Bahçe (`Bahce.tsx`)
+- ⚠️ **BAHÇEDEKİ ÇOCUK = ANA SAYFADAKİ MİM** (kullanıcı isteği: "bahçeye ana
+  sayfadaki çocuğu ekle"). Eskiden turuncu tişörtlü, mavi şortlu BAŞKA bir
+  çocuk çiziliyordu; iki ayrı çocuk çocuğun gözünde iki ayrı kişi demek.
+  `drawKid` artık `components/Buddy.tsx`'in kanvas karşılığı — zümrüt yelek,
+  altın şeritli takke, aynı palet, kırpan gözler, sulama kabı.
+  ⚠️ SVG üste BİNDİRİLMEDİ: Mim sahnenin İÇİNDE (çimenin üstünde, gölgesiyle,
+  gece/gündüz ışığıyla) durmalı; bindirilmiş bir SVG sahneye ait görünmez.
+
 ### Öğrenme sistemi (bilimsel gerekçeli — koru)
 - ⚠️ **MERDİVEN 5 BASAMAKLI ve İKİ HIZLIDIR** (`Level = 1..5`, srs.ts):
   L1→L2→L3 tek doğruyla; **L4 "ÖĞRENDİ"** üst üste 2 doğru + akıcılık (AYNI
@@ -458,6 +467,40 @@ tersine: seçici BECERİ seçer, `pickItemForSkill` o beceriyi taşıyan
   konfeti gösterisi oynuyor; kutlamayı o anda açmak gösterinin üstünü
   örtüyordu. Bilgi hazırlanır, `winT` bitince gösterilir.
   Bekçi: `bolumKutlama.test.ts` (import değil ÇAĞRI arar).
+
+### Yazılış Hafıza dersi — Kuyruk Atölyesi (`KuyrukAtolyesi.tsx`)
+- ⚠️ **DERS, ÖLÇÜM DEĞİL** (kullanıcı şartı: "bu bölüm başka şeylere etki
+  etmesin, harflerin seviye tekrar sistemine etki etmesin"). Atölyede SRS'e,
+  karışıklık ısısına, oyun rekoruna, yıldıza, günlük seriye YAZAN TEK ÇAĞRI
+  YOK; localStorage'a bile yazmaz, bitirilen harfler yalnız bileşen
+  state'inde. Tek istisna sayfadaki `markTopicVisited` (ziyaret kaydı, seviye
+  değil). Bekçi: `kuyrukAtolyesi.test.ts` — **yorumları ayıklayıp** tarar
+  (ilk sürüm kendi açıklama yorumunu yakalayıp yanlış alarm verdi).
+- **Renk harften gelir** (`data/harfRenkleri.ts`, 28 harf): Elif sarı, Be
+  pembe (kullanıcı örneği). ⚠️ Renkler YALNIZ bu derste; konu/test/oyunlarda
+  harf başına renk vermek karışıklık ölçümünü bozar — çocuk şekli değil RENGİ
+  ezberler, renksiz kartta tanıyamaz.
+- ⚠️ **GÖZLER BAŞA TAKILIR, kuyruğa değil**: kuyruk silinince gözler
+  kaybolmamalı — "harf hâlâ orada" mesajının taşıyıcısı onlar.
+  ⚠️ `headBox`ın ORTASI YETMEZ: ölçüldü, 15 harfin **3'ünde** göz havada
+  kalıyordu (Hı, Dad, Lem) — kutuya harfin NOKTASI da giriyor ve kutu ortası
+  mürekkebin dışına düşüyor. Doğrusu başın üst bölgesindeki EN GENİŞ mürekkep
+  satırını bulup gözleri onun aralığına koymak → 15/15.
+- ⚠️ **YERLEŞİM ÖLÇÜLDÜ**: baseY 0.66/font 108'de mürekkep 0.23-0.95'e
+  düşüyordu (üstte %23 boşluk, altta %5) ve sünger sahnenin dışına taşıyordu.
+  Beş ikili denendi, **0.58/116** seçildi → 0.12-0.89, taşma 0.
+  Sünger boştayken de sahne içine kelepçelenir.
+- Baş SİLİNEMEZ (fırça izi kuyruk maskesiyle kesiştirilir); çocuk başı
+  ovalarsa "orası kalacak" uyarısı çıkar.
+- ⚠️ **16 KART BİRDEN ÇİZİLMEZ**: eskiden `EraseGame` ızgarası 16 ayrı kanvas
+  + 16 maske kuruyordu. Tek sahne + renkli harf seçici.
+
+### ⚠️ TÜRKÇE EKLER ELLE YAZILMAZ (`src/lib/turkce.ts`)
+Ekranda **"çanakı sil"** yazıyordu; doğrusu "çanağı". Şablonda `${ad}ı` demek
+iki kuralı birden atlamak: ünlü uyumu (çanak→ı, kuyruk→u) ve ünsüz yumuşaması
+(k→ğ). `belirtmeHali()` / `iyelikBelirtme()` kullan. Aynı hata üç bileşende
+birden vardı (KuyrukAtolyesi, TailErase, EraseGame). Bekçi kaynakta elle
+yazılmış eki arar.
 
 ### Karışan harfler (`confusables.ts` + `confusion.ts`)
 - `confusables.ts` = STATİK bilgi (import etmez, yapraktır): rasm öbekleri

@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { RouteHead } from "@/components/RouteHead";
 import { BuddyWithBubble } from "@/components/Buddy";
 import { TailErase } from "@/components/mnemonics/TailErase";
-import { EraseGame } from "@/components/mnemonics/EraseGame";
+import { KuyrukAtolyesi } from "@/components/mnemonics/KuyrukAtolyesi";
 import { DotCompare } from "@/components/mnemonics/DotCompare";
 import { StrokeCompare } from "@/components/mnemonics/StrokeCompare";
 import { HarekeMnemo } from "@/components/mnemonics/HarekeMnemo";
@@ -20,7 +20,9 @@ import { findItem } from "@/data/subjects";
 import { playItem } from "@/lib/audio";
 import { markTopicVisited } from "@/lib/placement";
 import { Zap } from "lucide-react";
-import { useEffect } from "react";
+import { harfRengi, acikTon } from "@/data/harfRenkleri";
+import { cn } from "@/lib/utils";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 const YazilisHafiza = () => {
@@ -130,15 +132,8 @@ const YazilisHafiza = () => {
             <TailErase rule={TAIL_RULES[0]} />
           </div>
 
-          {/* Sonra SEN DENE — her harf için elle sil oyunu (kim 2 saat okur ki!) */}
-          <p className="mb-2 text-center text-[11px] font-extrabold text-muted-foreground">
-            ✋ Şimdi sıra sende — kuyruğu parmağınla sil!
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {TAIL_RULES.map((r) => (
-              <EraseGame key={r.n} rule={r} />
-            ))}
-          </div>
+          {/* Sonra SEN DENE — kuyruk atölyesi (tek tek 16 kart yerine sahne) */}
+          <KuyrukAtolyesiBolumu />
         </section>
 
         {/* ---- 3) NOKTA YÖNTEMİ ---- */}
@@ -213,5 +208,99 @@ const YazilisHafiza = () => {
     </div>
   );
 };
+
+/**
+ * 🧽 KUYRUK ATÖLYESİ BÖLÜMÜ — 16 harfin hepsi TEK sahnede, sırayla.
+ *
+ * ⚠️ ESKİDEN 16 KART BİRDEN ÇİZİLİYORDU (`EraseGame` ızgarası): telefonda
+ * 16 ayrı kanvas + 16 maske kurulumu demek, sayfa açılışını kasıyor ve
+ * çocuk hangisinden başlayacağını bilemiyordu. Şimdi tek sahne var, harf
+ * seçici üstte; hangi harfleri bitirdiği renkli rozetlerden okunuyor.
+ *
+ * ⚠️ HİÇBİR ŞEYE YAZMAZ (kullanıcı şartı): bitirilen harfler yalnız bu
+ * bileşenin state'inde tutulur — localStorage'a bile yazılmaz, SRS'e hiç
+ * dokunmaz. Sayfadan çıkınca sıfırlanır; burası bir ders, ölçüm değil.
+ */
+function KuyrukAtolyesiBolumu() {
+  const [idx, setIdx] = useState(0);
+  const [bitenler, setBitenler] = useState<number[]>([]);
+  const rule = TAIL_RULES[idx];
+  const renk = harfRengi(rule.n);
+  const hepsiBitti = bitenler.length === TAIL_RULES.length;
+  const sonraki = useMemo(
+    () => TAIL_RULES.findIndex((r, i) => i > idx && !bitenler.includes(r.n)),
+    [idx, bitenler],
+  );
+
+  return (
+    <div>
+      <p className="mb-2 text-center text-[11px] font-extrabold text-muted-foreground">
+        ✋ Şimdi sıra sende — süngeri tut, kuyruğu ovala!
+      </p>
+
+      {/* harf seçici — her harf kendi renginde */}
+      <div dir="rtl" className="mb-2 flex flex-wrap justify-center gap-1.5">
+        {TAIL_RULES.map((r, i) => {
+          const c = harfRengi(r.n);
+          const secili = i === idx;
+          const tamam = bitenler.includes(r.n);
+          return (
+            <button
+              key={r.n}
+              onClick={() => setIdx(i)}
+              aria-label={`${r.name} harfini seç`}
+              aria-current={secili}
+              className={cn(
+                "relative flex h-10 w-10 items-center justify-center rounded-2xl font-arabic text-xl leading-[1.7] transition-transform active:scale-95",
+                secili ? "scale-110 shadow-card" : "shadow-soft",
+              )}
+              style={{
+                background: secili ? c : acikTon(c, 0.82),
+                color: secili ? "#fff" : c,
+                outline: secili ? `2px solid ${c}` : "none",
+                outlineOffset: 2,
+              }}
+            >
+              {r.iso}
+              {tamam && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-success text-[9px] font-black text-success-foreground">
+                  ✓
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <KuyrukAtolyesi
+        key={rule.n}
+        rule={rule}
+        onDone={() => setBitenler((b) => (b.includes(rule.n) ? b : [...b, rule.n]))}
+      />
+
+      {/* ilerleme + sonraki */}
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-extrabold text-muted-foreground">
+          {bitenler.length} / {TAIL_RULES.length} harf temizlendi
+        </span>
+        <button
+          onClick={() => setIdx(sonraki >= 0 ? sonraki : (idx + 1) % TAIL_RULES.length)}
+          className="rounded-full px-4 py-2 text-[12px] font-extrabold text-white shadow-card active:scale-95"
+          style={{ background: renk }}
+        >
+          Sonraki harf ▶
+        </button>
+      </div>
+
+      {hepsiBitti && (
+        <div className="mt-2 rounded-2xl border-2 border-success/40 bg-success/10 p-2.5 text-center">
+          <p className="text-[12px] font-extrabold text-success">
+            🏆 Hepsinin kuyruğunu sildin! Artık başta hâllerini ezberlemene gerek yok.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default YazilisHafiza;
