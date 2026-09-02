@@ -101,6 +101,20 @@ function drawGlyph(ch: string, geom: TailMaskGeom, dx: number, dy = 0, color = "
  * dönüşüyor ve o BAŞKA bir şekil — gözler eski şeklin kutusunda kalırsa
  * yüz havada asılı duruyor.
  */
+/**
+ * Bir glifin, verilen geometride kapladığı MÜREKKEP kutusu.
+ *
+ * ⚠️ NEDEN GEREKLİ: harfler sabit bir taban çizgisine oturtulunca sahnenin
+ * ancak yarısını kullanıyorlar (ölçüldü: ortalama %55, Cim/Ha %53, Sin %41)
+ * ve dikey merkezleri 0.32-0.66 arasında savruluyor. Her harfi kendi ölçüsüne
+ * göre büyütüp ortalamak için önce ölçmek gerekiyor.
+ */
+export function measureGlyph(ch: string, geom: TailMaskGeom) {
+  const d = drawGlyph(ch, geom, 0);
+  if (d.right < 0) return null;
+  return { left: d.left, right: d.right, top: d.top, bottom: d.bottom, ink: d.ink };
+}
+
 export function inkFlags(c: HTMLCanvasElement): Uint8Array {
   const g = c.getContext("2d", { willReadFrequently: true })!;
   const d = g.getImageData(0, 0, c.width, c.height).data;

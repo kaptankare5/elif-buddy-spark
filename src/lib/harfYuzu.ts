@@ -83,7 +83,12 @@ export function yuzYeri(
    * yaklaşık aynı boy çıkıyor. İnce harfte göz gövdeden TAŞAR — çizgi film
    * gözü gibi durur, kasıtlıdır.
    */
-  const ar = Math.max(8, Math.min(16, Math.max(bw, bh) * 0.11));
+  /**
+   * ⚠️ ÜST SINIR ORANTILI OLMALI. Sabit 16 px iken sahne büyütülünce (harf
+   * %60 büyüdü) gözler olduğu yerde kalıp harfe göre KÜÇÜLDÜ. Sınır artık
+   * geniş; asıl boy yine şeklin en uzun kenarından geliyor.
+   */
+  const ar = Math.max(8, Math.min(40, Math.max(bw, bh) * 0.11));
 
   /** `gy`nin altında, `gx` çevresinde mürekkep olan en uygun ağız satırı. */
   const agizAra = (gy: number, gx: number): number => {
@@ -117,8 +122,32 @@ export function yuzYeri(
   }
 
   const gen = Math.max(1, en.sag - en.sol);
-  const ayrik = Math.max(ar * 1.12, Math.min(gen * 0.27, ar * 2.1));
   const gx = (en.sol + en.sag) / 2;
+  /**
+   * ⚠️ GÖZLER MÜREKKEBE TUTUNMALI — açıklık körlemesine verilemez.
+   * Sahne büyütülünce (harf %60 büyüdü) `ar` ve dolayısıyla açıklık da
+   * büyüdü; ölçümde 30 yüzün 4'ünde gözler seçilen satırın mürekkebinden
+   * DIŞARI çıktı (Sad/Dad/Ayn'ın "başta" hâlleri geniş ve yassı). Bu yüzden
+   * açıklık, iki göz de mürekkebin üstünde kalana kadar daraltılır.
+   */
+  const inkVar = (cx: number) => {
+    const r = Math.round(ar * 0.7);
+    for (let dy = -r; dy <= r; dy += 2) {
+      const yy = Math.round(en.y + dy);
+      if (yy < 0 || yy >= Math.ceil(f.length / cw)) continue;
+      for (let dx = -r; dx <= r; dx += 2) {
+        const xx = Math.round(cx + dx);
+        if (xx < 0 || xx >= cw) continue;
+        if (f[yy * cw + xx]) return true;
+      }
+    }
+    return false;
+  };
+  let ayrik = Math.max(ar * 1.12, Math.min(gen * 0.27, ar * 2.1));
+  for (let i = 0; i < 12 && !(inkVar(gx - ayrik) && inkVar(gx + ayrik)); i++) {
+    ayrik *= 0.85;
+    if (ayrik < ar * 0.5) { ayrik = ar * 0.5; break; }
+  }
   if (agizY < 0) agizY = Math.max(en.y + ar * 1.1, box.bottom - ar * 0.4);
   return { gx, gy: en.y, ar, ayrik, agizY, agizR: ar * 0.92 };
 }
